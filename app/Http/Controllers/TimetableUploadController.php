@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\TimetableParserService;
 use App\Services\TimetableSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -96,10 +97,14 @@ class TimetableUploadController extends Controller
 
         // If items are empty but the physical PDF exists, parse it now
         if ($upload->items()->count() === 0 && Storage::disk('public')->exists($upload->file_path)) {
-            $parserService = new TimetableParserService;
-            $parsedData = $parserService->parsePdf(storage_path('app/public/'.$upload->file_path));
-            if (! empty($parsedData)) {
-                TimetableSyncService::populateTranslationItems($parsedData, $upload);
+            try {
+                $parserService = new TimetableParserService;
+                $parsedData = $parserService->parsePdf(storage_path('app/public/'.$upload->file_path));
+                if (! empty($parsedData)) {
+                    TimetableSyncService::populateTranslationItems($parsedData, $upload);
+                }
+            } catch (Throwable $e) {
+                Log::warning('Failed parsing timetable PDF during translation view: '.$e->getMessage());
             }
         }
 

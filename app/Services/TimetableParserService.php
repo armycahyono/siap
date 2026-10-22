@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Smalot\PdfParser\Parser;
 
 class TimetableParserService
@@ -19,7 +20,15 @@ class TimetableParserService
         // Mendeteksi posisi kotak kartu jam pelajaran secara presisi (jam 1 s.d. 10 & hari)
         $pythonScript = app_path('Services/asc_timetable_parser.py');
         if (file_exists($pythonScript) && file_exists($filePath)) {
-            $command = 'python '.escapeshellarg($pythonScript).' '.escapeshellarg($filePath).' 2>&1';
+            $pythonBinary = 'python';
+            if (PHP_OS_FAMILY !== 'Windows') {
+                $whichPython3 = trim((string) @shell_exec('which python3'));
+                if (! empty($whichPython3)) {
+                    $pythonBinary = $whichPython3;
+                }
+            }
+
+            $command = escapeshellcmd($pythonBinary).' '.escapeshellarg($pythonScript).' '.escapeshellarg($filePath).' 2>&1';
             $output = @shell_exec($command);
             if ($output) {
                 $jsonStart = strpos($output, '{');
@@ -34,9 +43,15 @@ class TimetableParserService
         }
 
         // 2. Fallback: Smalot Parser (sekuensial teks)
-        $parser = new Parser;
-        $pdf = $parser->parseFile($filePath);
-        $pages = $pdf->getPages();
+        try {
+            $parser = new Parser;
+            $pdf = $parser->parseFile($filePath);
+            $pages = $pdf->getPages();
+        } catch (\Throwable $e) {
+            Log::warning('Smalot PDF Parser fallback failed: '.$e->getMessage());
+
+            return [];
+        }
 
         $scheduleByClass = [];
 
