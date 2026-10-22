@@ -15,53 +15,82 @@ use App\Models\User;
 class TimetableSyncService
 {
     /**
-     * Get Teacher Nickname Mapping to User ID
+     * Pola inisial jadwal aSc Timetables ke nama lengkap/potongan nama guru resmi.
+     */
+    public static function getTeacherPatterns(): array
+    {
+        return [
+            'MAKMUN' => 'MOH. MAKMUN SOLIKHI',
+            'ROKHIM' => 'ROKHIM',
+            'RANI' => 'MAHARANI WAHYU ISMAIL',
+            'DIAH' => 'DIAH AYU KUMALASARI',
+            'RIMA' => 'AYU RIMA WARDHANI',
+            'EFENDI' => 'EFENDI SAPUTRA',
+            'RENO' => 'RENO AULIYA ANGGRAINI',
+            'QURNIA' => 'QURNIA NI',
+            'EKO' => 'EKO AQTHOENA ULFA',
+            'UTORO' => 'UTORO',
+            'MIFTAH' => 'MIFTAHUR ROHMAH',
+            'KARNI' => 'SUKARNI',
+            'DITA' => 'DITA MAGHFIRATUL',
+            'KRIS' => 'KRISDIANTORO',
+            'PUNGKAS' => 'ENDANG PUNGKASWATI',
+            'AGUNG' => 'AGUNG PRASETYO',
+            'RISNA' => 'RISNA HILALIYAH',
+            'OKKY' => 'OKKY WILLYAND SUPRAPTO',
+            'YOGA' => 'YOGA ANGGORINA',
+            'BUDI' => 'ILHAM BUDI SANTOSO',
+            'DEVI' => 'DEVI AJENG AYU WIBOWO',
+            'BAYU' => 'BAYU HADI KUNCORO',
+            'TETUKO' => 'TETUKO CAHYO WICAKSONO',
+            'ADI NUR' => 'ADI NURANTO',
+            'RUDI' => 'RUDI DWI SUSANTO',
+            'SUHADAK' => 'SUHADAK',
+            'INDRA' => 'INDRA YUSTIAWAN',
+            'ELLA' => 'LAYLATUL ROCHMAH',
+            'ROFIK' => 'MUHAMMAD ROFIK ASHARI',
+            'MUNIF' => 'MUNIF ARDIANSYAH',
+            'AFIF' => 'AFIF BEY RIDHOTULLOH',
+            'LUTFI' => 'LUTFI ANDRI SAPUTRO',
+            'ALIYA' => 'ALIYA NUSAIBA',
+            'ILHAM ALI' => 'MUCHAMMAD ILHAM ALI NURUDDIN',
+            'CANDRA' => 'CANDRA TRI SETYONO',
+            'LEO' => 'LEO HERMAWAN SANTOSO',
+            'AYU' => 'AYU DWI WAHYU SAPUTRI',
+            'SUPRI' => 'SUPRIYANTO',
+            'JUMARI' => 'JUMARI',
+            'WARNI' => 'SUWARNI',
+            'NURMA' => 'NURMA FAUZIAH',
+        ];
+    }
+
+    /**
+     * Get Teacher Nickname Mapping to User ID dynamically based on database users
      */
     public static function getTeacherMapping(): array
     {
-        return [
-            'MAKMUN' => 50, // MOH. MAKMUN SOLIKHI, S.Pd.
-            'ROKHIM' => 31, // ROKHIM, S.Pd.
-            'RANI' => 44, // MAHARANI WAHYU ISMAIL, S.Pd
-            'DIAH' => 52, // DIAH AYU KUMALASARI, S.Pd.
-            'RIMA' => 39, // AYU RIMA WARDHANI, S.Pd.
-            'EFENDI' => 20, // EFENDI SAPUTRA
-            'RENO' => 34, // RENO AULIYA ANGGRAINI, S.Pd.
-            'QURNIA' => 24, // QURNIA NI'MATUL ULFAH, S.Pd
-            'EKO' => 37, // EKO AQTHOENA ULFA, S.Pd.
-            'UTORO' => 13, // UTORO, S.Fil., S.Pd
-            'MIFTAH' => 42, // MIFTAHUR ROHMAH, S.Pd.
-            'KARNI' => 5,  // Drs. SUKARNI
-            'DITA' => 26, // DITA MAGHFIRATUL MAS'RURIN, S.Pd.
-            'KRIS' => 54, // KRISDIANTORO, S.Pd.
-            'PUNGKAS' => 14, // ENDANG PUNGKASWATI, S.Pd
-            'AGUNG' => 28, // AGUNG PRASETYO, S.Pd.
-            'RISNA' => 32, // RISNA HILALIYAH, S.Pd
-            'OKKY' => 35, // OKKY WILLYAND SUPRAPTO, S.Kom.
-            'YOGA' => 27, // YOGA ANGGORINA KUKUH KURNIAWAN, S.Pd.
-            'BUDI' => 30, // ILHAM BUDI SANTOSO, M.Pd.
-            'DEVI' => 45, // DEVI AJENG AYU WIBOWO, S.Pd.
-            'BAYU' => 40, // BAYU HADI KUNCORO, S.Kom
-            'TETUKO' => 49, // TETUKO CAHYO WICAKSONO, A.Md.
-            'ADI NUR' => 17, // ADI NURANTO, S.Pd.
-            'RUDI' => 57, // RUDI DWI SUSANTO, S.Pd.
-            'SUHADAK' => 18, // SUHADAK, ST
-            'INDRA' => 29, // INDRA YUSTIAWAN, M.Pd.
-            'ELLA' => 33, // LAYLATUL ROCHMAH, S.Pd.I
-            'ROFIK' => 43, // MUHAMMAD ROFIK ASHARI, S.Pd.
-            'MUNIF' => 53, // MUNIF ARDIANSYAH, S.Pd.
-            'AFIF' => 38, // AFIF BEY RIDHOTULLOH, A.Md.
-            'LUTFI' => 55, // LUTFI ANDRI SAPUTRO, S.T
-            'ALIYA' => 36, // ALIYA NUSAIBA, S.Pd.
-            'ILHAM ALI' => 46, // MUCHAMMAD ILHAM ALI NURUDDIN, S.T
-            'CANDRA' => 21, // CANDRA TRI SETYONO, S.Pd.
-            'LEO' => 47, // LEO HERMAWAN SANTOSO, A.Md.T.
-            'AYU' => 25, // AYU DWI WAHYU SAPUTRI, S.Pd
-            'SUPRI' => 12, // SUPRIYANTO, ST
-            'JUMARI' => 9,  // JUMARI, S.Pd.
-            'WARNI' => 6,  // SUWARNI, S.PdI
-            'NURMA' => 15, // NURMA FAUZIAH, S.Pd.
-        ];
+        $patterns = self::getTeacherPatterns();
+        $teachers = User::all();
+        $map = [];
+
+        foreach ($patterns as $nick => $pattern) {
+            $matchedUser = $teachers->first(function ($user) use ($pattern, $nick) {
+                if (! empty($user->short_name) && (
+                    strcasecmp($user->short_name, $nick) === 0 ||
+                    stripos($user->short_name, $nick) !== false
+                )) {
+                    return true;
+                }
+
+                return stripos($user->name, $pattern) !== false;
+            });
+
+            if ($matchedUser) {
+                $map[$nick] = $matchedUser->id;
+            }
+        }
+
+        return $map;
     }
 
     /**
@@ -400,6 +429,11 @@ class TimetableSyncService
                     $subject = $subjects[$subjCode] ?? Subject::where('code', $subjCode)->first();
                     $teacherId = $teacherMap[$teacherNick] ?? null;
                     $teacher = $teacherId ? User::find($teacherId) : null;
+                    if (! $teacher && ! empty($teacherNick)) {
+                        $teacher = User::where('short_name', 'like', "%{$teacherNick}%")
+                            ->orWhere('name', 'like', "%{$teacherNick}%")
+                            ->first();
+                    }
 
                     $times = LessonSchedule::getTimeForPeriod($startPeriod, $endPeriod);
 
