@@ -23,7 +23,7 @@ class SchoolSettingSeeder extends Seeder
                 'school_website' => 'https://smkpgrikras.sch.id',
                 'principal_name' => 'Endang Patmowati, S.Pd.',
                 'principal_nip' => null,
-                'curriculum_head_name' => null,
+                'curriculum_head_name' => 'Waka Kurikulum',
                 'curriculum_head_nip' => null,
                 'academic_year' => '2026/2027',
                 'semester' => 'Ganjil',

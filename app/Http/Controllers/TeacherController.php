@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Services\TeacherImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TeacherController extends Controller
 {
@@ -54,6 +57,114 @@ class TeacherController extends Controller
             ->get();
 
         return view('teachers.index', compact('teachers', 'search', 'allTeachers', 'academicYear', 'semester'));
+    }
+
+    public function show(User $teacher): RedirectResponse
+    {
+        return redirect()->route('teachers.index', ['search' => $teacher->name]);
+    }
+
+    /**
+     * Unduh format template CSV / Excel untuk import data guru.
+     */
+    public function downloadTemplate(): StreamedResponse
+    {
+        $filename = 'template_import_guru.csv';
+
+        return response()->streamDownload(function () {
+            $handle = fopen('php://output', 'w');
+            // Write UTF-8 BOM agar Excel di Windows membaca karakter dan aksen dengan benar
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            // Header kolom
+            fputcsv($handle, [
+                'No',
+                'Nama Lengkap',
+                'NIGS',
+                'NIP',
+                'NUPTK',
+                'NIK',
+                'JK (L/P)',
+                'Tempat Tanggal Lahir',
+                'No HP',
+                'Alamat',
+                'Status GTK',
+                'Jabatan',
+                'Pendidikan',
+                'Jurusan',
+                'Singkatan Nama',
+            ]);
+
+            // Baris contoh untuk panduan pengguna
+            fputcsv($handle, [
+                '1',
+                'Ahmad Dahlan, S.Pd.',
+                'G-001',
+                '198501012010011001',
+                '1234567890123456',
+                '3506123456780001',
+                'L',
+                'Kediri, 12 Januari 1985',
+                '081234567890',
+                'Jl. Melati No. 12, Kediri',
+                'GTY',
+                'Guru',
+                'S1',
+                'Pendidikan Matematika',
+                'ADM',
+            ]);
+
+            fputcsv($handle, [
+                '2',
+                'Siti Fatimah, S.Pd.',
+                'G-002',
+                '',
+                '9876543210987654',
+                '3506123456780002',
+                'P',
+                'Kediri, 15 Mei 1990',
+                '085678901234',
+                'Jl. Mawar No. 45, Kras',
+                'GTT',
+                'Guru',
+                'S1',
+                'Pendidikan Bahasa Inggris',
+                'SFM',
+            ]);
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Import data guru / GTK dari file Excel (.xlsx, .xls) atau CSV (.csv).
+     */
+    public function import(Request $request, TeacherImportService $importer): RedirectResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240', 'extensions:xlsx,csv,txt,xls'],
+        ]);
+
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+        $result = $importer->import($file->getRealPath(), $extension);
+
+        if (! $result['success'] && empty($result['updated'])) {
+            $errMsg = ! empty($result['errors']) ? implode('<br>', $result['errors']) : 'Gagal mengimpor data guru. Periksa format file Anda.';
+
+            return redirect()->route('teachers.index')->with('error', $errMsg);
+        }
+
+        ActivityLogger::log('import_teachers', "Mengimpor data guru dari file Excel/CSV ({$result['imported_count']} baru, {$result['updated_count']} diperbarui)");
+
+        $msg = "Import data guru berhasil. {$result['imported_count']} guru baru ditambahkan, {$result['updated_count']} data guru diperbarui.";
+        if (! empty($result['errors'])) {
+            $msg .= ' Beberapa baris dilewati: '.implode(' | ', array_slice($result['errors'], 0, 3));
+        }
+
+        return redirect()->route('teachers.index')->with('success', $msg);
     }
 
     public function create(): View

@@ -92,14 +92,16 @@ Route::middleware('auth')->group(function () {
 
     // Data Guru (Dapat diakses / dilihat oleh semua pengguna terdaftar)
     Route::get('teachers', [TeacherController::class, 'index'])->name('teachers.index');
-    Route::get('teachers/{teacher}', [TeacherController::class, 'show'])->name('teachers.show');
     Route::middleware('permission:manage_teachers')->group(function () {
+        Route::get('teachers/template-import', [TeacherController::class, 'downloadTemplate'])->name('teachers.template');
+        Route::post('teachers/import', [TeacherController::class, 'import'])->name('teachers.import');
         Route::get('teachers/create', [TeacherController::class, 'create'])->name('teachers.create');
         Route::post('teachers', [TeacherController::class, 'store'])->name('teachers.store');
         Route::get('teachers/{teacher}/edit', [TeacherController::class, 'edit'])->name('teachers.edit');
         Route::put('teachers/{teacher}', [TeacherController::class, 'update'])->name('teachers.update');
         Route::delete('teachers/{teacher}', [TeacherController::class, 'destroy'])->name('teachers.destroy');
     });
+    Route::get('teachers/{teacher}', [TeacherController::class, 'show'])->name('teachers.show')->whereNumber('teacher');
 
     // Data Siswa (Dapat diakses / dilihat oleh semua pengguna terdaftar)
     Route::get('siswa', [StudentController::class, 'index'])->name('students.index');

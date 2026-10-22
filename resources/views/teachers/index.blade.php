@@ -15,6 +15,9 @@
             <i class="ti ti-id me-1"></i> Daftar Singkatan Nama Guru
         </button>
         @if(auth()->user()->hasPermission('manage_teachers'))
+        <button type="button" class="btn btn-outline-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportGuru">
+            <i class="ti ti-file-spreadsheet me-1"></i> Import Excel
+        </button>
         <a href="{{ route('teachers.create') }}" class="btn btn-primary">
             <i class="ti ti-plus me-1"></i> Tambah Guru Baru
         </a>
@@ -532,6 +535,55 @@
         </div>
     </div>
 </div>
+
+@if(auth()->user()->hasPermission('manage_teachers'))
+<!-- Modal Import Data Guru -->
+<div class="modal fade" id="modalImportGuru" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+            <form action="{{ route('teachers.import') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold d-flex align-items-center">
+                        <i class="ti ti-file-spreadsheet me-2 fs-2"></i>
+                        Import Data Guru dari Excel / CSV
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-success bg-success-lt border-0 shadow-sm d-flex mb-3">
+                        <i class="ti ti-info-circle fs-2 me-2 flex-shrink-0 text-success"></i>
+                        <div class="small">
+                            <div>Sistem mendukung file Excel (<b>.xlsx</b>, <b>.xls</b>) atau <b>.csv</b>.</div>
+                            <div class="mt-1">Nama kolom otomatis dideteksi secara fleksibel (Nama Guru, NIGS, NIP, NUPTK, NIK, No HP, Jabatan, TTL, dsb).</div>
+                            <div class="mt-1 text-muted">Data guru yang sudah ada akan otomatis diperbarui tanpa mengubah kata sandi lama mereka.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label required fw-semibold">Pilih File Excel / CSV</label>
+                        <input type="file" name="file" class="form-control" required accept=".xlsx,.xls,.csv,.txt">
+                        <div class="form-text">Maksimal ukuran file: 10 MB.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                        <a href="{{ route('teachers.template') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="ti ti-download me-1"></i> Unduh Format Template CSV
+                        </a>
+                        <span class="badge bg-light text-secondary border">UTF-8 Ready</span>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success shadow-sm">
+                        <i class="ti ti-upload me-1"></i> Mulai Impor Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
