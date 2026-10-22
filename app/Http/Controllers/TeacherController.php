@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\SimpleXlsxGenerator;
 use App\Services\TeacherImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,38 +66,33 @@ class TeacherController extends Controller
     }
 
     /**
-     * Unduh format template CSV / Excel untuk import data guru.
+     * Unduh format template Excel (.xlsx) untuk import data guru.
      */
     public function downloadTemplate(): StreamedResponse
     {
-        $filename = 'template_import_guru.csv';
+        $filename = 'template_import_guru.xlsx';
+        $sheetName = 'Data Guru';
 
-        return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-            // Write UTF-8 BOM agar Excel di Windows membaca karakter dan aksen dengan benar
-            fwrite($handle, "\xEF\xBB\xBF");
+        $headers = [
+            'No',
+            'Nama Lengkap',
+            'NIGS',
+            'NIP',
+            'NUPTK',
+            'NIK',
+            'JK (L/P)',
+            'Tempat Tanggal Lahir',
+            'No HP',
+            'Alamat',
+            'Status GTK',
+            'Jabatan',
+            'Pendidikan',
+            'Jurusan',
+            'Singkatan Nama',
+        ];
 
-            // Header kolom
-            fputcsv($handle, [
-                'No',
-                'Nama Lengkap',
-                'NIGS',
-                'NIP',
-                'NUPTK',
-                'NIK',
-                'JK (L/P)',
-                'Tempat Tanggal Lahir',
-                'No HP',
-                'Alamat',
-                'Status GTK',
-                'Jabatan',
-                'Pendidikan',
-                'Jurusan',
-                'Singkatan Nama',
-            ]);
-
-            // Baris contoh untuk panduan pengguna
-            fputcsv($handle, [
+        $rows = [
+            [
                 '1',
                 'Ahmad Dahlan, S.Pd.',
                 'G-001',
@@ -112,9 +108,8 @@ class TeacherController extends Controller
                 'S1',
                 'Pendidikan Matematika',
                 'ADM',
-            ]);
-
-            fputcsv($handle, [
+            ],
+            [
                 '2',
                 'Siti Fatimah, S.Pd.',
                 'G-002',
@@ -130,12 +125,12 @@ class TeacherController extends Controller
                 'S1',
                 'Pendidikan Bahasa Inggris',
                 'SFM',
-            ]);
+            ],
+        ];
 
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        $colWidths = [6, 28, 14, 22, 20, 20, 10, 25, 16, 30, 14, 16, 14, 25, 16];
+
+        return SimpleXlsxGenerator::download($filename, $sheetName, $headers, $rows, $colWidths);
     }
 
     /**

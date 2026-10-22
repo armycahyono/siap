@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Services\SimpleXlsxGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
+use ZipArchive;
 
 class TeacherImportTest extends TestCase
 {
@@ -19,18 +21,28 @@ class TeacherImportTest extends TestCase
         $this->seed();
     }
 
-    public function test_user_with_manage_teachers_permission_can_download_template(): void
+    public function test_user_with_manage_teachers_permission_can_download_excel_template(): void
     {
         $admin = User::whereHas('role', fn ($q) => $q->where('slug', 'super_admin'))->first();
 
         $response = $this->actingAs($admin)->get(route('teachers.template'));
 
         $response->assertStatus(200);
-        $this->assertTrue(str_contains((string) $response->headers->get('content-type'), 'text/csv'));
+        $this->assertTrue(str_contains((string) $response->headers->get('content-type'), 'spreadsheetml.sheet'));
+        $this->assertTrue(str_contains((string) $response->headers->get('content-disposition'), 'template_import_guru.xlsx'));
+
         $content = $response->streamedContent();
-        $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
-        $this->assertStringContainsString('Nama Lengkap', $content);
-        $this->assertStringContainsString('NIGS', $content);
+        $tempFile = tempnam(sys_get_temp_dir(), 'test_dl_');
+        file_put_contents($tempFile, $content);
+
+        $zip = new ZipArchive;
+        $this->assertTrue($zip->open($tempFile));
+        $this->assertNotFalse($zip->getFromName('xl/worksheets/sheet1.xml'));
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $this->assertStringContainsString('Nama Lengkap', $sheetXml);
+        $this->assertStringContainsString('NIGS', $sheetXml);
+        $zip->close();
+        unlink($tempFile);
     }
 
     public function test_guest_or_unauthorized_user_cannot_access_import_or_template(): void
@@ -50,6 +62,44 @@ class TeacherImportTest extends TestCase
 
         $responseImport = $this->actingAs($guru)->post(route('teachers.import'), []);
         $responseImport->assertStatus(403);
+    }
+
+    public function test_admin_can_import_teachers_from_xlsx_file(): void
+    {
+        $admin = User::whereHas('role', fn ($q) => $q->where('slug', 'super_admin'))->first();
+
+        $headers = [
+            'No', 'Nama Lengkap', 'NIGS', 'NIP', 'NUPTK', 'NIK', 'JK (L/P)',
+            'Tempat Tanggal Lahir', 'No HP', 'Alamat', 'Status GTK', 'Jabatan',
+            'Pendidikan', 'Jurusan', 'Singkatan Nama',
+        ];
+
+        $rows = [
+            [
+                '1', 'Hendra Kusuma, M.Pd.', 'G-771', '198105052007011005', '5566778899001122',
+                '3506050505810002', 'L', 'Kediri, 5 Mei 1981', '081333444555',
+                'Jl. Veteran No. 8, Kediri', 'GTY', 'Guru', 'S2', 'Manajemen Pendidikan', 'HDK',
+            ],
+        ];
+
+        $xlsxContent = SimpleXlsxGenerator::createBinary('Data Guru', $headers, $rows);
+        $file = UploadedFile::fake()->createWithContent('import_guru.xlsx', $xlsxContent);
+
+        $response = $this->actingAs($admin)->post(route('teachers.import'), [
+            'file' => $file,
+        ]);
+
+        $response->assertRedirect(route('teachers.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'Hendra Kusuma, M.Pd.',
+            'nigs_fix' => 'G771',
+            'nip' => '198105052007011005',
+            'phone' => '081333444555',
+            'short_name' => 'HDK',
+            'education_level' => 'S2',
+        ]);
     }
 
     public function test_admin_can_import_new_teachers_from_csv(): void

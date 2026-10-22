@@ -567,10 +567,12 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center pt-3 border-top">
-                        <a href="{{ route('teachers.template') }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="ti ti-download me-1"></i> Unduh Format Template CSV
+                        <a href="{{ route('teachers.template') }}" class="btn btn-sm btn-outline-success">
+                            <i class="ti ti-file-spreadsheet me-1"></i> Unduh Format Template Excel (.xlsx)
                         </a>
-                        <span class="badge bg-light text-secondary border">UTF-8 Ready</span>
+                        <span class="badge bg-green-lt text-success border border-success-subtle">
+                            <i class="ti ti-check me-1"></i> Microsoft Excel (.xlsx)
+                        </span>
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-2">
