@@ -315,7 +315,7 @@ class SchoolActivitySeeder extends Seeder
         ];
 
         foreach ($activities as $act) {
-            SchoolActivity::updateOrCreate(
+            SchoolActivity::firstOrCreate(
                 ['code' => $act['code']],
                 $act
             );

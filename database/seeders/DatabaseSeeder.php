@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
             SchoolSettingSeeder::class,
             UserSeeder::class,
             MasterDataSeeder::class,
-            SupervisionSampleSeeder::class,
             SchoolActivitySeeder::class,
             SchoolStakeholderSeeder::class,
         ]);

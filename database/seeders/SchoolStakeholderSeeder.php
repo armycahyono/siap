@@ -77,7 +77,7 @@ class SchoolStakeholderSeeder extends Seeder
         ];
 
         foreach ($stakeholders as $item) {
-            SchoolStakeholder::updateOrCreate(
+            SchoolStakeholder::firstOrCreate(
                 ['name' => $item['name'], 'position' => $item['position']],
                 $item
             );

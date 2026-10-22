@@ -43,7 +43,7 @@ class MasterDataSeeder extends Seeder
 
         $deptMap = [];
         foreach ($departments as $d) {
-            $dept = Department::updateOrCreate(['code' => $d['code']], $d);
+            $dept = Department::firstOrCreate(['code' => $d['code']], $d);
             $deptMap[$d['code']] = $dept;
         }
 
@@ -56,7 +56,7 @@ class MasterDataSeeder extends Seeder
 
         $gradeMap = [];
         foreach ($grades as $g) {
-            $grade = GradeLevel::updateOrCreate(['level' => $g['level']], $g);
+            $grade = GradeLevel::firstOrCreate(['level' => $g['level']], $g);
             $gradeMap[$g['level']] = $grade;
         }
 
@@ -95,7 +95,7 @@ class MasterDataSeeder extends Seeder
 
         $subjectMap = [];
         foreach ($subjects as $s) {
-            $subj = Subject::updateOrCreate(
+            $subj = Subject::firstOrCreate(
                 ['code' => $s['code']],
                 [
                     'name' => $s['name'],
@@ -160,7 +160,7 @@ class MasterDataSeeder extends Seeder
 
         $classMap = [];
         foreach ($classes as $c) {
-            $cls = Classroom::updateOrCreate(
+            $cls = Classroom::firstOrCreate(
                 ['name' => $c['name'], 'academic_year' => $academicYear],
                 [
                     'grade_level_id' => $gradeMap[$c['level']]->id,
@@ -321,7 +321,7 @@ class MasterDataSeeder extends Seeder
 
         foreach ($teacherAssignments as $ta) {
             if ($ta['teacher'] && $ta['subject']) {
-                TeacherSubjectAssignment::updateOrCreate(
+                TeacherSubjectAssignment::firstOrCreate(
                     [
                         'teacher_id' => $ta['teacher']->id,
                         'subject_id' => $ta['subject']->id,
@@ -354,7 +354,7 @@ class MasterDataSeeder extends Seeder
         ];
 
         foreach ($structuralPositions as $sp) {
-            StructuralPosition::updateOrCreate(
+            StructuralPosition::firstOrCreate(
                 ['code' => $sp['code']],
                 [
                     'name' => $sp['name'],

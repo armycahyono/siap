@@ -12,7 +12,7 @@ class SchoolSettingSeeder extends Seeder
      */
     public function run(): void
     {
-        SchoolSetting::updateOrCreate(
+        SchoolSetting::firstOrCreate(
             ['id' => 1],
             [
                 'school_name' => 'SMK PGRI KRAS',

@@ -155,33 +155,36 @@ class UserSeeder extends Seeder
             if (str_contains(strtoupper($jabatan), 'KEPALA SEKOLAH')) {
                 $username = 'kepsek';
             } elseif ($nigsFix === '41803') { // ROKHIM, S.Pd. (Waka Kurikulum)
-                User::where('username', 'waka')->update([
-                    'nigs_fix' => $nigsFix,
-                    'nip' => null,
-                    'nuptk' => null,
-                    'nigs' => $nigs,
-                    'numgs' => $numgs,
-                    'nik' => $nik,
-                    'phone' => $hp,
-                    'birth_info' => $ttl,
-                    'birth_year' => $thLahir,
-                    'gtk_status' => $statusGtk,
-                    'gender' => $gender,
-                    'position' => 'Waka Kurikulum',
-                    'tmt_year' => $tmt,
-                    'faculty' => $fakultas,
-                    'education_level' => $pendidikan,
-                    'major' => $jurusan,
-                    'graduation_year' => $thIjazah,
-                    'address' => $alamatLengkap,
-                    'city' => $kab,
-                    'postal_code' => $kodepos,
-                ]);
+                $waka = User::where('username', 'waka')->first();
+                if ($waka && empty($waka->nigs_fix)) {
+                    $waka->update([
+                        'nigs_fix' => $nigsFix,
+                        'nip' => null,
+                        'nuptk' => null,
+                        'nigs' => $nigs,
+                        'numgs' => $numgs,
+                        'nik' => $nik,
+                        'phone' => $hp,
+                        'birth_info' => $ttl,
+                        'birth_year' => $thLahir,
+                        'gtk_status' => $statusGtk,
+                        'gender' => $gender,
+                        'position' => 'Waka Kurikulum',
+                        'tmt_year' => $tmt,
+                        'faculty' => $fakultas,
+                        'education_level' => $pendidikan,
+                        'major' => $jurusan,
+                        'graduation_year' => $thIjazah,
+                        'address' => $alamatLengkap,
+                        'city' => $kab,
+                        'postal_code' => $kodepos,
+                    ]);
+                }
 
                 continue;
             }
 
-            User::updateOrCreate(
+            User::firstOrCreate(
                 ['nigs_fix' => $nigsFix],
                 [
                     'name' => $name,
@@ -193,7 +196,6 @@ class UserSeeder extends Seeder
                     'nuptk' => null,
                     'nigs' => $nigs,
                     'numgs' => $numgs,
-                    'nigs_fix' => $nigsFix,
                     'nik' => $nik,
                     'birth_info' => $ttl,
                     'birth_year' => $thLahir,
