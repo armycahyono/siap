@@ -2,26 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\GradeLevel;
-use App\Models\SchoolSetting;
 use App\Models\StructuralPosition;
 use App\Models\Subject;
-use App\Models\TeacherSubjectAssignment;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class MasterDataSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * Hanya menyiapkan struktur kejuruan, tingkat kelas, daftar mapel standar,
+     * dan struktur jabatan organisasi. Tanpa data guru atau penugasan mengajar hardcoded.
      */
     public function run(): void
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2025/2026';
-
         // 1. JURUSAN (Departments)
         $departments = [
             [
@@ -54,10 +49,8 @@ class MasterDataSeeder extends Seeder
             ['level' => 'XII', 'name' => 'Tingkat XII (Dua Belas)', 'order_index' => 3],
         ];
 
-        $gradeMap = [];
         foreach ($grades as $g) {
-            $grade = GradeLevel::firstOrCreate(['level' => $g['level']], $g);
-            $gradeMap[$g['level']] = $grade;
+            GradeLevel::firstOrCreate(['level' => $g['level']], $g);
         }
 
         // 3. MATA PELAJARAN (Subjects)
@@ -93,9 +86,8 @@ class MasterDataSeeder extends Seeder
             ['code' => 'AKL-PKK', 'name' => 'Produk Kreatif & Kewirausahaan (AKL)', 'category' => 'Kejuruan', 'dept' => 'AKL', 'order' => 22],
         ];
 
-        $subjectMap = [];
         foreach ($subjects as $s) {
-            $subj = Subject::firstOrCreate(
+            Subject::firstOrCreate(
                 ['code' => $s['code']],
                 [
                     'name' => $s['name'],
@@ -105,238 +97,9 @@ class MasterDataSeeder extends Seeder
                     'is_active' => true,
                 ]
             );
-            $subjectMap[$s['code']] = $subj;
         }
 
-        // 4. KELAS / ROMBEL & PENUGASAN WALI KELAS
-        $waliSukarni = User::where('nigs_fix', '48903')->first(); // Drs. Sukarni
-        $waliJumari = User::where('nigs_fix', '49901')->first(); // Jumari, S.Pd.
-        $waliOkky = User::where('nigs_fix', '42005')->first(); // Okky Willyand
-        $waliDita = User::where('nigs_fix', '41705')->first(); // Dita Maghfiratul
-        $waliSupriyanto = User::where('nigs_fix', '40601')->first(); // Supriyanto, ST
-
-        $waliIndra = User::where('nigs_fix', '41709')->first(); // Indra Yustiawan
-        $waliAfif = User::where('nigs_fix', '42009')->first(); // Afif Bey Ridhotulloh
-        $waliLutfi = User::where('nigs_fix', '42414')->first(); // Lutfi Andri Saputro
-        $waliDiah = User::where('nigs_fix', '42409')->first(); // Diah Ayu Kumalasari
-        $waliEko = User::where('nigs_fix', '42007')->first(); // Eko Aqthoena Ulfa
-        $waliQurnia = User::where('nigs_fix', '41701')->first(); // Qurnia Ni'matul Ulfah
-        $waliAgung = User::where('nigs_fix', '41708')->first(); // Agung Prasetyo
-        $waliRisna = User::where('nigs_fix', '41904')->first(); // Risna Hilaliyah
-        $waliNurma = User::where('nigs_fix', '40802')->first(); // Nurma Fauziah
-        $waliMiftahur = User::where('nigs_fix', '42106')->first(); // Miftahur Rohmah
-        $waliLeo = User::where('nigs_fix', '42211')->first(); // Leo Hermawan Santoso
-        $waliIlham = User::where('nigs_fix', '41711')->first(); // Ilham Budi Santoso
-        $waliReno = User::where('nigs_fix', '42001')->first(); // Reno Auliya Anggraini
-        $waliAdi = User::where('nigs_fix', '41101')->first(); // Adi Nuranto
-        $waliEndangP = User::where('nigs_fix', '40801')->first(); // Endang Pungkaswati
-        $waliYoga = User::where('nigs_fix', '41707')->first(); // Yoga Anggorina Kukuh K.
-        $waliMakmun = User::where('nigs_fix', '42406')->first(); // Moh. Makmun Solikhi
-
-        $classes = [
-            // Kelas X
-            ['name' => 'X TKR 1', 'level' => 'X', 'dept' => 'TKR', 'wali' => $waliIndra?->id],
-            ['name' => 'X TKR 2', 'level' => 'X', 'dept' => 'TKR', 'wali' => $waliAfif?->id],
-            ['name' => 'X TKR 3', 'level' => 'X', 'dept' => 'TKR', 'wali' => $waliLutfi?->id],
-            ['name' => 'X TKJ 1', 'level' => 'X', 'dept' => 'TKJ', 'wali' => $waliDiah?->id],
-            ['name' => 'X AKL 1', 'level' => 'X', 'dept' => 'AKL', 'wali' => $waliEko?->id],
-
-            // Kelas XI
-            ['name' => 'XI TKR 1', 'level' => 'XI', 'dept' => 'TKR', 'wali' => $waliQurnia?->id],
-            ['name' => 'XI TKR 2', 'level' => 'XI', 'dept' => 'TKR', 'wali' => $waliAgung?->id],
-            ['name' => 'XI TKR 3', 'level' => 'XI', 'dept' => 'TKR', 'wali' => $waliRisna?->id],
-            ['name' => 'XI TKJ 1', 'level' => 'XI', 'dept' => 'TKJ', 'wali' => $waliNurma?->id],
-            ['name' => 'XI AKL 1', 'level' => 'XI', 'dept' => 'AKL', 'wali' => $waliMiftahur?->id],
-
-            // Kelas XII
-            ['name' => 'XII TKR 1', 'level' => 'XII', 'dept' => 'TKR', 'wali' => $waliLeo?->id],
-            ['name' => 'XII TKR 2', 'level' => 'XII', 'dept' => 'TKR', 'wali' => $waliIlham?->id],
-            ['name' => 'XII TKR 3', 'level' => 'XII', 'dept' => 'TKR', 'wali' => $waliReno?->id],
-            ['name' => 'XII TKR 4', 'level' => 'XII', 'dept' => 'TKR', 'wali' => $waliAdi?->id],
-            ['name' => 'XII TKJ 1', 'level' => 'XII', 'dept' => 'TKJ', 'wali' => $waliEndangP?->id],
-            ['name' => 'XII TKJ 2', 'level' => 'XII', 'dept' => 'TKJ', 'wali' => $waliYoga?->id],
-            ['name' => 'XII AKL 1', 'level' => 'XII', 'dept' => 'AKL', 'wali' => $waliMakmun?->id],
-        ];
-
-        $classMap = [];
-        foreach ($classes as $c) {
-            $cls = Classroom::firstOrCreate(
-                ['name' => $c['name'], 'academic_year' => $academicYear],
-                [
-                    'grade_level_id' => $gradeMap[$c['level']]->id,
-                    'department_id' => $deptMap[$c['dept']]->id,
-                    'homeroom_teacher_id' => $c['wali'],
-                    'is_active' => true,
-                ]
-            );
-            $classMap[$c['name']] = $cls;
-        }
-
-        // 5. PENUGASAN MAPEL DIAMPU (1 GURU BISA LEBIH DARI 1 MAPEL)
-        $teacherAssignments = [
-            // Drs. Sukarni (NIGS 48903) mengampu 2 MAPEL: PPKN dan SEJ
-            [
-                'teacher' => $waliSukarni,
-                'subject' => $subjectMap['PPKN'] ?? null,
-                'class' => $classMap['X TKR 1'] ?? null,
-                'hours' => 2,
-                'notes' => 'Pengampu PPKN Kelas X',
-            ],
-            [
-                'teacher' => $waliSukarni,
-                'subject' => $subjectMap['PPKN'] ?? null,
-                'class' => $classMap['X TKR 2'] ?? null,
-                'hours' => 2,
-                'notes' => 'Pengampu PPKN Kelas X',
-            ],
-            [
-                'teacher' => $waliSukarni,
-                'subject' => $subjectMap['SEJ'] ?? null,
-                'class' => $classMap['X TKJ 1'] ?? null,
-                'hours' => 2,
-                'notes' => 'Pengampu Sejarah Indonesia (Mapel Kedua)',
-            ],
-
-            // Nurma Fauziah (NIGS 40802) mengampu 2 MAPEL: IPAS dan INF
-            [
-                'teacher' => User::where('nigs_fix', '40802')->first(),
-                'subject' => $subjectMap['IPAS'] ?? null,
-                'class' => $classMap['X TKR 1'] ?? null,
-                'hours' => 4,
-                'notes' => 'Fisika & Kimia Kejuruan',
-            ],
-            [
-                'teacher' => User::where('nigs_fix', '40802')->first(),
-                'subject' => $subjectMap['INF'] ?? null,
-                'class' => $classMap['X AKL 1'] ?? null,
-                'hours' => 2,
-                'notes' => 'Literasi Digital Informatika',
-            ],
-
-            // Endang Pungkaswati (NIGS 40801) mengampu Matematika di beberapa kelas
-            [
-                'teacher' => User::where('nigs_fix', '40801')->first(),
-                'subject' => $subjectMap['MTK'] ?? null,
-                'class' => $classMap['XI TKR 1'] ?? null,
-                'hours' => 4,
-                'notes' => 'Matematika Terapan',
-            ],
-            [
-                'teacher' => User::where('nigs_fix', '40801')->first(),
-                'subject' => $subjectMap['MTK'] ?? null,
-                'class' => $classMap['XI TKJ 1'] ?? null,
-                'hours' => 4,
-                'notes' => 'Matematika Terapan',
-            ],
-
-            // Okky Willyand (NIGS 42005) mengampu 2 MAPEL: TKJ-ASJ dan INF
-            [
-                'teacher' => $waliOkky,
-                'subject' => $subjectMap['TKJ-ASJ'] ?? null,
-                'class' => $classMap['XI TKJ 1'] ?? null,
-                'hours' => 6,
-                'notes' => 'Server Linux & Konfigurasi Layanan Jaringan',
-            ],
-            [
-                'teacher' => $waliOkky,
-                'subject' => $subjectMap['INF'] ?? null,
-                'class' => $classMap['X TKJ 1'] ?? null,
-                'hours' => 3,
-                'notes' => 'Dasar Algoritma & Komputer',
-            ],
-
-            // Dita Maghfiratul (NIGS 41705) mengampu 2 MAPEL: AKL-PRAK dan AKL-KOMPAK
-            [
-                'teacher' => $waliDita,
-                'subject' => $subjectMap['AKL-PRAK'] ?? null,
-                'class' => $classMap['X AKL 1'] ?? null,
-                'hours' => 5,
-                'notes' => 'Siklus Akuntansi Jasa & Dagang',
-            ],
-            [
-                'teacher' => $waliDita,
-                'subject' => $subjectMap['AKL-KOMPAK'] ?? null,
-                'class' => $classMap['XI AKL 1'] ?? null,
-                'hours' => 4,
-                'notes' => 'Aplikasi Komputer Spreadsheet / MYOB',
-            ],
-
-            // Jumari, S.Pd. (NIGS 49901) mengampu 2 MAPEL: TKR-PMKR dan TKR-PKKR
-            [
-                'teacher' => $waliJumari,
-                'subject' => $subjectMap['TKR-PMKR'] ?? null,
-                'class' => $classMap['XI TKR 1'] ?? null,
-                'hours' => 6,
-                'notes' => 'Tune-up & Overhaul Mesin Otomotif',
-            ],
-            [
-                'teacher' => $waliJumari,
-                'subject' => $subjectMap['TKR-PKKR'] ?? null,
-                'class' => $classMap['XII TKR 1'] ?? null,
-                'hours' => 6,
-                'notes' => 'Sistem Starter & Pengisian',
-            ],
-
-            // Supriyanto, ST (Supervisor / NIGS 40601) mengampu TKR-PSPT
-            [
-                'teacher' => $waliSupriyanto,
-                'subject' => $subjectMap['TKR-PSPT'] ?? null,
-                'class' => $classMap['XII TKR 1'] ?? null,
-                'hours' => 6,
-                'notes' => 'Sistem Rem ABS & Transmisi Manual',
-            ],
-
-            // Suwarni, S.PdI (NIGS 48904) mengampu PAI
-            [
-                'teacher' => User::where('nigs_fix', '48904')->first(),
-                'subject' => $subjectMap['PAI'] ?? null,
-                'class' => $classMap['X TKR 1'] ?? null,
-                'hours' => 3,
-                'notes' => 'Pendidikan Agama Islam',
-            ],
-            [
-                'teacher' => User::where('nigs_fix', '48904')->first(),
-                'subject' => $subjectMap['PAI'] ?? null,
-                'class' => $classMap['X TKJ 1'] ?? null,
-                'hours' => 3,
-                'notes' => 'Pendidikan Agama Islam',
-            ],
-
-            // Candra Tri Setyono (NIGS 41404) mengampu PJOK
-            [
-                'teacher' => User::where('nigs_fix', '41404')->first(),
-                'subject' => $subjectMap['PJOK'] ?? null,
-                'class' => $classMap['X TKR 1'] ?? null,
-                'hours' => 3,
-                'notes' => 'Olahraga dan Kebugaran',
-            ],
-            [
-                'teacher' => User::where('nigs_fix', '41404')->first(),
-                'subject' => $subjectMap['PJOK'] ?? null,
-                'class' => $classMap['X TKJ 1'] ?? null,
-                'hours' => 3,
-                'notes' => 'Olahraga dan Kebugaran',
-            ],
-        ];
-
-        foreach ($teacherAssignments as $ta) {
-            if ($ta['teacher'] && $ta['subject']) {
-                TeacherSubjectAssignment::firstOrCreate(
-                    [
-                        'teacher_id' => $ta['teacher']->id,
-                        'subject_id' => $ta['subject']->id,
-                        'classroom_id' => $ta['class']?->id,
-                        'academic_year' => $academicYear,
-                    ],
-                    [
-                        'hours_per_week' => $ta['hours'],
-                        'notes' => $ta['notes'],
-                    ]
-                );
-            }
-        }
-
-        // 5. JABATAN STRUKTURAL (Structural Positions)
+        // 4. JABATAN STRUKTURAL (Structural Positions)
         $structuralPositions = [
             ['name' => 'Kepala Sekolah', 'code' => 'KS', 'category' => 'Pimpinan', 'order' => 1],
             ['name' => 'Waka Kurikulum', 'code' => 'WAKA_KUR', 'category' => 'Wakil Kepala Sekolah', 'order' => 2],
