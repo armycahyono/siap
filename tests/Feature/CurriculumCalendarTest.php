@@ -73,7 +73,7 @@ class CurriculumCalendarTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('kurikulum.calendar.index'));
 
         $response->assertStatus(200);
-        $response->assertSee('Kalender Kegiatan Kurikulum');
+        $response->assertSee('Kalender Pendidikan & Kegiatan');
         $response->assertSee('2026/2027');
         $response->assertSee('Upload Kaldik');
     }

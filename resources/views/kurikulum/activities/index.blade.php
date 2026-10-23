@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Kegiatan Sekolah')
+@section('title', 'Agenda Kegiatan Sekolah')
 
 @section('content')
 <!-- Breadcrumbs -->
@@ -8,7 +8,7 @@
     <ol class="breadcrumb breadcrumb-arrows" aria-label="breadcrumbs">
         <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
         <li class="breadcrumb-item"><span class="text-muted">Kurikulum</span></li>
-        <li class="breadcrumb-item active" aria-current="page"><a href="#">Kegiatan Sekolah</a></li>
+        <li class="breadcrumb-item active" aria-current="page"><a href="#">Agenda Kegiatan</a></li>
     </ol>
 </div>
 
@@ -16,20 +16,20 @@
 <div class="row g-3 mb-4 align-items-center">
     <div class="col">
         <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-star me-2"></i> Kegiatan Sekolah
+            <i class="ti ti-calendar-star me-2"></i> Agenda Kegiatan Sekolah
         </h2>
         <div class="text-muted small">
-            Daftar acuan seluruh kegiatan resmi sekolah (Kaldik, Kegiatan Khusus SMK/PKL/KI, Asesmen &amp; Ujian, Supervisi). 
+            Daftar &amp; monitoring acuan seluruh agenda kegiatan serta program kerja sekolah (Kurikulum, Kesiswaan, Humas, PKL, Asesmen &amp; Ujian, Supervisi). 
             Pantau status keterjadwalan kegiatan pada <strong>Tahun Pelajaran: {{ $academicYear }}</strong>.
         </div>
     </div>
     <div class="col-auto d-flex gap-2">
         <a href="{{ route('kurikulum.calendar.index', ['academic_year' => $academicYear]) }}" class="btn btn-outline-primary shadow-sm fw-semibold">
-            <i class="ti ti-calendar-event me-1"></i> Buka Kalender Kegiatan
+            <i class="ti ti-calendar-event me-1"></i> Buka Kalender Pendidikan &amp; Kegiatan
         </a>
         @if(auth()->user()->canViewAllSchedules())
         <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateActivityModal()">
-            <i class="ti ti-plus me-1"></i> Tambah Kegiatan Baru
+            <i class="ti ti-plus me-1"></i> Tambah Agenda Baru
         </button>
         @endif
     </div>

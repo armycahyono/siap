@@ -616,7 +616,7 @@
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-calendar-star fs-2"></i>
                                 </span>
-                                <span class="nav-link-title">Kegiatan Sekolah</span>
+                                <span class="nav-link-title">Agenda Kegiatan</span>
                             </a>
                         </li>
 
@@ -625,7 +625,7 @@
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-calendar-event fs-2"></i>
                                 </span>
-                                <span class="nav-link-title">Kalender Kegiatan</span>
+                                <span class="nav-link-title">Kalender Pendidikan & Kegiatan</span>
                             </a>
                         </li>
 

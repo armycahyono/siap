@@ -16,7 +16,7 @@
     }
 @endphp
 
-@section('title', 'Kalender Kegiatan Kurikulum')
+@section('title', 'Kalender Pendidikan & Kegiatan')
 
 @push('styles')
 <!-- FullCalendar 6 CDN -->
@@ -304,10 +304,10 @@
 <div class="row g-3 mb-4 align-items-center justify-content-between">
     <div class="col-md-6">
         <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-event me-2"></i> Kalender Kegiatan Kurikulum
+            <i class="ti ti-calendar-event me-2"></i> Kalender Pendidikan &amp; Kegiatan
         </h2>
         <div class="text-muted small">
-            Acuan terpadu pelaksanaan program akademik, hari efektif, libur resmi, supervisi, dan penugasan guru TP {{ $academicYear }}.
+            Acuan terpadu pelaksanaan program akademik, hari efektif, libur resmi Kaldik, supervisi, dan penugasan guru TP {{ $academicYear }}.
         </div>
     </div>
     <div class="col-md-6 text-md-end d-flex flex-wrap gap-2 justify-content-md-end">
@@ -323,7 +323,7 @@
         @endif
         @if(auth()->user()->canViewAllSchedules())
             <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateModal()">
-                <i class="ti ti-plus me-1"></i> Tambah Kegiatan Sekolah
+                <i class="ti ti-plus me-1"></i> Tambah Kegiatan / Agenda
             </button>
         @endif
     </div>
