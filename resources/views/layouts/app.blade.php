@@ -215,15 +215,23 @@
 
         /* Sidebar Navigation Active & Hover Styling */
         .navbar-vertical .navbar-nav .nav-item {
-            margin: 2px 10px;
+            margin: 2px 4px;
         }
         .navbar-vertical .navbar-nav .nav-link {
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 7px 8px;
             color: #cbd5e1 !important;
             font-weight: 500;
             border-left: 4px solid transparent;
             transition: all 0.15s ease-in-out;
+        }
+        .navbar-vertical .navbar-nav .nav-link .nav-link-icon {
+            margin-right: 0.45rem !important;
+            min-width: 1.5rem;
+        }
+        .navbar-vertical .navbar-nav .nav-link .nav-link-title {
+            font-size: 0.86rem;
+            line-height: 1.25;
         }
         .navbar-vertical .navbar-nav .nav-link:hover {
             background-color: rgba(255, 255, 255, 0.08) !important;
@@ -254,13 +262,14 @@
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
-            padding: 2px 0 6px 12px !important;
+            padding: 2px 0 4px 6px !important;
             margin: 0 !important;
         }
         .navbar-vertical #sidebar-menu .dropdown-item {
             border-radius: 6px;
             color: #cbd5e1 !important;
-            padding: 7px 12px;
+            padding: 6px 8px;
+            font-size: 0.84rem;
             margin-bottom: 2px;
             border-left: 3px solid transparent;
             transition: all 0.15s ease-in-out;
@@ -292,7 +301,7 @@
             bottom: 0.75rem !important;
             left: 0.75rem !important;
             height: calc(100vh - 1.5rem) !important;
-            width: 16rem !important;
+            width: 16.75rem !important;
             border-radius: 1.25rem !important;
             box-shadow: 0 12px 35px -4px rgba(16, 45, 82, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15) !important;
             border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -310,7 +319,7 @@
             flex-direction: column !important;
             height: 100% !important;
             min-height: 100% !important;
-            padding: 0.5rem 0.75rem !important;
+            padding: 0.5rem 0.4rem !important;
             overflow: hidden !important;
         }
 
@@ -338,7 +347,7 @@
 
         /* Page wrapper adjustment for floating sidebar */
         .page-wrapper {
-            margin-left: 17.5rem !important;
+            margin-left: 18.25rem !important;
             min-height: 100vh !important;
             transition: margin-left 0.32s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
@@ -591,10 +600,10 @@
                                 <a class="dropdown-item {{ request()->routeIs('subjects.*') ? 'active' : '' }}" href="{{ route('subjects.index') }}">
                                     <i class="ti ti-books me-2"></i> Mata Pelajaran
                                 </a>
-                                <a class="dropdown-item {{ request()->routeIs('structural-positions.*') ? 'active' : '' }}" href="{{ route('structural-positions.index') }}">
+                                <a class="dropdown-item {{ request()->routeIs('structural-positions.*') || (request()->routeIs('teacher-assignments.*') && request('tab') === 'struktural') ? 'active' : '' }}" href="{{ route('teacher-assignments.index', ['tab' => 'struktural']) }}">
                                     <i class="ti ti-briefcase me-2"></i> Jabatan Struktural
                                 </a>
-                                <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*') ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
+                                <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*') && request('tab') !== 'struktural' ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
                                     <i class="ti ti-user-check me-2"></i> Penugasan Guru
                                 </a>
                                 <a class="dropdown-item {{ request()->routeIs('stakeholders.*') ? 'active' : '' }}" href="{{ route('stakeholders.index') }}">
@@ -608,7 +617,7 @@
                         @endif
 
                         <!-- Group: Kurikulum -->
-                        <li class="nav-item pt-3 pb-1 px-3 sidebar-section-header">
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
                             <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
                                 <i class="ti ti-book me-1"></i> Kurikulum
                             </span>
@@ -718,7 +727,7 @@
 
                         <!-- Group: Piket -->
                         @if(auth()->user()->canAccessPiket())
-                        <li class="nav-item pt-3 pb-1 px-3 sidebar-section-header">
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
                             <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
                                 <i class="ti ti-shield-check me-1"></i> Piket
                             </span>
@@ -787,7 +796,7 @@
                         @endif
 
                         <!-- Group: Presensi & Absensi -->
-                        <li class="nav-item pt-3 pb-1 px-3 sidebar-section-header">
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
                             <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
                                 <i class="ti ti-calendar-check me-1"></i> Presensi Sekolah
                             </span>
@@ -904,7 +913,7 @@
 
 
                         <!-- Group: Pengaturan -->
-                        <li class="nav-item pt-3 pb-1 px-3 sidebar-section-header">
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
                             <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
                                 <i class="ti ti-settings me-1"></i> Pengaturan
                             </span>

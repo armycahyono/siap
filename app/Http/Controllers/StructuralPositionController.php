@@ -2,47 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SchoolSetting;
 use App\Models\StructuralPosition;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\View\View;
 
 class StructuralPositionController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
-        $search = $request->query('search');
-        $category = $request->query('category');
-        $setting = SchoolSetting::getSetting();
-
-        $query = StructuralPosition::withCount(['activeAssignments'])
-            ->with(['activeAssignments' => function ($q) use ($setting) {
-                $q->where('academic_year', $setting->academic_year)->with('teacher');
-            }]);
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        if ($category) {
-            $query->where('category', $category);
-        }
-
-        $positions = $query->orderBy('order')->orderBy('id')->paginate(15)->withQueryString();
-
-        $categories = StructuralPosition::select('category')
-            ->whereNotNull('category')
-            ->distinct()
-            ->pluck('category');
-
-        return view('master.structural_positions.index', compact('positions', 'search', 'category', 'categories', 'setting'));
+        return redirect()->route('teacher-assignments.index', array_merge(['tab' => 'struktural'], $request->query()));
     }
 
     public function store(Request $request): RedirectResponse
@@ -70,7 +39,7 @@ class StructuralPositionController extends Controller
 
         StructuralPosition::create($data);
 
-        return redirect()->route('structural-positions.index')
+        return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
             ->with('success', "Jabatan Struktural {$data['name']} berhasil ditambahkan.");
     }
 
@@ -107,14 +76,14 @@ class StructuralPositionController extends Controller
 
         $structuralPosition->update($data);
 
-        return redirect()->route('structural-positions.index')
+        return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
             ->with('success', "Jabatan Struktural {$structuralPosition->name} berhasil diperbarui.");
     }
 
     public function destroy(StructuralPosition $structuralPosition): RedirectResponse
     {
         if ($structuralPosition->assignments()->exists()) {
-            return redirect()->route('structural-positions.index')
+            return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
                 ->with('error', "Jabatan Struktural {$structuralPosition->name} tidak dapat dihapus karena masih memiliki riwayat penugasan guru.");
         }
 
@@ -125,7 +94,7 @@ class StructuralPositionController extends Controller
         $name = $structuralPosition->name;
         $structuralPosition->delete();
 
-        return redirect()->route('structural-positions.index')
+        return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
             ->with('success', "Jabatan Struktural {$name} berhasil dihapus.");
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\GradeLevel;
+use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\StructuralPosition;
 use App\Models\Subject;
@@ -24,6 +25,38 @@ class MasterDataTest extends TestCase
     {
         parent::setUp();
         $this->seed();
+
+        $wakaRole = Role::firstOrCreate(
+            ['slug' => 'waka_kurikulum'],
+            ['name' => 'Waka Kurikulum', 'description' => 'Wakil Kepala Kurikulum']
+        );
+
+        User::firstOrCreate(
+            ['username' => 'waka'],
+            [
+                'name' => 'Waka Kurikulum',
+                'email' => 'waka@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $wakaRole->id,
+                'is_active' => true,
+            ]
+        );
+
+        $guruRole = Role::firstOrCreate(
+            ['slug' => 'guru'],
+            ['name' => 'Guru Pengajar', 'description' => 'Guru']
+        );
+
+        User::firstOrCreate(
+            ['username' => 'guru_test'],
+            [
+                'name' => 'Sukarni, S.Pd',
+                'email' => 'sukarni@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $guruRole->id,
+                'is_active' => true,
+            ]
+        );
     }
 
     public function test_waka_can_view_and_create_department(): void
@@ -284,14 +317,17 @@ class MasterDataTest extends TestCase
     {
         $waka = User::where('username', 'waka')->first();
 
-        // 1. View index
+        // 1. View index redirects to teacher assignments tab struktural
         $response = $this->actingAs($waka)->get(route('structural-positions.index'));
-        $response->assertStatus(200);
-        $response->assertSee('Data Pokok: Jabatan Struktural');
-        $response->assertSee('Kepala Sekolah');
-        $response->assertSee('Waka Kurikulum');
-        $response->assertSee('Kaprogli TKR');
-        $response->assertSee('Ka. TU');
+        $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'struktural']));
+
+        $followResponse = $this->actingAs($waka)->get(route('teacher-assignments.index', ['tab' => 'struktural']));
+        $followResponse->assertStatus(200);
+        $followResponse->assertSee('Daftar Jabatan & Penugasan Struktural');
+        $followResponse->assertSee('Kepala Sekolah');
+        $followResponse->assertSee('Waka Kurikulum');
+        $followResponse->assertSee('Kaprogli TKR');
+        $followResponse->assertSee('Ka. TU');
 
         // 2. Create new position
         $response = $this->actingAs($waka)->post(route('structural-positions.store'), [
@@ -301,7 +337,7 @@ class MasterDataTest extends TestCase
             'order' => 14,
             'is_active' => 1,
         ]);
-        $response->assertRedirect(route('structural-positions.index'));
+        $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'struktural']));
         $this->assertDatabaseHas('structural_positions', ['code' => 'KOOR_LAB_MM']);
     }
 
@@ -359,7 +395,7 @@ class MasterDataTest extends TestCase
         $this->assertEquals($guru->id, $principalOfficial->teacher_id);
 
         // 3. View structural positions index and verify Tanda Tangan column exists
-        $response = $this->actingAs($waka)->get(route('structural-positions.index'));
+        $response = $this->actingAs($waka)->get(route('teacher-assignments.index', ['tab' => 'struktural']));
         $response->assertStatus(200);
         $response->assertSee('Tanda Tangan');
 
@@ -373,7 +409,7 @@ class MasterDataTest extends TestCase
             'signature_image' => $file,
         ]);
 
-        $response->assertRedirect(route('structural-positions.index'));
+        $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'struktural']));
         $ksPos->refresh();
         $this->assertNotNull($ksPos->signature_image_path);
         Storage::disk('public')->assertExists($ksPos->signature_image_path);

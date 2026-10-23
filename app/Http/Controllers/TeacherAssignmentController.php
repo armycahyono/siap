@@ -94,9 +94,9 @@ class TeacherAssignmentController extends Controller
             ->where('is_active', true)
             ->withCount(['supervisionsAsSupervisor' => fn ($q) => $q->where('academic_year', $academicYear)])
             ->with([
-            'role',
-            'supervisorAssignments' => fn ($q) => $q->where('academic_year', $academicYear),
-        ])
+                'role',
+                'supervisorAssignments' => fn ($q) => $q->where('academic_year', $academicYear),
+            ])
             ->orderByRaw("CASE WHEN role_id = (SELECT id FROM roles WHERE slug = 'waka_kurikulum' LIMIT 1) THEN 0 ELSE 1 END")
             ->orderBy('name')
             ->get();
@@ -111,28 +111,56 @@ class TeacherAssignmentController extends Controller
             ->get();
 
         $positionId = $request->query('position_id');
+        $category = $request->query('category');
 
         // 4. Data Penugasan Struktural
-        $structuralPositions = StructuralPosition::where('is_active', true)->orderBy('order')->orderBy('id')->get();
-        $structuralAssignmentQuery = TeacherStructuralAssignment::with(['teacher', 'structuralPosition'])
-            ->where('academic_year', $academicYear);
+        $structuralPositions = StructuralPosition::orderBy('order')->orderBy('id')->get();
+        $structuralCategories = StructuralPosition::select('category')
+            ->whereNotNull('category')
+            ->distinct()
+            ->pluck('category');
+
+        $structuralPositionQuery = StructuralPosition::with([
+            'activeAssignments' => function ($q) use ($academicYear) {
+                $q->where('academic_year', $academicYear)->with('teacher');
+            },
+        ]);
 
         if ($positionId) {
-            $structuralAssignmentQuery->where('structural_position_id', $positionId);
+            $structuralPositionQuery->where('id', $positionId);
+        }
+
+        if ($category) {
+            $structuralPositionQuery->where('category', $category);
         }
 
         if ($teacherId) {
-            $structuralAssignmentQuery->where('teacher_id', $teacherId);
-        }
-
-        if ($search && $tab === 'struktural') {
-            $structuralAssignmentQuery->where(function ($q) use ($search) {
-                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs_fix', 'like', "%{$search}%"))
-                    ->orWhereHas('structuralPosition', fn ($p) => $p->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%")->orWhere('category', 'like', "%{$search}%"));
+            $structuralPositionQuery->whereHas('activeAssignments', function ($q) use ($teacherId, $academicYear) {
+                $q->where('teacher_id', $teacherId)->where('academic_year', $academicYear);
             });
         }
 
-        $structuralAssignments = $structuralAssignmentQuery->orderBy('structural_position_id')->paginate(15)->withQueryString();
+        if ($search && $tab === 'struktural') {
+            $structuralPositionQuery->where(function ($q) use ($search, $academicYear) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('activeAssignments', function ($aq) use ($search, $academicYear) {
+                        $aq->where('academic_year', $academicYear)
+                            ->where(function ($sq) use ($search) {
+                                $sq->where('sk_number', 'like', "%{$search}%")
+                                    ->orWhereHas('teacher', function ($t) use ($search) {
+                                        $t->where('name', 'like', "%{$search}%")
+                                            ->orWhere('nigs_fix', 'like', "%{$search}%")
+                                            ->orWhere('nip', 'like', "%{$search}%");
+                                    });
+                            });
+                    });
+            });
+        }
+
+        $structuralAssignments = $structuralPositionQuery->orderBy('order')->orderBy('id')->paginate(15)->withQueryString();
         $allTeachers = User::operationalPersonnel()->where('is_active', true)->orderBy('name')->get();
 
         // 5. Data Penugasan Piket
@@ -155,6 +183,8 @@ class TeacherAssignmentController extends Controller
             'supervisors',
             'candidateTeachers',
             'structuralPositions',
+            'structuralCategories',
+            'category',
             'structuralAssignments',
             'allTeachers',
             'piketSchedules',
@@ -521,6 +551,7 @@ class TeacherAssignmentController extends Controller
         $setting = SchoolSetting::getSetting();
 
         $data = $request->validate([
+            'assignment_id' => ['nullable', 'exists:teacher_structural_assignments,id'],
             'teacher_id' => ['required', 'exists:users,id'],
             'structural_position_id' => ['required', 'exists:structural_positions,id'],
             'academic_year' => ['nullable', 'string', 'max:50'],
@@ -535,19 +566,42 @@ class TeacherAssignmentController extends Controller
         $teacher = User::findOrFail($data['teacher_id']);
         $position = StructuralPosition::findOrFail($data['structural_position_id']);
 
-        $assignment = TeacherStructuralAssignment::updateOrCreate(
-            [
+        if (! empty($data['assignment_id'])) {
+            $assignment = TeacherStructuralAssignment::findOrFail($data['assignment_id']);
+            $assignment->update([
                 'teacher_id' => $data['teacher_id'],
                 'structural_position_id' => $data['structural_position_id'],
                 'academic_year' => $data['academic_year'],
-            ],
-            [
                 'sk_number' => $data['sk_number'] ?? null,
                 'sk_date' => $data['sk_date'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'is_active' => true,
-            ]
-        );
+            ]);
+        } else {
+            $existing = TeacherStructuralAssignment::where('structural_position_id', $data['structural_position_id'])
+                ->where('academic_year', $data['academic_year'])
+                ->first();
+
+            if ($existing) {
+                $existing->update([
+                    'teacher_id' => $data['teacher_id'],
+                    'sk_number' => $data['sk_number'] ?? $existing->sk_number,
+                    'sk_date' => $data['sk_date'] ?? $existing->sk_date,
+                    'notes' => $data['notes'] ?? $existing->notes,
+                    'is_active' => true,
+                ]);
+            } else {
+                TeacherStructuralAssignment::create([
+                    'teacher_id' => $data['teacher_id'],
+                    'structural_position_id' => $data['structural_position_id'],
+                    'academic_year' => $data['academic_year'],
+                    'sk_number' => $data['sk_number'] ?? null,
+                    'sk_date' => $data['sk_date'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'is_active' => true,
+                ]);
+            }
+        }
 
         if ($position->name && ! $teacher->hasRole(['super_admin', 'kepala_sekolah'])) {
             $teacher->update(['position' => $position->name]);
@@ -566,6 +620,6 @@ class TeacherAssignmentController extends Controller
         $assignment->delete();
 
         return redirect()->route('teacher-assignments.index', ['tab' => 'struktural', 'academic_year' => $academicYear])
-            ->with('success', "Penugasan struktural {$posName} untuk {$teacherName} berhasil dihapus.");
+            ->with('success', "Penugasan struktural {$posName} untuk {$teacherName} berhasil dicabut.");
     }
 }
