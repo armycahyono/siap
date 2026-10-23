@@ -50,25 +50,25 @@ class CurriculumEvent extends Model
         return $this->belongsTo(ActivityCategory::class, 'category', 'code');
     }
 
-    public static function categoryDefinitions(): array
+    public static function categoryDefinitions(bool $onlyActive = true): array
     {
+        $dynamicCats = ActivityCategory::categoryDefinitions($onlyActive);
+
         $kaldikCodes = [
-            'lhb' => ['label' => 'Libur Hari Besar (LHB)', 'color' => '#dc2626', 'badge' => 'bg-danger text-white', 'is_kaldik' => true],
-            'lu' => ['label' => 'Libur Umum (LU)', 'color' => '#ea580c', 'badge' => 'bg-orange text-white', 'is_kaldik' => true],
-            'ls1' => ['label' => 'Libur Semester 1 (LS1)', 'color' => '#8b5cf6', 'badge' => 'bg-purple text-white', 'is_kaldik' => true],
-            'ls2' => ['label' => 'Libur Semester 2 (LS2)', 'color' => '#7c3aed', 'badge' => 'bg-purple text-white', 'is_kaldik' => true],
-            'cb' => ['label' => 'Cuti Bersama (CB)', 'color' => '#9333ea', 'badge' => 'bg-pink text-white', 'is_kaldik' => true],
-            'kts' => ['label' => 'Kegiatan Tengah Semester (KTS)', 'color' => '#16a34a', 'badge' => 'bg-success text-white', 'is_kaldik' => true],
-            'kpp' => ['label' => 'Kegiatan Permulaan Puasa (KPP)', 'color' => '#d97706', 'badge' => 'bg-yellow text-white', 'is_kaldik' => true],
-            'lhr' => ['label' => 'Libur Sekitar Hari Raya (LHR)', 'color' => '#ca8a04', 'badge' => 'bg-yellow text-white', 'is_kaldik' => true],
-            'ke' => ['label' => 'Kegiatan Ekstrakurikuler (KE)', 'color' => '#0284c7', 'badge' => 'bg-azure text-white', 'is_kaldik' => true],
-            'kegiatan_kurikulum' => ['label' => 'Agenda Kurikulum', 'color' => '#2563eb', 'badge' => 'bg-blue text-white', 'is_kaldik' => false],
-            'tugas_guru' => ['label' => 'Tugas & Pengingat Guru', 'color' => '#f97316', 'badge' => 'bg-warning text-dark', 'is_kaldik' => false],
+            'lhb' => ['label' => 'Libur Hari Besar (LHB)', 'color' => '#dc2626', 'badge' => 'bg-danger text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'lu' => ['label' => 'Libur Umum (LU)', 'color' => '#ea580c', 'badge' => 'bg-orange text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'ls1' => ['label' => 'Libur Semester 1 (LS1)', 'color' => '#8b5cf6', 'badge' => 'bg-purple text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'ls2' => ['label' => 'Libur Semester 2 (LS2)', 'color' => '#7c3aed', 'badge' => 'bg-purple text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'cb' => ['label' => 'Cuti Bersama (CB)', 'color' => '#9333ea', 'badge' => 'bg-pink text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'kts' => ['label' => 'Kegiatan Tengah Semester (KTS)', 'color' => '#16a34a', 'badge' => 'bg-success text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'kpp' => ['label' => 'Kegiatan Permulaan Puasa (KPP)', 'color' => '#d97706', 'badge' => 'bg-yellow text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'lhr' => ['label' => 'Libur Sekitar Hari Raya (LHR)', 'color' => '#ca8a04', 'badge' => 'bg-yellow text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'ke' => ['label' => 'Kegiatan Ekstrakurikuler (KE)', 'color' => '#0284c7', 'badge' => 'bg-azure text-white', 'is_kaldik' => true, 'is_kaldik_code' => true],
+            'kegiatan_kurikulum' => ['label' => 'Agenda Kurikulum', 'color' => '#2563eb', 'badge' => 'bg-blue text-white', 'is_kaldik' => false, 'is_kaldik_code' => true],
+            'tugas_guru' => ['label' => 'Tugas & Pengingat Guru', 'color' => '#f97316', 'badge' => 'bg-warning text-dark', 'is_kaldik' => false, 'is_kaldik_code' => true],
         ];
 
-        $dynamicCats = ActivityCategory::categoryDefinitions(false);
-
-        return array_merge($kaldikCodes, $dynamicCats);
+        return array_merge($dynamicCats, $kaldikCodes);
     }
 
     public function getCategoryLabelAttribute(): string

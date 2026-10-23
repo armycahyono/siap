@@ -361,9 +361,20 @@
                     <div class="col-md-6">
                         <label class="form-label required fw-bold">Kategori Kegiatan</label>
                         <select name="category" id="input_category" class="form-select" required onchange="onCategoryChange(this.value)">
-                            @foreach($eventCategories as $key => $cat)
-                                <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
-                            @endforeach
+                            <optgroup label="-- Kategori Kegiatan (Data Pokok) --">
+                                @foreach($eventCategories as $key => $cat)
+                                    @if(empty($cat['is_kaldik_code']))
+                                        <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
+                                    @endif
+                                @endforeach
+                            </optgroup>
+                            <optgroup label="-- Kode Khusus Kaldik (Libur / Dinas) --">
+                                @foreach($eventCategories as $key => $cat)
+                                    @if(!empty($cat['is_kaldik_code']))
+                                        <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
+                                    @endif
+                                @endforeach
+                            </optgroup>
                         </select>
                     </div>
                     <div class="col-md-6">

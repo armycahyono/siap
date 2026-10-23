@@ -323,7 +323,7 @@
         @endif
         @if(auth()->user()->canViewAllSchedules())
             <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateModal()">
-                <i class="ti ti-plus me-1"></i> Tambah Agenda Kegiatan
+                <i class="ti ti-plus me-1"></i> Tambah Kegiatan
             </button>
         @endif
     </div>
@@ -442,7 +442,7 @@
 
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title fw-bold" id="modalEventTitle">
-                    <i class="ti ti-calendar-plus me-1"></i> Tambah Agenda Kegiatan
+                    <i class="ti ti-calendar-plus me-1"></i> Tambah Kegiatan
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -479,9 +479,20 @@
                     <div class="col-md-6">
                         <label class="form-label required fw-bold">Kategori Kegiatan</label>
                         <select name="category" id="input_category" class="form-select" required onchange="onCategoryChange(this.value)">
-                            @foreach($categories as $key => $cat)
-                                <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
-                            @endforeach
+                            <optgroup label="-- Kategori Kegiatan (Data Pokok) --">
+                                @foreach($categories as $key => $cat)
+                                    @if(empty($cat['is_kaldik_code']))
+                                        <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
+                                    @endif
+                                @endforeach
+                            </optgroup>
+                            <optgroup label="-- Kode Khusus Kaldik (Libur / Dinas) --">
+                                @foreach($categories as $key => $cat)
+                                    @if(!empty($cat['is_kaldik_code']))
+                                        <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
+                                    @endif
+                                @endforeach
+                            </optgroup>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -1381,7 +1392,7 @@
         document.getElementById('event_id').value = '';
         document.getElementById('select_school_activity').value = '';
         document.getElementById('input_school_activity_id').value = '';
-        document.getElementById('modalEventTitle').innerHTML = '<i class="ti ti-calendar-plus me-1"></i> Tambah Agenda Kegiatan';
+        document.getElementById('modalEventTitle').innerHTML = '<i class="ti ti-calendar-plus me-1"></i> Tambah Kegiatan';
         document.getElementById('btnSubmitEvent').innerHTML = '<i class="ti ti-check me-1"></i> Simpan Kegiatan';
 
         const todayStr = dateStr || new Date().toISOString().split('T')[0];
