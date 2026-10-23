@@ -181,14 +181,15 @@
             border: none !important;
             border-radius: 0 !important;
             box-shadow: none !important;
-            padding: 2px 0 4px 6px !important;
-            margin: 0 !important;
+            margin: 4px 0 6px 1.15rem !important;
+            padding: 2px 0 2px 0.75rem !important;
+            border-left: 2px solid rgba(255, 255, 255, 0.15) !important;
         }
         .navbar-vertical #sidebar-menu .dropdown-item {
             border-radius: 6px;
             color: #cbd5e1 !important;
-            padding: 6px 8px;
-            font-size: 0.84rem;
+            padding: 6px 10px 6px 12px;
+            font-size: 0.83rem;
             margin-bottom: 2px;
             border-left: 3px solid transparent;
             transition: all 0.15s ease-in-out;
@@ -1152,6 +1153,39 @@
                     } catch (err) {}
                 });
             });
+
+            // Preserve sidebar menu scroll position across page reloads/clicks
+            var sidebarMenu = document.getElementById('sidebar-menu');
+            if (sidebarMenu) {
+                var savedScroll = null;
+                try {
+                    savedScroll = sessionStorage.getItem('siap_sidebar_scroll');
+                } catch(e) {}
+
+                if (savedScroll !== null) {
+                    sidebarMenu.scrollTop = parseInt(savedScroll, 10);
+                } else {
+                    // Fallback: auto-scroll to active menu item
+                    var activeItem = sidebarMenu.querySelector('.dropdown-item.active, .nav-link.active');
+                    if (activeItem) {
+                        activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    }
+                }
+
+                sidebarMenu.addEventListener('scroll', function() {
+                    try {
+                        sessionStorage.setItem('siap_sidebar_scroll', sidebarMenu.scrollTop);
+                    } catch(e) {}
+                }, { passive: true });
+
+                sidebarMenu.querySelectorAll('a').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        try {
+                            sessionStorage.setItem('siap_sidebar_scroll', sidebarMenu.scrollTop);
+                        } catch(e) {}
+                    });
+                });
+            }
         });
     </script>
 

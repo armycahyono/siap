@@ -3,22 +3,14 @@
 @section('title', 'Catatan & Masukan Perbaikan Aplikasi - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-4">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">
-            <i class="ti ti-bulb me-2 text-warning"></i>
-            Catatan & Masukan Perbaikan Aplikasi
-        </h2>
-        <div class="text-muted small">
-            Ruang terbuka bagi guru, supervisor, dan staf untuk menyampaikan usulan fitur baru, perbaikan tampilan, atau laporan kendala sistem.
-        </div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCreateFeedback">
-            <i class="ti ti-plus me-1"></i> Tambah Catatan Perbaikan
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Catatan & Masukan Perbaikan Aplikasi',
+    'subtitle' => 'Ruang terbuka bagi guru, supervisor, dan staf untuk menyampaikan usulan fitur baru, perbaikan tampilan, atau laporan kendala sistem.',
+    'icon' => 'ti ti-bulb',
+    'category' => 'MASUKAN & PERBAIKAN SISTEM',
+    'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateFeedback"><i class="ti ti-plus me-1"></i> Tambah Catatan Perbaikan</button>'
+])
 
 <!-- Statistik Ringkasan -->
 <div class="row row-cards mb-4">

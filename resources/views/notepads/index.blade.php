@@ -3,22 +3,14 @@
 @section('title', 'Notepad & Catatan Pengingat — Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">
-            <i class="ti ti-notes me-2 text-warning"></i>
-            Notepad & Catatan Pengingat
-        </h2>
-        <div class="text-muted small">
-            Ruang catatan pribadi Anda untuk mencatat pengingat tugas, memo harian, atau hal penting yang perlu dituliskan.
-        </div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCreateNote">
-            <i class="ti ti-plus me-1"></i> Buat Catatan Baru
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Notepad & Catatan Pengingat',
+    'subtitle' => 'Ruang catatan pribadi Anda untuk mencatat pengingat tugas, memo harian, atau hal penting yang perlu dituliskan.',
+    'icon' => 'ti ti-notes',
+    'category' => 'CATATAN PRIBADI & PENGINGAT',
+    'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateNote"><i class="ti ti-plus me-1"></i> Buat Catatan Baru</button>'
+])
 
 <!-- Statistik Ringkasan -->
 <div class="row row-cards mb-3 g-2">

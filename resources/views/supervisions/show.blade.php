@@ -3,29 +3,22 @@
 @section('title', 'Berkas Supervisi: ' . $supervision->teacher->name)
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-file-certificate me-2"></i> Berkas Supervisi Pembelajaran
-        </h2>
-        <div class="text-muted small">
-            Nomor Laporan: <strong>{{ $supervision->report_number ?: 'Akan digenerate saat difinalisasi' }}</strong> | Tahun Pelajaran: {{ $supervision->academic_year }} ({{ $supervision->semester }})
-        </div>
-    </div>
-    <div class="col-auto d-flex gap-2">
-        <a href="{{ route('schedules.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Jadwal
-        </a>
-        @if(in_array($supervision->status, ['disetujui', 'selesai', 'menunggu_persetujuan']))
-        <a href="{{ route('reports.print', $supervision) }}" target="_blank" class="btn btn-primary">
-            <i class="ti ti-printer me-1"></i> Cetak Dokumen (A4)
-        </a>
-        <a href="{{ route('reports.pdf', $supervision) }}" class="btn btn-danger">
-            <i class="ti ti-file-type-pdf me-1"></i> Download PDF
-        </a>
-        @endif
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $showActions = '<a href="' . route('schedules.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Jadwal</a> ';
+    if (in_array($supervision->status, ['disetujui', 'selesai', 'menunggu_persetujuan'])) {
+        $showActions .= '<a href="' . route('reports.print', $supervision) . '" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-printer me-1"></i> Cetak Dokumen</a> ' .
+            '<a href="' . route('reports.pdf', $supervision) . '" class="btn btn-sm btn-danger shadow-xs"><i class="ti ti-file-type-pdf me-1"></i> Unduh PDF</a>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Berkas Supervisi Pembelajaran',
+    'subtitle' => 'Guru: ' . $supervision->teacher->name . ' (' . $supervision->subject . ' — ' . $supervision->class_name . ') | No. Laporan: ' . ($supervision->report_number ?: 'Akan digenerate saat difinalisasi') . ' | TP: ' . $supervision->academic_year . ' (' . $supervision->semester . ').',
+    'icon' => 'ti ti-file-certificate',
+    'category' => 'SUPERVISI AKADEMIK',
+    'academicYear' => $supervision->academic_year ?? null,
+    'actions' => $showActions
+])
 
 <!-- Workflow Stepper Indicator -->
 @php

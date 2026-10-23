@@ -3,35 +3,22 @@
 @section('title', 'Presensi Mengajar Guru Mapel — SMK PGRI Kras')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                <i class="ti ti-arrow-left"></i>
-            </a>
-            <h2 class="page-title fw-bold text-dark mb-0">
-                <i class="ti ti-chalkboard-teacher me-1 text-primary"></i>
-                Presensi Mengajar (Guru Mapel)
-            </h2>
-        </div>
-        <div class="text-muted small">
-            Absensi kehadiran siswa di kelas saat pembelajaran berlangsung, termasuk dukungan jadwal reguler, tukar jam mengajar, dan guru pengganti.
-        </div>
-    </div>
-    <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-        @if(auth()->user()->isHomeroomTeacher() || auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
-            <a href="{{ route('attendance.homeroom-permits.index') }}" class="btn btn-sm btn-outline-info">
-                <i class="ti ti-heart-handshake me-1"></i> Izin Siswa Perwalian
-            </a>
-        @endif
-        <a href="{{ route('attendance.subject.history') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-history me-1"></i> Riwayat Mengajar Saya
-        </a>
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalManualAttendance">
-            <i class="ti ti-edit me-1"></i> Presensi Mandiri / Tanpa Jadwal
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $subAttActions = '';
+    if (auth()->user()->isHomeroomTeacher() || auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah'])) {
+        $subAttActions .= '<a href="' . route('attendance.homeroom-permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-heart-handshake me-1 text-info"></i> Izin Siswa Perwalian</a> ';
+    }
+    $subAttActions .= '<a href="' . route('attendance.subject.history') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-history me-1 text-warning"></i> Riwayat Mengajar</a> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalManualAttendance"><i class="ti ti-edit me-1"></i> Presensi Mandiri</button>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Presensi Mengajar (Guru Mapel)',
+    'subtitle' => 'Absensi kehadiran siswa di kelas saat pembelajaran berlangsung, termasuk dukungan jadwal reguler, tukar jam mengajar, dan guru pengganti.',
+    'icon' => 'ti ti-chalkboard-teacher',
+    'category' => 'PEMBELAJARAN & KBM',
+    'actions' => $subAttActions
+])
 
 <!-- Pemilih Tanggal & Hari Aktif -->
 <div class="card border-0 shadow-sm mb-3">

@@ -111,36 +111,6 @@
 
 <!-- Timetable Displays -->
 @if(($viewType === 'class' && !$selectedClassroom) || ($viewType === 'teacher' && !$selectedTeacher))
-    {{-- ===== TAMPILAN SEMUA (STACKED CARDS KE BAWAH) ===== --}}
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-        <div>
-            <h4 class="fw-bold text-dark m-0">
-                <i class="ti {{ $viewType === 'class' ? 'ti-school' : 'ti-users' }} me-2 text-primary"></i>
-                @if($viewType === 'class')
-                    {{ $isTeacherRestricted ? 'Jadwal Kelas Yang Relevan (' . count($classrooms) . ' Kelas)' : 'Jadwal Pelajaran Seluruh Kelas (' . count($classrooms) . ' Kelas)' }}
-                @else
-                    {{ $isTeacherRestricted ? 'Jadwal Mengajar Anda: ' . auth()->user()->name : 'Jadwal Mengajar Guru (' . count($teachers) . ' Guru Memiliki Jam)' }}
-                @endif
-            </h4>
-            <div class="text-muted small">
-                @if($viewType === 'class')
-                    {{ $isTeacherRestricted ? 'Hanya menampilkan kelas tempat Anda mengajar atau perwalian kelas pada TP ' . $academicYear . '.' : 'Menampilkan grid jadwal per kelas secara berurutan ke bawah.' }}
-                @else
-                    {{ $isTeacherRestricted ? 'Menampilkan seluruh jadwal jam mengajar Anda pada Tahun Pelajaran ' . $academicYear . '.' : 'Hanya menampilkan guru yang memiliki jam mengajar pada Tahun Pelajaran ' . $academicYear . '.' }}
-                @endif
-            </div>
-        </div>
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-            <a href="{{ route('kurikulum.schedules.print', ['view' => $viewType, 'target' => 'all', 'academic_year' => $academicYear]) }}" target="_blank" class="btn btn-sm btn-primary shadow-sm">
-                <i class="ti ti-printer me-1"></i> Cetak Semua {{ $viewType === 'class' ? ($isTeacherRestricted ? 'Kelas Relevan (' . count($classrooms) . ' Lembar)' : 'Kelas (' . count($classrooms) . ' Lembar)') : ($isTeacherRestricted ? 'Jadwal Saya' : 'Guru (' . count($teachers) . ' Lembar)') }}
-            </a>
-            <span class="badge bg-blue text-white"><span class="badge-dot bg-white me-1"></span> Umum</span>
-            <span class="badge bg-orange text-white"><span class="badge-dot bg-white me-1"></span> Kejuruan</span>
-            <span class="badge bg-teal text-white"><span class="badge-dot bg-white me-1"></span> Mulok</span>
-            <span class="badge bg-green text-white"><span class="badge-dot bg-white me-1"></span> BK</span>
-        </div>
-    </div>
-
     @if($viewType === 'class')
         @if($classrooms->isEmpty())
             <div class="card border-0 shadow-sm p-5 text-center text-muted mb-4">

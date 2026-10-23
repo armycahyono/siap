@@ -4,51 +4,24 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Page Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Modul Operasional & Kedisiplinan
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                        <i class="ti ti-arrow-left"></i>
-                    </a>
-                    <h2 class="page-title text-dark fw-bold mb-0">
-                        <i class="ti ti-shield-check text-primary me-1 fs-1"></i>
-                        Dashboard Guru Piket
-                    </h2>
-                </div>
-                <div class="text-secondary mt-1">
-                    <span class="badge bg-blue-lt me-1">{{ $todayDay }}, {{ $today->translatedFormat('d F Y') }}</span>
-                    <span class="badge bg-purple-lt me-1">TP {{ $academicYear }} ({{ $semester }})</span>
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                @if(auth()->user()->canOperatePiket())
-                <a href="{{ route('piket.journals.today') }}" class="btn btn-sm btn-primary d-flex align-items-center shadow-sm">
-                    <i class="ti ti-notebook me-2 fs-3"></i>
-                    {{ $todayJournal ? 'Buka Jurnal Hari Ini' : 'Mulai Jurnal Hari Ini' }}
-                </a>
-                @else
-                <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center opacity-60" disabled title="Hanya untuk petugas piket bertugas hari ini">
-                    <i class="ti ti-lock me-1"></i> Jurnal Hari Ini
-                </button>
-                @endif
-
-                @if(auth()->user()->canViewPiketReports())
-                <a href="{{ route('piket.reports.index') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-file-text me-1"></i> Rekap & Laporan
-                </a>
-                @else
-                <button type="button" class="btn btn-sm btn-outline-secondary opacity-60" disabled title="Hanya untuk petugas piket / koordinator">
-                    <i class="ti ti-lock me-1"></i> Rekap & Laporan
-                </button>
-                @endif
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $piketActions = '';
+        if (auth()->user()->canOperatePiket()) {
+            $piketActions .= '<a href="' . route('piket.journals.today') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-notebook me-1"></i> ' . ($todayJournal ? 'Buka Jurnal Hari Ini' : 'Mulai Jurnal Hari Ini') . '</a> ';
+        }
+        if (auth()->user()->canViewPiketReports()) {
+            $piketActions .= '<a href="' . route('piket.reports.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-text me-1 text-info"></i> Rekap & Laporan</a>';
+        }
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Dashboard Guru Piket',
+        'subtitle' => 'Pusat operasional piket harian, pemantauan KBM kelas kosong, penanganan kasus kedisiplinan, dan buku tamu ' . $todayDay . ', ' . $today->translatedFormat('d F Y') . '.',
+        'icon' => 'ti ti-shield-check',
+        'category' => 'OPERASIONAL & KEDISIPLINAN',
+        'academicYear' => $academicYear,
+        'actions' => $piketActions
+    ])
 
     <!-- Quick Action Bar -->
     <div class="card bg-primary-lt border-0 shadow-sm mb-4">

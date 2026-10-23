@@ -3,20 +3,15 @@
 @section('title', 'Dokumentasi Foto: ' . $supervision->teacher->name)
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-photo me-2"></i> Tahap 4: Dokumentasi Foto Kegiatan Supervisi
-        </h2>
-        <div class="text-muted small">
-            Unggah foto-foto kegiatan KBM di kelas, media belajar, interaksi murid, dan sesi diskusi sebagai lampiran bukti fisik laporan resmi.
-        </div>
-    </div>
-    <div class="col-auto">
-        <a href="{{ route('supervisions.show', $supervision) }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Berkas Supervisi
-        </a>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Tahap 4: Dokumentasi Foto Kegiatan Supervisi',
+    'subtitle' => 'Unggah foto kegiatan KBM di kelas, media belajar, interaksi murid, dan sesi diskusi sebagai lampiran bukti fisik laporan resmi: ' . $supervision->teacher->name . ' (' . $supervision->subject . ' — ' . $supervision->class_name . ').',
+    'icon' => 'ti ti-photo',
+    'category' => 'SUPERVISI AKADEMIK',
+    'academicYear' => $supervision->academic_year ?? null,
+    'actions' => '<a href="' . route('supervisions.show', $supervision) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Berkas</a>'
+])
 @php
     $canConduct = auth()->user()->canEditSupervision($supervision);
 @endphp

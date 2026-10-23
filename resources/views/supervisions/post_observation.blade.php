@@ -3,21 +3,15 @@
 @section('title', 'Pascaobservasi: ' . $supervision->teacher->name)
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-message-dots me-2"></i> Tahap 3: Umpan Balik & Rekomendasi Pascaobservasi
-        </h2>
-        <div class="text-muted small">
-            Refleksi hasil amatan pembelajaran, apresiasi kelebihan guru, dan penetapan tindak lanjut pembinaan.
-        </div>
-    </div>
-    <div class="col-auto">
-        <a href="{{ route('supervisions.show', $supervision) }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Berkas
-        </a>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Tahap 3: Umpan Balik & Rekomendasi Pascaobservasi',
+    'subtitle' => 'Refleksi hasil amatan pembelajaran, apresiasi kelebihan guru, dan penetapan tindak lanjut pembinaan: ' . $supervision->teacher->name . ' (' . $supervision->subject . ' — ' . $supervision->class_name . ').',
+    'icon' => 'ti ti-message-dots',
+    'category' => 'SUPERVISI AKADEMIK',
+    'academicYear' => $supervision->academic_year ?? null,
+    'actions' => '<a href="' . route('supervisions.show', $supervision) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Berkas</a>'
+])
 
 <!-- Header Identity Banner -->
 <div class="card bg-blue-lt border-0 shadow-sm mb-4">

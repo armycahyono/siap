@@ -3,32 +3,23 @@
 @section('title', 'Laporan Presensi Guru & Staf')
 
 @section('content')
-<div class="page-header d-print-none">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <div class="page-pretitle">Rekapitulasi Presensi Individu</div>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-user-check me-2 text-teal"></i> Presensi Guru & Tenaga Kependidikan
-                </h2>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    @if(auth()->user()->canManageManualTeacherAttendance())
-                    <a href="{{ route('attendance.manual-gtk.index') }}" class="btn btn-sm btn-primary">
-                        <i class="ti ti-bolt-off me-1"></i> Presensi GTK Susulan
-                    </a>
-                    @endif
-                    <a href="{{ route('attendance.gtk-permits.index') }}" class="btn btn-sm btn-outline-warning">
-                        <i class="ti ti-calendar-event me-1"></i> Kelola Izin & Cuti GTK
-                    </a>
-                    <a href="{{ route('attendance.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $repTeacherActions = '';
+    if (auth()->user()->canManageManualTeacherAttendance()) {
+        $repTeacherActions .= '<a href="' . route('attendance.manual-gtk.index') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-bolt-off me-1"></i> Presensi Susulan</a> ';
+    }
+    $repTeacherActions .= '<a href="' . route('attendance.gtk-permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-event me-1 text-info"></i> Izin & Cuti GTK</a> ' .
+        '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Ke Mesin</a>';
+@endphp
+<div class="container-xl px-0 mb-3">
+    @include('layouts._hero_header', [
+        'title' => 'Presensi Guru & Tenaga Kependidikan',
+        'subtitle' => 'Rekapitulasi presensi individu GTK, persentase kehadiran, keterlambatan, dan rekap izin/cuti resmi.',
+        'icon' => 'ti ti-user-check',
+        'category' => 'REKAPITULASI PRESENSI GTK',
+        'actions' => $repTeacherActions
+    ])
 </div>
 
 <div class="page-body">

@@ -4,38 +4,21 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-muted text-uppercase">
-                    Wali Kelas &bull; Presensi Terpadu
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                        <i class="ti ti-arrow-left"></i>
-                    </a>
-                    <h2 class="page-title text-dark fw-bold mb-0">
-                        <i class="ti ti-heart-handshake text-indigo me-1 fs-1"></i>
-                        Laporan Izin Siswa Perwalian
-                    </h2>
-                </div>
-                <div class="text-secondary mt-1">
-                    Catat pemberitahuan izin / sakit siswa dari wali murid agar langsung terhubung ke Meja Piket dan Lembar Absen Guru Mengajar.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                @if($myClassrooms->isNotEmpty())
-                    <a href="{{ route('attendance.homeroom-permits.create', ['classroom_id' => $selectedClassroomId]) }}" class="btn btn-sm btn-primary shadow-sm">
-                        <i class="ti ti-plus me-1"></i> Catat Izin Siswa
-                    </a>
-                @endif
-                <a href="{{ route('attendance.subject.index') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-chalkboard-teacher me-1"></i> Absen Mengajar
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @php
+        $hrPermitActions = '';
+        if ($myClassrooms->isNotEmpty()) {
+            $hrPermitActions .= '<a href="' . route('attendance.homeroom-permits.create', ['classroom_id' => $selectedClassroomId]) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-plus me-1"></i> Catat Izin Siswa</a> ';
+        }
+        $hrPermitActions .= '<a href="' . route('attendance.subject.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-chalkboard-teacher me-1 text-info"></i> Absen Mengajar</a>';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Laporan Izin Siswa Perwalian',
+        'subtitle' => 'Catat pemberitahuan izin / sakit siswa dari wali murid agar langsung terhubung ke Meja Piket dan Lembar Absen Guru Mengajar.',
+        'icon' => 'ti ti-heart-handshake',
+        'category' => 'WALI KELAS & PRESENSI',
+        'actions' => $hrPermitActions
+    ])
 
     <!-- Alert Informasi Alur Kerja -->
     <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-3">

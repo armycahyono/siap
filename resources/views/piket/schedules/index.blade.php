@@ -4,33 +4,21 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Pengorganisasian Piket
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-calendar-user text-primary me-2 fs-1"></i>
-                    Jadwal & Penetapan Petugas Piket
-                </h2>
-                <div class="text-secondary mt-1">
-                    Kelola pembagian hari tugas, koordinator harian, dan pos piket per semester.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex gap-2">
-                @if(auth()->user()->canManagePiketSchedules())
-                <a href="{{ route('piket.swaps.index') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="ti ti-arrows-left-right me-1"></i> Tukar Jadwal Piket
-                </a>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-add-schedule">
-                    <i class="ti ti-plus me-1"></i> Tambah Petugas Piket
-                </button>
-                @endif
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @php
+        $schedPiketActions = '';
+        if (auth()->user()->canManagePiketSchedules()) {
+            $schedPiketActions = '<a href="' . route('piket.swaps.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrows-left-right me-1 text-info"></i> Tukar Jadwal Piket</a> ' .
+                '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-add-schedule"><i class="ti ti-plus me-1"></i> Tambah Petugas Piket</button>';
+        }
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Jadwal & Penetapan Petugas Piket',
+        'subtitle' => 'Kelola pembagian hari tugas, koordinator harian, dan pos piket per semester.',
+        'icon' => 'ti ti-calendar-user',
+        'category' => 'PENGORGANISASIAN PIKET',
+        'actions' => $schedPiketActions
+    ])
 
     <!-- Filter TP & Semester -->
     <div class="card shadow-sm border-0 mb-4">

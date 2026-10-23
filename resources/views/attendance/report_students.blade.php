@@ -3,24 +3,15 @@
 @section('title', 'Laporan Presensi Siswa')
 
 @section('content')
-<div class="page-header d-print-none">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <div class="page-pretitle">Rekapitulasi Presensi Individu Siswa</div>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-users-group me-2 text-indigo"></i> Presensi Siswa Per-Kelas
-                </h2>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="{{ route('attendance.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+<div class="container-xl px-0 mb-3">
+    @include('layouts._hero_header', [
+        'title' => 'Presensi Siswa Per-Kelas',
+        'subtitle' => 'Rekapitulasi presensi individu siswa per-kelas berdasarkan perekaman mesin dan verifikasi wali kelas.',
+        'icon' => 'ti ti-users-group',
+        'category' => 'REKAPITULASI PRESENSI SISWA',
+        'actions' => '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi</a>'
+    ])
 </div>
 
 <div class="page-body">
