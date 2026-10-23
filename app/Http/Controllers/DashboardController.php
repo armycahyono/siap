@@ -345,61 +345,41 @@ class DashboardController extends Controller
             ->get();
         $todayIncidentsCount = $todayIncidents->count();
 
-        // 5. Pusat Tindakan & Persetujuan (Pending Approvals)
+        // 5. Agenda & Kalender Kegiatan Sekolah Terdekat
+        $upcomingSchoolEvents = CurriculumEvent::whereDate('end_date', '>=', $todayDateStr)
+            ->when($setting->academic_year, function ($q) use ($setting) {
+                $q->where(function ($sub) use ($setting) {
+                    $sub->where('academic_year', $setting->academic_year)
+                        ->orWhereNull('academic_year');
+                });
+            })
+            ->orderBy('start_date', 'asc')
+            ->take(5)
+            ->get();
+
+        // 6. Pusat Tindakan & Persetujuan (Pending Approvals)
         $pendingGtkPermits = GtkPermit::where('status', 'pending')
             ->with('user')
             ->latest()
             ->get();
-        $pendingApprovalSupervisions = Supervision::where('status', 'menunggu_persetujuan')
-            ->with(['teacher', 'supervisor'])
-            ->latest()
-            ->get();
-        $totalPendingActionsCount = $pendingGtkPermits->count() + $pendingApprovalSupervisions->count();
+        $totalPendingActionsCount = $pendingGtkPermits->count();
 
-        // 6. Supervisi Akademik (Evaluasi Mutu)
+        // Safe fallback metrics
         $teachersCount = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))
             ->where('is_active', true)
             ->count();
-        $allSupervisions = Supervision::with(['teacher', 'supervisor'])
-            ->where('academic_year', $setting->academic_year)
-            ->where('semester', $setting->semester)
-            ->get();
-
-        $totalSchedules = $allSupervisions->count();
-        $completedSupervisions = $allSupervisions->whereIn('status', ['disetujui', 'selesai'])->count();
-        $pendingApprovalCount = $allSupervisions->where('status', 'menunggu_persetujuan')->count();
-        $inProgressCount = $allSupervisions->whereIn('status', ['praobservasi', 'observasi', 'pascaobservasi'])->count();
-        $scheduledCount = $allSupervisions->where('status', 'terjadwal')->count();
-
-        $unsupervisedTeachersCount = max(0, $teachersCount - $completedSupervisions);
-        $completionRate = $teachersCount > 0 ? round(($completedSupervisions / $teachersCount) * 100, 1) : 0;
-
-        $averageScore = $completedSupervisions > 0
-            ? round($allSupervisions->whereIn('status', ['disetujui', 'selesai'])->avg('percentage'), 1)
-            : 0;
-
-        $upcomingSchedules = Supervision::with(['teacher', 'supervisor'])
-            ->where('academic_year', $setting->academic_year)
-            ->where('semester', $setting->semester)
-            ->where('schedule_date', '>=', $todayDateStr)
-            ->orderBy('schedule_date', 'asc')
-            ->take(5)
-            ->get();
-
-        $recentSupervisions = Supervision::with(['teacher', 'supervisor'])
-            ->where('academic_year', $setting->academic_year)
-            ->where('semester', $setting->semester)
-            ->orderBy('updated_at', 'desc')
-            ->take(6)
-            ->get();
-
-        // Predicate breakdown
-        $predicateCounts = [
-            'Sangat Baik' => $allSupervisions->where('predicate', 'Sangat Baik')->count(),
-            'Baik' => $allSupervisions->where('predicate', 'Baik')->count(),
-            'Cukup' => $allSupervisions->where('predicate', 'Cukup')->count(),
-            'Perlu Bimbingan' => $allSupervisions->where('predicate', 'Perlu Bimbingan')->count(),
-        ];
+        $allSupervisions = collect();
+        $totalSchedules = 0;
+        $completedSupervisions = 0;
+        $pendingApprovalCount = 0;
+        $inProgressCount = 0;
+        $scheduledCount = 0;
+        $unsupervisedTeachersCount = $teachersCount;
+        $completionRate = 0;
+        $averageScore = 0;
+        $upcomingSchedules = collect();
+        $recentSupervisions = collect();
+        $predicateCounts = ['Sangat Baik' => 0, 'Baik' => 0, 'Cukup' => 0, 'Perlu Bimbingan' => 0];
 
         return view('web.dashboard.index', compact(
             'user',
@@ -450,8 +430,8 @@ class DashboardController extends Controller
             'todayIncidents',
             'todayIncidentsCount',
             'pendingGtkPermits',
-            'pendingApprovalSupervisions',
-            'totalPendingActionsCount'
+            'totalPendingActionsCount',
+            'upcomingSchoolEvents'
         ));
     }
 

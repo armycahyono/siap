@@ -1,6 +1,6 @@
 @extends('layouts.web')
 
-@section('title', 'Pusat Komando & Dashboard Supervisi Guru')
+@section('title', 'Pusat Komando & Operasional Sekolah')
 
 @section('content')
 <!-- Page Header -->
@@ -13,7 +13,7 @@
             <span class="badge bg-primary-lt">TP {{ $setting->academic_year }} (Semester {{ $setting->semester }})</span>
         </div>
         <div class="text-muted small">
-            Ringkasan terpadu KBM, presensi GTK, ketertiban piket, kesiswaan, dan evaluasi <strong>Dashboard Supervisi Guru</strong> — {{ now()->translatedFormat('l, d F Y') }}.
+            Pusat kendali harian operasional KBM, presensi GTK, ketertiban piket, dan kesiswaan — {{ now()->translatedFormat('l, d F Y') }}.
         </div>
     </div>
     <div class="col-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
@@ -26,16 +26,12 @@
         <a href="{{ route('piket.dashboard') }}" class="btn btn-outline-warning btn-sm text-dark">
             <i class="ti ti-shield-check me-1"></i> Layanan Piket
         </a>
-        @if(auth()->user()->hasPermission('manage_teachers'))
-        <a href="{{ route('teachers.create') }}" class="btn btn-primary btn-sm">
-            <i class="ti ti-user-plus me-1"></i> Tambah Guru
+        <a href="{{ route('kurikulum.calendar.index') }}" class="btn btn-outline-info btn-sm">
+            <i class="ti ti-calendar-event me-1"></i> Kalender Sekolah
         </a>
-        @endif
-        @if(auth()->user()->hasPermission('manage_schedules'))
-        <a href="{{ route('schedules.create') }}" class="btn btn-warning text-dark fw-bold btn-sm" style="background-color: #c99a3b; border-color: #c99a3b; color: #fff !important;">
-            <i class="ti ti-calendar-plus me-1"></i> Jadwalkan Supervisi
+        <a href="{{ route('students.index') }}" class="btn btn-outline-indigo btn-sm">
+            <i class="ti ti-school me-1"></i> Data Siswa
         </a>
-        @endif
     </div>
 </div>
 
@@ -51,7 +47,7 @@
                 </div>
                 <div class="h3 mb-1 text-primary fw-bold">{{ $detectedPeriodLabel }}</div>
                 <div class="text-muted small">
-                    Hari <strong>{{ $todayDay }}</strong> • Total <strong>{{ $todayTotalSchedulesCount }}</strong> sesi mengajar aktif di <strong>{{ $totalClassroomsCount }}</strong> rombel.
+                    Hari <strong>{{ $todayDay }}</strong> &bull; Total <strong>{{ $todayTotalSchedulesCount }}</strong> sesi mengajar aktif di <strong>{{ $totalClassroomsCount }}</strong> rombel.
                 </div>
             </div>
         </div>
@@ -119,23 +115,15 @@
                     <h4 class="mb-0 fw-bold text-danger">Memerlukan Tindakan / Persetujuan Segera ({{ $totalPendingActionsCount }} Hal)</h4>
                     <div class="small text-muted">
                         @if($pendingGtkPermits->isNotEmpty())
-                            <strong>{{ $pendingGtkPermits->count() }}</strong> pengajuan izin/cuti GTK menunggu verifikasi pimpinan.
-                        @endif
-                        @if($pendingApprovalSupervisions->isNotEmpty())
-                            &bull; <strong>{{ $pendingApprovalSupervisions->count() }}</strong> laporan supervisi menunggu tanda tangan/pengesahan Kepala Sekolah.
+                            <strong>{{ $pendingGtkPermits->count() }}</strong> permohonan izin/cuti GTK menunggu verifikasi pimpinan sekolah.
                         @endif
                     </div>
                 </div>
             </div>
-            <div class="d-flex gap-2">
+            <div>
                 @if($pendingGtkPermits->isNotEmpty())
                 <a href="{{ route('attendance.gtk-permits.index') }}" class="btn btn-sm btn-danger">
                     <i class="ti ti-check me-1"></i> Tinjau Izin GTK ({{ $pendingGtkPermits->count() }})
-                </a>
-                @endif
-                @if($pendingApprovalSupervisions->isNotEmpty())
-                <a href="{{ route('schedules.index') }}" class="btn btn-sm btn-outline-danger">
-                    <i class="ti ti-signature me-1"></i> ACC Supervisi ({{ $pendingApprovalSupervisions->count() }})
                 </a>
                 @endif
             </div>
@@ -144,7 +132,7 @@
 </div>
 @endif
 
-<!-- Alert Izin & Cuti GTK Hari Ini (Preserved for compatibility) -->
+<!-- Alert Izin & Cuti GTK Hari Ini -->
 @if(isset($gtkPermitsToday) && $gtkPermitsToday->isNotEmpty())
 <div class="alert alert-warning alert-dismissible shadow-sm mb-4 border-warning border-start border-4" role="alert">
     <div class="d-flex align-items-center mb-2">
@@ -188,7 +176,7 @@
 </div>
 @endif
 
-<!-- 4 Pilar Utama Sekolah (Metric Cards) -->
+<!-- 4 Pilar Operasional Sekolah (Metric Cards) -->
 <div class="row row-deck row-cards mb-4">
     <!-- 1. Presensi GTK -->
     <div class="col-sm-6 col-lg-3">
@@ -203,7 +191,7 @@
                 <div class="d-flex flex-wrap gap-1">
                     <span class="badge bg-success-lt small">{{ $gtkPresentCount }} Hadir</span>
                     <span class="badge bg-warning-lt small">{{ $gtkPermitsTodayCount }} Izin/Cuti</span>
-                    <span class="badge bg-secondary-lt small">{{ $gtkUnscannedCount }} Belum Presensi</span>
+                    <span class="badge bg-secondary-lt small">{{ $gtkUnscannedCount }} Belum Scan</span>
                 </div>
             </div>
         </div>
@@ -246,32 +234,28 @@
         </div>
     </div>
 
-    <!-- 4. Ketercapaian Supervisi Guru -->
+    <!-- 4. Layanan & Ketertiban Piket -->
     <div class="col-sm-6 col-lg-3">
-        <div class="card card-sm border-0 shadow-sm border-start border-success border-4">
+        <div class="card card-sm border-0 shadow-sm border-start border-warning border-4">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="avatar bg-green-lt"><i class="ti ti-certificate fs-2"></i></span>
-                    <a href="{{ route('schedules.index') }}" class="small text-muted text-decoration-none">Agenda &rarr;</a>
+                    <span class="avatar bg-yellow-lt"><i class="ti ti-shield-check fs-2"></i></span>
+                    <a href="{{ route('piket.dashboard') }}" class="small text-muted text-decoration-none">Piket &rarr;</a>
                 </div>
-                <div class="font-weight-medium text-muted small">Sudah Disupervisi ({{ $completionRate }}%)</div>
-                <div class="h1 mb-2 fw-bold text-success">{{ $completedSupervisions }} <span class="text-muted fs-4 fw-normal">/ {{ $teachersCount }} Guru</span></div>
+                <div class="font-weight-medium text-muted small">Ketertiban &amp; Layanan Piket</div>
+                <div class="h1 mb-2 fw-bold text-warning">{{ $todayStudentPermitsCount }} <span class="text-muted fs-4 fw-normal">Izin Siswa</span></div>
                 <div class="d-flex flex-wrap gap-1">
-                    <span class="badge bg-success-lt small">Rata-rata: {{ $averageScore }}%</span>
-                    @if($pendingApprovalCount > 0)
-                        <span class="badge bg-warning-lt small">{{ $pendingApprovalCount }} Menunggu ACC</span>
-                    @else
-                        <span class="badge bg-light text-muted small">{{ $unsupervisedTeachersCount }} Belum</span>
-                    @endif
+                    <span class="badge bg-danger-lt small">{{ $todayIncidentsCount }} Kasus/Insiden</span>
+                    <span class="badge bg-teal-lt small">{{ $todayPiketOfficers->count() }} Petugas Jaga</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Main Row: Sesi KBM, Supervisi, & Komposisi Sekolah -->
+<!-- Main Row: Live KBM, Agenda Kalender Sekolah, & Komposisi -->
 <div class="row g-4 mb-4">
-    <!-- Left Column: Monitoring KBM Sesi Hari Ini & Jadwal Supervisi -->
+    <!-- Left Column: Monitoring KBM Sesi Hari Ini & Agenda Kegiatan Mendatang -->
     <div class="col-lg-8">
         <!-- Live Monitoring Sesi KBM Hari Ini -->
         <div class="card border-0 shadow-sm mb-4">
@@ -361,72 +345,66 @@
             </div>
         </div>
 
-        <!-- Upcoming Supervisi Schedules (Preserved) -->
+        <!-- Agenda & Kalender Kegiatan Sekolah Mendatang -->
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                 <div>
                     <h3 class="card-title fw-bold text-dark mb-0">
-                        <i class="ti ti-calendar me-2 text-primary"></i> Jadwal Supervisi Terdekat
+                        <i class="ti ti-calendar-event me-2 text-warning"></i> Agenda &amp; Kegiatan Sekolah Mendatang
                     </h3>
-                    <div class="text-muted small mt-1">Agenda observasi kelas dan supervisi guru yang direncanakan</div>
+                    <div class="text-muted small mt-1">Kegiatan akademik, kesiswaan, dan hari libur berdasarkan Kalender Pendidikan</div>
                 </div>
-                <a href="{{ route('schedules.index') }}" class="btn btn-sm btn-outline-primary">Lihat Semua Jadwal</a>
+                <a href="{{ route('kurikulum.calendar.index') }}" class="btn btn-sm btn-outline-primary">Buka Kalender</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-vcenter card-table table-hover">
                     <thead>
                         <tr class="text-muted small">
-                            <th>Guru</th>
-                            <th>Mata Pelajaran / Kelas</th>
-                            <th>Tanggal & Waktu</th>
-                            <th>Supervisor</th>
-                            <th>Status</th>
-                            <th class="w-1 text-center">Aksi</th>
+                            <th>Kegiatan</th>
+                            <th>Kategori</th>
+                            <th>Tanggal Pelaksanaan</th>
+                            <th>Sasaran Peserta</th>
+                            <th>Status KBM</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($upcomingSchedules as $spv)
+                        @forelse($upcomingSchoolEvents as $event)
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <span class="avatar avatar-sm bg-blue-lt rounded-circle me-2 fw-bold">
-                                        {{ substr($spv->teacher->name, 0, 1) }}
-                                    </span>
-                                    <div>
-                                        <div class="fw-bold text-dark">{{ $spv->teacher->name }}</div>
-                                        <div class="text-muted small">NIP: {{ $spv->teacher->nip ?: '-' }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="text-dark fw-semibold">{{ $spv->subject }}</div>
-                                <span class="badge bg-secondary-lt small">{{ $spv->class_name }}</span>
-                            </td>
-                            <td>
-                                <div><i class="ti ti-calendar-event me-1 text-muted"></i>{{ $spv->schedule_date->translatedFormat('d M Y') }}</div>
-                                <small class="text-muted">{{ $spv->schedule_time }}</small>
+                                <div class="fw-bold text-dark">{{ $event->title }}</div>
+                                @if($event->location)
+                                    <small class="text-muted"><i class="ti ti-map-pin me-1"></i>{{ $event->location }}</small>
+                                @endif
                             </td>
                             <td>
                                 <span class="badge bg-blue-lt">
-                                    <i class="ti ti-user-check me-1"></i>{{ $spv->supervisor->name }}
+                                    {{ $event->category_label ?? 'Kegiatan' }}
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $spv->status_color }} text-white">
-                                    {{ $spv->status_label }}
+                                <div><i class="ti ti-calendar me-1 text-muted"></i>{{ $event->start_date?->translatedFormat('d M Y') }}</div>
+                                @if($event->start_date != $event->end_date)
+                                    <small class="text-muted">s/d {{ $event->end_date?->translatedFormat('d M Y') }}</small>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    {{ $event->target_audience_label ?? 'Semua' }}
                                 </span>
                             </td>
-                            <td class="text-center">
-                                <a href="{{ route('supervisions.show', $spv) }}" class="btn btn-sm btn-primary">
-                                    Buka
-                                </a>
+                            <td>
+                                @if($event->is_holiday)
+                                    <span class="badge bg-danger text-white">Libur Sekolah</span>
+                                @else
+                                    <span class="badge bg-success-lt text-success">KBM Berjalan</span>
+                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
+                            <td colspan="5" class="text-center py-4 text-muted">
                                 <i class="ti ti-calendar-off fs-1 d-block mb-2 text-secondary"></i>
-                                Belum ada jadwal supervisi yang direncanakan.
+                                Belum ada agenda kegiatan yang tercatat dalam kalender pendidikan mendatang.
                             </td>
                         </tr>
                         @endforelse
@@ -436,53 +414,8 @@
         </div>
     </div>
 
-    <!-- Right Column: Progres Supervisi, Komposisi Kesiswaan, & Ringkasan Piket -->
+    <!-- Right Column: Komposisi Siswa, Rekap Presensi GTK, & Ringkasan Piket -->
     <div class="col-lg-4">
-        <!-- Progress Bar Card & Predicate Distribution -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3 class="card-title fw-bold text-dark mb-0">Progres Supervisi Guru</h3>
-                    <span class="badge bg-primary-lt fw-bold">{{ $completionRate }}%</span>
-                </div>
-                <div class="progress progress-lg mb-3">
-                    <div class="progress-bar bg-primary" style="width: {{ $completionRate }}%" role="progressbar"></div>
-                </div>
-                <div class="small text-muted mb-4">
-                    Sebanyak <strong>{{ $completedSupervisions }}</strong> dari <strong>{{ $teachersCount }}</strong> guru telah selesai disupervisi.
-                </div>
-
-                <h4 class="fw-bold text-dark mb-2 small text-uppercase">Distribusi Predikat Hasil Supervisi</h4>
-                <div class="space-y-2 mb-3">
-                    @foreach($predicateCounts as $pred => $count)
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div>
-                            @if($pred === 'Sangat Baik')
-                                <span class="badge badge-sangat-baik me-1">{{ $pred }}</span>
-                            @elseif($pred === 'Baik')
-                                <span class="badge badge-baik me-1">{{ $pred }}</span>
-                            @elseif($pred === 'Cukup')
-                                <span class="badge badge-cukup me-1">{{ $pred }}</span>
-                            @else
-                                <span class="badge badge-perlu-bimbingan me-1">{{ $pred }}</span>
-                            @endif
-                        </div>
-                        <span class="fw-bold">{{ $count }} Guru</span>
-                    </div>
-                    @endforeach
-                </div>
-
-                <div class="d-grid gap-2 mt-3">
-                    <a href="{{ route('schedules.index') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="ti ti-calendar me-1"></i> Buka Agenda Supervisi
-                    </a>
-                    <a href="{{ route('reports.recap') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="ti ti-report me-1"></i> Lihat Rekapitulasi Lengkap
-                    </a>
-                </div>
-            </div>
-        </div>
-
         <!-- Distribusi Kompetensi Keahlian (Siswa per Jurusan) -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body">
@@ -544,6 +477,47 @@
             </div>
         </div>
 
+        <!-- Rekapitulasi Presensi GTK Hari Ini -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="card-title fw-bold text-dark mb-0">Kehadiran GTK Hari Ini</h3>
+                    <a href="{{ route('attendance.index') }}" class="small text-muted text-decoration-none">Buka Absensi &rarr;</a>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small">Tingkat Kehadiran:</span>
+                    @php
+                        $presentPct = $totalGtkCount > 0 ? round(($gtkPresentCount / $totalGtkCount) * 100, 1) : 0;
+                    @endphp
+                    <strong class="text-primary">{{ $presentPct }}%</strong>
+                </div>
+                <div class="progress progress-sm mb-3">
+                    <div class="progress-bar bg-success" style="width: {{ $presentPct }}%"></div>
+                    <div class="progress-bar bg-warning" style="width: {{ $totalGtkCount > 0 ? round(($gtkPermitsTodayCount / $totalGtkCount) * 100, 1) : 0 }}%"></div>
+                </div>
+                <div class="row g-2 text-center small">
+                    <div class="col-4">
+                        <div class="p-2 bg-success-lt rounded border">
+                            <div class="fw-bold fs-3 text-success">{{ $gtkPresentCount }}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">Hadir</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 bg-warning-lt rounded border">
+                            <div class="fw-bold fs-3 text-warning">{{ $gtkPermitsTodayCount }}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">Izin/Cuti</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 bg-secondary-lt rounded border">
+                            <div class="fw-bold fs-3 text-secondary">{{ $gtkUnscannedCount }}</div>
+                            <div class="text-muted" style="font-size: 0.72rem;">Belum</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Ringkasan Layanan Piket Hari Ini -->
         <div class="card border-0 shadow-sm">
             <div class="card-body">
@@ -565,42 +539,10 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Workflow Stepper / Guidance Card (Preserved) -->
-<div class="card border-0 shadow-sm">
-    <div class="card-body">
-        <h3 class="card-title fw-bold text-navy mb-4">Alur Kerja Standar Pelaksanaan Supervisi Guru</h3>
-        <div class="row g-3 text-center">
-            <div class="col-md-3 col-6">
-                <div class="p-3 bg-light rounded-3 h-100 border">
-                    <div class="avatar avatar-md bg-blue text-white rounded-circle mb-2 fw-bold">1</div>
-                    <div class="fw-bold">Jadwal &amp; Modul Ajar</div>
-                    <small class="text-muted">Waka menetapkan jadwal &amp; guru unggah RPP</small>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="p-3 bg-light rounded-3 h-100 border">
-                    <div class="avatar avatar-md bg-blue text-white rounded-circle mb-2 fw-bold">2</div>
-                    <div class="fw-bold">Praobservasi</div>
-                    <small class="text-muted">Dialog kesiapan dan tujuan pembelajaran</small>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="p-3 bg-light rounded-3 h-100 border">
-                    <div class="avatar avatar-md bg-blue text-white rounded-circle mb-2 fw-bold">3</div>
-                    <div class="fw-bold">Observasi &amp; Catatan</div>
-                    <small class="text-muted">Penilaian 23 butir indikator + foto dokumentasi</small>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="p-3 bg-light rounded-3 h-100 border">
-                    <div class="avatar avatar-md bg-green text-white rounded-circle mb-2 fw-bold">4</div>
-                    <div class="fw-bold">Pengesahan Kepsek</div>
-                    <small class="text-muted">Validasi digital QR Code &amp; cetak laporan resmi</small>
+                <div class="d-grid mt-3">
+                    <a href="{{ route('piket.permits.create') }}" class="btn btn-outline-warning btn-sm text-dark">
+                        <i class="ti ti-plus me-1"></i> Terbitkan Izin Siswa
+                    </a>
                 </div>
             </div>
         </div>

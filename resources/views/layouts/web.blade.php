@@ -586,6 +586,9 @@
                                 @endif
                             </a>
                             <div class="dropdown-menu {{ request()->routeIs('schedules.*', 'supervisions.*', 'reports.history', 'reports.print-index', 'approvals.*', 'reports.recap', 'rubrics.*') ? 'show' : '' }}">
+                                <a class="dropdown-item {{ request()->routeIs('supervisions.dashboard') ? 'active' : '' }}" href="{{ route('supervisions.dashboard') }}">
+                                    <i class="ti ti-layout-dashboard me-2 text-primary"></i> Dashboard Supervisi
+                                </a>
                                 <a class="dropdown-item {{ request()->routeIs('schedules.*') ? 'active' : '' }}" href="{{ route('schedules.index') }}">
                                     <i class="ti ti-calendar-event me-2"></i> Jadwal Supervisi
                                 </a>

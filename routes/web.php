@@ -47,6 +47,7 @@ use App\Http\Controllers\StructuralPositionController;
 use App\Http\Controllers\SubjectAttendanceController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SupervisionConductController;
+use App\Http\Controllers\SupervisionDashboardController;
 use App\Http\Controllers\TeacherAssignmentController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TelegramBotController;
@@ -234,6 +235,9 @@ Route::middleware('auth')->group(function () {
     // Menu Cetak Laporan & Riwayat Supervisi (Sesuai Prototipe)
     Route::get('/cetak-laporan', [ReportController::class, 'indexPrint'])->name('reports.print-index');
     Route::get('/riwayat', [ReportController::class, 'history'])->name('reports.history');
+
+    // Dashboard Khusus Supervisi Guru
+    Route::get('/supervisi/dashboard', [SupervisionDashboardController::class, 'index'])->name('supervisions.dashboard');
 
     // Supervision Conduct & Workflow
     Route::prefix('supervisi')->name('supervisions.')->group(function () {

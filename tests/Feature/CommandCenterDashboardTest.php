@@ -98,14 +98,26 @@ class CommandCenterDashboardTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Dashboard Pusat Komando Sekolah');
-        $response->assertSee('Dashboard Supervisi Guru');
         $response->assertSee('Presensi GTK Hari Ini');
         $response->assertSee('Kondisi KBM Rombel');
         $response->assertSee('Peserta Didik Aktif');
-        $response->assertSee('Sudah Disupervisi');
+        $response->assertSee('Ketertiban &amp; Layanan Piket', false);
         $response->assertSee('XII TKR 1');
         $response->assertSee('Matematika Terapan');
         $response->assertSee('Budi Santoso, S.Pd.');
+    }
+
+    public function test_supervision_dedicated_dashboard_renders_with_supervision_metrics(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('supervisions.dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Dashboard Supervisi Guru');
+        $response->assertSee('Total Guru Terdaftar');
+        $response->assertSee('Sudah Disupervisi');
+        $response->assertSee('Persetujuan KS');
+        $response->assertSee('Rata-rata Nilai Sekolah');
+        $response->assertSee('Alur Kerja Standar Pelaksanaan Supervisi Guru');
     }
 
     public function test_command_center_displays_pending_approvals_and_piket_officers(): void
