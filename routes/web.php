@@ -54,6 +54,7 @@ use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TelegramBotController;
 use App\Http\Controllers\TelegramBotWebhookController;
 use App\Http\Controllers\TimetableUploadController;
+use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\VerificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -443,8 +444,16 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // Menu Khusus Super Admin: User Aktif & Log Aktivitas User
+    // Menu Khusus Super Admin: Manajemen Pengguna, User Aktif & Log Aktivitas User
     Route::middleware('role:super_admin')->prefix('superadmin')->group(function () {
+        // Manajemen Akun Pengguna (Multi-Super Admin, Guru, Staf)
+        Route::get('pengguna', [UserManagementController::class, 'index'])->name('users.index');
+        Route::post('pengguna', [UserManagementController::class, 'store'])->name('users.store');
+        Route::put('pengguna/{user}', [UserManagementController::class, 'update'])->name('users.update');
+        Route::post('pengguna/{user}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password');
+        Route::post('pengguna/{user}/toggle-status', [UserManagementController::class, 'toggleStatus'])->name('users.toggle-status');
+        Route::delete('pengguna/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+
         // User Aktif & Monitoring Sesi
         Route::get('user-aktif', [ActiveUserController::class, 'index'])->name('active-users.index');
         Route::delete('user-aktif/sesi/{sessionId}', [ActiveUserController::class, 'destroySession'])->name('active-users.destroy-session');

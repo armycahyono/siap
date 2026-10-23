@@ -913,6 +913,15 @@
                         </li>
 
                         @if(auth()->user()->hasRole('super_admin'))
+                        <li class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('users.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-user-cog fs-2 text-primary"></i>
+                                </span>
+                                <span class="nav-link-title">Manajemen User</span>
+                            </a>
+                        </li>
+
                         <li class="nav-item {{ request()->routeIs('active-users.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('active-users.index') }}">
                                 <span class="nav-link-icon d-inline-block">
