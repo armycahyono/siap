@@ -4,28 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Fleksibilitas Tugas
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-arrows-left-right text-primary me-2 fs-1"></i>
-                    Tukar Jadwal Piket (Duty Swap)
-                </h2>
-                <div class="text-secondary mt-1">
-                    Ajukan permohonan pergantian hari piket resmi jika berhalangan tugas.
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-add-swap">
-                    <i class="ti ti-plus me-1"></i> Ajukan Tukar Piket
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Tukar Jadwal Piket (Duty Swap)',
+        'subtitle' => 'Ajukan permohonan pergantian hari piket resmi jika berhalangan tugas.',
+        'icon' => 'ti ti-arrows-left-right',
+        'category' => 'FLEKSIBILITAS TUGAS PIKET',
+        'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-add-swap"><i class="ti ti-plus me-1"></i> Ajukan Tukar Piket</button>'
+    ])
 
     <!-- Table Swaps -->
     <div class="card shadow-sm border-0">

@@ -3,24 +3,18 @@
 @section('title', 'Arsip Dokumen Jadwal PDF')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center justify-content-between">
-    <div class="col-md-6">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-file-text me-2"></i> Arsip Dokumen Jadwal PDF
-        </h2>
-        <div class="text-muted small">
-            Penyimpanan dan pratinjau langsung file PDF jadwal pelajaran kelas (aSc Timetables).
-        </div>
-    </div>
-    <div class="col-md-6 text-md-end d-flex flex-wrap gap-2 justify-content-md-end">
-        <a href="{{ route('kurikulum.schedules.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-calendar-time me-1"></i> Lihat Jadwal Pelajaran
-        </a>
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUploadArchive">
-            <i class="ti ti-cloud-upload me-1"></i> Upload File PDF Baru
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $ttActions = '<a href="' . route('kurikulum.schedules.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-time me-1 text-info"></i> Lihat Jadwal Pelajaran</a> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalUploadArchive"><i class="ti ti-cloud-upload me-1"></i> Upload File PDF Baru</button>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Arsip Dokumen Jadwal PDF',
+    'subtitle' => 'Penyimpanan dan pratinjau langsung file PDF jadwal pelajaran kelas (aSc Timetables).',
+    'icon' => 'ti ti-file-text',
+    'category' => 'KURIKULUM & ARSIP',
+    'actions' => $ttActions
+])
 
 <div class="row g-3">
     <!-- Kolom Kiri: Tabel Arsip Jadwal -->

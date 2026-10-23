@@ -3,22 +3,20 @@
 @section('title', 'Riwayat Supervisi - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">
-            <i class="ti ti-history me-2 text-primary"></i>
-            Riwayat Supervisi
-        </h2>
-        <div class="text-muted small">Arsip lengkap hasil supervisi pembelajaran dan evaluasi guru</div>
-    </div>
-    @if(auth()->user()->hasPermission('view_all_supervision'))
-    <div class="col-auto ms-auto d-print-none">
-        <a href="{{ route('reports.recap') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-chart-bar me-1"></i> Rekapitulasi Sekolah
-        </a>
-    </div>
-    @endif
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $histActions = '';
+    if (auth()->user()->hasPermission('view_all_supervision')) {
+        $histActions = '<a href="' . route('reports.recap') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-chart-bar me-1 text-info"></i> Rekapitulasi Sekolah</a>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Riwayat Supervisi',
+    'subtitle' => 'Arsip lengkap hasil supervisi pembelajaran dan evaluasi guru.',
+    'icon' => 'ti ti-history',
+    'category' => 'SUPERVISI & ARSIP',
+    'actions' => $histActions
+])
 
 <!-- Filter & Search -->
 <div class="card border-0 shadow-sm mb-3">

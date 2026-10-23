@@ -3,19 +3,13 @@
 @section('title', 'Profil Pengguna')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                <i class="ti ti-arrow-left"></i>
-            </a>
-            <h2 class="page-title text-navy fw-bold mb-0" style="color: #102d52;">
-                <i class="ti ti-user-circle me-1"></i> Profil Akun Pengguna
-            </h2>
-        </div>
-        <div class="text-muted small">Kelola informasi data pribadi dan kata sandi akun Anda.</div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Profil Akun Pengguna',
+    'subtitle' => 'Kelola informasi data pribadi, identitas diri, dan kata sandi akun Anda.',
+    'icon' => 'ti ti-user-circle',
+    'category' => 'PENGGUNA SISTEM',
+])
 
 <div class="row g-4">
     <!-- Biodata Form -->

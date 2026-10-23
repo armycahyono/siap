@@ -12,28 +12,21 @@
     </ol>
 </div>
 
-<!-- Page Header -->
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-star me-2"></i> Agenda Kegiatan Sekolah
-        </h2>
-        <div class="text-muted small">
-            Daftar &amp; monitoring acuan seluruh agenda kegiatan serta program kerja sekolah (Kurikulum, Kesiswaan, Humas, PKL, Asesmen &amp; Ujian, Supervisi). 
-            Pantau status keterjadwalan kegiatan pada <strong>Tahun Pelajaran: {{ $academicYear }}</strong>.
-        </div>
-    </div>
-    <div class="col-auto d-flex gap-2">
-        <a href="{{ route('kurikulum.calendar.index', ['academic_year' => $academicYear]) }}" class="btn btn-outline-primary shadow-sm fw-semibold">
-            <i class="ti ti-calendar-event me-1"></i> Buka Kalender Sekolah
-        </a>
-        @if(auth()->user()->canViewAllSchedules())
-        <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateActivityModal()">
-            <i class="ti ti-plus me-1"></i> Tambah Agenda Baru
-        </button>
-        @endif
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $actActions = '<a href="' . route('kurikulum.calendar.index', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-event me-1 text-info"></i> Buka Kalender Sekolah</a> ';
+    if (auth()->user()->canViewAllSchedules()) {
+        $actActions .= '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" onclick="openCreateActivityModal()"><i class="ti ti-plus me-1"></i> Tambah Agenda Baru</button>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Agenda Kegiatan Sekolah',
+    'subtitle' => 'Daftar & monitoring acuan seluruh agenda kegiatan serta program kerja sekolah (Kurikulum, Kesiswaan, Humas, PKL, Asesmen & Ujian, Supervisi) TP ' . $academicYear . '.',
+    'icon' => 'ti ti-calendar-star',
+    'category' => 'KURIKULUM & AGENDA',
+    'academicYear' => $academicYear,
+    'actions' => $actActions
+])
 
 <!-- Scheduling Overview & Statistics Cards -->
 <div class="row g-3 mb-4">

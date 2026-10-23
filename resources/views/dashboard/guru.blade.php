@@ -85,17 +85,14 @@
         </div>
     </div>
 
-    <!-- Portal Supervisi Guru (Desktop View) -->
-    <div class="row g-3 mb-4 align-items-center">
-        <div class="col">
-            <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-                <i class="ti ti-school me-2"></i> Portal Supervisi Guru
-            </h2>
-            <div class="text-muted small">
-                Selamat datang, <strong>{{ $user->name }}</strong> ({{ $user->subject }} — {{ $user->target_class ?: 'Semua Kelas' }}).
-            </div>
-        </div>
-    </div>
+    <!-- Portal Supervisi Guru (Desktop View - Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Portal Supervisi Guru',
+        'subtitle' => 'Selamat datang, ' . $user->name . ' (' . ($user->subject ?? 'Guru') . ' — ' . ($user->target_class ?: 'Semua Kelas') . '). Pantau jadwal dan persiapan evaluasi pembelajaran Anda.',
+        'icon' => 'ti ti-school',
+        'category' => 'PORTAL PENDIDIK & GTK',
+        'academicYear' => $setting->academic_year ?? null,
+    ])
 
     <div class="row row-cards mb-4">
         <div class="col-md-6 col-lg-4">

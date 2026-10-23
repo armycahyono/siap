@@ -4,30 +4,20 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Buku Kasus Piket
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-alert-triangle text-danger me-2 fs-1"></i>
-                    Catatan Kejadian & Pelanggaran Siswa
-                </h2>
-                <div class="text-secondary mt-1">
-                    Pencatatan penanganan awal kasus tata tertib di meja piket dan rujukan ke Wali Kelas / Guru BK / Kesiswaan.
-                </div>
-            </div>
-            @if(auth()->user()->canManagePiketCases())
-            <div class="col-auto ms-auto">
-                <a href="{{ route('piket.incidents.create') }}" class="btn btn-sm btn-danger shadow-sm">
-                    <i class="ti ti-plus me-1"></i> + Catat Kejadian / Kasus Baru
-                </a>
-            </div>
-            @endif
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @php
+        $incActions = '';
+        if (auth()->user()->canManagePiketCases()) {
+            $incActions = '<a href="' . route('piket.incidents.create') . '" class="btn btn-sm btn-danger shadow-xs fw-bold"><i class="ti ti-plus me-1"></i> Catat Kasus Baru</a>';
+        }
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Catatan Kejadian & Pelanggaran Siswa',
+        'subtitle' => 'Pencatatan penanganan awal kasus tata tertib di meja piket dan rujukan ke Wali Kelas / Guru BK / Kesiswaan.',
+        'icon' => 'ti ti-alert-triangle',
+        'category' => 'BUKU KASUS & TATA TERTIB',
+        'actions' => $incActions
+    ])
 
     <!-- Filter Form -->
     <div class="card shadow-sm border-0 mb-4">

@@ -3,35 +3,23 @@
 @section('title', 'Profil Sekolah — ' . ($setting->school_name ?? 'SMK PGRI KRAS'))
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <div class="page-pretitle text-uppercase tracking-wider text-muted">
-            Informasi Kelembagaan
-        </div>
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-building me-2 text-primary"></i> Profil Sekolah
-        </h2>
-        <div class="text-muted small">
-            Identitas resmi, legalitas kelembagaan, status akreditasi, serta visi, misi, dan tujuan sekolah.
-        </div>
-    </div>
-    @if(auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole(['super_admin', 'waka_kurikulum']))
-    <div class="col-auto">
-        <ul class="nav nav-pills" id="profileTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold" id="view-tab" data-bs-toggle="tab" data-bs-target="#tab-view" type="button" role="tab">
-                    <i class="ti ti-eye me-1"></i> Tinjau Profil
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="edit-tab" data-bs-toggle="tab" data-bs-target="#tab-edit" type="button" role="tab">
-                    <i class="ti ti-pencil me-1"></i> Edit Data Profil
-                </button>
-            </li>
-        </ul>
-    </div>
-    @endif
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $settingActions = '';
+    if (auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole(['super_admin', 'waka_kurikulum'])) {
+        $settingActions = '<ul class="nav nav-pills gap-2" id="profileTab" role="tablist">' .
+            '<li class="nav-item" role="presentation"><button class="nav-link active fw-bold btn btn-sm btn-outline-light text-white shadow-xs" id="view-tab" data-bs-toggle="tab" data-bs-target="#tab-view" type="button" role="tab"><i class="ti ti-eye me-1"></i> Tinjau Profil</button></li>' .
+            '<li class="nav-item" role="presentation"><button class="nav-link fw-bold btn btn-sm btn-warning text-dark shadow-xs" id="edit-tab" data-bs-toggle="tab" data-bs-target="#tab-edit" type="button" role="tab"><i class="ti ti-pencil me-1"></i> Edit Data Profil</button></li>' .
+            '</ul>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Profil Sekolah',
+    'subtitle' => 'Identitas resmi, legalitas kelembagaan, status akreditasi, serta visi, misi, dan tujuan sekolah.',
+    'icon' => 'ti ti-building',
+    'category' => 'INFORMASI KELEMBAGAAN',
+    'actions' => $settingActions
+])
 
 <div class="tab-content" id="profileTabContent">
     <!-- TAB 1: TAMPILAN PROFIL SEKOLAH (DAPAT DIAKSES SEMUA USER) -->

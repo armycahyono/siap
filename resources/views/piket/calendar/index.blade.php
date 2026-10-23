@@ -4,39 +4,22 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Monitoring Jadwal
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-calendar-event text-primary me-2 fs-1"></i>
-                    Kalender Petugas Piket
-                </h2>
-                <div class="text-secondary mt-1">
-                    Visualisasi jadwal piket harian, status kehadiran, dan jurnal per bulan.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex align-items-center gap-2">
-                <div class="btn-group btn-group-sm">
-                    <a href="{{ route('piket.calendar.index', ['year' => $prevMonth->year, 'month' => $prevMonth->month]) }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-chevron-left"></i> {{ $prevMonth->translatedFormat('F') }}
-                    </a>
-                    <button class="btn btn-sm btn-primary fw-bold" disabled>
-                        {{ $currentMonth->translatedFormat('F Y') }}
-                    </button>
-                    <a href="{{ route('piket.calendar.index', ['year' => $nextMonth->year, 'month' => $nextMonth->month]) }}" class="btn btn-sm btn-outline-secondary">
-                        {{ $nextMonth->translatedFormat('F') }} <i class="ti ti-chevron-right"></i>
-                    </a>
-                </div>
-                <a href="{{ route('piket.calendar.index') }}" class="btn btn-sm btn-white">
-                    Bulan Ini
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @php
+        $calActions = '<div class="btn-group btn-group-sm shadow-xs">' .
+            '<a href="' . route('piket.calendar.index', ['year' => $prevMonth->year, 'month' => $prevMonth->month]) . '" class="btn btn-sm btn-outline-light"><i class="ti ti-chevron-left"></i> ' . $prevMonth->translatedFormat('F') . '</a>' .
+            '<button class="btn btn-sm btn-light fw-bold" disabled>' . $currentMonth->translatedFormat('F Y') . '</button>' .
+            '<a href="' . route('piket.calendar.index', ['year' => $nextMonth->year, 'month' => $nextMonth->month]) . '" class="btn btn-sm btn-outline-light">' . $nextMonth->translatedFormat('F') . ' <i class="ti ti-chevron-right"></i></a>' .
+            '</div> ' .
+            '<a href="' . route('piket.calendar.index') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">Bulan Ini</a>';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Kalender Petugas Piket',
+        'subtitle' => 'Visualisasi jadwal piket harian guru, status kehadiran, dan pengisian jurnal per bulan.',
+        'icon' => 'ti ti-calendar-event',
+        'category' => 'JADWAL & PETUGAS PIKET',
+        'actions' => $calActions
+    ])
 
     <!-- Calendar Table Grid -->
     <div class="card shadow-sm border-0">

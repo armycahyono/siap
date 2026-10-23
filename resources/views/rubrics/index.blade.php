@@ -3,24 +3,18 @@
 @section('title', 'Kustomisasi Indikator & Rubrik')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-list-check me-2"></i> Kustomisasi Indikator & Rubrik Supervisi
-        </h2>
-        <div class="text-muted small">
-            Atur tahapan dan butir-butir indikator penilaian pembelajaran sesuai perkembangan kurikulum sekolah Anda.
-        </div>
-    </div>
-    <div class="col-auto d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddPhase">
-            <i class="ti ti-folder-plus me-1"></i> Tambah Tahapan/Fase
-        </button>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAddIndicator">
-            <i class="ti ti-plus me-1"></i> Tambah Butir Indikator
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $rubricActions = '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalAddPhase"><i class="ti ti-folder-plus me-1 text-info"></i> Tambah Tahapan/Fase</button> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalAddIndicator"><i class="ti ti-plus me-1"></i> Tambah Butir Indikator</button>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Kustomisasi Indikator & Rubrik Supervisi',
+    'subtitle' => 'Atur tahapan dan butir-butir indikator penilaian pembelajaran sesuai perkembangan kurikulum sekolah Anda.',
+    'icon' => 'ti ti-list-check',
+    'category' => 'SUPERVISI & PENILAIAN',
+    'actions' => $rubricActions
+])
 
 <!-- Rubric Overview Cards -->
 <div class="row row-cards mb-4">

@@ -3,26 +3,21 @@
 @section('title', 'Jadwal Pelajaran')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center justify-content-between">
-    <div class="col-md-6">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-time me-2"></i> Jadwal Pelajaran
-        </h2>
-        <div class="text-muted small">
-            Manajemen jadwal belajar mengajar mingguan (Jadwal Kelas & Jadwal Guru) Tahun Pelajaran {{ $academicYear }}.
-        </div>
-    </div>
-    <div class="col-md-6 text-md-end d-flex flex-wrap gap-2 justify-content-md-end">
-        <button type="button" class="btn btn-warning text-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPrintSchedule">
-            <i class="ti ti-printer me-1"></i> Cetak Jadwal
-        </button>
-        @if($canViewAll)
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalManualInput">
-            <i class="ti ti-plus me-1"></i> Tambah Jadwal Manual
-        </button>
-        @endif
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $schedActions = '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalPrintSchedule"><i class="ti ti-printer me-1 text-warning"></i> Cetak Jadwal</button> ';
+    if ($canViewAll) {
+        $schedActions .= '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalManualInput"><i class="ti ti-plus me-1"></i> Tambah Jadwal Manual</button>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Jadwal Pelajaran',
+    'subtitle' => 'Manajemen jadwal belajar mengajar mingguan (Jadwal Kelas & Jadwal Guru) Tahun Pelajaran ' . $academicYear . '.',
+    'icon' => 'ti ti-calendar-time',
+    'category' => 'KURIKULUM & PEMBELAJARAN',
+    'academicYear' => $academicYear,
+    'actions' => $schedActions
+])
 
 <!-- Mode Tampilan Switch & Filter Bar -->
 <div class="card border-0 shadow-sm mb-4">

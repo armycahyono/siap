@@ -3,49 +3,26 @@
 @section('title', 'Data Siswa — Data Pokok')
 
 @section('content')
-<!-- Header Halaman -->
-<div class="page-header d-print-none mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                Data Pokok Sekolah
-            </div>
-            <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                <i class="ti ti-school text-primary me-2 fs-1"></i>
-                Data Induk Siswa & Alumni
-                <span class="badge bg-primary-lt text-primary ms-2 fs-5">TP. {{ $academicYear }}</span>
-            </h2>
-            <div class="text-secondary mt-1">
-                Basis data induk kesiswaan (PPDB & Dapodik): biodata lengkap siswa aktif, riwayat alumni lulusan, mutasi, dan kontak orang tua.
-            </div>
-        </div>
-        <div class="col-auto ms-auto d-flex flex-wrap gap-2">
-            <a href="{{ route('students.promotions.index') }}" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm">
-                <i class="ti ti-arrow-up-right-circle me-1"></i> Kenaikan & Kelulusan Kelas
-            </a>
-            @if($tab !== 'alumni' && $tab !== 'mutasi')
-                <button type="button" class="btn btn-sm btn-outline-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-mutasi-siswa">
-                    <i class="ti ti-user-x me-1"></i> Catat Mutasi / Keluar
-                </button>
-            @endif
-            <a href="{{ route('students.template') }}" class="btn btn-sm btn-outline-secondary">
-                <i class="ti ti-download me-1"></i> Format Excel
-            </a>
-            <a href="{{ route('students.export', ['classroom_id' => $classroomId, 'gender' => $gender, 'search' => $search, 'tab' => $tab, 'graduation_year' => $graduationYear, 'academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-success">
-                <i class="ti ti-file-spreadsheet me-1"></i> Ekspor CSV
-            </a>
-            <button type="button" class="btn btn-sm btn-indigo text-white shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modal-import-dapodik" style="background-color: #6366f1; border-color: #6366f1;">
-                <i class="ti ti-cloud-upload me-1"></i> Upload Dapodik
-            </button>
-            <button type="button" class="btn btn-sm btn-info text-white shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-import-siswa">
-                <i class="ti ti-file-import me-1"></i> Import Siswa
-            </button>
-            <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-create-siswa">
-                <i class="ti ti-plus me-1"></i> Tambah Siswa
-            </button>
-        </div>
-    </div>
-</div>
+<!-- Header Halaman (Model 2: Hero Context Banner) -->
+@php
+    $studentActions = '<a href="' . route('students.promotions.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-up-right-circle me-1 text-warning"></i> Kenaikan & Kelulusan</a> ';
+    if ($tab !== 'alumni' && $tab !== 'mutasi') {
+        $studentActions .= '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-mutasi-siswa"><i class="ti ti-user-x me-1 text-danger"></i> Catat Mutasi</button> ';
+    }
+    $studentActions .= '<a href="' . route('students.template') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-download me-1"></i> Format Excel</a> ' .
+        '<a href="' . route('students.export', ['classroom_id' => $classroomId, 'gender' => $gender, 'search' => $search, 'tab' => $tab, 'graduation_year' => $graduationYear, 'academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor CSV</a> ' .
+        '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-import-dapodik"><i class="ti ti-cloud-upload me-1 text-cyan"></i> Upload Dapodik</button> ' .
+        '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-import-siswa"><i class="ti ti-file-import me-1 text-info"></i> Import Siswa</button> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-create-siswa"><i class="ti ti-plus me-1"></i> Tambah Siswa</button>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Data Induk Siswa & Alumni',
+    'subtitle' => 'Basis data induk kesiswaan (PPDB & Dapodik): biodata lengkap siswa aktif, riwayat alumni lulusan, mutasi, dan kontak orang tua TP ' . $academicYear . '.',
+    'icon' => 'ti ti-school',
+    'category' => 'KESISWAAN & DATA POKOK',
+    'academicYear' => $academicYear,
+    'actions' => $studentActions
+])
 
 <!-- Stat Cards Ringkasan Siswa -->
 <div class="row row-cards mb-3">

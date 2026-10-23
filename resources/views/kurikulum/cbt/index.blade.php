@@ -3,36 +3,23 @@
 @section('title', 'Integrasi GarudaCBT')
 
 @section('content')
-<div class="page-header d-print-none">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <div class="page-pretitle">Kurikulum & Asesmen</div>
-                <h2 class="page-title d-flex align-items-center gap-2">
-                    <i class="ti ti-plug-connected text-primary"></i>
-                    Integrasi GarudaCBT
-                    @if($status['connected'])
-                        <span class="badge bg-success-lt fs-5"><i class="ti ti-circle-check me-1"></i> Terhubung (db_cbt)</span>
-                    @else
-                        <span class="badge bg-danger-lt fs-5"><i class="ti ti-alert-circle me-1"></i> Terputus</span>
-                    @endif
-                </h2>
-                <div class="text-muted mt-1">
-                    Sinkronisasi dua arah data akademik SIAP (Source of Truth) dengan mesin ujian online GarudaCBT.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="http://localhost/CBT/" target="_blank" class="btn btn-outline-primary">
-                        <i class="ti ti-external-link me-1"></i> Buka Portal CBT
-                    </a>
-                    <button type="button" class="btn btn-primary" onclick="confirmSync('all', 'Semua Data Pokok, Guru, Kelas, dan Siswa Aktif')">
-                        <i class="ti ti-refresh me-1"></i> Sinkronkan Semua ke CBT
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $cbtConnBadge = $status['connected'] 
+        ? '<span class="badge bg-success text-white shadow-xs me-2"><i class="ti ti-circle-check me-1"></i> Terhubung (db_cbt)</span>'
+        : '<span class="badge bg-danger text-white shadow-xs me-2"><i class="ti ti-alert-circle me-1"></i> Terputus</span>';
+    $cbtActions = $cbtConnBadge . 
+        '<a href="http://localhost/CBT/" target="_blank" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-external-link me-1 text-info"></i> Buka Portal CBT</a> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" onclick="confirmSync(\'all\', \'Semua Data Pokok, Guru, Kelas, dan Siswa Aktif\')"><i class="ti ti-refresh me-1"></i> Sinkronkan Semua ke CBT</button>';
+@endphp
+<div class="container-xl px-0 mb-3">
+    @include('layouts._hero_header', [
+        'title' => 'Integrasi GarudaCBT',
+        'subtitle' => 'Sinkronisasi dua arah data akademik SIAP (Source of Truth) dengan mesin ujian online GarudaCBT.',
+        'icon' => 'ti ti-plug-connected',
+        'category' => 'KURIKULUM & ASESMEN',
+        'actions' => $cbtActions
+    ])
 </div>
 
 <div class="page-body">

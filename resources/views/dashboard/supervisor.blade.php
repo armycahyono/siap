@@ -6,16 +6,13 @@
 @include('dashboard._mobile_apk_home')
 
 <div class="d-none d-md-block">
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-eye-check me-2"></i> Dashboard Penilai (Supervisor)
-        </h2>
-        <div class="text-muted small">
-            Anda ditugaskan menilai guru-guru berikut pada Tahun Pelajaran {{ $setting->academic_year }} (Semester {{ $setting->semester }}).
-        </div>
-    </div>
-</div>
+@include('layouts._hero_header', [
+    'title' => 'Dashboard Penilai (Supervisor)',
+    'subtitle' => 'Anda ditugaskan menilai guru-guru berikut pada Tahun Pelajaran ' . $setting->academic_year . ' (Semester ' . $setting->semester . ').',
+    'icon' => 'ti ti-eye-check',
+    'category' => 'TIM SUPERVISOR',
+    'academicYear' => $setting->academic_year,
+])
 
 <div class="row row-cards mb-4">
     <div class="col-sm-6 col-lg-3">

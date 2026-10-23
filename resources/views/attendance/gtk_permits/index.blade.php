@@ -13,41 +13,19 @@
         </ol>
     </div>
 
-    <!-- Page Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Kepegawaian &amp; Presensi
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                        <i class="ti ti-arrow-left"></i>
-                    </a>
-                    <h2 class="page-title text-navy fw-bold mb-0" style="color: #102d52;">
-                        <i class="ti ti-file-certificate me-1 text-primary"></i> Perizinan &amp; Cuti Guru &amp; Tenaga Kependidikan
-                    </h2>
-                </div>
-                <div class="text-secondary mt-1">
-                    Pencatatan resmi Sakit, Izin, Cuti, dan Dinas Luar untuk Guru maupun Staf TU/karyawan. Otomatis sinkron menggugurkan status Alfa pada rekap presensi.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                <form action="{{ route('attendance.gtk-permits.sync-piket') }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-outline-info" title="Sinkronkan perizinan yang dicatat oleh petugas piket">
-                        <i class="ti ti-refresh me-1"></i> Sinkron Jurnal Piket
-                    </button>
-                </form>
-                <a href="{{ route('attendance.report.teachers') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-report me-1"></i> Rekap Presensi GTK
-                </a>
-                <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="openCreatePermitModal()">
-                    <i class="ti ti-plus me-1"></i> + Catat Izin / Cuti GTK
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $gtkPermitActions = '<form action="' . route('attendance.gtk-permits.sync-piket') . '" method="POST" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-outline-light shadow-xs" title="Sinkronkan perizinan yang dicatat oleh petugas piket"><i class="ti ti-refresh me-1 text-info"></i> Sinkron Jurnal Piket</button></form> ' .
+            '<a href="' . route('attendance.report.teachers') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-report me-1 text-success"></i> Rekap Presensi GTK</a> ' .
+            '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" onclick="openCreatePermitModal()"><i class="ti ti-plus me-1"></i> Catat Izin / Cuti GTK</button>';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Perizinan & Cuti Guru & Tenaga Kependidikan',
+        'subtitle' => 'Pencatatan resmi Sakit, Izin, Cuti, dan Dinas Luar untuk Guru maupun Staf TU/karyawan. Otomatis sinkron menggugurkan status Alfa pada presensi.',
+        'icon' => 'ti ti-file-certificate',
+        'category' => 'KEPEGAWAIAN & PRESENSI',
+        'actions' => $gtkPermitActions
+    ])
 
     <!-- Alert Success -->
     @if(session('success'))

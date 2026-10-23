@@ -3,21 +3,14 @@
 @section('title', 'Log Aktivitas Pengguna - Super Admin')
 
 @section('content')
-<div class="row g-2 align-items-center mb-4">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-activity me-2 text-info"></i> Log Aktivitas Pengguna &amp; Audit Trail
-        </h2>
-        <div class="text-muted small">
-            Rekam jejak lengkap seluruh aktivitas autentikasi, perubahan data pokok, pergantian konteks tahun pelajaran, dan tindakan operasional sistem.
-        </div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <button type="button" class="btn btn-outline-danger shadow-sm" data-bs-toggle="modal" data-bs-target="#modalClearLogs">
-            <i class="ti ti-trash me-1"></i> Bersihkan Log Lama
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Log Aktivitas Pengguna & Audit Trail',
+    'subtitle' => 'Rekam jejak lengkap seluruh aktivitas autentikasi, perubahan data pokok, pergantian konteks tahun pelajaran, dan tindakan operasional sistem.',
+    'icon' => 'ti ti-activity',
+    'category' => 'SUPER ADMIN & AUDIT TRAIL',
+    'actions' => '<button type="button" class="btn btn-sm btn-outline-light shadow-xs text-danger" data-bs-toggle="modal" data-bs-target="#modalClearLogs"><i class="ti ti-trash me-1"></i> Bersihkan Log Lama</button>'
+])
 
 <!-- Stat Cards -->
 <div class="row row-cards mb-4">

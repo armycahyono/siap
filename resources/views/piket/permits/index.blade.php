@@ -4,28 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Layanan Kedisiplinan Siswa
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-door-exit text-primary me-2 fs-1"></i>
-                    Perizinan & Keterlambatan Siswa
-                </h2>
-                <div class="text-secondary mt-1">
-                    Penerbitan surat izin masuk kelas, izin keluar sementara, dan izin pulang cepat.
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <a href="{{ route('piket.permits.create') }}" class="btn btn-sm btn-primary shadow-sm">
-                    <i class="ti ti-plus me-1"></i> + Terbitkan Izin Siswa
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Perizinan & Keterlambatan Siswa',
+        'subtitle' => 'Penerbitan surat izin masuk kelas, izin keluar sementara, dan izin pulang cepat.',
+        'icon' => 'ti ti-door-exit',
+        'category' => 'LAYANAN KEDISIPLINAN SISWA',
+        'actions' => '<a href="' . route('piket.permits.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-plus me-1"></i> Terbitkan Izin Siswa</a>'
+    ])
 
     <!-- Filter Form -->
     <div class="card shadow-sm border-0 mb-4">

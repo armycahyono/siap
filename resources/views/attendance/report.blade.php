@@ -3,27 +3,19 @@
 @section('title', 'Laporan Rekapitulasi Presensi')
 
 @section('content')
-<div class="page-header d-print-none">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <div class="page-pretitle">Laporan & Rekapitulasi Resmi</div>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-file-analytics me-2 text-indigo"></i> Rekap & Laporan Presensi
-                </h2>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="{{ route('attendance.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi
-                    </a>
-                    <a href="{{ route('attendance.report.print', request()->query()) }}" target="_blank" id="btnPrintTop" onclick="openPrintReport(event)" class="btn btn-sm btn-teal">
-                        <i class="ti ti-printer me-1"></i> Cetak Lembar Resmi (A4)
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $attRepActions = '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi</a> ' .
+        '<a href="' . route('attendance.report.print', request()->query()) . '" target="_blank" id="btnPrintTop" onclick="openPrintReport(event)" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-printer me-1"></i> Cetak Lembar Resmi (A4)</a>';
+@endphp
+<div class="container-xl px-0 mb-3">
+    @include('layouts._hero_header', [
+        'title' => 'Rekap & Laporan Presensi',
+        'subtitle' => 'Laporan presensi bulanan dan semester resmi siswa serta GTK untuk arsip sekolah dan dinas.',
+        'icon' => 'ti ti-file-analytics',
+        'category' => 'LAPORAN & PRESENSI',
+        'actions' => $attRepActions
+    ])
 </div>
 
 <div class="page-body">

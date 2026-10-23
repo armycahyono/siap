@@ -3,21 +3,20 @@
 @section('title', 'Jadwal Supervisi')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-event me-2"></i> Agenda Jadwal Supervisi Guru
-        </h2>
-        <div class="text-muted small">Kelola jadwal dan penugasan supervisor untuk pengawasan pembelajaran di kelas.</div>
-    </div>
-    @if(auth()->user()->hasPermission('manage_schedules'))
-    <div class="col-auto">
-        <a href="{{ route('schedules.create') }}" class="btn btn-primary">
-            <i class="ti ti-calendar-plus me-1"></i> Buat Jadwal Supervisi Baru
-        </a>
-    </div>
-    @endif
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $schedActions = '';
+    if (auth()->user()->hasPermission('manage_schedules')) {
+        $schedActions = '<a href="' . route('schedules.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-calendar-plus me-1"></i> Buat Jadwal Supervisi Baru</a>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Agenda Jadwal Supervisi Guru',
+    'subtitle' => 'Kelola jadwal dan penugasan tim supervisor untuk pemantauan dan evaluasi pembelajaran di kelas.',
+    'icon' => 'ti ti-calendar-event',
+    'category' => 'SUPERVISI AKADEMIK',
+    'actions' => $schedActions
+])
 
 <!-- Filters -->
 <div class="card border-0 shadow-sm mb-4">

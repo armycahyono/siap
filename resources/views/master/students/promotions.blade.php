@@ -3,28 +3,14 @@
 @section('title', 'Kenaikan Kelas & Penataan Rombel — Data Pokok')
 
 @section('content')
-<!-- Header Halaman -->
-<div class="page-header d-print-none mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                Kesiswaan & Rombongan Belajar
-            </div>
-            <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                <i class="ti ti-arrow-up-right-circle text-primary me-2 fs-1"></i>
-                Kenaikan Kelas, Kelulusan & Penataan Rombel
-            </h2>
-            <div class="text-secondary mt-1">
-                Alat transisi tahun ajaran serentak se-sekolah, penanganan siswa tinggal/pindah rombel, serta pemindahan kelas cepat.
-            </div>
-        </div>
-        <div class="col-auto ms-auto d-flex gap-2">
-            <a href="{{ route('students.index') }}" class="btn btn-outline-secondary">
-                <i class="ti ti-arrow-left me-1"></i> Kembali ke Data Siswa
-            </a>
-        </div>
-    </div>
-</div>
+<!-- Header Halaman (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Kenaikan Kelas, Kelulusan & Penataan Rombel',
+    'subtitle' => 'Alat transisi tahun ajaran serentak se-sekolah, penanganan siswa tinggal/pindah rombel, serta pemindahan kelas cepat.',
+    'icon' => 'ti ti-arrow-up-right-circle',
+    'category' => 'KESISWAAN & ROMBONGAN BELAJAR',
+    'actions' => '<a href="' . route('students.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Data Siswa</a>'
+])
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible shadow-sm mb-4" role="alert">

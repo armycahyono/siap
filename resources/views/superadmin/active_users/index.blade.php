@@ -3,16 +3,13 @@
 @section('title', 'User Aktif & Monitoring Sesi - Super Admin')
 
 @section('content')
-<div class="row g-2 align-items-center mb-4">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-user-check me-2 text-success"></i> Monitoring User Aktif &amp; Sesi Login
-        </h2>
-        <div class="text-muted small">
-            Pantau pengguna yang sedang online, sesi login aktif real-time di sistem, dan kendali keaktifan akun pengguna.
-        </div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Monitoring User Aktif & Sesi Login',
+    'subtitle' => 'Pantau pengguna yang sedang online, sesi login aktif real-time di sistem, dan kendali keaktifan akun pengguna.',
+    'icon' => 'ti ti-user-check',
+    'category' => 'SUPER ADMIN & MONITORING SESI',
+])
 
 <!-- Stat Cards -->
 <div class="row row-cards mb-4">

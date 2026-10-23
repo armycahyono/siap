@@ -3,21 +3,14 @@
 @section('title', 'Hak Akses & Peran Pengguna')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-shield-lock me-2"></i> Pengaturan Hak Akses & Peran Pengguna
-        </h2>
-        <div class="text-muted small">
-            Konfigurasi matriks izin akses fitur untuk setiap peran (Super Admin, Waka Kurikulum, Supervisor, Guru, Kepala Sekolah).
-        </div>
-    </div>
-    <div class="col-auto">
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddRole">
-            <i class="ti ti-plus me-1"></i> Tambah Peran Baru
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Pengaturan Hak Akses & Peran Pengguna',
+    'subtitle' => 'Konfigurasi matriks izin akses fitur untuk setiap peran (Super Admin, Waka Kurikulum, Supervisor, Guru, Kepala Sekolah).',
+    'icon' => 'ti ti-shield-lock',
+    'category' => 'KEAMANAN & HAK AKSES',
+    'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalAddRole"><i class="ti ti-plus me-1"></i> Tambah Peran Baru</button>'
+])
 
 <form action="{{ route('roles.update') }}" method="POST">
     @csrf

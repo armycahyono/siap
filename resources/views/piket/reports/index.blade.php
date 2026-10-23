@@ -3,31 +3,18 @@
 @section('title', 'Rekapitulasi & Laporan Piket')
 
 @section('content')
-<!-- Header -->
-<div class="page-header d-print-none mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                Evaluasi & Pelaporan
-            </div>
-            <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                <i class="ti ti-report-analytics text-primary me-2 fs-1"></i>
-                Rekapitulasi & Laporan Piket
-            </h2>
-            <div class="text-secondary mt-1">
-                Laporan komprehensif kehadiran, perizinan, kelas kosong, kasus kedisiplinan, dan buku tamu.
-            </div>
-        </div>
-        <div class="col-auto ms-auto d-flex gap-2">
-            <a href="{{ route('piket.reports.export', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) }}" class="btn btn-sm btn-outline-success">
-                <i class="ti ti-file-spreadsheet me-1"></i> Ekspor CSV / Excel
-            </a>
-            <a href="{{ route('piket.reports.print', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) }}" target="_blank" class="btn btn-sm btn-primary shadow-sm">
-                <i class="ti ti-printer me-1"></i> Cetak Format Dinas
-            </a>
-        </div>
-    </div>
-</div>
+<!-- Header (Model 2: Hero Context Banner) -->
+@php
+    $piketRepActions = '<a href="' . route('piket.reports.export', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor CSV / Excel</a> ' .
+        '<a href="' . route('piket.reports.print', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) . '" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-printer me-1"></i> Cetak Format Dinas</a>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Rekapitulasi & Laporan Piket',
+    'subtitle' => 'Laporan komprehensif kehadiran petugas piket, perizinan siswa, kelas kosong, kasus kedisiplinan, dan buku tamu.',
+    'icon' => 'ti ti-report-analytics',
+    'category' => 'EVALUASI & PELAPORAN PIKET',
+    'actions' => $piketRepActions
+])
 
 <!-- Filter Rentang Tanggal & Kelas -->
 <div class="card shadow-sm border-0 mb-4">

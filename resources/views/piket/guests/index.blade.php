@@ -4,28 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Layanan Humas & Keamanan
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-address-book text-success me-2 fs-1"></i>
-                    Buku Tamu Piket
-                </h2>
-                <div class="text-secondary mt-1">
-                    Pencatatan kunjungan tamu dinas, orang tua siswa, instansi mitra, dan masyarakat umum.
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <button type="button" class="btn btn-sm btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-add-guest">
-                    <i class="ti ti-user-plus me-1"></i> + Catat Tamu Baru
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Buku Tamu Piket',
+        'subtitle' => 'Pencatatan kunjungan tamu dinas, orang tua siswa, instansi mitra, dan masyarakat umum.',
+        'icon' => 'ti ti-address-book',
+        'category' => 'LAYANAN HUMAS & TAMU',
+        'actions' => '<button type="button" class="btn btn-sm btn-success text-white fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-add-guest"><i class="ti ti-user-plus me-1"></i> Catat Tamu Baru</button>'
+    ])
 
     <!-- Filter Form -->
     <div class="card shadow-sm border-0 mb-4">

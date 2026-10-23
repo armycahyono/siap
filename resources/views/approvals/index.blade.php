@@ -3,16 +3,14 @@
 @section('title', 'Persetujuan Kepala Sekolah')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-checklist me-2 text-warning"></i> Lembar Persetujuan & Pengesahan Supervisi
-        </h2>
-        <div class="text-muted small">
-            Daftar hasil supervisi pembelajaran yang telah difinalisasi oleh Supervisor dan siap disetujui/disahkan oleh Kepala Sekolah atau Waka Kurikulum.
-        </div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Lembar Persetujuan & Pengesahan Supervisi',
+    'subtitle' => 'Daftar hasil supervisi pembelajaran yang telah difinalisasi oleh Supervisor dan siap disetujui/disahkan oleh Kepala Sekolah atau Waka Kurikulum.',
+    'icon' => 'ti ti-checklist',
+    'category' => 'SUPERVISI & PENGESAHAN',
+    'academicYear' => $academicYear !== 'all' ? $academicYear : null,
+])
 
 <!-- Filters -->
 <div class="card border-0 shadow-sm mb-4">

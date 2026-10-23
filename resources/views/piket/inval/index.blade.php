@@ -4,28 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Kondusifitas Belajar Mengajar
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-chalkboard text-primary me-2 fs-1"></i>
-                    Guru Inval & Pengondisian Kelas Kosong
-                </h2>
-                <div class="text-secondary mt-1">
-                    Pencatatan guru yang berhalangan hadir, penugasan guru pengganti (inval), dan monitoring tugas kelas.
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-add-inval">
-                    <i class="ti ti-plus me-1"></i> + Catat Kelas Kosong / Inval
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Guru Inval & Pengondisian Kelas Kosong',
+        'subtitle' => 'Pencatatan guru yang berhalangan hadir, penugasan guru pengganti (inval), dan monitoring tugas kelas.',
+        'icon' => 'ti ti-chalkboard',
+        'category' => 'KONDUSIFITAS KBM & INVAL',
+        'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-add-inval"><i class="ti ti-plus me-1"></i> Catat Kelas Kosong / Inval</button>'
+    ])
 
     <!-- Filter Form -->
     <div class="card shadow-sm border-0 mb-4">

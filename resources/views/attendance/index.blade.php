@@ -3,42 +3,25 @@
 @section('title', 'Presensi Sekolah (Mesin & Telegram)')
 
 @section('content')
-<div class="page-header d-print-none">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <div class="page-pretitle d-flex align-items-center gap-2">
-                    <span>Rekaman Presensi Terpadu</span>
-                    <span class="badge bg-green-lt d-inline-flex align-items-center" id="liveBadge" title="Browser mengecek data scan baru otomatis setiap 3.5 detik tanpa perlu reload">
-                        <span class="status-dot status-dot-animated bg-success me-1"></span> Live Auto-Sync
-                    </span>
-                </div>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-calendar-check me-2 text-primary"></i> Presensi Sekolah (Mesin & Telegram)
-                </h2>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    @if(auth()->user()->canManageManualTeacherAttendance())
-                    <a href="{{ route('attendance.manual-gtk.index') }}" class="btn btn-sm btn-primary">
-                        <i class="ti ti-bolt-off me-1"></i> Presensi GTK Susulan
-                    </a>
-                    @endif
-                    @if(auth()->user()->canManageAttendanceDevices())
-                    <a href="{{ route('attendance.devices.index') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="ti ti-devices me-1"></i> Kelola Mesin Absensi
-                    </a>
-                    @endif
-                    <form action="{{ route('attendance.logs.clear') }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Apakah Anda yakin ingin mengosongkan riwayat log presensi di aplikasi?')">
-                            <i class="ti ti-trash me-1"></i> Bersihkan Log
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $attActions = '<span class="badge bg-success text-white shadow-xs me-2 d-none d-sm-inline-flex align-items-center" id="liveBadge" title="Browser mengecek data scan baru otomatis setiap 3.5 detik"><span class="status-dot status-dot-animated bg-white me-1"></span> Live Auto-Sync</span> ';
+    if (auth()->user()->canManageManualTeacherAttendance()) {
+        $attActions .= '<a href="' . route('attendance.manual-gtk.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-bolt-off me-1 text-warning"></i> Presensi GTK Susulan</a> ';
+    }
+    if (auth()->user()->canManageAttendanceDevices()) {
+        $attActions .= '<a href="' . route('attendance.devices.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-devices me-1 text-info"></i> Kelola Mesin</a> ';
+    }
+    $attActions .= '<form action="' . route('attendance.logs.clear') . '" method="POST" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-outline-light shadow-xs text-danger" onclick="return confirm(\'Apakah Anda yakin ingin mengosongkan riwayat log presensi di aplikasi?\')"><i class="ti ti-trash me-1"></i> Bersihkan Log</button></form>';
+@endphp
+<div class="container-xl px-0 mb-3">
+    @include('layouts._hero_header', [
+        'title' => 'Presensi Sekolah (Mesin & Telegram)',
+        'subtitle' => 'Rekaman presensi terpadu GTK dan siswa dari mesin biometrik fingerprint, face recognition, dan presensi Telegram.',
+        'icon' => 'ti ti-calendar-check',
+        'category' => 'PRESENSI & KEHADIRAN',
+        'actions' => $attActions
+    ])
 </div>
 
 <div class="page-body">

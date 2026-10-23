@@ -3,20 +3,14 @@
 @section('title', 'Cetak Laporan Supervisi - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">
-            <i class="ti ti-printer me-2 text-primary"></i>
-            Cetak Laporan Supervisi
-        </h2>
-        <div class="text-muted small">Cetak lembar laporan resmi berstandar A4 dengan barcode QR-Code verifikasi dinas</div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <a href="{{ route('reports.history') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-history me-1"></i> Buka Riwayat Supervisi
-        </a>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Cetak Laporan Supervisi',
+    'subtitle' => 'Cetak lembar laporan resmi berstandar A4 dengan barcode QR-Code verifikasi dinas.',
+    'icon' => 'ti ti-printer',
+    'category' => 'SUPERVISI & DOKUMEN',
+    'actions' => '<a href="' . route('reports.history') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-history me-1 text-info"></i> Buka Riwayat Supervisi</a>'
+])
 
 <!-- Filter & Search -->
 <div class="card border-0 shadow-sm mb-3">

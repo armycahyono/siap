@@ -3,39 +3,20 @@
 @section('title', 'Manajemen & Konfigurasi Mesin Absensi')
 
 @section('content')
-<div class="page-header d-print-none mb-3">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-1">
-                        <li class="breadcrumb-item"><a href="{{ route('attendance.index') }}">Presensi</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Mesin Absensi</li>
-                    </ol>
-                </nav>
-                <div class="page-pretitle d-flex align-items-center gap-2">
-                    <span>Infrastruktur & Perangkat Keras</span>
-                    <span class="badge bg-purple-lt text-purple font-monospace">ADMS Push Server: 192.168.1.10:8014</span>
-                </div>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-devices text-primary me-2"></i> Manajemen Mesin Absensi
-                </h2>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="{{ route('attendance.devices.biometrics') }}" class="btn btn-sm btn-indigo shadow-sm">
-                        <i class="ti ti-fingerprint me-1"></i> Bank Master Biometrik
-                    </a>
-                    <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-sync-users">
-                        <i class="ti ti-cloud-upload me-1"></i> Sinkron Data GTK & Siswa ke Mesin
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal-add-device">
-                        <i class="ti ti-plus me-1"></i> Tambah Mesin Baru
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $devActions = '<a href="' . route('attendance.devices.biometrics') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-fingerprint me-1 text-cyan"></i> Bank Master Biometrik</a> ' .
+        '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-sync-users"><i class="ti ti-cloud-upload me-1 text-info"></i> Sinkron Data ke Mesin</button> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-add-device"><i class="ti ti-plus me-1"></i> Tambah Mesin Baru</button>';
+@endphp
+<div class="container-xl px-0 mb-3">
+    @include('layouts._hero_header', [
+        'title' => 'Manajemen Mesin Absensi',
+        'subtitle' => 'Konfigurasi perangkat keras presensi biometrik (Fingerprint & Face Recognition) dan server push ADMS.',
+        'icon' => 'ti ti-devices',
+        'category' => 'INFRASTRUKTUR & PERANGKAT KERAS',
+        'actions' => $devActions
+    ])
 </div>
 
 <div class="page-body">

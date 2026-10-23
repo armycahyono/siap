@@ -4,28 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Buku Jurnal Harian
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-notebook text-primary me-2 fs-1"></i>
-                    Jurnal Piket Harian
-                </h2>
-                <div class="text-secondary mt-1">
-                    Rekam jejak kehadiran petugas, monitoring kelas kosong, perizinan siswa, dan catatan umum harian.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex gap-2">
-                <a href="{{ route('piket.journals.today') }}" class="btn btn-sm btn-primary d-flex align-items-center shadow-sm">
-                    <i class="ti ti-calendar-plus me-2 fs-3"></i> Buka / Isi Jurnal Hari Ini
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Jurnal Piket Harian',
+        'subtitle' => 'Rekam jejak kehadiran petugas, monitoring kelas kosong, perizinan siswa, dan catatan umum harian sekolah.',
+        'icon' => 'ti ti-notebook',
+        'category' => 'BUKU JURNAL & KBM',
+        'actions' => '<a href="' . route('piket.journals.today') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-calendar-plus me-1"></i> Buka / Isi Jurnal Hari Ini</a>'
+    ])
 
     <!-- Filter Bulan -->
     <div class="card shadow-sm border-0 mb-4">

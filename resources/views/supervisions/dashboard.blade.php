@@ -3,33 +3,23 @@
 @section('title', 'Dashboard Supervisi Guru')
 
 @section('content')
-<!-- Header Page -->
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <h2 class="page-title text-navy fw-bold mb-0" style="color: #102d52;">
-                <i class="ti ti-git-fork me-2 text-warning"></i> Dashboard Supervisi Guru
-            </h2>
-            <span class="badge bg-primary-lt">TP {{ $academicYear }} (Semester {{ $semester }})</span>
-        </div>
-        <div class="text-muted small">
-            Pusat pemantauan, evaluasi mutu pembelajaran, dan progres pelaksanaan supervisi akademik guru.
-        </div>
-    </div>
-    <div class="col-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-        @if(auth()->user()->hasPermission('manage_schedules'))
-        <a href="{{ route('schedules.create') }}" class="btn btn-warning text-dark fw-bold btn-sm" style="background-color: #c99a3b; border-color: #c99a3b; color: #fff !important;">
-            <i class="ti ti-calendar-plus me-1"></i> Jadwalkan Supervisi
-        </a>
-        @endif
-        <a href="{{ route('schedules.index') }}" class="btn btn-outline-primary btn-sm">
-            <i class="ti ti-calendar-event me-1"></i> Agenda Jadwal
-        </a>
-        <a href="{{ route('reports.recap') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="ti ti-report me-1"></i> Rekapitulasi Nilai
-        </a>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $spvActions = '';
+    if (auth()->user()->hasPermission('manage_schedules')) {
+        $spvActions .= '<a href="' . route('schedules.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-calendar-plus me-1"></i> Jadwalkan Supervisi</a> ';
+    }
+    $spvActions .= '<a href="' . route('schedules.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-event me-1 text-info"></i> Agenda Jadwal</a> ' .
+        '<a href="' . route('reports.recap') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-report me-1 text-success"></i> Rekap Nilai</a>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Dashboard Supervisi Guru',
+    'subtitle' => 'Pusat pemantauan, evaluasi mutu pembelajaran, dan progres pelaksanaan supervisi akademik guru TP ' . $academicYear . ' (Semester ' . $semester . ').',
+    'icon' => 'ti ti-git-fork',
+    'category' => 'SUPERVISI AKADEMIK',
+    'academicYear' => $academicYear,
+    'actions' => $spvActions
+])
 
 <!-- Pending Approvals Alert -->
 @if(isset($pendingApprovalCount) && $pendingApprovalCount > 0 && (auth()->user()->hasPermission('approve_supervision') || auth()->user()->hasRole('kepala_sekolah') || auth()->user()->hasRole('super_admin')))

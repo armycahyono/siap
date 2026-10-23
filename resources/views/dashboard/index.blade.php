@@ -6,28 +6,23 @@
 @include('dashboard._mobile_apk_home')
 
 <div class="d-none d-md-block">
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-layout-dashboard me-2"></i> Dashboard Supervisi Guru
-        </h2>
-        <div class="text-muted small">
-            Ringkasan pelaksanaan supervisi pembelajaran tahun pelajaran {{ $setting->academic_year }} (Semester {{ $setting->semester }}).
-        </div>
-    </div>
-    <div class="col-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-        @if(auth()->user()->hasPermission('manage_teachers'))
-        <a href="{{ route('teachers.create') }}" class="btn btn-primary">
-            <i class="ti ti-user-plus me-1"></i> Tambah Guru
-        </a>
-        @endif
-        @if(auth()->user()->hasPermission('manage_schedules'))
-        <a href="{{ route('schedules.create') }}" class="btn btn-warning text-dark fw-bold" style="background-color: #c99a3b; border-color: #c99a3b; color: #fff !important;">
-            <i class="ti ti-calendar-plus me-1"></i> Jadwalkan Supervisi
-        </a>
-        @endif
-    </div>
-</div>
+@php
+    $dashActions = '';
+    if (auth()->user()->hasPermission('manage_teachers')) {
+        $dashActions .= '<a href="' . route('teachers.create') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-user-plus me-1 text-info"></i> Tambah Guru</a> ';
+    }
+    if (auth()->user()->hasPermission('manage_schedules')) {
+        $dashActions .= '<a href="' . route('schedules.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-calendar-plus me-1"></i> Jadwalkan Supervisi</a>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Dashboard Supervisi Guru',
+    'subtitle' => 'Ringkasan pelaksanaan supervisi pembelajaran tahun pelajaran ' . $setting->academic_year . ' (Semester ' . $setting->semester . ').',
+    'icon' => 'ti ti-layout-dashboard',
+    'category' => 'DASHBOARD UTAMA',
+    'academicYear' => $setting->academic_year,
+    'actions' => $dashActions
+])
 
 @if(isset($gtkPermitsToday) && $gtkPermitsToday->isNotEmpty())
 <div class="alert alert-warning alert-dismissible shadow-sm mb-4 border-warning border-start border-4" role="alert">

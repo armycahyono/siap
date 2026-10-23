@@ -3,21 +3,18 @@
 @section('title', 'Rekapitulasi Supervisi Sekolah')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-chart-bar me-2"></i> Rekapitulasi Hasil Supervisi Pembelajaran Sekolah
-        </h2>
-        <div class="text-muted small">
-            Ringkasan evaluasi KBM seluruh guru untuk laporan kurikulum dan instansi terkait.
-        </div>
-    </div>
-    <div class="col-auto d-flex gap-2">
-        <a href="{{ route('reports.export-excel', ['academic_year' => $academicYear, 'semester' => $semester]) }}" class="btn btn-success">
-            <i class="ti ti-file-spreadsheet me-1"></i> Ekspor ke Excel (.CSV)
-        </a>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $recapActions = '<a href="' . route('reports.export-excel', ['academic_year' => $academicYear, 'semester' => $semester]) . '" class="btn btn-sm btn-success text-white fw-bold shadow-xs"><i class="ti ti-file-spreadsheet me-1"></i> Ekspor ke Excel (.CSV)</a>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Rekapitulasi Hasil Supervisi Pembelajaran Sekolah',
+    'subtitle' => 'Ringkasan evaluasi KBM seluruh guru untuk laporan kurikulum dan instansi terkait.',
+    'icon' => 'ti ti-chart-bar',
+    'category' => 'SUPERVISI & PELAPORAN',
+    'academicYear' => $academicYear !== 'all' ? $academicYear : null,
+    'actions' => $recapActions
+])
 
 <!-- Filters -->
 <div class="card border-0 shadow-sm mb-4">
