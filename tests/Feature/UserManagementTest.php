@@ -26,26 +26,20 @@ class UserManagementTest extends TestCase
     {
         parent::setUp();
 
-        $this->superAdminRole = Role::create([
-            'name' => 'Super Administrator',
-            'slug' => 'super_admin',
-            'description' => 'Super Administrator Sistem',
-            'is_system' => true,
-        ]);
+        $this->superAdminRole = Role::firstOrCreate(
+            ['slug' => 'super_admin'],
+            ['name' => 'Super Administrator', 'description' => 'Super Administrator Sistem', 'is_system' => true]
+        );
 
-        $this->guruRole = Role::create([
-            'name' => 'Guru Pengajar',
-            'slug' => 'guru',
-            'description' => 'Guru Pengajar',
-            'is_system' => true,
-        ]);
+        $this->guruRole = Role::firstOrCreate(
+            ['slug' => 'guru'],
+            ['name' => 'Guru Pengajar', 'description' => 'Guru Pengajar', 'is_system' => true]
+        );
 
-        $this->kurikulumRole = Role::create([
-            'name' => 'Waka Kurikulum',
-            'slug' => 'waka_kurikulum',
-            'description' => 'Waka Kurikulum',
-            'is_system' => false,
-        ]);
+        $this->kurikulumRole = Role::firstOrCreate(
+            ['slug' => 'waka_kurikulum'],
+            ['name' => 'Waka Kurikulum', 'description' => 'Waka Kurikulum', 'is_system' => false]
+        );
 
         $this->superAdmin = User::create([
             'name' => 'Super Admin Utama',
@@ -57,7 +51,7 @@ class UserManagementTest extends TestCase
         ]);
 
         $this->teacher = User::create([
-            'name' => 'Guru Pengajar',
+            'name' => 'Bambang Guru Matematika',
             'username' => 'guru1',
             'email' => 'guru1@sekolah.sch.id',
             'password' => Hash::make('password123'),
@@ -232,5 +226,78 @@ class UserManagementTest extends TestCase
         $response->assertRedirect(route('users.index'));
         $response->assertSessionHas('success');
         $this->assertDatabaseMissing('users', ['id' => $userToDelete->id]);
+    }
+
+    public function test_super_admin_can_create_an_operator_user(): void
+    {
+        $operatorRole = Role::where('slug', 'operator_kurikulum')->firstOrFail();
+
+        $response = $this->actingAs($this->superAdmin)
+            ->post(route('users.store'), [
+                'name' => 'Operator Kurikulum Test',
+                'username' => 'op_kurikulum',
+                'email' => 'op_kurikulum@sekolah.sch.id',
+                'role_id' => $operatorRole->id,
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'position' => 'Operator Pembagian Jam & Jadwal',
+                'is_active' => 1,
+            ]);
+
+        $response->assertRedirect(route('users.index'));
+        $this->assertDatabaseHas('users', [
+            'username' => 'op_kurikulum',
+            'role_id' => $operatorRole->id,
+        ]);
+
+        $createdOp = User::where('username', 'op_kurikulum')->first();
+        $this->assertTrue($createdOp->isOperator());
+        $this->assertTrue($createdOp->isOperatorKurikulum());
+        $this->assertTrue($createdOp->canManageCurriculum());
+    }
+
+    public function test_operator_filter_displays_operator_users(): void
+    {
+        $operatorRole = Role::where('slug', 'operator_kurikulum')->firstOrFail();
+
+        $operator = User::create([
+            'name' => 'Operator Kurikulum Visual',
+            'username' => 'op_visual',
+            'email' => 'op_vis@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $operatorRole->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('users.index', ['type' => 'operator']));
+
+        $response->assertOk();
+        $response->assertSee('Operator Kurikulum Visual');
+        $response->assertDontSee($this->teacher->name);
+    }
+
+    public function test_operator_kurikulum_can_access_timetable_archive_but_cannot_access_approvals(): void
+    {
+        $operatorRole = Role::where('slug', 'operator_kurikulum')->firstOrFail();
+
+        $operator = User::create([
+            'name' => 'Operator Kurikulum Access',
+            'username' => 'op_access',
+            'email' => 'op_acc@test.com',
+            'password' => Hash::make('password'),
+            'role_id' => $operatorRole->id,
+            'is_active' => true,
+        ]);
+
+        // Operator can access timetable archive
+        $resArchive = $this->actingAs($operator)
+            ->get(route('kurikulum.timetables.index'));
+        $resArchive->assertOk();
+
+        // Operator cannot access supervision approval (requires approve_supervision)
+        $resApproval = $this->actingAs($operator)
+            ->get(route('approvals.index'));
+        $resApproval->assertForbidden();
     }
 }

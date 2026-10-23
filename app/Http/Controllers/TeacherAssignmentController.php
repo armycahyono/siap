@@ -34,8 +34,8 @@ class TeacherAssignmentController extends Controller
         $classroomId = $request->query('classroom_id');
         $search = $request->query('search');
 
-        // Data Guru (Role guru & supervisor, aktif)
-        $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum']))
+        // Data Guru (Role guru, supervisor, kurikulum & operator kurikulum, aktif)
+        $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'operator_kurikulum']))
             ->where('is_active', true)
             ->with(['teachingSubjects', 'homeroomClassrooms'])
             ->orderBy('name')
@@ -76,7 +76,7 @@ class TeacherAssignmentController extends Controller
         $assignments = $assignmentQuery->orderBy('teacher_id')->paginate(15)->withQueryString();
 
         // Rekap per guru yang mengajar mapel: guru_id => list of subjects & classes
-        $teacherRecap = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum']))
+        $teacherRecap = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'operator_kurikulum']))
             ->where('is_active', true)
             ->with([
                 'subjectAssignments' => fn ($q) => $q->where('academic_year', $academicYear)->with(['subject', 'classroom']),

@@ -181,7 +181,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('jadwal-pelajaran/{schedule}', [LessonScheduleController::class, 'destroy'])->name('schedules.destroy');
         Route::post('jadwal-pelajaran/upload', [LessonScheduleController::class, 'upload'])->name('schedules.upload');
 
-        Route::middleware('role:waka_kurikulum,kepala_sekolah')->group(function () {
+        Route::middleware('role:waka_kurikulum,kepala_sekolah,operator_kurikulum')->group(function () {
             Route::get('arsip-jadwal', [TimetableUploadController::class, 'index'])->name('timetables.index');
             Route::post('arsip-jadwal', [TimetableUploadController::class, 'store'])->name('timetables.store');
             Route::get('arsip-jadwal/{upload}/download', [TimetableUploadController::class, 'download'])->name('timetables.download');
@@ -209,7 +209,7 @@ Route::middleware('auth')->group(function () {
         Route::get('kalender-kegiatan/kaldik/{upload}/preview', [CurriculumCalendarController::class, 'previewKaldik'])->name('calendar.kaldik.preview');
 
         // Integrasi GarudaCBT (Sinkronisasi Dua Arah)
-        Route::middleware('role:super_admin,waka_kurikulum,kepala_sekolah')->group(function () {
+        Route::middleware('role:super_admin,waka_kurikulum,kepala_sekolah,operator_kurikulum')->group(function () {
             Route::get('cbt-sync', [CbtIntegrationController::class, 'index'])->name('cbt.index');
             Route::post('cbt-sync', [CbtIntegrationController::class, 'sync'])->name('cbt.sync');
             Route::get('cbt-sync/test-connection', [CbtIntegrationController::class, 'testConnection'])->name('cbt.test-connection');

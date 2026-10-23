@@ -35,7 +35,7 @@ class PiketScheduleController extends Controller
         }
 
         // List guru aktif untuk modal tambah/edit
-        $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah']))
+        $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum']))
             ->operationalPersonnel()
             ->where('is_active', true)
             ->orderBy('name')

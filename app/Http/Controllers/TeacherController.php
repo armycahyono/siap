@@ -23,7 +23,7 @@ class TeacherController extends Controller
         $academicYear = $request->query('academic_year', $setting->academic_year);
         $semester = $request->query('semester', $setting->semester);
 
-        $teachingRoles = ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah'];
+        $teachingRoles = ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum'];
 
         $query = User::whereHas('role', fn ($q) => $q->whereIn('slug', $teachingRoles))
             ->with([
@@ -53,7 +53,7 @@ class TeacherController extends Controller
 
         $teachers = $query->orderBy('name')->paginate(15)->withQueryString();
 
-        $allTeachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah']))
+        $allTeachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum']))
             ->orderBy('name')
             ->get();
 

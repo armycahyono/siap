@@ -196,9 +196,58 @@ class User extends Authenticatable
             || $this->isPrincipal();
     }
 
+    /**
+     * Get slugs of roles that are eligible for teaching duties and scheduling.
+     *
+     * @return array<int, string>
+     */
+    public static function getTeachingRoleSlugs(): array
+    {
+        return ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum'];
+    }
+
     public function isTeacher(): bool
     {
-        return $this->hasRole('guru');
+        return $this->hasRole(['guru', 'operator_kurikulum']) || $this->hasTeachingDuty();
+    }
+
+    public function isOperator(): bool
+    {
+        return $this->hasRole([
+            'operator_kurikulum',
+            'operator_kesiswaan',
+            'operator_sarpras',
+            'operator_humas',
+            'operator',
+        ]);
+    }
+
+    public function isOperatorKurikulum(): bool
+    {
+        return $this->hasRole('operator_kurikulum');
+    }
+
+    public function isOperatorKesiswaan(): bool
+    {
+        return $this->hasRole('operator_kesiswaan');
+    }
+
+    public function isOperatorSarpras(): bool
+    {
+        return $this->hasRole('operator_sarpras');
+    }
+
+    public function isOperatorHumas(): bool
+    {
+        return $this->hasRole('operator_humas');
+    }
+
+    public function canManageCurriculum(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->isWakaKurikulum()
+            || $this->hasRole('operator_kurikulum')
+            || $this->hasPermission('operate_curriculum');
     }
 
     public function hasTeachingDuty(): bool

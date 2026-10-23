@@ -119,6 +119,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link {{ $typeFilter === 'operator' ? 'active bg-teal text-white fw-bold shadow-sm' : 'text-dark' }}" 
+                   href="{{ route('users.index', array_merge(request()->except('page'), ['type' => 'operator'])) }}">
+                    <i class="ti ti-headset me-1"></i> Operator Khusus ({{ $operatorCount }})
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link {{ $typeFilter === 'staf' ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" 
                    href="{{ route('users.index', array_merge(request()->except('page'), ['type' => 'staf'])) }}">
                     <i class="ti ti-briefcase me-1"></i> Staf & Tendik
@@ -229,7 +235,7 @@
                     </td>
                     <td>
                         <div class="d-flex align-items-center">
-                            <span class="avatar avatar-md rounded-circle me-3 {{ $u->isSuperAdmin() ? 'bg-danger-lt text-danger fw-bold border border-danger-subtle' : 'bg-primary-lt text-primary fw-bold' }}">
+                            <span class="avatar avatar-md rounded-circle me-3 {{ $u->isSuperAdmin() ? 'bg-danger-lt text-danger fw-bold border border-danger-subtle' : ($u->isOperator() ? 'bg-teal-lt text-teal fw-bold border border-teal-subtle' : 'bg-primary-lt text-primary fw-bold') }}">
                                 {{ strtoupper(substr($u->name, 0, 2)) }}
                             </span>
                             <div>
@@ -262,6 +268,11 @@
                                     'supervisor' => 'bg-indigo text-white shadow-xs',
                                     'kepala_sekolah' => 'bg-dark text-white shadow-xs',
                                     'guru' => 'bg-blue-lt border border-blue-subtle text-blue fw-bold',
+                                    'operator_kurikulum' => 'bg-teal text-white shadow-xs',
+                                    'operator_kesiswaan' => 'bg-cyan text-white shadow-xs',
+                                    'operator_sarpras' => 'bg-orange text-white shadow-xs',
+                                    'operator_humas' => 'bg-pink text-white shadow-xs',
+                                    'operator' => 'bg-teal-lt border border-teal-subtle text-teal fw-bold',
                                     default => 'bg-secondary-lt border text-secondary fw-bold'
                                 };
                             @endphp

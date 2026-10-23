@@ -67,7 +67,7 @@ class CbtSyncService
                 'departments' => Department::where('is_active', true)->count(),
                 'classrooms' => Classroom::where('is_active', true)->count(),
                 'subjects' => Subject::where('is_active', true)->count(),
-                'teachers' => User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'kepala_sekolah', 'supervisor']))->count(),
+                'teachers' => User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'kepala_sekolah', 'supervisor', 'operator_kurikulum']))->count(),
                 'active_students' => Student::where('status', 'aktif')->count(),
             ],
             'cbt' => [
@@ -231,7 +231,7 @@ class CbtSyncService
     public function syncGuru(): array
     {
         return DB::connection('cbt')->transaction(function () {
-            $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'kepala_sekolah', 'supervisor']))->get();
+            $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'kepala_sekolah', 'supervisor', 'operator_kurikulum']))->get();
 
             $created = 0;
             $updated = 0;

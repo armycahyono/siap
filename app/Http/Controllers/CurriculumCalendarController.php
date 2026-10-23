@@ -272,7 +272,7 @@ class CurriculumCalendarController extends Controller
                         'short_name' => $u->formatted_short_name,
                         'role' => $u->pivot->role ?? 'assignee',
                     ]),
-                    'can_edit' => auth()->user()?->hasRole(['super_admin', 'waka_kurikulum']) || $event->created_by === auth()->id(),
+                    'can_edit' => auth()->user()?->hasRole(['super_admin', 'waka_kurikulum', 'operator_kurikulum']) || $event->created_by === auth()->id(),
                 ],
             ];
         }

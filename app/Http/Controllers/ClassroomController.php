@@ -45,7 +45,7 @@ class ClassroomController extends Controller
 
         $gradeLevels = GradeLevel::orderBy('order_index')->get();
         $departments = Department::where('is_active', true)->orderBy('code')->get();
-        $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum']))
+        $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor', 'waka_kurikulum', 'operator_kurikulum']))
             ->where('is_active', true)
             ->orderBy('name')
             ->get();

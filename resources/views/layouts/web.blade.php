@@ -530,7 +530,7 @@
                             </a>
                         </li>
 
-                        @if(auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
+                        @if(auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum']))
                         <li class="nav-item {{ request()->routeIs('kurikulum.timetables.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.timetables.index') }}">
                                 <span class="nav-link-icon d-inline-block">
@@ -563,7 +563,7 @@
                         </li>
                         @endif
 
-                        @if(auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
+                        @if(auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum']))
                         <li class="nav-item {{ request()->routeIs('kurikulum.cbt.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.cbt.index') }}">
                                 <span class="nav-link-icon d-inline-block">

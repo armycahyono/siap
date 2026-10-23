@@ -38,6 +38,13 @@ class RoleAndPermissionSeeder extends Seeder
             ['slug' => 'manage_piket_schedules', 'name' => 'Kelola Master Jadwal & Persetujuan Piket', 'group' => 'Piket'],
             ['slug' => 'view_piket_reports', 'name' => 'Rekapitulasi & Ekspor Laporan Piket', 'group' => 'Piket'],
             ['slug' => 'manage_piket_settings', 'name' => 'Pengaturan Bot Telegram Piket', 'group' => 'Piket'],
+
+            // Bidang Operasional Waka
+            ['slug' => 'operate_curriculum', 'name' => 'Operasional Kurikulum & Jadwal', 'group' => 'Kurikulum'],
+            ['slug' => 'operate_cbt', 'name' => 'Sinkronisasi & Operasional CBT', 'group' => 'Kurikulum'],
+            ['slug' => 'operate_student_affairs', 'name' => 'Operasional Kesiswaan & Kedisiplinan', 'group' => 'Kesiswaan'],
+            ['slug' => 'operate_sarpras', 'name' => 'Operasional Sarana & Prasarana', 'group' => 'Sarpras'],
+            ['slug' => 'operate_humas', 'name' => 'Operasional Humas & Kemitraan DUDI', 'group' => 'Humas'],
         ];
 
         foreach ($permissions as $p) {
@@ -109,6 +116,59 @@ class RoleAndPermissionSeeder extends Seeder
                     'manage_piket_cases',
                     'manage_piket_schedules',
                     'view_piket_reports',
+                ],
+            ],
+            [
+                'name' => 'Operator Kurikulum',
+                'slug' => 'operator_kurikulum',
+                'description' => 'Membantu operasional kurikulum, jadwal pelajaran, kalender kegiatan, dan integrasi CBT',
+                'permissions' => [
+                    'manage_master_data',
+                    'manage_schedules',
+                    'upload_rpp',
+                    'view_own_supervision',
+                    'export_reports',
+                    'operate_curriculum',
+                    'operate_cbt',
+                ],
+            ],
+            [
+                'name' => 'Operator Kesiswaan',
+                'slug' => 'operator_kesiswaan',
+                'description' => 'Membantu operasional kesiswaan, catatan kasus & kejadian siswa, dan kedisiplinan',
+                'permissions' => [
+                    'access_piket',
+                    'operate_piket',
+                    'manage_piket_cases',
+                    'view_piket_reports',
+                    'operate_student_affairs',
+                ],
+            ],
+            [
+                'name' => 'Operator Sarpras',
+                'slug' => 'operator_sarpras',
+                'description' => 'Membantu operasional sarana prasarana, inventaris alat & ruang kelas/lab',
+                'permissions' => [
+                    'export_reports',
+                    'operate_sarpras',
+                ],
+            ],
+            [
+                'name' => 'Operator Humas',
+                'slug' => 'operator_humas',
+                'description' => 'Membantu operasional kemitraan industri (DUDI), penempatan PKL/Prakerin, dan tracer study',
+                'permissions' => [
+                    'export_reports',
+                    'operate_humas',
+                ],
+            ],
+            [
+                'name' => 'Operator Dapodik / TU',
+                'slug' => 'operator',
+                'description' => 'Membantu operasional administrasi sekolah, pendataan pokok GTK dan siswa',
+                'permissions' => [
+                    'manage_master_data',
+                    'export_reports',
                 ],
             ],
         ];

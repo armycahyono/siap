@@ -75,7 +75,7 @@ class SmartSearchController extends Controller
      */
     protected function searchTeachers(string $query): array
     {
-        $teachingRoles = ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah'];
+        $teachingRoles = ['guru', 'supervisor', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum'];
 
         $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', $teachingRoles))
             ->where(function ($q) use ($query) {

@@ -30,6 +30,7 @@ class UserManagementController extends Controller
         $totalUsers = User::count();
         $superAdminCount = User::whereHas('role', fn ($q) => $q->where('slug', 'super_admin'))->count();
         $guruCount = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'supervisor', 'kepala_sekolah']))->count();
+        $operatorCount = User::whereHas('role', fn ($q) => $q->where('slug', 'like', 'operator%'))->count();
         $activeCount = User::where('is_active', true)->count();
         $inactiveCount = User::where('is_active', false)->count();
 
@@ -58,8 +59,10 @@ class UserManagementController extends Controller
             $query->whereHas('role', fn ($q) => $q->where('slug', 'super_admin'));
         } elseif ($typeFilter === 'guru') {
             $query->whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'supervisor', 'kepala_sekolah']));
+        } elseif ($typeFilter === 'operator') {
+            $query->whereHas('role', fn ($q) => $q->where('slug', 'like', 'operator%'));
         } elseif ($typeFilter === 'staf') {
-            $query->whereDoesntHave('role', fn ($q) => $q->where('slug', 'super_admin'))
+            $query->whereDoesntHave('role', fn ($q) => $q->where('slug', 'super_admin')->orWhere('slug', 'like', 'operator%'))
                 ->where(function ($q) {
                     $q->where('position', 'like', '%administrasi%')
                         ->orWhere('position', 'like', '%satpam%')
@@ -93,6 +96,7 @@ class UserManagementController extends Controller
             'totalUsers',
             'superAdminCount',
             'guruCount',
+            'operatorCount',
             'activeCount',
             'inactiveCount',
             'onlineUserIds'
