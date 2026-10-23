@@ -293,8 +293,8 @@ class SchoolActivityMasterTest extends TestCase
 
         $response = $this->actingAs($waka)->get(route('kurikulum.calendar.index'));
         $response->assertStatus(200);
-        $response->assertSee('Acuan Kegiatan');
+        $response->assertSee('Agenda Kegiatan');
         $response->assertSee('Belum Terjadwal');
-        $response->assertSee('Pilih dari Acuan Kegiatan Sekolah');
+        $response->assertSee('Pilih dari Agenda Kegiatan');
     }
 }

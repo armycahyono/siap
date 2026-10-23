@@ -16,7 +16,7 @@
     }
 @endphp
 
-@section('title', 'Kalender Pendidikan & Kegiatan')
+@section('title', 'Kalender Sekolah')
 
 @push('styles')
 <!-- FullCalendar 6 CDN -->
@@ -304,7 +304,7 @@
 <div class="row g-3 mb-4 align-items-center justify-content-between">
     <div class="col-md-6">
         <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-event me-2"></i> Kalender Pendidikan &amp; Kegiatan
+            <i class="ti ti-calendar-event me-2"></i> Kalender Sekolah
         </h2>
         <div class="text-muted small">
             Acuan terpadu pelaksanaan program akademik, hari efektif, libur resmi Kaldik, supervisi, dan penugasan guru TP {{ $academicYear }}.
@@ -323,7 +323,7 @@
         @endif
         @if(auth()->user()->canViewAllSchedules())
             <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateModal()">
-                <i class="ti ti-plus me-1"></i> Tambah Kegiatan / Agenda
+                <i class="ti ti-plus me-1"></i> Tambah Agenda Kegiatan
             </button>
         @endif
     </div>
@@ -334,14 +334,14 @@
     <!-- Sidebar Kiri: Filters & Navigation (30%) -->
     <div class="col-lg-3">
         <div class="sticky-filter-card">
-            <!-- Card Agenda List (Menggantikan Card Filter Agenda) -->
+            <!-- Card Kegiatan List (Menggantikan Card Filter Agenda) -->
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h4 class="card-title fw-bold text-dark m-0">
-                            <i class="ti ti-list-details me-1 text-primary"></i> Agenda List
+                            <i class="ti ti-list-details me-1 text-primary"></i> Kegiatan List
                         </h4>
-                        <span class="badge bg-primary-lt text-primary fw-bold" id="agendaListCount">0 Agenda</span>
+                        <span class="badge bg-primary-lt text-primary fw-bold" id="agendaListCount">0 Kegiatan</span>
                     </div>
 
                     <!-- Filter Scope Pills: Bulan | Minggu | Tahun -->
@@ -361,7 +361,7 @@
                     <div id="sidebarAgendaList" class="d-flex flex-column gap-2" style="max-height: 380px; overflow-y: auto;">
                         <div class="text-center py-4 text-muted small">
                             <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-                            <div>Memuat agenda sekolah...</div>
+                            <div>Memuat kegiatan sekolah...</div>
                         </div>
                     </div>
                 </div>
@@ -395,12 +395,12 @@
                 </div>
             </div>
 
-            <!-- Acuan Kegiatan Sekolah Card -->
+            <!-- Acuan Agenda Kegiatan Card -->
             <div class="card border-0 shadow-sm mt-3">
                 <div class="card-body p-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <h5 class="fw-bold text-dark mb-0">
-                            <i class="ti ti-calendar-star me-1 text-primary"></i> Kegiatan Sekolah
+                            <i class="ti ti-calendar-star me-1 text-primary"></i> Agenda Kegiatan
                         </h5>
                         @if(($unscheduledActivitiesCount ?? 0) > 0)
                             <span class="badge bg-warning-lt text-warning fw-bold">{{ $unscheduledActivitiesCount }} Belum Terjadwal</span>
@@ -409,10 +409,10 @@
                         @endif
                     </div>
                     <div class="small text-muted mb-2">
-                        Acuan kegiatan sekolah (PKL, KI, UKK, ANBK, Supervisi, dll).
+                        Acuan agenda kegiatan sekolah (PKL, KI, UKK, ANBK, Supervisi, dll).
                     </div>
                     <a href="{{ route('kurikulum.activities.index', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-primary w-100 fw-bold">
-                        <i class="ti ti-list-check me-1"></i> Buka Kegiatan Sekolah
+                        <i class="ti ti-list-check me-1"></i> Buka Agenda Kegiatan
                     </a>
                 </div>
             </div>
@@ -442,7 +442,7 @@
 
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title fw-bold" id="modalEventTitle">
-                    <i class="ti ti-calendar-plus me-1"></i> Tambah Kegiatan Sekolah
+                    <i class="ti ti-calendar-plus me-1"></i> Tambah Agenda Kegiatan
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -450,11 +450,11 @@
                 <!-- 1. INFORMASI DASAR & ACUAN -->
                 <div class="mb-3 p-3 bg-light rounded-3 border border-light-subtle" id="sectionSelectMasterActivity">
                     <label class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
-                        <span><i class="ti ti-calendar-star text-primary me-1"></i> Pilih dari Acuan Kegiatan Sekolah</span>
+                        <span><i class="ti ti-calendar-star text-primary me-1"></i> Pilih dari Agenda Kegiatan</span>
                         <span class="text-muted small fw-normal">Opsional</span>
                     </label>
                     <select id="select_school_activity" class="form-select form-select-sm fw-semibold" onchange="onSelectSchoolActivity(this)">
-                        <option value="">-- Pilih kegiatan resmi sekolah --</option>
+                        <option value="">-- Pilih dari agenda kegiatan --</option>
                         @foreach($schoolActivities as $sa)
                             <option value="{{ $sa->id }}" 
                                 data-name="{{ $sa->name }}"
@@ -1109,7 +1109,7 @@
         filtered.sort((a, b) => new Date(a.start) - new Date(b.start));
 
         if (countEl) {
-            countEl.textContent = `${filtered.length} Agenda`;
+            countEl.textContent = `${filtered.length} Kegiatan`;
         }
 
         if (filtered.length === 0) {
@@ -1117,7 +1117,7 @@
             listEl.innerHTML = `
                 <div class="text-center py-4 text-muted small">
                     <i class="ti ti-calendar-off fs-2 mb-1 d-block opacity-50"></i>
-                    Tidak ada agenda pada ${scopeLabel}.
+                    Tidak ada kegiatan pada ${scopeLabel}.
                 </div>
             `;
             return;
@@ -1381,7 +1381,7 @@
         document.getElementById('event_id').value = '';
         document.getElementById('select_school_activity').value = '';
         document.getElementById('input_school_activity_id').value = '';
-        document.getElementById('modalEventTitle').innerHTML = '<i class="ti ti-calendar-plus me-1"></i> Tambah Kegiatan Sekolah';
+        document.getElementById('modalEventTitle').innerHTML = '<i class="ti ti-calendar-plus me-1"></i> Tambah Agenda Kegiatan';
         document.getElementById('btnSubmitEvent').innerHTML = '<i class="ti ti-check me-1"></i> Simpan Kegiatan';
 
         const todayStr = dateStr || new Date().toISOString().split('T')[0];
@@ -1573,7 +1573,7 @@
 
         document.getElementById('event_method').value = 'PUT';
         document.getElementById('event_id').value = dbId;
-        document.getElementById('modalEventTitle').innerHTML = '<i class="ti ti-edit me-1"></i> Edit Kegiatan Sekolah';
+        document.getElementById('modalEventTitle').innerHTML = '<i class="ti ti-edit me-1"></i> Edit Agenda Kegiatan';
         document.getElementById('btnSubmitEvent').innerHTML = '<i class="ti ti-check me-1"></i> Simpan Perubahan';
 
         const actId = props.school_activity_id || '';

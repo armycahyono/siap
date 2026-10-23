@@ -547,7 +547,7 @@
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-calendar-event fs-2"></i>
                                 </span>
-                                <span class="nav-link-title">Kalender Pendidikan & Kegiatan</span>
+                                <span class="nav-link-title">Kalender Sekolah</span>
                             </a>
                         </li>
 

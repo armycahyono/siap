@@ -25,7 +25,7 @@
     </div>
     <div class="col-auto d-flex gap-2">
         <a href="{{ route('kurikulum.calendar.index', ['academic_year' => $academicYear]) }}" class="btn btn-outline-primary shadow-sm fw-semibold">
-            <i class="ti ti-calendar-event me-1"></i> Buka Kalender Pendidikan &amp; Kegiatan
+            <i class="ti ti-calendar-event me-1"></i> Buka Kalender Sekolah
         </a>
         @if(auth()->user()->canViewAllSchedules())
         <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateActivityModal()">
