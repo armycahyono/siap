@@ -334,6 +334,7 @@
         <form id="formActivity" method="POST" action="{{ route('kurikulum.activities.store') }}" class="modal-content border-0 shadow">
             @csrf
             <div id="methodSpoofing"></div>
+            <input type="hidden" name="academic_year" value="{{ $academicYear }}">
 
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title fw-bold" id="modalActivityTitle">
@@ -342,11 +343,12 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
+                <!-- 1. INFORMASI DASAR -->
                 <div class="row g-3 mb-3">
                     <div class="col-md-8">
-                        <label class="form-label required fw-bold">Nama Kegiatan</label>
+                        <label class="form-label required fw-bold">Nama / Judul Kegiatan</label>
                         <input type="text" name="name" id="input_name" class="form-control" 
-                               placeholder="Contoh: Praktik Kerja Lapangan (PKL) / Kunjungan Industri (KI)" required>
+                               placeholder="Contoh: Praktik Kerja Lapangan (PKL) / Kunjungan Industri (KI) / Ujian Sekolah" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Kode / Singkatan</label>
@@ -358,42 +360,288 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label required fw-bold">Kategori Kegiatan</label>
-                        <select name="category" id="input_category" class="form-select" required>
-                            @foreach($categories as $key => $cat)
+                        <select name="category" id="input_category" class="form-select" required onchange="onCategoryChange(this.value)">
+                            @foreach($eventCategories as $key => $cat)
                                 <option value="{{ $key }}" data-color="{{ $cat['color'] }}">{{ $cat['label'] }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-bold">Sasaran Peserta</label>
-                        <input type="text" name="target_participant" id="input_target_participant" class="form-control" 
-                               placeholder="Contoh: Kelas XI & XII / Seluruh Siswa / Dewan Guru">
+                        <label class="form-label fw-bold">Lokasi / Tempat (Opsional)</label>
+                        <input type="text" name="location" id="input_location" class="form-control" placeholder="Contoh: Bengkel TKRO / Lab RPL / Aula / DUDI">
                     </div>
                 </div>
 
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Estimasi Durasi (Hari)</label>
-                        <input type="number" name="default_duration_days" id="input_duration" class="form-control" 
-                               value="1" min="1">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Warna Label / Kalender</label>
-                        <input type="color" name="color" id="input_color" class="form-control form-control-color w-100" 
-                               value="#0284c7" title="Pilih warna untuk kalender">
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" name="is_mandatory" id="input_is_mandatory" value="1" checked>
-                            <label class="form-check-label fw-bold" for="input_is_mandatory">Kegiatan Wajib</label>
+                <!-- 2. WAKTU PELAKSANAAN & STATUS LIBUR -->
+                <div class="card border border-primary-subtle shadow-none bg-light mb-3">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center mb-2 pb-1 border-bottom border-primary-subtle">
+                            <i class="ti ti-calendar-time text-primary fs-3 me-2"></i>
+                            <h6 class="mb-0 fw-bold text-dark">Waktu Pelaksanaan &amp; Status Libur</h6>
+                        </div>
+
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark mb-1">Tanggal Mulai (Opsional untuk Penjadwalan)</label>
+                                <input type="date" name="start_date" id="input_start_date" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark mb-1">Tanggal Selesai (Jika Berkelanjutan)</label>
+                                <input type="date" name="end_date" id="input_end_date" class="form-control form-control-sm">
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="p-2 bg-white rounded border">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="input_is_holiday" name="is_holiday" value="1" onchange="onHolidayToggle(this.checked)">
+                                        <label class="form-check-label fw-bold small text-danger" for="input_is_holiday">
+                                            <i class="ti ti-calendar-off me-1"></i> Libur Sekolah Penuh (Bebas KBM &amp; Presensi)
+                                        </label>
+                                    </div>
+                                    <div class="text-muted small ps-4 mt-1" style="font-size: 0.72rem; line-height: 1.2;">
+                                        Seluruh warga sekolah bebas KBM dan bebas presensi. Blok peserta kegiatan otomatis disembunyikan.
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- CONTAINER PESERTA & PIHAK TIDAK TERLIBAT (Disembunyikan jika Libur Sekolah Penuh) -->
+                <div id="section_participants_and_impacts">
+                    <!-- 3. PESERTA KEGIATAN -->
+                    <div class="card border border-info-subtle shadow-none bg-azure-lt mb-3">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center mb-3 pb-1 border-bottom border-info-subtle">
+                                <i class="ti ti-users-group text-info fs-3 me-2"></i>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">Peserta Kegiatan (Yang Terlibat Langsung)</h6>
+                                    <div class="text-muted small" style="font-size: 0.73rem;">GTK dan siswa yang ditugaskan/terlibat langsung dalam pelaksanaan kegiatan.</div>
+                                </div>
+                            </div>
+
+                            <!-- A. GTK yang Ditugaskan -->
+                            <div class="p-3 bg-white rounded-3 border mb-3">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                    <div class="fw-bold text-dark small d-flex align-items-center">
+                                        <i class="ti ti-user-check text-success me-1 fs-3"></i> GTK yang Ditugaskan (Panitia / Pengawas / Pembimbing)
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-primary py-0 px-2 fw-semibold" style="font-size: 0.72rem;" onclick="toggleSelectGtk('teachers')">
+                                            <i class="ti ti-check me-1"></i> Semua Guru
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info py-0 px-2 fw-semibold" style="font-size: 0.72rem;" onclick="toggleSelectGtk('staff')">
+                                            <i class="ti ti-check me-1"></i> Semua Staf
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary py-0 px-2 fw-semibold" style="font-size: 0.72rem;" onclick="toggleSelectGtk('none')">
+                                            Kosongkan
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted mb-1">Status Mengajar GTK Terlibat:</label>
+                                        <select name="teacher_impact" id="input_teacher_impact" class="form-select form-select-sm">
+                                            <option value="bebas_mengajar_tugas">Gugur Kewajiban Mengajar (Tugas Khusus / Panitia / Pengawas)</option>
+                                            <option value="normal">Tetap Mengajar Reguler Sesuai Jadwal</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted mb-1">Jam Pelaksanaan Tugas GTK (WIB):</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="time" name="gtk_checkin_time" id="input_gtk_checkin_time" class="form-control form-control-sm" value="07:00">
+                                            <span class="input-group-text">s/d</span>
+                                            <input type="time" name="gtk_checkout_time" id="input_gtk_checkout_time" class="form-control form-control-sm" value="13:30">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Checklist GTK -->
+                                <div class="border rounded p-2 bg-light" style="max-height: 150px; overflow-y: auto;">
+                                    <div class="row g-2">
+                                        @foreach($allGtk as $gtk)
+                                            <div class="col-md-6">
+                                                <label class="form-check mb-1">
+                                                    <input class="form-check-input user-assign-cb {{ $gtk->isStaff() ? 'user-staff-cb' : 'user-teacher-cb' }}" 
+                                                           type="checkbox" name="user_ids[]" value="{{ $gtk->id }}" onchange="onGtkCheckboxChange()">
+                                                    <span class="form-check-label small text-truncate d-block" title="{{ $gtk->name }} ({{ $gtk->position ?? ($gtk->isStaff() ? 'Staf' : 'Guru') }})">
+                                                        {{ $gtk->name }}
+                                                        <span class="badge {{ $gtk->isStaff() ? 'bg-secondary-lt' : 'bg-primary-lt' }} ms-1" style="font-size: 0.65rem;">
+                                                            {{ $gtk->isStaff() ? 'Staf' : 'Guru' }}
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- B. Siswa yang Terlibat -->
+                            <div class="p-3 bg-white rounded-3 border">
+                                <div class="fw-bold text-dark small mb-2 d-flex align-items-center">
+                                    <i class="ti ti-school text-primary me-1 fs-3"></i> Siswa yang Terlibat Langsung
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-12" id="col_target_audience">
+                                        <label class="form-label small fw-bold text-muted mb-1">Pilih Kelompok Siswa Terlibat:</label>
+                                        <select name="target_audience" id="input_target_audience" class="form-select form-select-sm" onchange="onTargetAudienceChange(this.value)">
+                                            <option value="guru_staf" selected>Tidak Ada Siswa Terlibat (Hanya GTK)</option>
+                                            <option value="semua">Semua Siswa (Seluruh Sekolah)</option>
+                                            <option value="tingkat">Tingkat Tertentu (Contoh: Hanya Kelas XII)</option>
+                                            <option value="rombel">Rombel Tertentu (Pilih Kelas Spesifik)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6" id="box_student_time" style="display: none;">
+                                        <label class="form-label small fw-bold text-muted mb-1">Jam Pelaksanaan Siswa (WIB):</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="time" name="student_start_time" id="input_student_start_time" class="form-control form-control-sm" value="07:00">
+                                            <span class="input-group-text">s/d</span>
+                                            <input type="time" name="student_end_time" id="input_student_end_time" class="form-control form-control-sm" value="12:00">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Opsi Tingkat Tertentu -->
+                                <div class="mb-2" id="box_target_tingkat" style="display: none;">
+                                    <label class="form-label small fw-bold text-dark mb-1">Pilih Tingkat yang Terlibat:</label>
+                                    <div class="d-flex gap-3 flex-wrap bg-light p-2 rounded border">
+                                        @foreach($gradeLevels as $gl)
+                                            <label class="form-check form-check-inline mb-0">
+                                                <input class="form-check-input grade-level-cb" type="checkbox" name="target_grade_levels[]" value="{{ $gl->level }}">
+                                                <span class="form-check-label small fw-semibold">Tingkat {{ $gl->name }} (Kelas {{ $gl->level }})</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <!-- Opsi Rombel Tertentu -->
+                                <div class="mb-2" id="box_target_rombel" style="display: none;">
+                                    <label class="form-label small fw-bold text-dark mb-1">Pilih Rombel Kelas yang Terlibat:</label>
+                                    <div class="bg-light p-2 rounded border" style="max-height: 120px; overflow-y: auto;">
+                                        <div class="row g-1">
+                                            @foreach($classrooms as $cls)
+                                                <div class="col-md-4 col-sm-6">
+                                                    <label class="form-check mb-1">
+                                                        <input class="form-check-input classroom-target-cb" type="checkbox" name="target_classroom_ids[]" value="{{ $cls->id }}">
+                                                        <span class="form-check-label small text-truncate d-block" title="{{ $cls->name }}">
+                                                            {{ $cls->name }}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mt-1" id="box_student_learning_impact" style="display: none;">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted mb-1">Status KBM bagi Siswa Terlibat:</label>
+                                        <select name="learning_impact" id="input_learning_impact" class="form-select form-select-sm" onchange="evaluateStaffAndDisengagedVisibility()">
+                                            <option value="bebas_kbm_kegiatan">Bebas KBM (Ujian / PKL / KI / Gladi / Dispensasi Tugas Khusus)</option>
+                                            <option value="pembelajaran_daring">Pembelajaran Daring</option>
+                                            <option value="normal">KBM Normal (Sesuai Jadwal Penuh)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. GURU DAN SISWA YANG TIDAK TERLIBAT KEGIATAN -->
+                    <div class="card border border-warning-subtle shadow-none bg-yellow-lt mb-3" id="section_disengaged_impacts">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center mb-3 pb-1 border-bottom border-warning-subtle">
+                                <i class="ti ti-shield-alert text-warning fs-3 me-2"></i>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">Guru, Staf, &amp; Siswa yang TIDAK Terlibat Kegiatan</h6>
+                                    <div class="text-muted small" style="font-size: 0.73rem;">Penetapan status bagi warga sekolah yang tidak bertugas/terlibat dalam agenda di atas.</div>
+                                </div>
+                            </div>
+
+                            <!-- Baris 1: Guru yang Tidak Terlibat -->
+                            <div class="p-2 bg-white rounded-3 border mb-2" id="row_disengaged_teachers">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-3">
+                                        <span class="fw-bold text-dark small"><i class="ti ti-user-x text-primary me-1"></i> Guru Lain:</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select name="disengaged_teacher_impact" id="input_disengaged_teacher_impact" class="form-select form-select-sm" onchange="onDisengagedTeacherImpactChange(this.value)">
+                                            <option value="masuk_normal">Masuk Normal</option>
+                                            <option value="pulang_cepat">Pulang Cepat</option>
+                                            <option value="libur">Libur</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5" id="box_disengaged_teacher_period" style="display: none;">
+                                        <select name="disengaged_teacher_max_period" id="input_disengaged_teacher_max_period" class="form-select form-select-sm">
+                                            <option value="">-- Pulang Jam Pelajaran Ke- --</option>
+                                            @foreach($periodMap as $pNum => $pData)
+                                                <option value="{{ $pNum }}">{{ $pData['label'] }} ({{ $pData['time'] }} WIB)</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Baris 2: Staf TU yang Tidak Terlibat -->
+                            <div class="p-2 bg-white rounded-3 border mb-2" id="row_disengaged_staff">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-3">
+                                        <span class="fw-bold text-dark small"><i class="ti ti-briefcase text-secondary me-1"></i> Staf TU:</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select name="disengaged_staff_impact" id="input_disengaged_staff_impact" class="form-select form-select-sm" onchange="onDisengagedStaffImpactChange(this.value)">
+                                            <option value="masuk_normal">Masuk Normal</option>
+                                            <option value="pulang_cepat" id="opt_staff_pulang_cepat">Pulang Cepat</option>
+                                            <option value="libur" id="opt_staff_libur">Libur</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5" id="box_disengaged_staff_time" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">Pulang:</span>
+                                            <input type="time" name="disengaged_staff_dismissal_time" id="input_disengaged_staff_dismissal_time" class="form-control form-control-sm" value="12:00">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Baris 3: Siswa Tingkat/Kelas Lain yang Tidak Terlibat -->
+                            <div class="p-2 bg-white rounded-3 border" id="row_disengaged_students">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-3">
+                                        <span class="fw-bold text-dark small"><i class="ti ti-mood-empty text-info me-1"></i> Siswa Lain:</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <select name="disengaged_student_impact" id="input_disengaged_student_impact" class="form-select form-select-sm" onchange="onDisengagedStudentImpactChange(this.value)">
+                                            <option value="kbm_normal">KBM Normal</option>
+                                            <option value="pembelajaran_daring">Pembelajaran Daring</option>
+                                            <option value="pulang_cepat">Pulang Cepat</option>
+                                            <option value="bebas_kbm">Bebas KBM</option>
+                                            <option value="libur_khusus">Libur Khusus</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5" id="box_disengaged_student_period" style="display: none;">
+                                        <select name="disengaged_student_max_period" id="input_disengaged_student_max_period" class="form-select form-select-sm">
+                                            <option value="">-- KBM Selesai Jam Ke- --</option>
+                                            @foreach($periodMap as $pNum => $pData)
+                                                <option value="{{ $pNum }}">{{ $pData['label'] }} ({{ $pData['time'] }} WIB)</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. CATATAN & DESKRIPSI KEGIATAN -->
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Deskripsi / Ruang Lingkup Kegiatan</label>
-                    <textarea name="description" id="input_description" class="form-control" rows="3" 
-                              placeholder="Keterangan tujuan, pelaksana, atau teknis kegiatan..."></textarea>
+                    <label class="form-label fw-bold">Deskripsi / Petunjuk Pelaksanaan (Opsional)</label>
+                    <textarea name="description" id="input_description" class="form-control" rows="2" placeholder="Informasi instruksi pelaksanaan, link materi, agenda pembahasan, atau kriteria tugas..."></textarea>
                 </div>
             </div>
             <div class="modal-footer bg-light">
@@ -477,6 +725,139 @@
 </div>
 
 <script>
+    function onCategoryChange(category) {
+        if (['lhb', 'lu', 'ls1', 'ls2', 'cb', 'lhr'].includes(category)) {
+            const holInput = document.getElementById('input_is_holiday');
+            if (holInput) {
+                holInput.checked = true;
+                onHolidayToggle(true);
+            }
+        }
+    }
+
+    function onHolidayToggle(isHoliday) {
+        const participantsSection = document.getElementById('section_participants_and_impacts');
+        if (participantsSection) {
+            participantsSection.style.display = isHoliday ? 'none' : 'block';
+        }
+        if (isHoliday) {
+            const lImpact = document.getElementById('input_learning_impact');
+            if (lImpact) {
+                lImpact.value = 'libur_khusus';
+            }
+        }
+        evaluateStaffAndDisengagedVisibility();
+    }
+
+    function toggleSelectGtk(type) {
+        if (type === 'teachers') {
+            document.querySelectorAll('.user-teacher-cb').forEach(cb => cb.checked = true);
+        } else if (type === 'staff') {
+            document.querySelectorAll('.user-staff-cb').forEach(cb => cb.checked = true);
+        } else if (type === 'none') {
+            document.querySelectorAll('.user-assign-cb').forEach(cb => cb.checked = false);
+        }
+        evaluateStaffAndDisengagedVisibility();
+    }
+
+    function onGtkCheckboxChange() {
+        evaluateStaffAndDisengagedVisibility();
+    }
+
+    function onTargetAudienceChange(audience) {
+        const boxTingkat = document.getElementById('box_target_tingkat');
+        const boxRombel = document.getElementById('box_target_rombel');
+        const boxStudentTime = document.getElementById('box_student_time');
+        const colTargetAudience = document.getElementById('col_target_audience');
+        const boxStudentLearningImpact = document.getElementById('box_student_learning_impact');
+
+        const isNoStudents = (audience === 'guru_staf');
+
+        if (boxTingkat) boxTingkat.style.display = (audience === 'tingkat') ? 'block' : 'none';
+        if (boxRombel) boxRombel.style.display = (audience === 'rombel') ? 'block' : 'none';
+
+        if (boxStudentTime) {
+            boxStudentTime.style.display = isNoStudents ? 'none' : 'block';
+        }
+        if (colTargetAudience) {
+            colTargetAudience.className = isNoStudents ? 'col-12' : 'col-md-6';
+        }
+        if (boxStudentLearningImpact) {
+            boxStudentLearningImpact.style.display = isNoStudents ? 'none' : 'block';
+        }
+
+        evaluateStaffAndDisengagedVisibility();
+    }
+
+    function onDisengagedTeacherImpactChange(impact) {
+        const box = document.getElementById('box_disengaged_teacher_period');
+        if (box) {
+            box.style.display = (impact === 'pulang_cepat') ? 'block' : 'none';
+        }
+    }
+
+    function onDisengagedStaffImpactChange(impact) {
+        const box = document.getElementById('box_disengaged_staff_time');
+        if (box) {
+            box.style.display = (impact === 'pulang_cepat') ? 'block' : 'none';
+        }
+    }
+
+    function onDisengagedStudentImpactChange(impact) {
+        const box = document.getElementById('box_disengaged_student_period');
+        if (box) {
+            box.style.display = (impact === 'pulang_cepat') ? 'block' : 'none';
+        }
+        evaluateStaffAndDisengagedVisibility();
+    }
+
+    function evaluateStaffAndDisengagedVisibility() {
+        const audience = document.getElementById('input_target_audience') ? document.getElementById('input_target_audience').value : 'guru_staf';
+        const rowDisengagedStudents = document.getElementById('row_disengaged_students');
+        const rowDisengagedTeachers = document.getElementById('row_disengaged_teachers');
+        const optStaffPulangCepat = document.getElementById('opt_staff_pulang_cepat');
+        const optStaffLibur = document.getElementById('opt_staff_libur');
+        const selectStaffImpact = document.getElementById('input_disengaged_staff_impact');
+        const studentImpact = document.getElementById('input_learning_impact') ? document.getElementById('input_learning_impact').value : 'normal';
+        const disengagedStudentImpact = document.getElementById('input_disengaged_student_impact') ? document.getElementById('input_disengaged_student_impact').value : 'kbm_normal';
+
+        if (audience === 'semua') {
+            if (rowDisengagedStudents) rowDisengagedStudents.style.display = 'none';
+        } else {
+            if (rowDisengagedStudents) rowDisengagedStudents.style.display = 'block';
+        }
+
+        const teacherCheckboxes = document.querySelectorAll('.user-teacher-cb');
+        const totalTeachers = teacherCheckboxes.length;
+        const checkedTeachers = document.querySelectorAll('.user-teacher-cb:checked').length;
+        if (totalTeachers > 0 && checkedTeachers === totalTeachers) {
+            if (rowDisengagedTeachers) rowDisengagedTeachers.style.display = 'none';
+        } else {
+            if (rowDisengagedTeachers) rowDisengagedTeachers.style.display = 'block';
+        }
+
+        let studentsStillInSchool = false;
+        if (audience === 'semua') {
+            if (studentImpact === 'normal') studentsStillInSchool = true;
+        } else if (audience === 'guru_staf') {
+            if (disengagedStudentImpact === 'kbm_normal') studentsStillInSchool = true;
+        } else {
+            if (studentImpact === 'normal' || disengagedStudentImpact === 'kbm_normal') studentsStillInSchool = true;
+        }
+
+        if (studentsStillInSchool) {
+            if (optStaffPulangCepat) optStaffPulangCepat.disabled = true;
+            if (optStaffLibur) optStaffLibur.disabled = true;
+            if (selectStaffImpact && (selectStaffImpact.value === 'pulang_cepat' || selectStaffImpact.value === 'libur')) {
+                selectStaffImpact.value = 'masuk_normal';
+                onDisengagedStaffImpactChange('masuk_normal');
+            }
+        } else {
+            if (optStaffPulangCepat) optStaffPulangCepat.disabled = false;
+            if (optStaffLibur) optStaffLibur.disabled = false;
+        }
+    }
+
     function openCreateActivityModal() {
         const form = document.getElementById('formActivity');
         form.action = "{{ route('kurikulum.activities.store') }}";
@@ -488,12 +869,49 @@
 
         document.getElementById('input_name').value = '';
         document.getElementById('input_code').value = '';
-        document.getElementById('input_category').value = 'smk_khusus';
-        document.getElementById('input_target_participant').value = '';
-        document.getElementById('input_duration').value = '1';
-        document.getElementById('input_color').value = '#0284c7';
-        document.getElementById('input_is_mandatory').checked = true;
+        document.getElementById('input_category').value = 'kegiatan_kurikulum';
+        document.getElementById('input_location').value = 'SMK PGRI Kras';
+        document.getElementById('input_start_date').value = '';
+        document.getElementById('input_end_date').value = '';
+
+        const holInput = document.getElementById('input_is_holiday');
+        if (holInput) {
+            holInput.checked = false;
+            onHolidayToggle(false);
+        }
+
+        document.getElementById('input_learning_impact').value = 'bebas_kbm_kegiatan';
+        document.getElementById('input_target_audience').value = 'guru_staf';
+        onTargetAudienceChange('guru_staf');
+
+        document.querySelectorAll('.grade-level-cb').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.classroom-target-cb').forEach(cb => cb.checked = false);
+        document.getElementById('input_student_start_time').value = '07:00';
+        document.getElementById('input_student_end_time').value = '12:00';
+
+        const teacherImpactEl = document.getElementById('input_teacher_impact');
+        if (teacherImpactEl) {
+            teacherImpactEl.value = 'bebas_mengajar_tugas';
+        }
+        document.getElementById('input_gtk_checkin_time').value = '07:00';
+        document.getElementById('input_gtk_checkout_time').value = '13:30';
+        document.querySelectorAll('.user-assign-cb').forEach(cb => cb.checked = false);
+
+        document.getElementById('input_disengaged_teacher_impact').value = 'masuk_normal';
+        onDisengagedTeacherImpactChange('masuk_normal');
+        document.getElementById('input_disengaged_teacher_max_period').value = '';
+
+        document.getElementById('input_disengaged_staff_impact').value = 'masuk_normal';
+        onDisengagedStaffImpactChange('masuk_normal');
+        document.getElementById('input_disengaged_staff_dismissal_time').value = '12:00';
+
+        document.getElementById('input_disengaged_student_impact').value = 'kbm_normal';
+        onDisengagedStudentImpactChange('kbm_normal');
+        document.getElementById('input_disengaged_student_max_period').value = '';
+
         document.getElementById('input_description').value = '';
+
+        evaluateStaffAndDisengagedVisibility();
 
         new bootstrap.Modal(document.getElementById('modalActivityForm')).show();
     }
@@ -509,12 +927,97 @@
 
         document.getElementById('input_name').value = activity.name || '';
         document.getElementById('input_code').value = activity.code || '';
-        document.getElementById('input_category').value = activity.category || 'smk_khusus';
-        document.getElementById('input_target_participant').value = activity.target_participant || '';
-        document.getElementById('input_duration').value = activity.default_duration_days || 1;
-        document.getElementById('input_color').value = activity.color || '#0284c7';
-        document.getElementById('input_is_mandatory').checked = Boolean(activity.is_mandatory);
+        document.getElementById('input_category').value = activity.category || 'kegiatan_kurikulum';
         document.getElementById('input_description').value = activity.description || '';
+
+        const ev = activity.scheduled_event;
+        if (ev) {
+            document.getElementById('input_location').value = ev.location || '';
+            document.getElementById('input_start_date').value = ev.start_date ? String(ev.start_date).substring(0, 10) : '';
+            document.getElementById('input_end_date').value = (ev.end_date && ev.end_date !== ev.start_date) ? String(ev.end_date).substring(0, 10) : '';
+
+            const isHoliday = Boolean(ev.is_holiday) || ['lhb', 'lu', 'ls1', 'ls2', 'cb', 'lhr'].includes(ev.category || activity.category);
+            const holInput = document.getElementById('input_is_holiday');
+            if (holInput) {
+                holInput.checked = isHoliday;
+                onHolidayToggle(isHoliday);
+            }
+
+            const targetAudience = ev.target_audience || 'guru_staf';
+            document.getElementById('input_target_audience').value = targetAudience;
+            onTargetAudienceChange(targetAudience);
+
+            document.getElementById('input_student_start_time').value = ev.student_start_time ? String(ev.student_start_time).substring(0, 5) : '07:00';
+            document.getElementById('input_student_end_time').value = ev.student_end_time ? String(ev.student_end_time).substring(0, 5) : '12:00';
+            document.getElementById('input_learning_impact').value = ev.learning_impact || 'bebas_kbm_kegiatan';
+
+            const targetLevels = (ev.target_grade_levels || []).map(String);
+            document.querySelectorAll('.grade-level-cb').forEach(cb => {
+                cb.checked = targetLevels.includes(String(cb.value));
+            });
+
+            const targetClassrooms = (ev.target_classroom_ids || []).map(String);
+            document.querySelectorAll('.classroom-target-cb').forEach(cb => {
+                cb.checked = targetClassrooms.includes(String(cb.value));
+            });
+
+            const teacherImpactEl = document.getElementById('input_teacher_impact');
+            if (teacherImpactEl) {
+                teacherImpactEl.value = ev.teacher_impact || 'bebas_mengajar_tugas';
+            }
+            document.getElementById('input_gtk_checkin_time').value = ev.gtk_checkin_time ? String(ev.gtk_checkin_time).substring(0, 5) : '07:00';
+            document.getElementById('input_gtk_checkout_time').value = ev.gtk_checkout_time ? String(ev.gtk_checkout_time).substring(0, 5) : '13:30';
+
+            const assignedUserIds = (ev.users || []).map(u => u.id);
+            document.querySelectorAll('.user-assign-cb').forEach(cb => {
+                cb.checked = assignedUserIds.includes(parseInt(cb.value, 10));
+            });
+
+            const disTeacher = ev.disengaged_teacher_impact || 'masuk_normal';
+            document.getElementById('input_disengaged_teacher_impact').value = disTeacher;
+            onDisengagedTeacherImpactChange(disTeacher);
+            document.getElementById('input_disengaged_teacher_max_period').value = ev.disengaged_teacher_max_period || '';
+
+            const disStaff = ev.disengaged_staff_impact || 'masuk_normal';
+            document.getElementById('input_disengaged_staff_impact').value = disStaff;
+            onDisengagedStaffImpactChange(disStaff);
+            document.getElementById('input_disengaged_staff_dismissal_time').value = ev.disengaged_staff_dismissal_time ? String(ev.disengaged_staff_dismissal_time).substring(0, 5) : '12:00';
+
+            const disStudent = ev.disengaged_student_impact || 'kbm_normal';
+            document.getElementById('input_disengaged_student_impact').value = disStudent;
+            onDisengagedStudentImpactChange(disStudent);
+            document.getElementById('input_disengaged_student_max_period').value = ev.disengaged_student_max_period || '';
+        } else {
+            document.getElementById('input_location').value = 'SMK PGRI Kras';
+            document.getElementById('input_start_date').value = '';
+            document.getElementById('input_end_date').value = '';
+
+            const holInput = document.getElementById('input_is_holiday');
+            if (holInput) {
+                holInput.checked = false;
+                onHolidayToggle(false);
+            }
+
+            document.getElementById('input_target_audience').value = 'guru_staf';
+            onTargetAudienceChange('guru_staf');
+            document.querySelectorAll('.grade-level-cb').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.classroom-target-cb').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.user-assign-cb').forEach(cb => cb.checked = false);
+
+            document.getElementById('input_disengaged_teacher_impact').value = 'masuk_normal';
+            onDisengagedTeacherImpactChange('masuk_normal');
+            document.getElementById('input_disengaged_teacher_max_period').value = '';
+
+            document.getElementById('input_disengaged_staff_impact').value = 'masuk_normal';
+            onDisengagedStaffImpactChange('masuk_normal');
+            document.getElementById('input_disengaged_staff_dismissal_time').value = '12:00';
+
+            document.getElementById('input_disengaged_student_impact').value = 'kbm_normal';
+            onDisengagedStudentImpactChange('kbm_normal');
+            document.getElementById('input_disengaged_student_max_period').value = '';
+        }
+
+        evaluateStaffAndDisengagedVisibility();
 
         new bootstrap.Modal(document.getElementById('modalActivityForm')).show();
     }

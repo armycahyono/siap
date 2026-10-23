@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CurriculumEvent;
+use App\Models\Role;
 use App\Models\SchoolActivity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,36 @@ class SchoolActivityMasterTest extends TestCase
     {
         parent::setUp();
         $this->seed();
+
+        $wakaRole = Role::firstOrCreate(
+            ['slug' => 'waka_kurikulum'],
+            ['name' => 'Waka Kurikulum', 'description' => 'Wakil Kepala Kurikulum']
+        );
+
+        User::firstOrCreate(
+            ['username' => 'waka'],
+            [
+                'name' => 'Waka Kurikulum',
+                'email' => 'waka@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $wakaRole->id,
+                'is_active' => true,
+            ]
+        );
+
+        SchoolActivity::firstOrCreate(
+            ['code' => 'PKL-DEF'],
+            [
+                'name' => 'Praktik Kerja Lapangan Default',
+                'category' => 'smk_khusus',
+                'target_participant' => 'Kelas XI & XII',
+                'description' => 'Kegiatan PKL',
+                'color' => '#0284c7',
+                'default_duration_days' => 90,
+                'is_mandatory' => true,
+                'is_active' => true,
+            ]
+        );
     }
 
     public function test_waka_can_view_school_activities_index(): void
@@ -60,6 +91,55 @@ class SchoolActivityMasterTest extends TestCase
             'name' => 'Workshop Kurikulum Merdeka Terapan',
             'category' => 'smk_khusus',
         ]);
+    }
+
+    public function test_waka_can_create_school_activity_with_comprehensive_schedule_and_participants(): void
+    {
+        $waka = User::where('username', 'waka')->first();
+        $teacher = User::factory()->create(['username' => 'guru_ukk_test']);
+
+        $response = $this->actingAs($waka)->post(route('kurikulum.activities.store'), [
+            'name' => 'Uji Kompetensi Keahlian (UKK) Mandiri',
+            'code' => 'UKK-2026',
+            'category' => 'kegiatan_kurikulum',
+            'location' => 'Bengkel TKRO & Lab RPL',
+            'start_date' => '2026-11-10',
+            'end_date' => '2026-11-12',
+            'is_holiday' => 0,
+            'target_audience' => 'tingkat',
+            'target_grade_levels' => ['XII'],
+            'learning_impact' => 'bebas_kbm_kegiatan',
+            'teacher_impact' => 'bebas_mengajar_tugas',
+            'gtk_checkin_time' => '07:00',
+            'gtk_checkout_time' => '14:00',
+            'user_ids' => [$teacher->id],
+            'disengaged_teacher_impact' => 'masuk_normal',
+            'disengaged_staff_impact' => 'masuk_normal',
+            'disengaged_student_impact' => 'kbm_normal',
+            'description' => 'Pelaksanaan UKK bersama asesor eksternal DUDI',
+            'academic_year' => '2026/2027',
+        ]);
+
+        $response->assertRedirect(route('kurikulum.activities.index', ['academic_year' => '2026/2027']));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('school_activities', [
+            'code' => 'UKK-2026',
+            'name' => 'Uji Kompetensi Keahlian (UKK) Mandiri',
+        ]);
+
+        $this->assertDatabaseHas('curriculum_events', [
+            'title' => 'Uji Kompetensi Keahlian (UKK) Mandiri',
+            'academic_year' => '2026/2027',
+            'location' => 'Bengkel TKRO & Lab RPL',
+        ]);
+
+        $event = CurriculumEvent::where('title', 'Uji Kompetensi Keahlian (UKK) Mandiri')->first();
+        $this->assertNotNull($event);
+        $this->assertTrue($event->users->contains($teacher->id));
+        $this->assertEquals(['XII'], $event->target_grade_levels);
+        $this->assertEquals('bebas_kbm_kegiatan', $event->learning_impact);
+        $this->assertEquals('bebas_mengajar_tugas', $event->teacher_impact);
     }
 
     public function test_waka_can_update_school_activity(): void
