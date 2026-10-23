@@ -3,23 +3,25 @@
 @section('title', 'Tahun Pelajaran — Data Pokok')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-stats me-2"></i> Tahun Pelajaran
-        </h2>
-        <div class="text-muted small">
-            Kelola tahun pelajaran, rentang waktu operasional, status aktif sekolah, dan penguncian arsip data.
-        </div>
-    </div>
-    @if(auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasRole(['super_admin', 'waka_kurikulum']))
-    <div class="col-auto">
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTambahTahun">
-            <i class="ti ti-plus me-1"></i> Tambah Tahun Pelajaran
-        </button>
-    </div>
-    @endif
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $ayActions = '';
+    if (auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasRole(['super_admin', 'waka_kurikulum'])) {
+        $ayActions = '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalTambahTahun"><i class="ti ti-plus me-1"></i> Tambah Tahun Pelajaran</button>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Tahun Pelajaran',
+    'subtitle' => 'Kelola tahun pelajaran, rentang waktu operasional, status aktif sekolah, dan penguncian arsip data.',
+    'icon' => 'ti ti-calendar-stats',
+    'category' => 'DATA POKOK & PENGATURAN',
+    'academicYear' => $activeYear->name ?? null,
+    'stats' => [
+        ['label' => 'Total Periode', 'value' => $academicYears->count(), 'class' => 'text-white'],
+        ['label' => 'Tahun Aktif', 'value' => $activeYear->name ?? '-', 'class' => 'text-info'],
+    ],
+    'actions' => $ayActions
+])
 
 @include('master.nav')
 

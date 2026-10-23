@@ -3,17 +3,18 @@
 @section('title', 'Data Pokok Mata Pelajaran - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">Data Pokok: Mata Pelajaran</h2>
-        <div class="text-muted small">Kelola daftar kurikulum mata pelajaran umum, kejuruan, dan muatan lokal</div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCreateSubject">
-            <i class="ti ti-plus me-1"></i> Tambah Mapel
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Data Pokok: Mata Pelajaran',
+    'subtitle' => 'Kelola daftar kurikulum mata pelajaran umum, kejuruan, dan muatan lokal.',
+    'icon' => 'ti ti-books',
+    'category' => 'KURIKULUM & MAPEL',
+    'stats' => [
+        ['label' => 'Total Mapel', 'value' => $subjects->total(), 'class' => 'text-white'],
+        ['label' => 'Kategori', 'value' => count($categories), 'class' => 'text-info'],
+    ],
+    'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateSubject"><i class="ti ti-plus me-1"></i> Tambah Mapel</button>'
+])
 
 @include('master.nav')
 

@@ -3,19 +3,20 @@
 @section('title', 'Data Pokok Kategori Kegiatan - SIAP')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">
-            <i class="ti ti-tags me-2 text-primary"></i> Data Pokok: Kategori Kegiatan
-        </h2>
-        <div class="text-muted small">Kelola klasifikasi agenda kegiatan sekolah, pembeda Kaldik resmi vs program internal, dan warna pada kalender terpadu.</div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <button type="button" class="btn btn-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalCreateCategory">
-            <i class="ti ti-plus me-1"></i> Tambah Kategori
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Data Pokok: Kategori Kegiatan',
+    'subtitle' => 'Kelola klasifikasi agenda kegiatan sekolah, pembeda Kaldik resmi vs program internal, dan warna pada kalender terpadu.',
+    'icon' => 'ti ti-tags',
+    'category' => 'DATA POKOK & KALENDER',
+    'stats' => [
+        ['label' => 'Total', 'value' => $totalCategories, 'class' => 'text-white'],
+        ['label' => 'Kaldik Resmi', 'value' => $totalKaldik, 'class' => 'text-info'],
+        ['label' => 'Internal', 'value' => $totalInternal, 'class' => 'text-warning'],
+        ['label' => 'Aktif', 'value' => $totalActive, 'class' => 'text-success'],
+    ],
+    'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateCategory"><i class="ti ti-plus me-1"></i> Tambah Kategori</button>'
+])
 
 @include('master.nav')
 

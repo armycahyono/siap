@@ -1007,49 +1007,61 @@
 
         <div class="page-wrapper">
             <!-- Header -->
-            <header class="navbar navbar-expand d-flex d-print-none sticky-top bg-white border-bottom shadow-sm">
+            <!-- Header (Model 2: Modern Compact Bar) -->
+            <header class="navbar navbar-expand d-flex d-print-none sticky-top bg-white border-bottom shadow-xs py-2">
                 <div class="container-fluid px-3">
-                    <button type="button" class="btn btn-sm btn-icon btn-ghost-secondary me-2 btn-action-sidebar-toggle" title="Kecilkan/Perluas Sidebar" aria-label="Toggle Sidebar">
-                        <i class="ti ti-layout-sidebar fs-2"></i>
+                    <button type="button" class="btn btn-icon btn-light me-2.5 btn-action-sidebar-toggle border shadow-none" title="Kecilkan / Perluas Sidebar" aria-label="Toggle Sidebar" style="width: 36px; height: 36px; border-radius: 9px;">
+                        <i class="ti ti-layout-sidebar fs-2 text-dark"></i>
                     </button>
                     
-                    <div class="d-flex align-items-center">
-                        <span class="fw-bold text-dark fs-3 me-2">SIAP</span>
-                        <span class="badge bg-blue-lt me-2 px-2 py-1">
-                            <i class="ti ti-school me-1"></i> SMK PGRI Kras
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge px-2.5 py-1 text-white fw-bold shadow-xs" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); font-size: 0.82rem; letter-spacing: 0.04rem;">
+                            SIAP
                         </span>
-                        <span class="text-secondary small d-none d-sm-inline">
-                            &bull; {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
+                        <span class="badge bg-blue-lt px-2 py-1 fw-bold d-none d-sm-inline-flex align-items-center">
+                            <i class="ti ti-school me-1"></i> SMK PGRI KRAS
+                        </span>
+                        <span class="text-secondary small d-none d-md-inline-flex align-items-center ms-1">
+                            <i class="ti ti-calendar-event me-1 text-muted"></i> {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
                         </span>
                     </div>
 
-                    <div class="navbar-nav flex-row order-md-last ms-auto align-items-center">
-                        <!-- Tahun Pelajaran di Atas Sebelah User -->
+                    <div class="navbar-nav flex-row order-md-last ms-auto align-items-center gap-2">
+                        <!-- Tahun Pelajaran Switcher -->
                         @include('layouts._academic_year_switcher', ['prefix' => 'dt'])
 
+                        <!-- Lonceng Notifikasi & Tugas -->
+                        @include('layouts._notifications_dropdown')
+
+                        <!-- Profil Pengguna -->
                         <div class="nav-item dropdown">
-                            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Menu Pengguna">
-                                <span class="avatar avatar-sm bg-blue text-white rounded-circle">
+                            <a href="#" class="nav-link d-flex lh-1 text-reset p-1 rounded-2 hover-shadow-xs" data-bs-toggle="dropdown" aria-label="Menu Pengguna" style="transition: background 0.15s ease;">
+                                <span class="avatar avatar-sm text-white rounded-2 shadow-xs fw-bold" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); width: 34px; height: 34px;">
                                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                                 </span>
                                 <div class="d-none d-xl-block ps-2 text-start">
-                                    <div class="fw-semibold text-dark">{{ auth()->user()->name }}</div>
-                                    <div class="mt-1 small text-muted">{{ auth()->user()->role?->name ?? 'Pengguna' }}</div>
+                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.82rem; max-width: 150px;">{{ auth()->user()->name }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role?->name ?? 'Pengguna' }}</div>
                                 </div>
+                                <i class="ti ti-chevron-down ms-1 text-muted fs-4 d-none d-xl-inline"></i>
                             </a>
-                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                                <a href="{{ route('profile') }}" class="dropdown-item">
-                                    <i class="ti ti-user me-2 text-muted"></i> Profil Saya
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow shadow-md border" style="border-radius: 10px;">
+                                <div class="px-3 py-2 border-bottom bg-light-subtle">
+                                    <div class="fw-bold text-dark small">{{ auth()->user()->name }}</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">{{ auth()->user()->email ?? '-' }}</div>
+                                </div>
+                                <a href="{{ route('profile') }}" class="dropdown-item py-2">
+                                    <i class="ti ti-user me-2 text-primary"></i> Profil Saya
                                 </a>
                                 @if(auth()->user()->hasRole('super_admin') || auth()->user()->hasRole('waka_kurikulum'))
-                                <a href="{{ route('settings.index') }}" class="dropdown-item">
-                                    <i class="ti ti-building me-2 text-muted"></i> Data Sekolah
+                                <a href="{{ route('settings.index') }}" class="dropdown-item py-2">
+                                    <i class="ti ti-building me-2 text-indigo"></i> Data Sekolah
                                 </a>
                                 @endif
-                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-divider my-1"></div>
                                 <form action="{{ route('logout') }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="dropdown-item text-danger">
+                                    <button type="submit" class="dropdown-item py-2 text-danger">
                                         <i class="ti ti-logout me-2"></i> Keluar
                                     </button>
                                 </form>

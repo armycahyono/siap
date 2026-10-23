@@ -3,12 +3,19 @@
 @section('title', 'Penugasan Guru - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">Penugasan Guru (Mapel, Wali Kelas, Supervisor & Struktural)</h2>
-        <div class="text-muted small">Kelola penugasan guru sebagai Wali Kelas, Pengampu Mata Pelajaran, Tim Supervisor, serta Pejabat Struktural Sekolah</div>
-    </div>
-</div>
+@include('layouts._hero_header', [
+    'title' => 'Penugasan Guru & Jabatan Struktural',
+    'subtitle' => 'Kelola penugasan guru sebagai Wali Kelas, Pengampu Mata Pelajaran, Tim Supervisor, serta Pejabat Struktural Sekolah.',
+    'icon' => 'ti ti-briefcase',
+    'category' => 'DATA POKOK & SDM',
+    'academicYear' => $academicYear,
+    'stats' => [
+        ['label' => 'Mapel', 'value' => $assignments->total(), 'class' => 'text-white'],
+        ['label' => 'Wali Kelas', 'value' => $classrooms->whereNotNull('homeroom_teacher_id')->count() . '/' . $classrooms->count(), 'class' => 'text-info'],
+        ['label' => 'Supervisor', 'value' => $supervisors->count(), 'class' => 'text-warning'],
+        ['label' => 'Struktural', 'value' => $structuralAssignments->total(), 'class' => 'text-success'],
+    ]
+])
 
 @include('master.nav')
 

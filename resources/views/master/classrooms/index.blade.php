@@ -3,20 +3,23 @@
 @section('title', 'Data Pokok Tingkat & Rombel - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">Data Pokok: Tingkat & Kelas (Rombel)</h2>
-        <div class="text-muted small">Kelola rombongan belajar per tingkat, jurusan, dan penetapan wali kelas</div>
-    </div>
-    <div class="col-auto ms-auto d-print-none d-flex gap-2">
-        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCreateGrade">
-            <i class="ti ti-layers-union me-1"></i> Tambah Tingkat
-        </button>
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCreateClass">
-            <i class="ti ti-plus me-1"></i> Tambah Rombel
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $classroomActions = '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateGrade"><i class="ti ti-layers-union me-1"></i> Tambah Tingkat</button> ' .
+        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateClass"><i class="ti ti-plus me-1"></i> Tambah Rombel</button>';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Data Pokok: Tingkat & Kelas (Rombel)',
+    'subtitle' => 'Kelola rombongan belajar per tingkat, jurusan, dan penetapan wali kelas binaan TP ' . $academicYear . '.',
+    'icon' => 'ti ti-layout-grid',
+    'category' => 'DATA POKOK & STRUKTUR',
+    'academicYear' => $academicYear,
+    'stats' => [
+        ['label' => 'Total Rombel', 'value' => $classrooms->total(), 'class' => 'text-white'],
+        ['label' => 'Tingkat', 'value' => $gradeLevels->count(), 'class' => 'text-info'],
+    ],
+    'actions' => $classroomActions
+])
 
 @include('master.nav')
 

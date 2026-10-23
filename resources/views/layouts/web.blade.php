@@ -937,121 +937,61 @@
 
         <div class="page-wrapper">
             <!-- Header -->
-            <header class="navbar navbar-expand d-flex d-print-none sticky-top bg-white border-bottom shadow-sm">
+            <!-- Header (Model 2: Modern Compact Bar) -->
+            <header class="navbar navbar-expand d-flex d-print-none sticky-top bg-white border-bottom shadow-xs py-2">
                 <div class="container-fluid px-3">
-                    <button type="button" class="btn btn-sm btn-icon btn-ghost-secondary me-2 btn-action-sidebar-toggle" title="Kecilkan/Perluas Sidebar" aria-label="Toggle Sidebar">
-                        <i class="ti ti-layout-sidebar fs-2"></i>
+                    <button type="button" class="btn btn-icon btn-light me-2.5 btn-action-sidebar-toggle border shadow-none" title="Kecilkan / Perluas Sidebar" aria-label="Toggle Sidebar" style="width: 36px; height: 36px; border-radius: 9px;">
+                        <i class="ti ti-layout-sidebar fs-2 text-dark"></i>
                     </button>
                     
-                    <div class="d-flex align-items-center">
-                        <span class="fw-bold text-dark fs-3 me-2">SIAP</span>
-                        <span class="badge bg-blue-lt me-2 px-2 py-1">
-                            <i class="ti ti-school me-1"></i> SMK PGRI Kras
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge px-2.5 py-1 text-white fw-bold shadow-xs" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); font-size: 0.82rem; letter-spacing: 0.04rem;">
+                            SIAP
                         </span>
-                        <span class="text-secondary small d-none d-sm-inline">
-                            &bull; {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
+                        <span class="badge bg-blue-lt px-2 py-1 fw-bold d-none d-sm-inline-flex align-items-center">
+                            <i class="ti ti-school me-1"></i> SMK PGRI KRAS
+                        </span>
+                        <span class="text-secondary small d-none d-md-inline-flex align-items-center ms-1">
+                            <i class="ti ti-calendar-event me-1 text-muted"></i> {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
                         </span>
                     </div>
 
                     <div class="navbar-nav flex-row order-md-last ms-auto align-items-center gap-2">
-                        <!-- Tahun Pelajaran di Atas Sebelah User -->
+                        <!-- Tahun Pelajaran Switcher -->
                         @include('layouts._academic_year_switcher', ['prefix' => 'dt'])
 
-                        @php
-                            $webNotifications = collect();
-                            try {
-                                if (auth()->check()) {
-                                    $webNotifications = \App\Services\NotificationService::getUserNotifications(auth()->user());
-                                }
-                            } catch (\Throwable $e) {
-                                $webNotifications = collect();
-                            }
-                            $webHasNotification = $webNotifications->isNotEmpty();
-                            $webNotificationCount = $webNotifications->count();
-                        @endphp
+                        <!-- Lonceng Notifikasi & Tugas -->
+                        @include('layouts._notifications_dropdown')
 
-                        <!-- Tombol Lonceng Notifikasi Web Desktop -->
-                        <div class="nav-item dropdown me-1">
-                            <a href="#" class="nav-link px-2 d-flex align-items-center text-secondary position-relative rounded-2" data-bs-toggle="dropdown" tabindex="-1" aria-label="Tampilkan Notifikasi" title="Pemberitahuan & Tugas" style="width: 36px; height: 36px; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0;">
-                                <i class="ti ti-bell fs-2 text-dark"></i>
-                                @if($webHasNotification)
-                                    <span class="badge bg-danger text-white rounded-pill position-absolute" style="top: -4px; right: -4px; font-size: 0.65rem; padding: 0.2rem 0.4rem; min-width: 18px; line-height: 1;">
-                                        {{ $webNotificationCount }}
-                                    </span>
-                                @endif
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow dropdown-menu-card p-0 shadow-lg border" style="width: 380px; max-width: 90vw; border-radius: 12px; z-index: 1050;">
-                                <div class="card border-0 mb-0">
-                                    <div class="card-header py-2.5 px-3 bg-primary text-white d-flex align-items-center justify-content-between" style="border-radius: 12px 12px 0 0; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important;">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="ti ti-bell fs-3"></i>
-                                            <span class="fw-bold fs-4">Pemberitahuan &amp; Tugas</span>
-                                        </div>
-                                        @if($webHasNotification)
-                                            <span class="badge bg-danger rounded-pill px-2 py-0.5 text-white" style="font-size: 0.68rem;">
-                                                {{ $webNotificationCount }} baru
-                                            </span>
-                                        @endif
-                                    </div>
-                                    <div class="list-group list-group-flush overflow-auto" style="max-height: 420px;">
-                                        @forelse($webNotifications as $notif)
-                                            <a href="{{ $notif['url'] ?? 'javascript:void(0)' }}" class="list-group-item list-group-item-action p-2.5 d-flex align-items-start gap-2.5 border-bottom">
-                                                <span class="avatar avatar-sm rounded-circle flex-shrink-0 bg-light d-flex align-items-center justify-content-center border" style="width: 34px; height: 34px;">
-                                                    <i class="{{ $notif['icon'] ?? 'ti ti-info-circle text-primary' }} fs-2"></i>
-                                                </span>
-                                                <div class="flex-fill overflow-hidden">
-                                                    <div class="d-flex align-items-center justify-content-between gap-1 mb-0.5">
-                                                        <div class="fw-bold text-dark small text-truncate" style="font-size: 0.82rem;">{{ $notif['title'] }}</div>
-                                                        @if(!empty($notif['badge']))
-                                                            <span class="badge {{ $notif['badge_class'] ?? 'bg-primary-lt' }} flex-shrink-0" style="font-size: 0.62rem; padding: 0.15rem 0.4rem; border-radius: 6px;">
-                                                                {{ $notif['badge'] }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                    <div class="text-muted small text-break lh-sm" style="font-size: 0.74rem;">
-                                                        {{ $notif['message'] }}
-                                                    </div>
-                                                </div>
-                                            </a>
-                                        @empty
-                                            <div class="p-4 text-center">
-                                                <div class="avatar avatar-md bg-teal-lt rounded-circle mx-auto mb-2" style="width: 44px; height: 44px;">
-                                                    <i class="ti ti-circle-check fs-2 text-teal"></i>
-                                                </div>
-                                                <div class="fw-bold text-dark small">Tidak Ada Tugas Baru</div>
-                                                <p class="text-muted small mb-0 mt-0.5" style="font-size: 0.74rem;">
-                                                    Semua tugas harian dan pemantauan Anda telah up to date.
-                                                </p>
-                                            </div>
-                                        @endforelse
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                        <!-- Profil Pengguna -->
                         <div class="nav-item dropdown">
-                            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Menu Pengguna">
-                                <span class="avatar avatar-sm bg-blue text-white rounded-circle">
+                            <a href="#" class="nav-link d-flex lh-1 text-reset p-1 rounded-2 hover-shadow-xs" data-bs-toggle="dropdown" aria-label="Menu Pengguna" style="transition: background 0.15s ease;">
+                                <span class="avatar avatar-sm text-white rounded-2 shadow-xs fw-bold" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); width: 34px; height: 34px;">
                                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                                 </span>
                                 <div class="d-none d-xl-block ps-2 text-start">
-                                    <div class="fw-semibold text-dark">{{ auth()->user()->name }}</div>
-                                    <div class="mt-1 small text-muted">{{ auth()->user()->role?->name ?? 'Pengguna' }}</div>
+                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.82rem; max-width: 150px;">{{ auth()->user()->name }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role?->name ?? 'Pengguna' }}</div>
                                 </div>
+                                <i class="ti ti-chevron-down ms-1 text-muted fs-4 d-none d-xl-inline"></i>
                             </a>
-                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                                <a href="{{ route('profile') }}" class="dropdown-item">
-                                    <i class="ti ti-user me-2 text-muted"></i> Profil Saya
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow shadow-md border" style="border-radius: 10px;">
+                                <div class="px-3 py-2 border-bottom bg-light-subtle">
+                                    <div class="fw-bold text-dark small">{{ auth()->user()->name }}</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">{{ auth()->user()->email ?? '-' }}</div>
+                                </div>
+                                <a href="{{ route('profile') }}" class="dropdown-item py-2">
+                                    <i class="ti ti-user me-2 text-primary"></i> Profil Saya
                                 </a>
                                 @if(auth()->user()->hasRole('super_admin') || auth()->user()->hasRole('waka_kurikulum'))
-                                <a href="{{ route('settings.index') }}" class="dropdown-item">
-                                    <i class="ti ti-building me-2 text-muted"></i> Data Sekolah
+                                <a href="{{ route('settings.index') }}" class="dropdown-item py-2">
+                                    <i class="ti ti-building me-2 text-indigo"></i> Data Sekolah
                                 </a>
                                 @endif
-                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-divider my-1"></div>
                                 <form action="{{ route('logout') }}" method="POST">
                                     @csrf
-                                    <button type="submit" class="dropdown-item text-danger">
+                                    <button type="submit" class="dropdown-item py-2 text-danger">
                                         <i class="ti ti-logout me-2"></i> Keluar
                                     </button>
                                 </form>

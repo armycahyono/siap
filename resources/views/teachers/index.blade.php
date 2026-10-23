@@ -3,27 +3,26 @@
 @section('title', 'Data Guru')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-users me-2"></i> Manajemen Data Guru
-        </h2>
-        <div class="text-muted small">Kelola data identitas guru, NIP/NUPTK, singkatan nama untuk jadwal, dan riwayat supervisi.</div>
-    </div>
-    <div class="col-auto d-flex gap-2">
-        <button type="button" class="btn btn-outline-teal shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDaftarSingkatan" style="border-color: #0d9488; color: #0d9488;">
-            <i class="ti ti-id me-1"></i> Daftar Singkatan Nama Guru
-        </button>
-        @if(auth()->user()->hasPermission('manage_teachers'))
-        <button type="button" class="btn btn-outline-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportGuru">
-            <i class="ti ti-file-spreadsheet me-1"></i> Import Excel
-        </button>
-        <a href="{{ route('teachers.create') }}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> Tambah Guru Baru
-        </a>
-        @endif
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $teacherActions = '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalDaftarSingkatan"><i class="ti ti-id me-1" style="color: #5eead4 !important;"></i> Daftar Singkatan</button> ';
+    if (auth()->user()->hasPermission('manage_teachers')) {
+        $teacherActions .= '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalImportGuru"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Import Excel</button> ';
+        $teacherActions .= '<a href="' . route('teachers.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-plus me-1"></i> Tambah Guru Baru</a>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Manajemen Data Guru',
+    'subtitle' => 'Kelola data identitas guru, NIP/NUPTK, singkatan nama untuk jadwal pelajaran, dan riwayat tugas supervisi.',
+    'icon' => 'ti ti-users',
+    'category' => 'DATA POKOK & SDM',
+    'academicYear' => $academicYear,
+    'stats' => [
+        ['label' => 'Total Guru', 'value' => $allTeachers->count(), 'class' => 'text-white'],
+        ['label' => 'Ditampilkan', 'value' => $teachers->total(), 'class' => 'text-info'],
+    ],
+    'actions' => $teacherActions
+])
 
 @include('master.nav')
 

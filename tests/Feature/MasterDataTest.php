@@ -575,8 +575,30 @@ class MasterDataTest extends TestCase
     public function test_waka_can_import_structural_data(): void
     {
         $waka = User::where('username', 'waka')->first();
-        $guru = User::where('nigs_fix', '42009')->first(); // Afif Bey Ridhotulloh
-        $pos = StructuralPosition::where('code', 'KA_BENGKEL')->first();
+        $guruRole = Role::where('slug', 'guru')->first();
+
+        $guru = User::firstOrCreate(
+            ['nigs_fix' => '42009'],
+            [
+                'name' => 'Afif Bey Ridhotulloh',
+                'username' => 'afif_bey',
+                'email' => 'afif@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $guruRole->id,
+                'is_active' => true,
+                'is_operational' => true,
+            ]
+        );
+
+        $pos = StructuralPosition::firstOrCreate(
+            ['code' => 'KA_BENGKEL'],
+            [
+                'name' => 'Ka. Bengkel',
+                'category' => 'unit_kerja',
+                'is_active' => true,
+                'order' => 10,
+            ]
+        );
 
         $csvContent = "\xEF\xBB\xBFNama Jabatan,Nama Guru,NIGS,Nomor SK,Tanggal SK,Catatan\n";
         $csvContent .= "\"Ka. Bengkel\",\"Afif Bey Ridhotulloh\",42009,\"421.5/SK-01/2026\",\"2026-07-15\",\"Kepala Bengkel Otomotif\"\n";

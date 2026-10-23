@@ -3,17 +3,17 @@
 @section('title', 'Data Pokok Jurusan - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">Data Pokok: Jurusan / Program Keahlian</h2>
-        <div class="text-muted small">Kelola data program keahlian dan kejuruan SMK PGRI KRAS</div>
-    </div>
-    <div class="col-auto ms-auto d-print-none">
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCreateDept">
-            <i class="ti ti-plus me-1"></i> Tambah Jurusan
-        </button>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Data Pokok: Jurusan / Program Keahlian',
+    'subtitle' => 'Kelola data program keahlian dan kompetensi kejuruan di SMK PGRI KRAS.',
+    'icon' => 'ti ti-school',
+    'category' => 'DATA POKOK & STRUKTUR',
+    'stats' => [
+        ['label' => 'Total Jurusan', 'value' => $departments->total(), 'class' => 'text-white'],
+    ],
+    'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateDept"><i class="ti ti-plus me-1"></i> Tambah Jurusan</button>'
+])
 
 @include('master.nav')
 

@@ -300,34 +300,27 @@
 @endpush
 
 @section('content')
-<!-- Page Header -->
-<div class="row g-3 mb-4 align-items-center justify-content-between">
-    <div class="col-md-6">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-event me-2"></i> Kalender Sekolah
-        </h2>
-        <div class="text-muted small">
-            Acuan terpadu pelaksanaan program akademik, hari efektif, libur resmi Kaldik, supervisi, dan penugasan guru TP {{ $academicYear }}.
-        </div>
-    </div>
-    <div class="col-md-6 text-md-end d-flex flex-wrap gap-2 justify-content-md-end">
-        @if($activeUpload)
-            <a href="{{ route('kurikulum.calendar.kaldik.preview', $activeUpload) }}" target="_blank" class="btn btn-outline-danger shadow-sm">
-                <i class="ti ti-file-type-pdf me-1"></i> Buka Kaldik Asli (PDF)
-            </a>
-        @endif
-        @if(auth()->user()->isWakaKurikulum())
-            <button type="button" class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUploadKaldik">
-                <i class="ti ti-cloud-upload me-1"></i> Upload Kaldik (PDF/Excel)
-            </button>
-        @endif
-        @if(auth()->user()->canViewAllSchedules())
-            <button type="button" class="btn btn-primary shadow-sm fw-bold" onclick="openCreateModal()">
-                <i class="ti ti-plus me-1"></i> Tambah Kegiatan
-            </button>
-        @endif
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $calendarActions = '';
+    if ($activeUpload) {
+        $calendarActions .= '<a href="' . route('kurikulum.calendar.kaldik.preview', $activeUpload) . '" target="_blank" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-type-pdf me-1 text-danger"></i> Buka Kaldik (PDF)</a> ';
+    }
+    if (auth()->user()->isWakaKurikulum()) {
+        $calendarActions .= '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalUploadKaldik"><i class="ti ti-cloud-upload me-1 text-info"></i> Upload Kaldik</button> ';
+    }
+    if (auth()->user()->canViewAllSchedules()) {
+        $calendarActions .= '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" onclick="openCreateModal()"><i class="ti ti-plus me-1"></i> Tambah Kegiatan</button>';
+    }
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Kalender Sekolah',
+    'subtitle' => 'Acuan terpadu pelaksanaan program akademik, hari efektif, libur resmi Kaldik, supervisi, dan penugasan guru TP ' . $academicYear . '.',
+    'icon' => 'ti ti-calendar-event',
+    'category' => 'KURIKULUM & AKADEMIK',
+    'academicYear' => $academicYear,
+    'actions' => $calendarActions
+])
 
 <!-- Main Calendar Layout -->
 <div class="row g-4">
