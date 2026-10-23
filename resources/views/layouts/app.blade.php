@@ -295,7 +295,8 @@
            VERTICAL FLOATING SIDEBAR & MINI/COLLAPSED MODE (DESKTOP)
            ======================================================== */
         /* 1. Permanent Floating Style for Web/Desktop */
-        aside.navbar-vertical {
+        aside.navbar-vertical,
+        aside.navbar-vertical.navbar-expand {
             position: fixed !important;
             top: 0.75rem !important;
             bottom: 0.75rem !important;
@@ -311,7 +312,18 @@
             z-index: 1040 !important;
             display: flex !important;
             flex-direction: column !important;
+            overflow: hidden !important;
+            overflow-y: hidden !important;
             overflow-x: hidden !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        aside.navbar-vertical::-webkit-scrollbar,
+        aside.navbar-vertical.navbar-expand::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
         }
 
         aside.navbar-vertical > .container-fluid {
@@ -319,6 +331,7 @@
             flex-direction: column !important;
             height: 100% !important;
             min-height: 100% !important;
+            max-height: 100% !important;
             padding: 0.5rem 0.4rem !important;
             overflow: hidden !important;
         }
@@ -331,18 +344,23 @@
             overflow-x: hidden !important;
             width: 100% !important;
             padding-right: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
         }
 
         /* Subtle smooth scrollbar for sidebar menu */
         aside.navbar-vertical #sidebar-menu::-webkit-scrollbar {
-            width: 5px;
+            width: 4px;
+        }
+        aside.navbar-vertical #sidebar-menu::-webkit-scrollbar-track {
+            background: transparent;
         }
         aside.navbar-vertical #sidebar-menu::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 10px;
         }
         aside.navbar-vertical #sidebar-menu::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.4);
         }
 
         /* Page wrapper adjustment for floating sidebar */
