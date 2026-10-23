@@ -45,9 +45,14 @@ class CurriculumEvent extends Model
             ->withTimestamps();
     }
 
+    public function activityCategory(): BelongsTo
+    {
+        return $this->belongsTo(ActivityCategory::class, 'category', 'code');
+    }
+
     public static function categoryDefinitions(): array
     {
-        return [
+        $kaldikCodes = [
             'lhb' => ['label' => 'Libur Hari Besar (LHB)', 'color' => '#dc2626', 'badge' => 'bg-danger text-white', 'is_kaldik' => true],
             'lu' => ['label' => 'Libur Umum (LU)', 'color' => '#ea580c', 'badge' => 'bg-orange text-white', 'is_kaldik' => true],
             'ls1' => ['label' => 'Libur Semester 1 (LS1)', 'color' => '#8b5cf6', 'badge' => 'bg-purple text-white', 'is_kaldik' => true],
@@ -58,10 +63,12 @@ class CurriculumEvent extends Model
             'lhr' => ['label' => 'Libur Sekitar Hari Raya (LHR)', 'color' => '#ca8a04', 'badge' => 'bg-yellow text-white', 'is_kaldik' => true],
             'ke' => ['label' => 'Kegiatan Ekstrakurikuler (KE)', 'color' => '#0284c7', 'badge' => 'bg-azure text-white', 'is_kaldik' => true],
             'kegiatan_kurikulum' => ['label' => 'Agenda Kurikulum', 'color' => '#2563eb', 'badge' => 'bg-blue text-white', 'is_kaldik' => false],
-            'supervisi' => ['label' => 'Supervisi Guru', 'color' => '#4f46e5', 'badge' => 'bg-indigo text-white', 'is_kaldik' => false],
             'tugas_guru' => ['label' => 'Tugas & Pengingat Guru', 'color' => '#f97316', 'badge' => 'bg-warning text-dark', 'is_kaldik' => false],
-            'lainnya' => ['label' => 'Kegiatan Lainnya', 'color' => '#64748b', 'badge' => 'bg-secondary text-white', 'is_kaldik' => false],
         ];
+
+        $dynamicCats = ActivityCategory::categoryDefinitions(false);
+
+        return array_merge($kaldikCodes, $dynamicCats);
     }
 
     public function getCategoryLabelAttribute(): string

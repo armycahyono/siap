@@ -44,6 +44,12 @@
                     <span>Pejabat & Pihak Terkait</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('activity-categories.*') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('activity-categories.index') }}">
+                    <i class="ti ti-tags me-1 fs-3"></i>
+                    <span>Kategori Kegiatan</span>
+                </a>
+            </li>
             @endif
         </ul>
     </div>

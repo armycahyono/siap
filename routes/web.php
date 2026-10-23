@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\ActiveUserController;
+use App\Http\Controllers\ActivityCategoryController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AppFeedbackController;
 use App\Http\Controllers\ApprovalController;
@@ -134,6 +135,7 @@ Route::middleware('auth')->group(function () {
         Route::post('classrooms/grade-levels', [ClassroomController::class, 'storeGradeLevel'])->name('classrooms.grade-levels.store');
         Route::resource('structural-positions', StructuralPositionController::class)->except(['create', 'show', 'edit']);
         Route::resource('stakeholders', SchoolStakeholderController::class)->except(['create', 'show', 'edit']);
+        Route::resource('activity-categories', ActivityCategoryController::class)->except(['create', 'show', 'edit']);
 
         // Penugasan Guru (Wali Kelas, Mapel Diampu, Supervisor & Struktural)
         Route::get('penugasan-guru', [TeacherAssignmentController::class, 'index'])->name('teacher-assignments.index');

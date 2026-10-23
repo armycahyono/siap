@@ -571,14 +571,14 @@
 
                         <!-- Data Pokok (Submenu/Dropdown) -->
                         @if(auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
-                        <li class="nav-item dropdown {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*') ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*') ? 'true' : 'false' }}">
+                        <li class="nav-item dropdown {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-database fs-2"></i>
                                 </span>
                                 <span class="nav-link-title">Data Pokok</span>
                             </a>
-                            <div class="dropdown-menu {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*') ? 'show' : '' }}">
+                            <div class="dropdown-menu {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'show' : '' }}">
                                 <a class="dropdown-item {{ request()->routeIs('academic-years.*') ? 'active' : '' }}" href="{{ route('academic-years.index') }}">
                                     <i class="ti ti-calendar-stats me-2"></i> Tahun Ajaran
                                 </a>
@@ -599,6 +599,9 @@
                                 </a>
                                 <a class="dropdown-item {{ request()->routeIs('stakeholders.*') ? 'active' : '' }}" href="{{ route('stakeholders.index') }}">
                                     <i class="ti ti-users-group me-2"></i> Pejabat & Pihak Terkait
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('activity-categories.*') ? 'active' : '' }}" href="{{ route('activity-categories.index') }}">
+                                    <i class="ti ti-tags me-2"></i> Kategori Kegiatan
                                 </a>
                             </div>
                         </li>
