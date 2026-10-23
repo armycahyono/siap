@@ -27,13 +27,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ (request()->routeIs('structural-positions.*') || (request()->routeIs('teacher-assignments.*') && request('tab') === 'struktural')) ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('teacher-assignments.index', ['tab' => 'struktural']) }}">
-                    <i class="ti ti-briefcase me-1 fs-3"></i>
-                    <span>Jabatan Struktural</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ (request()->routeIs('teacher-assignments.*') && request('tab') !== 'struktural') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('teacher-assignments.index') }}">
+                <a class="nav-link {{ request()->routeIs('teacher-assignments.*', 'structural-positions.*') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('teacher-assignments.index') }}">
                     <i class="ti ti-user-check me-1 fs-3"></i>
                     <span>Penugasan Guru</span>
                 </a>

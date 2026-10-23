@@ -519,10 +519,7 @@
                                 <a class="dropdown-item {{ request()->routeIs('subjects.*') ? 'active' : '' }}" href="{{ route('subjects.index') }}">
                                     <i class="ti ti-books me-2"></i> Mata Pelajaran
                                 </a>
-                                <a class="dropdown-item {{ request()->routeIs('structural-positions.*') || (request()->routeIs('teacher-assignments.*') && request('tab') === 'struktural') ? 'active' : '' }}" href="{{ route('teacher-assignments.index', ['tab' => 'struktural']) }}">
-                                    <i class="ti ti-briefcase me-2"></i> Jabatan Struktural
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*') && request('tab') !== 'struktural' ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
+                                <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*', 'structural-positions.*') ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
                                     <i class="ti ti-user-check me-2"></i> Penugasan Guru
                                 </a>
                                 <a class="dropdown-item {{ request()->routeIs('stakeholders.*') ? 'active' : '' }}" href="{{ route('stakeholders.index') }}">
