@@ -8,7 +8,7 @@ class CbtBankSoal extends Model
 {
     protected $connection = 'cbt';
 
-    protected $table = 'cbt_bank_soal';
+    protected $table = 'cbt_paket_ujian';
 
     protected $primaryKey = 'id_bank';
 

@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\CbtSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 class CbtIntegrationTest extends TestCase
@@ -76,6 +77,14 @@ class CbtIntegrationTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Integrasi GarudaCBT');
         $response->assertSee('Terhubung (db_cbt)');
+    }
+
+    public function test_cbt_jadwal_list_can_be_retrieved(): void
+    {
+        $service = app(CbtSyncService::class);
+        $jadwalList = $service->getCbtJadwalList();
+
+        $this->assertInstanceOf(Collection::class, $jadwalList);
     }
 
     public function test_cbt_sync_endpoint_requires_authentication(): void

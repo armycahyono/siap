@@ -672,10 +672,15 @@ class CbtSyncService
      */
     public function getCbtJadwalList(?string $tahun = null): Collection
     {
+        $bankTable = 'cbt_paket_ujian';
+        if (! DB::connection('cbt')->getSchemaBuilder()->hasColumn('cbt_paket_ujian', 'bank_kode') && DB::connection('cbt')->getSchemaBuilder()->hasColumn('cbt_bank_soal', 'bank_kode')) {
+            $bankTable = 'cbt_bank_soal';
+        }
+
         $query = CbtJadwal::query()
-            ->select('cbt_jadwal.*', 'cbt_bank_soal.bank_kode', 'cbt_bank_soal.bank_nama', 'master_mapel.nama_mapel', 'cbt_jenis.nama_jenis', 'master_tp.tahun')
-            ->leftJoin('cbt_bank_soal', 'cbt_jadwal.id_bank', '=', 'cbt_bank_soal.id_bank')
-            ->leftJoin('master_mapel', 'cbt_bank_soal.bank_mapel_id', '=', 'master_mapel.id_mapel')
+            ->select('cbt_jadwal.*', "{$bankTable}.bank_kode", "{$bankTable}.bank_nama", 'master_mapel.nama_mapel', 'cbt_jenis.nama_jenis', 'master_tp.tahun')
+            ->leftJoin($bankTable, 'cbt_jadwal.id_bank', '=', "{$bankTable}.id_bank")
+            ->leftJoin('master_mapel', "{$bankTable}.bank_mapel_id", '=', 'master_mapel.id_mapel')
             ->leftJoin('cbt_jenis', 'cbt_jadwal.id_jenis', '=', 'cbt_jenis.id_jenis')
             ->leftJoin('master_tp', 'cbt_jadwal.id_tp', '=', 'master_tp.id_tp');
 
