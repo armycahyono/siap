@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AttendanceLog;
+use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
@@ -10,6 +11,7 @@ use App\Models\PiketIncident;
 use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
+use App\Models\Student;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\Supervision;
@@ -246,7 +248,115 @@ class DashboardController extends Controller
             ));
         }
 
-        // Admin / Waka Kurikulum / Kepala Sekolah (School-wide view)
+        // Admin / Waka Kurikulum / Kepala Sekolah (Executive School-Wide Command Center)
+        $todayDateStr = now()->toDateString();
+
+        // 1. GTK Presensi & Kehadiran Hari Ini
+        $operationalGtk = User::operationalPersonnel()->where('is_active', true)->get();
+        $totalGtkCount = $operationalGtk->count();
+        $todayGtkPresentUserIds = AttendanceLog::where('user_type', 'teacher')
+            ->whereDate('scanned_at', $todayDateStr)
+            ->pluck('user_id')
+            ->unique();
+        $gtkPresentCount = $todayGtkPresentUserIds->count();
+
+        $gtkPermitsToday = GtkPermit::approved()
+            ->with('user')
+            ->whereDate('start_date', '<=', $todayDateStr)
+            ->whereDate('end_date', '>=', $todayDateStr)
+            ->get();
+        $gtkPermitsTodayCount = $gtkPermitsToday->count();
+        $gtkUnscannedCount = max(0, $totalGtkCount - $gtkPresentCount - $gtkPermitsTodayCount);
+
+        // 2. KBM Rombel & Jadwal Mengajar Hari Ini
+        $activeClassrooms = Classroom::where('academic_year', $setting->academic_year ?? '2026/2027')
+            ->orderBy('name')
+            ->get();
+        $totalClassroomsCount = $activeClassrooms->count();
+
+        $periodTimes = LessonSchedule::periodTimes($todayDay);
+        $nowTime = now()->format('H:i');
+        $detectedPeriod = null;
+        $detectedPeriodLabel = 'Di Luar Jam KBM';
+        foreach ($periodTimes as $p => $times) {
+            if ($nowTime >= $times['start'] && $nowTime <= $times['end']) {
+                $detectedPeriod = $p;
+                $detectedPeriodLabel = "Jam ke-{$p} ({$times['start']} - {$times['end']} WIB)";
+                break;
+            }
+        }
+        if (! $detectedPeriod) {
+            if ($nowTime < ($periodTimes[1]['start'] ?? '07:00')) {
+                $detectedPeriodLabel = 'Belum Dimulai (Sebelum Jam ke-1)';
+            } elseif ($nowTime > (end($periodTimes)['end'] ?? '15:15')) {
+                $detectedPeriodLabel = 'KBM Telah Berakhir Hari Ini';
+            } else {
+                $detectedPeriodLabel = 'Waktu Istirahat / Antar Jam';
+            }
+        }
+
+        $todayAllSchedules = LessonSchedule::with(['classroom', 'subject', 'teacher'])
+            ->where('day', $todayDay)
+            ->when($setting->academic_year, fn ($q) => $q->where('academic_year', $setting->academic_year))
+            ->when($setting->semester, fn ($q) => $q->where('semester', $setting->semester))
+            ->orderBy('start_period')
+            ->get();
+        $todayTotalSchedulesCount = $todayAllSchedules->count();
+
+        if ($detectedPeriod) {
+            $currentPeriodSchedules = $todayAllSchedules->filter(fn ($s) => $s->start_period <= $detectedPeriod && $s->end_period >= $detectedPeriod)->values();
+        } else {
+            $currentPeriodSchedules = $todayAllSchedules->take(8);
+        }
+
+        // 3. Kesiswaan & Demografi Siswa
+        $totalStudentsCount = Student::count();
+        $activeStudentsCount = Student::where('status', 'aktif')->count();
+        $alumniStudentsCount = Student::where('status', 'lulus')->count();
+        $mutatedStudentsCount = Student::whereIn('status', ['mutasi', 'keluar'])->count();
+
+        $studentsByGrade = Student::where('students.status', 'aktif')
+            ->join('classrooms', 'students.classroom_id', '=', 'classrooms.id')
+            ->join('grade_levels', 'classrooms.grade_level_id', '=', 'grade_levels.id')
+            ->selectRaw('grade_levels.level, count(*) as count')
+            ->groupBy('grade_levels.level')
+            ->pluck('count', 'grade_levels.level');
+
+        $studentsByDept = Student::where('students.status', 'aktif')
+            ->join('classrooms', 'students.classroom_id', '=', 'classrooms.id')
+            ->join('departments', 'classrooms.department_id', '=', 'departments.id')
+            ->selectRaw('departments.code, count(*) as count')
+            ->groupBy('departments.code')
+            ->pluck('count', 'departments.code');
+
+        // 4. Piket & Ketertiban Hari Ini
+        $todayPiketOfficers = PiketSchedule::with('teacher')
+            ->where('day', $todayDay)
+            ->where('is_active', true)
+            ->get();
+        $todayStudentPermits = PiketStudentPermit::with(['student.classroom'])
+            ->whereDate('permit_date', $todayDateStr)
+            ->latest()
+            ->get();
+        $todayStudentPermitsCount = $todayStudentPermits->count();
+        $todayIncidents = PiketIncident::with(['student.classroom'])
+            ->whereDate('incident_date', $todayDateStr)
+            ->latest()
+            ->get();
+        $todayIncidentsCount = $todayIncidents->count();
+
+        // 5. Pusat Tindakan & Persetujuan (Pending Approvals)
+        $pendingGtkPermits = GtkPermit::where('status', 'pending')
+            ->with('user')
+            ->latest()
+            ->get();
+        $pendingApprovalSupervisions = Supervision::where('status', 'menunggu_persetujuan')
+            ->with(['teacher', 'supervisor'])
+            ->latest()
+            ->get();
+        $totalPendingActionsCount = $pendingGtkPermits->count() + $pendingApprovalSupervisions->count();
+
+        // 6. Supervisi Akademik (Evaluasi Mutu)
         $teachersCount = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))
             ->where('is_active', true)
             ->count();
@@ -271,7 +381,7 @@ class DashboardController extends Controller
         $upcomingSchedules = Supervision::with(['teacher', 'supervisor'])
             ->where('academic_year', $setting->academic_year)
             ->where('semester', $setting->semester)
-            ->where('schedule_date', '>=', now()->toDateString())
+            ->where('schedule_date', '>=', $todayDateStr)
             ->orderBy('schedule_date', 'asc')
             ->take(5)
             ->get();
@@ -290,13 +400,6 @@ class DashboardController extends Controller
             'Cukup' => $allSupervisions->where('predicate', 'Cukup')->count(),
             'Perlu Bimbingan' => $allSupervisions->where('predicate', 'Perlu Bimbingan')->count(),
         ];
-
-        $todayDateStr = now()->toDateString();
-        $gtkPermitsToday = GtkPermit::approved()
-            ->with('user')
-            ->whereDate('start_date', '<=', $todayDateStr)
-            ->whereDate('end_date', '>=', $todayDateStr)
-            ->get();
 
         return view('web.dashboard.index', compact(
             'user',
@@ -322,7 +425,33 @@ class DashboardController extends Controller
             'isPiketToday',
             'todayPiketSchedule',
             'myHomeroomClassroom',
-            'myGtkPermitToday'
+            'myGtkPermitToday',
+            'totalGtkCount',
+            'gtkPresentCount',
+            'gtkPermitsTodayCount',
+            'gtkUnscannedCount',
+            'totalClassroomsCount',
+            'activeClassrooms',
+            'periodTimes',
+            'detectedPeriod',
+            'detectedPeriodLabel',
+            'todayTotalSchedulesCount',
+            'todayAllSchedules',
+            'currentPeriodSchedules',
+            'totalStudentsCount',
+            'activeStudentsCount',
+            'alumniStudentsCount',
+            'mutatedStudentsCount',
+            'studentsByGrade',
+            'studentsByDept',
+            'todayPiketOfficers',
+            'todayStudentPermits',
+            'todayStudentPermitsCount',
+            'todayIncidents',
+            'todayIncidentsCount',
+            'pendingGtkPermits',
+            'pendingApprovalSupervisions',
+            'totalPendingActionsCount'
         ));
     }
 
