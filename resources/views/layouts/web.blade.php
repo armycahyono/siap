@@ -477,6 +477,7 @@
                 
                 <div class="navbar-collapse" id="sidebar-menu">
                     <ul class="navbar-nav pt-lg-3">
+                        <!-- Group: Utama -->
                         <li class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('dashboard') }}">
                                 <span class="nav-link-icon d-inline-block">
@@ -486,82 +487,10 @@
                             </a>
                         </li>
 
-                        <!-- Profil Sekolah (Di bawah Dashboard, terbuka untuk semua user) -->
-                        <li class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('settings.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-building fs-2"></i>
-                                </span>
-                                <span class="nav-link-title">Profil Sekolah</span>
-                            </a>
-                        </li>
-
-                        <!-- Data Guru (Terbuka untuk semua user) -->
-                        <li class="nav-item {{ request()->routeIs('teachers.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('teachers.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-users fs-2"></i>
-                                </span>
-                                <span class="nav-link-title">Data Guru</span>
-                            </a>
-                        </li>
-
-                        <!-- Data Siswa (Terbuka untuk semua user) -->
-                        <li class="nav-item {{ request()->routeIs('students.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('students.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-school fs-2"></i>
-                                </span>
-                                <span class="nav-link-title">Data Siswa</span>
-                            </a>
-                        </li>
-
-                        <!-- Data Pokok (Submenu/Dropdown) -->
-                        @if(auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
-                        <li class="nav-item dropdown {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'true' : 'false' }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-database fs-2"></i>
-                                </span>
-                                <span class="nav-link-title">Data Pokok</span>
-                            </a>
-                            <div class="dropdown-menu {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'show' : '' }}">
-                                <a class="dropdown-item {{ request()->routeIs('academic-years.*') ? 'active' : '' }}" href="{{ route('academic-years.index') }}">
-                                    <i class="ti ti-calendar-stats me-2"></i> Tahun Ajaran
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('departments.*') ? 'active' : '' }}" href="{{ route('departments.index') }}">
-                                    <i class="ti ti-school me-2"></i> Jurusan / Keahlian
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('classrooms.*') ? 'active' : '' }}" href="{{ route('classrooms.index') }}">
-                                    <i class="ti ti-layout-grid me-2"></i> Tingkat & Rombel
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('subjects.*') ? 'active' : '' }}" href="{{ route('subjects.index') }}">
-                                    <i class="ti ti-books me-2"></i> Mata Pelajaran
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*', 'structural-positions.*') ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
-                                    <i class="ti ti-user-check me-2"></i> Penugasan Guru
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('stakeholders.*') ? 'active' : '' }}" href="{{ route('stakeholders.index') }}">
-                                    <i class="ti ti-users-group me-2"></i> Pejabat & Pihak Terkait
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('activity-categories.*') ? 'active' : '' }}" href="{{ route('activity-categories.index') }}">
-                                    <i class="ti ti-tags me-2"></i> Kategori Kegiatan
-                                </a>
-                            </div>
-                        </li>
-                        @endif
-
-                        <!-- Group: Kurikulum -->
-                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
-                            <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
-                                <i class="ti ti-book me-1"></i> Kurikulum
-                            </span>
-                        </li>
-
                         <li class="nav-item {{ request()->routeIs('kurikulum.activities.*', 'school-activities.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.activities.index') }}">
                                 <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-calendar-star fs-2"></i>
+                                    <i class="ti ti-calendar-star fs-2 text-warning"></i>
                                 </span>
                                 <span class="nav-link-title">Agenda Kegiatan</span>
                             </a>
@@ -570,9 +499,34 @@
                         <li class="nav-item {{ request()->routeIs('kurikulum.calendar.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.calendar.index') }}">
                                 <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-calendar-event fs-2"></i>
+                                    <i class="ti ti-calendar-event fs-2 text-info"></i>
                                 </span>
                                 <span class="nav-link-title">Kalender Sekolah</span>
+                            </a>
+                        </li>
+
+                        <li class="nav-item {{ request()->routeIs('notepads.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('notepads.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-notes fs-2 text-warning"></i>
+                                </span>
+                                <span class="nav-link-title">Notepad &amp; Pengingat</span>
+                            </a>
+                        </li>
+
+                        <!-- Group: Pembelajaran & Kelas -->
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
+                            <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
+                                <i class="ti ti-book me-1"></i> Pembelajaran &amp; Kelas
+                            </span>
+                        </li>
+
+                        <li class="nav-item {{ request()->routeIs('kurikulum.schedules.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('kurikulum.schedules.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-calendar-time fs-2"></i>
+                                </span>
+                                <span class="nav-link-title">Jadwal Pelajaran</span>
                             </a>
                         </li>
 
@@ -587,16 +541,198 @@
                         </li>
                         @endif
 
-                        <li class="nav-item {{ request()->routeIs('kurikulum.schedules.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('kurikulum.schedules.index') }}">
+                        <!-- Presensi Mengajar Siswa oleh Guru Mapel & Jurnal KBM -->
+                        <li class="nav-item {{ request()->routeIs('attendance.subject.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('attendance.subject.index') }}">
                                 <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-calendar-time fs-2"></i>
+                                    <i class="ti ti-chalkboard-teacher fs-2 text-warning"></i>
                                 </span>
-                                <span class="nav-link-title">Jadwal Pelajaran</span>
+                                <span class="nav-link-title">Absen Mengajar (Mapel)</span>
                             </a>
                         </li>
 
-                        <!-- Menu Supervisi (Di dalam Grup Kurikulum) -->
+                        <!-- Laporan Izin Siswa Perwalian oleh Wali Kelas / Admin -->
+                        @if(auth()->user()->isHomeroomTeacher() || auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
+                        <li class="nav-item {{ request()->routeIs('attendance.homeroom-permits.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('attendance.homeroom-permits.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-heart-handshake fs-2 text-indigo"></i>
+                                </span>
+                                <span class="nav-link-title">Izin Siswa Perwalian</span>
+                            </a>
+                        </li>
+                        @endif
+
+                        @if(auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
+                        <li class="nav-item {{ request()->routeIs('kurikulum.cbt.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('kurikulum.cbt.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-device-laptop fs-2 text-cyan"></i>
+                                </span>
+                                <span class="nav-link-title">Integrasi CBT</span>
+                            </a>
+                        </li>
+                        @endif
+
+                        <!-- Group: Kedisiplinan & Operasional -->
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
+                            <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
+                                <i class="ti ti-shield-check me-1"></i> Operasional &amp; Presensi
+                            </span>
+                        </li>
+
+                        <!-- Menu Presensi Geotagging GPS (Mobile & Desktop) -->
+                        <li class="nav-item {{ request()->routeIs('attendance.geotag*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('attendance.geotag.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-map-pin fs-2 text-primary"></i>
+                                </span>
+                                <span class="nav-link-title">Presensi GPS</span>
+                            </a>
+                        </li>
+
+                        <!-- Menu Pribadi: Izin & Cuti Saya (Milik Semua GTK) -->
+                        <li class="nav-item {{ (request()->routeIs('attendance.gtk-permits*') && request('scope') === 'personal') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('attendance.gtk-permits.index', ['scope' => 'personal']) }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-file-text fs-2 text-indigo"></i>
+                                </span>
+                                <span class="nav-link-title">Izin &amp; Cuti Saya</span>
+                            </a>
+                        </li>
+
+                        <!-- Menu Piket Sekolah -->
+                        @if(auth()->user()->canAccessPiket())
+                        <li class="nav-item dropdown {{ request()->routeIs('piket.*') ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-piket" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('piket.*') ? 'true' : 'false' }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-shield-check fs-2 text-warning"></i>
+                                </span>
+                                <span class="nav-link-title">Piket Sekolah</span>
+                            </a>
+                            <div class="dropdown-menu {{ request()->routeIs('piket.*') ? 'show' : '' }}">
+                                <a class="dropdown-item {{ request()->routeIs('piket.dashboard') ? 'active' : '' }}" href="{{ route('piket.dashboard') }}">
+                                    <i class="ti ti-layout-dashboard me-2"></i> Dashboard Piket
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('piket.schedules.*') ? 'active' : '' }}" href="{{ route('piket.schedules.index') }}">
+                                    <i class="ti ti-calendar-user me-2"></i> Jadwal &amp; Petugas
+                                </a>
+                                @if(auth()->user()->canManagePiketSchedules())
+                                <a class="dropdown-item {{ request()->routeIs('piket.swaps.*') ? 'active' : '' }}" href="{{ route('piket.swaps.index') }}">
+                                    <i class="ti ti-arrows-left-right me-2"></i> Tukar Jadwal Piket
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('piket.calendar.*') ? 'active' : '' }}" href="{{ route('piket.calendar.index') }}">
+                                    <i class="ti ti-calendar me-2"></i> Kalender Piket
+                                </a>
+                                @endif
+
+                                @if(auth()->user()->canOperatePiket())
+                                <div class="dropdown-divider"></div>
+                                <h6 class="dropdown-header text-uppercase text-muted" style="font-size: 0.65rem;">Operasional Meja Piket</h6>
+                                <a class="dropdown-item {{ request()->routeIs('piket.journals.*') ? 'active' : '' }}" href="{{ route('piket.journals.index') }}">
+                                    <i class="ti ti-notebook me-2"></i> Jurnal Piket Harian
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('piket.permits.*') ? 'active' : '' }}" href="{{ route('piket.permits.index') }}">
+                                    <i class="ti ti-door-exit me-2"></i> Perizinan Siswa
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('piket.inval.*') ? 'active' : '' }}" href="{{ route('piket.inval.index') }}">
+                                    <i class="ti ti-chalkboard me-2"></i> Guru Inval / Kosong
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('piket.guests.*') ? 'active' : '' }}" href="{{ route('piket.guests.index') }}">
+                                    <i class="ti ti-address-book me-2"></i> Buku Tamu
+                                </a>
+                                @endif
+
+                                @if(auth()->user()->canManagePiketCases())
+                                <a class="dropdown-item {{ request()->routeIs('piket.incidents.*') ? 'active' : '' }}" href="{{ route('piket.incidents.index') }}">
+                                    <i class="ti ti-alert-triangle me-2"></i> Catatan Kasus / Kejadian
+                                </a>
+                                @endif
+
+                                @if(auth()->user()->canViewPiketReports())
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item {{ request()->routeIs('piket.reports.*') ? 'active' : '' }}" href="{{ route('piket.reports.index') }}">
+                                    <i class="ti ti-report-analytics me-2"></i> Rekapitulasi &amp; Laporan
+                                </a>
+                                @endif
+
+                                @if(auth()->user()->canManagePiketSettings())
+                                <a class="dropdown-item {{ request()->routeIs('piket.telegram.*') ? 'active' : '' }}" href="{{ route('piket.telegram.index') }}">
+                                    <i class="ti ti-brand-telegram me-2 text-info"></i> Bot Telegram Piket
+                                </a>
+                                @endif
+                            </div>
+                        </li>
+                        @endif
+
+                        <!-- Rekapitulasi Presensi (Pimpinan / Waka / Admin) -->
+                        @php
+                            $canAccessAttendanceRecap = auth()->user()->canAccessTeacherAttendanceReport() 
+                                || auth()->user()->canAccessStudentAttendanceReport() 
+                                || auth()->user()->canManageAttendanceDevices() 
+                                || auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']);
+                            $todayGtkPermitBadgeCount = \App\Models\GtkPermit::whereDate('start_date', '<=', now()->toDateString())
+                                ->whereDate('end_date', '>=', now()->toDateString())
+                                ->count();
+                            $pendingGtkBadgeCount = auth()->user()->isPrincipal()
+                                ? \App\Models\GtkPermit::where('status', 'pending')->count()
+                                : 0;
+                        @endphp
+                        @if($canAccessAttendanceRecap)
+                        <li class="nav-item dropdown {{ (request()->routeIs('attendance.report.*', 'attendance.devices*', 'attendance.index') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-rekap-presensi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ (request()->routeIs('attendance.report.*', 'attendance.devices*', 'attendance.index') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'true' : 'false' }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-report-analytics fs-2 text-teal"></i>
+                                </span>
+                                <span class="nav-link-title">Rekap Presensi</span>
+                                @if($pendingGtkBadgeCount > 0)
+                                    <span class="badge bg-danger text-white fw-bold ms-auto">{{ $pendingGtkBadgeCount }}</span>
+                                @elseif($todayGtkPermitBadgeCount > 0)
+                                    <span class="badge bg-warning text-dark fw-bold ms-auto">{{ $todayGtkPermitBadgeCount }}</span>
+                                @endif
+                            </a>
+                            <div class="dropdown-menu {{ (request()->routeIs('attendance.report.*', 'attendance.devices*', 'attendance.index') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'show' : '' }}">
+                                @if(auth()->user()->canAccessTeacherAttendanceReport())
+                                <a class="dropdown-item {{ request()->routeIs('attendance.report.teachers*') ? 'active' : '' }}" href="{{ route('attendance.report.teachers') }}">
+                                    <i class="ti ti-user-check me-2 text-teal"></i> Presensi Guru &amp; Staf
+                                </a>
+                                <a class="dropdown-item d-flex align-items-center {{ (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal') ? 'active' : '' }}" href="{{ route('attendance.gtk-permits.index', ['scope' => 'manage']) }}">
+                                    <i class="ti ti-file-certificate me-2 text-warning"></i> Daftar Izin &amp; Cuti GTK
+                                    @if($pendingGtkBadgeCount > 0)
+                                        <span class="badge bg-danger text-white fw-bold ms-auto" title="{{ $pendingGtkBadgeCount }} permohonan butuh persetujuan">{{ $pendingGtkBadgeCount }}</span>
+                                    @elseif($todayGtkPermitBadgeCount > 0)
+                                        <span class="badge bg-warning text-dark fw-bold ms-auto" title="{{ $todayGtkPermitBadgeCount }} GTK berhalangan hari ini">{{ $todayGtkPermitBadgeCount }}</span>
+                                    @endif
+                                </a>
+                                @endif
+
+                                @if(auth()->user()->canAccessStudentAttendanceReport())
+                                <a class="dropdown-item {{ request()->routeIs('attendance.report.students*') ? 'active' : '' }}" href="{{ route('attendance.report.students') }}">
+                                    <i class="ti ti-users-group me-2 text-indigo"></i> Presensi Siswa
+                                </a>
+                                @endif
+
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item {{ request()->routeIs('attendance.index') ? 'active' : '' }}" href="{{ route('attendance.index') }}">
+                                    <i class="ti ti-calendar-check me-2 text-cyan"></i> Log Absensi (Mesin)
+                                </a>
+
+                                @if(auth()->user()->canManageAttendanceDevices())
+                                <a class="dropdown-item {{ request()->routeIs('attendance.devices*') ? 'active' : '' }}" href="{{ route('attendance.devices.index') }}">
+                                    <i class="ti ti-devices me-2 text-primary"></i> Mesin Absensi
+                                </a>
+                                @endif
+                            </div>
+                        </li>
+                        @endif
+
+                        <!-- Group: Supervisi Guru -->
+                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
+                            <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
+                                <i class="ti ti-certificate me-1"></i> Supervisi Guru
+                            </span>
+                        </li>
+
                         <li class="nav-item dropdown {{ request()->routeIs('schedules.*', 'supervisions.*', 'reports.history', 'reports.print-index', 'approvals.*', 'reports.recap', 'rubrics.*') ? 'active' : '' }}">
                             <a class="nav-link dropdown-toggle" href="#navbar-supervisi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('schedules.*', 'supervisions.*', 'reports.history', 'reports.print-index', 'approvals.*', 'reports.recap', 'rubrics.*') ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
@@ -660,208 +796,82 @@
                             </div>
                         </li>
 
-                        @if(auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
-                        <li class="nav-item {{ request()->routeIs('kurikulum.cbt.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('kurikulum.cbt.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-device-laptop fs-2 text-cyan"></i>
-                                </span>
-                                <span class="nav-link-title">Integrasi CBT</span>
-                            </a>
-                        </li>
-                        @endif
-
-                        <!-- Group: Piket -->
-                        @if(auth()->user()->canAccessPiket())
+                        <!-- Group: Data Pokok (Termasuk Profil Sekolah sesuai permintaan) -->
                         <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
                             <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
-                                <i class="ti ti-shield-check me-1"></i> Piket
+                                <i class="ti ti-database me-1"></i> Data Pokok
                             </span>
                         </li>
 
-                        <li class="nav-item dropdown {{ request()->routeIs('piket.*') ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-piket" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('piket.*') ? 'true' : 'false' }}">
+                        <!-- Profil Sekolah (Sesuai permintaan: termasuk di dalam Data Pokok) -->
+                        <li class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('settings.index') }}">
                                 <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-shield-check fs-2 text-warning"></i>
+                                    <i class="ti ti-building fs-2 text-primary"></i>
                                 </span>
-                                <span class="nav-link-title">Menu Piket</span>
+                                <span class="nav-link-title">Profil Sekolah</span>
                             </a>
-                            <div class="dropdown-menu {{ request()->routeIs('piket.*') ? 'show' : '' }}">
-                                <a class="dropdown-item {{ request()->routeIs('piket.dashboard') ? 'active' : '' }}" href="{{ route('piket.dashboard') }}">
-                                    <i class="ti ti-layout-dashboard me-2"></i> Dashboard Piket
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('piket.schedules.*') ? 'active' : '' }}" href="{{ route('piket.schedules.index') }}">
-                                    <i class="ti ti-calendar-user me-2"></i> Jadwal & Petugas
-                                </a>
-                                @if(auth()->user()->canManagePiketSchedules())
-                                <a class="dropdown-item {{ request()->routeIs('piket.swaps.*') ? 'active' : '' }}" href="{{ route('piket.swaps.index') }}">
-                                    <i class="ti ti-arrows-left-right me-2"></i> Tukar Jadwal Piket
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('piket.calendar.*') ? 'active' : '' }}" href="{{ route('piket.calendar.index') }}">
-                                    <i class="ti ti-calendar me-2"></i> Kalender Piket
-                                </a>
-                                @endif
+                        </li>
 
-                                @if(auth()->user()->canOperatePiket())
-                                <div class="dropdown-divider"></div>
-                                <h6 class="dropdown-header text-uppercase text-muted" style="font-size: 0.65rem;">Operasional Meja Piket</h6>
-                                <a class="dropdown-item {{ request()->routeIs('piket.journals.*') ? 'active' : '' }}" href="{{ route('piket.journals.index') }}">
-                                    <i class="ti ti-notebook me-2"></i> Jurnal Piket Harian
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('piket.permits.*') ? 'active' : '' }}" href="{{ route('piket.permits.index') }}">
-                                    <i class="ti ti-door-exit me-2"></i> Perizinan Siswa
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('piket.inval.*') ? 'active' : '' }}" href="{{ route('piket.inval.index') }}">
-                                    <i class="ti ti-chalkboard me-2"></i> Guru Inval / Kosong
-                                </a>
-                                <a class="dropdown-item {{ request()->routeIs('piket.guests.*') ? 'active' : '' }}" href="{{ route('piket.guests.index') }}">
-                                    <i class="ti ti-address-book me-2"></i> Buku Tamu
-                                </a>
-                                @endif
+                        <!-- Data Guru -->
+                        <li class="nav-item {{ request()->routeIs('teachers.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('teachers.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-users fs-2"></i>
+                                </span>
+                                <span class="nav-link-title">Data Guru</span>
+                            </a>
+                        </li>
 
-                                @if(auth()->user()->canManagePiketCases())
-                                <a class="dropdown-item {{ request()->routeIs('piket.incidents.*') ? 'active' : '' }}" href="{{ route('piket.incidents.index') }}">
-                                    <i class="ti ti-alert-triangle me-2"></i> Catatan Kasus / Kejadian
-                                </a>
-                                @endif
+                        <!-- Data Siswa -->
+                        <li class="nav-item {{ request()->routeIs('students.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('students.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-school fs-2"></i>
+                                </span>
+                                <span class="nav-link-title">Data Siswa</span>
+                            </a>
+                        </li>
 
-                                @if(auth()->user()->canViewPiketReports())
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item {{ request()->routeIs('piket.reports.*') ? 'active' : '' }}" href="{{ route('piket.reports.index') }}">
-                                    <i class="ti ti-report-analytics me-2"></i> Rekapitulasi & Laporan
+                        <!-- Master Akademik (Dropdown) -->
+                        @if(auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
+                        <li class="nav-item dropdown {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'true' : 'false' }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-folders fs-2"></i>
+                                </span>
+                                <span class="nav-link-title">Master Akademik</span>
+                            </a>
+                            <div class="dropdown-menu {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'show' : '' }}">
+                                <a class="dropdown-item {{ request()->routeIs('academic-years.*') ? 'active' : '' }}" href="{{ route('academic-years.index') }}">
+                                    <i class="ti ti-calendar-stats me-2"></i> Tahun Ajaran
                                 </a>
-                                @endif
-
-                                @if(auth()->user()->canManagePiketSettings())
-                                <a class="dropdown-item {{ request()->routeIs('piket.telegram.*') ? 'active' : '' }}" href="{{ route('piket.telegram.index') }}">
-                                    <i class="ti ti-brand-telegram me-2 text-info"></i> Bot Telegram Piket
+                                <a class="dropdown-item {{ request()->routeIs('departments.*') ? 'active' : '' }}" href="{{ route('departments.index') }}">
+                                    <i class="ti ti-school me-2"></i> Jurusan / Keahlian
                                 </a>
-                                @endif
+                                <a class="dropdown-item {{ request()->routeIs('classrooms.*') ? 'active' : '' }}" href="{{ route('classrooms.index') }}">
+                                    <i class="ti ti-layout-grid me-2"></i> Tingkat &amp; Rombel
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('subjects.*') ? 'active' : '' }}" href="{{ route('subjects.index') }}">
+                                    <i class="ti ti-books me-2"></i> Mata Pelajaran
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*', 'structural-positions.*') ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
+                                    <i class="ti ti-user-check me-2"></i> Penugasan Guru
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('stakeholders.*') ? 'active' : '' }}" href="{{ route('stakeholders.index') }}">
+                                    <i class="ti ti-users-group me-2"></i> Pejabat &amp; Pihak Terkait
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('activity-categories.*') ? 'active' : '' }}" href="{{ route('activity-categories.index') }}">
+                                    <i class="ti ti-tags me-2"></i> Kategori Kegiatan
+                                </a>
                             </div>
                         </li>
                         @endif
 
-                        <!-- Group: Presensi & Absensi -->
+                        <!-- Group: Pengaturan & Sistem -->
                         <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
                             <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
-                                <i class="ti ti-calendar-check me-1"></i> Presensi Sekolah
-                            </span>
-                        </li>
-
-                        <!-- Presensi Mengajar Siswa oleh Guru Mapel & Tukar Jam -->
-                        <li class="nav-item {{ request()->routeIs('attendance.subject.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.subject.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-chalkboard-teacher fs-2 text-warning"></i>
-                                </span>
-                                <span class="nav-link-title">Absen Mengajar (Mapel)</span>
-                            </a>
-                        </li>
-
-                        <!-- Laporan Izin Siswa Perwalian oleh Wali Kelas / Admin -->
-                        @if(auth()->user()->isHomeroomTeacher() || auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']))
-                        <li class="nav-item {{ request()->routeIs('attendance.homeroom-permits.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.homeroom-permits.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-heart-handshake fs-2 text-indigo"></i>
-                                </span>
-                                <span class="nav-link-title">Izin Siswa Perwalian</span>
-                            </a>
-                        </li>
-                        @endif
-
-                        <!-- Menu Presensi Geotagging GPS (Mobile & Desktop) -->
-                        <li class="nav-item {{ request()->routeIs('attendance.geotag*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.geotag.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-map-pin fs-2 text-primary"></i>
-                                </span>
-                                <span class="nav-link-title">Presensi GPS</span>
-                            </a>
-                        </li>
-
-                        <!-- 1. Menu Rekaman Absensi Terpadu (Mesin & Telegram) -->
-                        <li class="nav-item {{ request()->routeIs('attendance.index') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-calendar-check fs-2 text-cyan"></i>
-                                </span>
-                                <span class="nav-link-title">Absensi</span>
-                            </a>
-                        </li>
-
-                        <!-- 2. Menu Mesin Absensi (Khusus Admin / Super Admin) -->
-                        @if(auth()->user()->canManageAttendanceDevices())
-                        <li class="nav-item {{ request()->routeIs('attendance.devices*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.devices.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-devices fs-2 text-primary"></i>
-                                </span>
-                                <span class="nav-link-title">Mesin Absensi</span>
-                            </a>
-                        </li>
-                        @endif
-
-                        <!-- Menu Pribadi: Izin & Cuti Saya (Milik Semua GTK) -->
-                        <li class="nav-item {{ (request()->routeIs('attendance.gtk-permits*') && request('scope') === 'personal') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.gtk-permits.index', ['scope' => 'personal']) }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-file-text fs-2 text-indigo"></i>
-                                </span>
-                                <span class="nav-link-title">Izin &amp; Cuti Saya</span>
-                            </a>
-                        </li>
-
-                        @if(auth()->user()->canAccessTeacherAttendanceReport())
-                        <li class="nav-item {{ request()->routeIs('attendance.report.teachers*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.report.teachers') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-user-check fs-2 text-teal"></i>
-                                </span>
-                                <span class="nav-link-title">Presensi Guru &amp; Staf</span>
-                            </a>
-                        </li>
-                        <!-- Menu Pimpinan: Daftar Izin & Cuti GTK (Seluruh GTK) -->
-                        <li class="nav-item {{ (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal') ? 'active' : '' }}">
-                            @php
-                                $todayGtkPermitBadgeCount = \App\Models\GtkPermit::whereDate('start_date', '<=', now()->toDateString())
-                                    ->whereDate('end_date', '>=', now()->toDateString())
-                                    ->count();
-                                $pendingGtkBadgeCount = auth()->user()->isPrincipal()
-                                    ? \App\Models\GtkPermit::where('status', 'pending')->count()
-                                    : 0;
-                            @endphp
-                            <a class="nav-link d-flex align-items-center" href="{{ route('attendance.gtk-permits.index', ['scope' => 'manage']) }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-file-certificate fs-2 text-warning"></i>
-                                </span>
-                                <span class="nav-link-title">Daftar Izin &amp; Cuti GTK</span>
-                                @if($pendingGtkBadgeCount > 0)
-                                    <span class="badge bg-danger text-white fw-bold ms-auto" title="{{ $pendingGtkBadgeCount }} permohonan butuh persetujuan">{{ $pendingGtkBadgeCount }}</span>
-                                @elseif($todayGtkPermitBadgeCount > 0)
-                                    <span class="badge bg-warning text-dark fw-bold ms-auto" title="{{ $todayGtkPermitBadgeCount }} GTK berhalangan hari ini">{{ $todayGtkPermitBadgeCount }}</span>
-                                @endif
-                            </a>
-                        </li>
-                        @endif
-
-                        @if(auth()->user()->canAccessStudentAttendanceReport())
-                        <li class="nav-item {{ request()->routeIs('attendance.report.students*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('attendance.report.students') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-users-group fs-2 text-indigo"></i>
-                                </span>
-                                <span class="nav-link-title">Presensi Siswa</span>
-                            </a>
-                        </li>
-                        @endif
-
-
-
-                        <!-- Group: Pengaturan -->
-                        <li class="nav-item pt-3 pb-1 px-2 sidebar-section-header">
-                            <span class="text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.08rem; color: #93c5fd !important;">
-                                <i class="ti ti-settings me-1"></i> Pengaturan
+                                <i class="ti ti-settings me-1"></i> Pengaturan &amp; Sistem
                             </span>
                         </li>
 
@@ -871,7 +881,7 @@
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-brand-telegram fs-2 text-info"></i>
                                 </span>
-                                <span class="nav-link-title">Bot Telegram & Notifikasi</span>
+                                <span class="nav-link-title">Bot Telegram &amp; Notifikasi</span>
                             </a>
                         </li>
                         @endif
@@ -882,20 +892,10 @@
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-shield-lock fs-2"></i>
                                 </span>
-                                <span class="nav-link-title">Hak akses dan peran</span>
+                                <span class="nav-link-title">Hak Akses &amp; Peran</span>
                             </a>
                         </li>
                         @endif
-
-                        <!-- Notepad / Catatan Pribadi & Pengingat -->
-                        <li class="nav-item {{ request()->routeIs('notepads.*') ? 'active' : '' }}">
-                            <a class="nav-link" href="{{ route('notepads.index') }}">
-                                <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-notes fs-2 text-warning"></i>
-                                </span>
-                                <span class="nav-link-title">Notepad & Pengingat</span>
-                            </a>
-                        </li>
 
                         <li class="nav-item {{ request()->routeIs('feedbacks.*') ? 'active' : '' }}">
                             @php
