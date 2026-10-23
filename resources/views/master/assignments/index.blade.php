@@ -3,18 +3,13 @@
 @section('title', 'Penugasan Guru - Sistem Supervisi')
 
 @section('content')
+<!-- Page Header (Model 2: Hero Context Banner) -->
 @include('layouts._hero_header', [
     'title' => 'Penugasan Guru & Jabatan Struktural',
     'subtitle' => 'Kelola penugasan guru sebagai Wali Kelas, Pengampu Mata Pelajaran, Tim Supervisor, serta Pejabat Struktural Sekolah.',
     'icon' => 'ti ti-briefcase',
     'category' => 'DATA POKOK & SDM',
     'academicYear' => $academicYear,
-    'stats' => [
-        ['label' => 'Mapel', 'value' => $assignments->total(), 'class' => 'text-white'],
-        ['label' => 'Wali Kelas', 'value' => $classrooms->whereNotNull('homeroom_teacher_id')->count() . '/' . $classrooms->count(), 'class' => 'text-info'],
-        ['label' => 'Supervisor', 'value' => $supervisors->count(), 'class' => 'text-warning'],
-        ['label' => 'Struktural', 'value' => $structuralAssignments->total(), 'class' => 'text-success'],
-    ]
 ])
 
 @include('master.nav')

@@ -9,12 +9,6 @@
     'subtitle' => 'Kelola klasifikasi agenda kegiatan sekolah, pembeda Kaldik resmi vs program internal, dan warna pada kalender terpadu.',
     'icon' => 'ti ti-tags',
     'category' => 'DATA POKOK & KALENDER',
-    'stats' => [
-        ['label' => 'Total', 'value' => $totalCategories, 'class' => 'text-white'],
-        ['label' => 'Kaldik Resmi', 'value' => $totalKaldik, 'class' => 'text-info'],
-        ['label' => 'Internal', 'value' => $totalInternal, 'class' => 'text-warning'],
-        ['label' => 'Aktif', 'value' => $totalActive, 'class' => 'text-success'],
-    ],
     'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateCategory"><i class="ti ti-plus me-1"></i> Tambah Kategori</button>'
 ])
 

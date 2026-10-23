@@ -42,30 +42,10 @@
             </div>
         </div>
 
-        <!-- Right: Actions and/or Stats -->
-        @if(isset($actions) || isset($stats))
+        <!-- Right: Actions -->
+        @if(!empty($actions))
             <div class="d-flex align-items-center gap-2 flex-wrap ms-lg-auto mt-2 mt-lg-0">
-                @if(isset($stats) && is_array($stats) && count($stats) > 0)
-                    <div class="d-flex align-items-center gap-1 px-3 py-1.5 rounded-2" 
-                         style="background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.16); backdrop-filter: blur(6px);">
-                        @foreach($stats as $idx => $st)
-                            <div class="text-center px-2.5 {{ !$loop->last ? 'border-end border-white-subtle' : '' }}">
-                                <div class="fs-3 fw-bold {{ $st['class'] ?? 'text-white' }} lh-1">
-                                    {{ $st['value'] }}
-                                </div>
-                                <small class="text-white-50 fw-semibold" style="font-size: 0.65rem; text-transform: uppercase;">
-                                    {{ $st['label'] }}
-                                </small>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-
-                @if(isset($actions))
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        {!! $actions !!}
-                    </div>
-                @endif
+                {!! $actions !!}
             </div>
         @endif
     </div>

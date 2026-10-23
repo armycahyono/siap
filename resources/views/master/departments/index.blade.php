@@ -9,9 +9,6 @@
     'subtitle' => 'Kelola data program keahlian dan kompetensi kejuruan di SMK PGRI KRAS.',
     'icon' => 'ti ti-school',
     'category' => 'DATA POKOK & STRUKTUR',
-    'stats' => [
-        ['label' => 'Total Jurusan', 'value' => $departments->total(), 'class' => 'text-white'],
-    ],
     'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateDept"><i class="ti ti-plus me-1"></i> Tambah Jurusan</button>'
 ])
 

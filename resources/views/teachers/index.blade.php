@@ -17,10 +17,6 @@
     'icon' => 'ti ti-users',
     'category' => 'DATA POKOK & SDM',
     'academicYear' => $academicYear,
-    'stats' => [
-        ['label' => 'Total Guru', 'value' => $allTeachers->count(), 'class' => 'text-white'],
-        ['label' => 'Ditampilkan', 'value' => $teachers->total(), 'class' => 'text-info'],
-    ],
     'actions' => $teacherActions
 ])
 

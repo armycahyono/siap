@@ -9,9 +9,6 @@
     'subtitle' => 'Kelola data Pengurus Yayasan, Komite Sekolah, Pengawas Pembina, dan Pejabat Dinas penandatangan dokumen.',
     'icon' => 'ti ti-users-group',
     'category' => 'DATA POKOK & STAKEHOLDER',
-    'stats' => [
-        ['label' => 'Total Pejabat', 'value' => $counts['all'] ?? 0, 'class' => 'text-white'],
-    ],
     'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateStakeholder"><i class="ti ti-plus me-1"></i> Tambah Pejabat / Pengurus</button>'
 ])
 

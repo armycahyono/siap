@@ -14,10 +14,6 @@
     'icon' => 'ti ti-layout-grid',
     'category' => 'DATA POKOK & STRUKTUR',
     'academicYear' => $academicYear,
-    'stats' => [
-        ['label' => 'Total Rombel', 'value' => $classrooms->total(), 'class' => 'text-white'],
-        ['label' => 'Tingkat', 'value' => $gradeLevels->count(), 'class' => 'text-info'],
-    ],
     'actions' => $classroomActions
 ])
 

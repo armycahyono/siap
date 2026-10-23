@@ -16,10 +16,6 @@
     'icon' => 'ti ti-calendar-stats',
     'category' => 'DATA POKOK & PENGATURAN',
     'academicYear' => $activeYear->name ?? null,
-    'stats' => [
-        ['label' => 'Total Periode', 'value' => $academicYears->count(), 'class' => 'text-white'],
-        ['label' => 'Tahun Aktif', 'value' => $activeYear->name ?? '-', 'class' => 'text-info'],
-    ],
     'actions' => $ayActions
 ])
 

@@ -9,10 +9,6 @@
     'subtitle' => 'Kelola daftar kurikulum mata pelajaran umum, kejuruan, dan muatan lokal.',
     'icon' => 'ti ti-books',
     'category' => 'KURIKULUM & MAPEL',
-    'stats' => [
-        ['label' => 'Total Mapel', 'value' => $subjects->total(), 'class' => 'text-white'],
-        ['label' => 'Kategori', 'value' => count($categories), 'class' => 'text-info'],
-    ],
     'actions' => '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalCreateSubject"><i class="ti ti-plus me-1"></i> Tambah Mapel</button>'
 ])
 
