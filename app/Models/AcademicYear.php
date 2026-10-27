@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class AcademicYear extends Model
 {
@@ -46,20 +47,35 @@ class AcademicYear extends Model
     }
 
     /**
-     * Set this instance as active and deactivate all others.
+     * Set this instance as active and deactivate all others atomically.
      */
     public function setAsActive(): void
     {
-        self::query()->update(['is_active' => false]);
-        $this->update(['is_active' => true]);
+        DB::transaction(function () {
+            // Lock shared coordination row (SchoolSetting) first to serialize concurrent activations
+            $setting = SchoolSetting::lockForUpdate()->first();
 
-        // Sync with SchoolSetting default
-        $setting = SchoolSetting::first();
-        if ($setting) {
-            $setting->update([
-                'academic_year' => $this->name,
-                'semester' => $this->semester ?? 'Ganjil',
-            ]);
-        }
+            // Lock this record to prevent concurrent modifications
+            $target = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
+
+            if ($target->is_locked) {
+                throw new \RuntimeException("Tahun Pelajaran {$target->name} sedang dikunci dan tidak dapat diaktifkan.");
+            }
+
+            // Deactivate all other academic years
+            self::where('id', '!=', $target->id)->update(['is_active' => false]);
+
+            // Activate target record
+            $target->update(['is_active' => true]);
+            $this->is_active = true;
+
+            // Sync with SchoolSetting
+            if ($setting) {
+                $setting->update([
+                    'academic_year' => $target->name,
+                    'semester' => $target->semester ?? 'Ganjil',
+                ]);
+            }
+        });
     }
 }

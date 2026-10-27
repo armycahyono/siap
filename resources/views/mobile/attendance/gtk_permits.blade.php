@@ -222,7 +222,7 @@
                     <!-- Lampiran Berkas Bukti -->
                     <div>
                         @if($p->document_path)
-                            <a href="{{ asset('storage/' . $p->document_path) }}" target="_blank" 
+                            <a href="{{ $p->document_url }}" target="_blank" 
                                class="btn btn-sm btn-outline-primary py-1 px-2.5 rounded-pill fw-semibold text-decoration-none d-inline-flex align-items-center gap-1" 
                                style="font-size: 0.72rem;">
                                 <i class="ti ti-paperclip fs-3"></i>

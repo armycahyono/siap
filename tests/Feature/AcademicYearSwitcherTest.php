@@ -18,23 +18,21 @@ class AcademicYearSwitcherTest extends TestCase
     {
         parent::setUp();
 
-        $role = Role::create([
+        $role = Role::firstOrCreate(['slug' => 'waka_kurikulum'], [
             'name' => 'Waka Kurikulum',
-            'slug' => 'waka_kurikulum',
             'description' => 'Waka Kurikulum',
             'is_system' => true,
         ]);
 
-        $this->user = User::create([
+        $this->user = User::firstOrCreate(['username' => 'wakakur'], [
             'name' => 'Waka Kurikulum Test',
-            'username' => 'wakakur',
             'email' => 'waka@test.com',
             'password' => bcrypt('password'),
             'role_id' => $role->id,
             'is_active' => true,
         ]);
 
-        SchoolSetting::create([
+        SchoolSetting::firstOrCreate(['id' => 1], [
             'school_name' => 'SMK PGRI KRAS',
             'academic_year' => '2026/2027',
             'semester' => 'Ganjil',

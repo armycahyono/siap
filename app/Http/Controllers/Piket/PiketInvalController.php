@@ -3,20 +3,23 @@
 namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\GtkPermit;
 use App\Models\PiketInvalClass;
 use App\Models\PiketJournal;
-use App\Models\SchoolSetting;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PiketInvalController extends Controller
 {
@@ -26,8 +29,16 @@ class PiketInvalController extends Controller
 
     public function index(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
         $classroomId = $request->query('classroom_id');
         $status = $request->query('status'); // 'all', 'handled' (terisi), 'unhandled' (kosong)
         $search = $request->query('search');
@@ -110,7 +121,12 @@ class PiketInvalController extends Controller
             'handled' => (clone $statsQuery)->whereNotNull('inval_teacher_id')->count(),
         ];
 
-        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+        $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
         $teachers = User::operationalPersonnel()->where('is_active', true)->orderBy('name')->get();
         $subjects = Subject::where('is_active', true)->orderBy('name')->get();
 
@@ -139,11 +155,13 @@ class PiketInvalController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+
         $journal = PiketJournal::firstOrCreate(
             ['date' => $validated['date']],
             [
-                'academic_year' => session('active_academic_year', '2026/2027'),
-                'semester' => 'Ganjil',
+                'academic_year' => $operationalYear->name,
+                'semester' => $operationalYear->semester ?? 'Ganjil',
                 'status' => 'berlangsung',
                 'coordinator_id' => Auth::id(),
             ]

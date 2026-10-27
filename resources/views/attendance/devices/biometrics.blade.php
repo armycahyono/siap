@@ -353,7 +353,7 @@
                                                 @forelse($missingTeachers as $mt)
                                                     <tr>
                                                         <td><strong>{{ $mt->name }}</strong></td>
-                                                        <td><code>{{ $mt->nigs_fix ?: (preg_replace('/\D/', '', (string) $mt->nigs) ?: $mt->id) }}</code></td>
+                                                        <td><code>{{ $mt->nigs ?: $mt->id }}</code></td>
                                                         <td class="text-secondary small">{{ $mt->position ?: 'Guru' }}</td>
                                                     </tr>
                                                 @empty

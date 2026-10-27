@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\PiketJournal;
 use App\Models\PiketStudentPermit;
-use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\StudentClassroom;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class HomeroomStudentPermitController extends Controller
 {
@@ -28,23 +33,33 @@ class HomeroomStudentPermitController extends Controller
     public function index(Request $request): View
     {
         $user = Auth::user();
-        $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         // Ambil rombel yang diampu oleh user sebagai wali kelas
         // Super admin atau waka kurikulum juga bisa memantau semua rombel
         $canViewAll = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah');
 
-        if ($canViewAll) {
-            $myClassrooms = Classroom::where('academic_year', $academicYear)
-                ->orderBy('name')
-                ->get();
-        } else {
-            $myClassrooms = Classroom::where('homeroom_teacher_id', $user->id)
-                ->where('academic_year', $academicYear)
-                ->orderBy('name')
-                ->get();
+        $classroomQuery = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        });
+
+        if (! $canViewAll) {
+            $classroomQuery->where('homeroom_teacher_id', $user->id);
         }
+
+        $myClassrooms = $classroomQuery->orderBy('name')->get();
 
         $selectedClassroomId = $request->query('classroom_id', $myClassrooms->first()?->id);
         // Default ke hari ini jika parameter 'date' tidak ada sama sekali di query string
@@ -85,7 +100,7 @@ class HomeroomStudentPermitController extends Controller
 
         if (DeviceDetector::isMobile()) {
             return view('mobile.attendance.homeroom_permits', compact(
-                'myClassrooms', 'selectedClassroomId', 'permits', 'date', 'search', 'canViewAll'
+                'myClassrooms', 'selectedClassroomId', 'permits', 'date', 'search', 'canViewAll', 'academicYear'
             ));
         }
 
@@ -95,7 +110,8 @@ class HomeroomStudentPermitController extends Controller
             'permits',
             'date',
             'search',
-            'canViewAll'
+            'canViewAll',
+            'academicYear'
         ));
     }
 
@@ -105,46 +121,60 @@ class HomeroomStudentPermitController extends Controller
     public function create(Request $request): View
     {
         $user = Auth::user();
-        $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalYear = $academicYearContext->getOperationalYear();
+        $academicYear = $operationalYear->name;
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         $canViewAll = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah');
 
-        if ($canViewAll) {
-            $myClassrooms = Classroom::where('academic_year', $academicYear)
-                ->with('students')
-                ->orderBy('name')
-                ->get();
-        } else {
-            $myClassrooms = Classroom::where('homeroom_teacher_id', $user->id)
-                ->where('academic_year', $academicYear)
-                ->with('students')
-                ->orderBy('name')
-                ->get();
+        $classroomQuery = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        });
+
+        if (! $canViewAll) {
+            $classroomQuery->where('homeroom_teacher_id', $user->id);
         }
+
+        $myClassrooms = $classroomQuery->with('students')
+            ->orderBy('name')
+            ->get();
 
         abort_if($myClassrooms->isEmpty(), 403, 'Anda belum ditugaskan sebagai Wali Kelas pada tahun ajaran aktif.');
 
         $selectedClassroomId = $request->query('classroom_id', $myClassrooms->first()->id);
         $selectedClassroom = $myClassrooms->firstWhere('id', $selectedClassroomId) ?? $myClassrooms->first();
 
-        $students = Student::where('classroom_id', $selectedClassroom->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $enrolledStudentIds = StudentClassroom::where('classroom_id', $selectedClassroom->id)->pluck('student_id');
+        if ($enrolledStudentIds->isNotEmpty()) {
+            $students = Student::whereIn('id', $enrolledStudentIds)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        } else {
+            $students = Student::where('classroom_id', $selectedClassroom->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        }
 
         if (DeviceDetector::isMobile()) {
             return view('mobile.attendance.homeroom_permits_create', compact(
                 'myClassrooms',
                 'selectedClassroom',
-                'students'
+                'students',
+                'academicYear'
             ));
         }
 
         return view('attendance.homeroom_permits.create', compact(
             'myClassrooms',
             'selectedClassroom',
-            'students'
+            'students',
+            'academicYear'
         ));
     }
 
@@ -162,16 +192,22 @@ class HomeroomStudentPermitController extends Controller
             'permit_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:permit_date',
             'reason' => 'required|string|max:500',
-            'attachment' => 'nullable|image|max:3072', // Max 3MB foto surat / screenshot WA
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120', // Eksplisit format dokumen/foto bukti sah, tolak SVG demi keamanan
         ]);
 
         $classroom = Classroom::findOrFail($validated['classroom_id']);
 
-        // Verifikasi kepemilikan wali kelas (kecuali admin/waka)
+        // Verifikasi kepemilikan wali kelas (kecuali admin/waka/kepala sekolah)
         $canManage = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah') || ($classroom->homeroom_teacher_id === $user->id);
         abort_unless($canManage, 403, 'Anda bukan wali kelas untuk rombel ini.');
 
         $student = Student::findOrFail($validated['student_id']);
+
+        // Pastikan siswa terdaftar pada kelas yang dipilih
+        $isStudentInClass = ($student->classroom_id === $classroom->id)
+            || StudentClassroom::where('classroom_id', $classroom->id)->where('student_id', $student->id)->exists();
+        abort_unless($isStudentInClass, 403, 'Siswa tersebut tidak terdaftar di dalam rombel ini.');
+
         $todayStr = Carbon::parse($validated['permit_date'])->toDateString();
 
         // Pencegahan Dobel Input untuk siswa yang sama pada tanggal yang sama
@@ -185,12 +221,14 @@ class HomeroomStudentPermitController extends Controller
                 ->with('warning', "Izin untuk siswa {$student->name} pada tanggal tersebut sudah pernah dicatat sebelumnya ({$existingPermit->permit_number}).");
         }
 
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+
         // Cari atau buat jurnal piket untuk tanggal mulai
         $journal = PiketJournal::firstOrCreate(
             ['date' => $todayStr],
             [
-                'academic_year' => session('active_academic_year', '2026/2027'),
-                'semester' => 'Ganjil',
+                'academic_year' => $operationalYear->name,
+                'semester' => $operationalYear->semester ?? 'Ganjil',
                 'status' => 'berlangsung',
                 'coordinator_id' => $user->id,
             ]
@@ -199,7 +237,7 @@ class HomeroomStudentPermitController extends Controller
         // Upload attachment jika ada
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('permits/evidence', 'public');
+            $attachmentPath = $request->file('attachment')->store('permits/evidence', 'local');
         }
 
         // Generate nomor izin
@@ -247,7 +285,11 @@ class HomeroomStudentPermitController extends Controller
         abort_unless($canManage, 403, 'Anda tidak berhak menghapus data ini.');
 
         if ($permit->attachment_path) {
-            Storage::disk('public')->delete($permit->attachment_path);
+            if (Storage::disk('local')->exists($permit->attachment_path)) {
+                Storage::disk('local')->delete($permit->attachment_path);
+            } elseif (Storage::disk('public')->exists($permit->attachment_path)) {
+                Storage::disk('public')->delete($permit->attachment_path);
+            }
         }
 
         $permit->delete();

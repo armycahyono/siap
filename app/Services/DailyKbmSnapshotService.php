@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\DailyClassroomKbmSnapshot;
@@ -24,7 +25,7 @@ class DailyKbmSnapshotService
      *
      * @return array{rosters: Collection, schedules: Collection, classrooms: Collection}
      */
-    public function getOrGenerateSnapshot(Carbon $date, bool $forceSync = false): array
+    public function getOrGenerateSnapshot(Carbon $date, bool $forceSync = false, ?string $targetAcademicYear = null): array
     {
         $dateStr = $date->toDateString();
 
@@ -33,7 +34,7 @@ class DailyKbmSnapshotService
         $classroomsExist = DailyClassroomKbmSnapshot::whereDate('date', $dateStr)->exists();
 
         if (! $rostersExist || ! $schedulesExist || ! $classroomsExist || $forceSync) {
-            $this->generateSnapshotForDate($date);
+            $this->generateSnapshotForDate($date, $targetAcademicYear);
         }
 
         // Sinkronisasi status kehadiran sesi presensi & kehadiran siswa yang sudah tersimpan
@@ -55,15 +56,108 @@ class DailyKbmSnapshotService
     }
 
     /**
+     * Tentukan tahun ajaran dan semester yang sah untuk tanggal tertentu.
+     *
+     * @return array{academic_year: string, semester: string}
+     */
+    public function resolveAcademicYearForDate(Carbon $date, ?string $explicitYear = null): array
+    {
+        $dateStr = $date->toDateString();
+        $month = (int) $date->format('n');
+        $dateSemester = ($month >= 7 && $month <= 12) ? 'Ganjil' : 'Genap';
+
+        // 1. Tahun target eksplisit jika diberikan secara sah
+        if (! empty($explicitYear)) {
+            $validatedYear = app(AcademicYearContext::class)->resolveExplicitYear($explicitYear);
+            $ayModel = AcademicYear::where('name', $validatedYear)->first();
+
+            return [
+                'academic_year' => $validatedYear,
+                'semester' => $ayModel?->semester ?? $dateSemester,
+            ];
+        }
+
+        // 2. Pertahankan konsistensi data historis: gunakan tahun ajaran dari snapshot yang sudah ada
+        $existingYear = DailyScheduleTarget::whereDate('date', $dateStr)->value('academic_year')
+            ?? DailyKbmRoster::whereDate('date', $dateStr)->value('academic_year')
+            ?? DailyClassroomKbmSnapshot::whereDate('date', $dateStr)->value('academic_year');
+
+        if ($existingYear && AcademicYear::where('name', $existingYear)->exists()) {
+            $ayModel = AcademicYear::where('name', $existingYear)->first();
+
+            return [
+                'academic_year' => $existingYear,
+                'semester' => $ayModel?->semester ?? $dateSemester,
+            ];
+        }
+
+        // 3. Untuk tanggal hari ini (tanggal berjalan), gunakan strictly tahun operasional aktif
+        if ($date->isToday()) {
+            try {
+                $opYear = app(AcademicYearContext::class)->getOperationalYear();
+
+                return [
+                    'academic_year' => $opYear->name,
+                    'semester' => $opYear->semester ?? $dateSemester,
+                ];
+            } catch (\Throwable) {
+                return [
+                    'academic_year' => SchoolSetting::getMasterYear(),
+                    'semester' => $dateSemester,
+                ];
+            }
+        }
+
+        // 4. Untuk tanggal non-hari ini (historis/terjadwal): tentukan berdasarkan kalender akademik (start_date/end_date)
+        $matchingYear = AcademicYear::whereDate('start_date', '<=', $dateStr)
+            ->whereDate('end_date', '>=', $dateStr)
+            ->first();
+
+        if ($matchingYear) {
+            return [
+                'academic_year' => $matchingYear->name,
+                'semester' => $matchingYear->semester ?? $dateSemester,
+            ];
+        }
+
+        // 5. Jika tidak ada rentang tanggal terdaftar, hitung tahun ajaran standar kalender Indonesia (Juli-Juni)
+        $calYear = (int) $date->format('Y');
+        $computedYearName = $month >= 7 ? "{$calYear}/".($calYear + 1) : ($calYear - 1)."/{$calYear}";
+        $computedModel = AcademicYear::where('name', $computedYearName)->first();
+
+        if ($computedModel) {
+            return [
+                'academic_year' => $computedModel->name,
+                'semester' => $computedModel->semester ?? $dateSemester,
+            ];
+        }
+
+        // 6. Fallback aman terakhir: tahun operasional aktif atau master
+        try {
+            $opYear = app(AcademicYearContext::class)->getOperationalYear();
+
+            return [
+                'academic_year' => $opYear->name,
+                'semester' => $opYear->semester ?? $dateSemester,
+            ];
+        } catch (\Throwable) {
+            return [
+                'academic_year' => SchoolSetting::getMasterYear(),
+                'semester' => $dateSemester,
+            ];
+        }
+    }
+
+    /**
      * Generate snapshot harian untuk tanggal tertentu berdasarkan Master Jadwal dan Kalender Kurikulum.
      */
-    public function generateSnapshotForDate(Carbon $date): void
+    public function generateSnapshotForDate(Carbon $date, ?string $targetAcademicYear = null): void
     {
         $dateStr = $date->toDateString();
         $dayName = $date->isoFormat('dddd');
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
-        $semester = $setting->semester ?? 'Ganjil';
+        $resolved = $this->resolveAcademicYearForDate($date, $targetAcademicYear);
+        $academicYear = $resolved['academic_year'];
+        $semester = $resolved['semester'];
         $isWeekend = $date->isWeekend();
 
         // 1. Ambil agenda kegiatan yang aktif pada tanggal ini
@@ -74,6 +168,10 @@ class DailyKbmSnapshotService
                         $sub->whereNull('end_date')
                             ->orWhereDate('end_date', '>=', $dateStr);
                     });
+            })
+            ->where(function ($q) use ($academicYear) {
+                $q->where('academic_year', $academicYear)
+                    ->orWhereNull('academic_year');
             })
             ->get();
 

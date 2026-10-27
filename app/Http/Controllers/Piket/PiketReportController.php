@@ -3,31 +3,47 @@
 namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\PiketGuest;
 use App\Models\PiketIncident;
 use App\Models\PiketInvalClass;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PiketReportController extends Controller
 {
     public function index(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
 
         $tab = $request->query('tab', 'permits'); // permits, inval, incidents, guests
         $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());
         $classroomId = $request->query('classroom_id');
 
-        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
+        $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
 
         // 1. Data Izin
         $permitsQuery = PiketStudentPermit::with(['classroom', 'givenBy'])
@@ -207,8 +223,13 @@ class PiketReportController extends Controller
 
     public function print(Request $request): View
     {
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            $academicYear = $academicYearContext->getViewingYear();
+        }
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
         $tab = $request->query('tab', 'permits');
         $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());

@@ -10,6 +10,10 @@ class GtkPermit extends Model
 {
     protected $guarded = ['id'];
 
+    protected $appends = [
+        'document_url',
+    ];
+
     protected $casts = [
         'start_date' => 'date:Y-m-d',
         'end_date' => 'date:Y-m-d',
@@ -169,6 +173,15 @@ class GtkPermit extends Model
         }
 
         return $this->start_date ? $this->start_date->translatedFormat('d F Y') : '-';
+    }
+
+    public function getDocumentUrlAttribute(): ?string
+    {
+        if (! $this->document_path) {
+            return null;
+        }
+
+        return route('attendance.gtk-permits.document', $this);
     }
 
     /**

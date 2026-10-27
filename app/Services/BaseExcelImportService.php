@@ -208,7 +208,7 @@ abstract class BaseExcelImportService
     {
         // 1. Cari via NIGS / NIP jika ada
         if (! empty($nigs)) {
-            $byNigs = $teachers->first(fn ($t) => ($t->nigs_fix === $nigs) || ($t->nigs === $nigs) || ($t->nip === $nigs));
+            $byNigs = $teachers->first(fn ($t) => ($t->nigs === $nigs) || ($t->nip === $nigs));
             if ($byNigs) {
                 return $byNigs;
             }

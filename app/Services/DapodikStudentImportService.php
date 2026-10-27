@@ -12,6 +12,8 @@ use App\Models\StudentClassroom;
 use App\Models\StudentMutation;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class DapodikStudentImportService extends BaseExcelImportService
@@ -128,9 +130,9 @@ class DapodikStudentImportService extends BaseExcelImportService
             break;
         }
 
-        $autoGraduateGrade12 = $options['auto_graduate_grade_12'] ?? true;
-        $autoMutasiMissing = $options['auto_mutasi_missing_students'] ?? true;
-        $autoCreateClasses = $options['auto_create_classes'] ?? true;
+        $autoGraduateGrade12 = (bool) ($options['auto_graduate_grade_12'] ?? false);
+        $autoMutasiMissing = (bool) ($options['auto_mutasi_missing_students'] ?? false);
+        $autoCreateClasses = (bool) ($options['auto_create_classes'] ?? true);
 
         $academicYearRecord = AcademicYear::firstOrCreate(['name' => $academicYear], [
             'semester' => 'Ganjil',
@@ -223,6 +225,8 @@ class DapodikStudentImportService extends BaseExcelImportService
         $promotedCount = 0;
         $skippedCount = 0;
         $processedStudentIds = [];
+        $processedClassroomIds = [];
+        $processedGrades = [];
         $details = [];
         $errors = [];
 
@@ -486,18 +490,29 @@ class DapodikStudentImportService extends BaseExcelImportService
                 'is_active' => true,
             ];
 
+            // Deteksi tingkatan kelas siswa
+            $gradeLevel = $matchedClass?->gradeLevel?->level ?? null;
+            if (! $gradeLevel && $matchedClass) {
+                if (str_starts_with($matchedClass->name, 'XII') || str_starts_with($matchedClass->name, '12')) {
+                    $gradeLevel = 'XII';
+                } elseif (str_starts_with($matchedClass->name, 'XI') || str_starts_with($matchedClass->name, '11')) {
+                    $gradeLevel = 'XI';
+                } elseif (str_starts_with($matchedClass->name, 'X') || str_starts_with($matchedClass->name, '10')) {
+                    $gradeLevel = 'X';
+                }
+            }
+            if (! $gradeLevel && ! empty($rawRombel)) {
+                if (str_starts_with($rawRombel, 'XII') || str_starts_with($rawRombel, '12')) {
+                    $gradeLevel = 'XII';
+                } elseif (str_starts_with($rawRombel, 'XI') || str_starts_with($rawRombel, '11')) {
+                    $gradeLevel = 'XI';
+                } elseif (str_starts_with($rawRombel, 'X') || str_starts_with($rawRombel, '10')) {
+                    $gradeLevel = 'X';
+                }
+            }
+
             // Hitung estimasi Tahun Angkatan Masuk (entry_year) jika belum ada
             if (empty($student?->entry_year)) {
-                $gradeLevel = $matchedClass?->gradeLevel?->level ?? null;
-                if (! $gradeLevel && $matchedClass) {
-                    if (str_starts_with($matchedClass->name, 'XII') || str_starts_with($matchedClass->name, '12')) {
-                        $gradeLevel = 'XII';
-                    } elseif (str_starts_with($matchedClass->name, 'XI') || str_starts_with($matchedClass->name, '11')) {
-                        $gradeLevel = 'XI';
-                    } else {
-                        $gradeLevel = 'X';
-                    }
-                }
                 $calculatedEntryYear = match ($gradeLevel) {
                     'XII' => $startYear - 2,
                     'XI' => $startYear - 1,
@@ -531,64 +546,105 @@ class DapodikStudentImportService extends BaseExcelImportService
             }
 
             try {
-                $targetStudent = null;
-                if ($student) {
-                    $oldClassroomId = $student->classroom_id;
-                    $oldClassName = $student->classroom?->name;
+                DB::transaction(function () use (
+                    $student,
+                    $payload,
+                    $classroomId,
+                    $gradeLevel,
+                    $academicYearId,
+                    $academicYear,
+                    $matchedClass,
+                    $name,
+                    &$importedCount,
+                    &$updatedCount,
+                    &$promotedCount,
+                    &$processedStudentIds,
+                    &$processedClassroomIds,
+                    &$processedGrades,
+                    &$details
+                ) {
+                    $targetStudent = null;
+                    $localPromoted = false;
+                    $localUpdated = false;
+                    $localImported = false;
+                    $localDetail = null;
 
-                    if ($classroomId && $oldClassroomId && $oldClassroomId != $classroomId && isset($payload['classroom_id'])) {
-                        $payload['last_classroom_name'] = $oldClassName;
-                        $promotedCount++;
-                        $targetClassName = $matchedClass?->name ?? 'Rombel Baru';
-                        $details[] = "{$name} (Naik/Pindah Rombel dari {$oldClassName} ke {$targetClassName})";
-                    } else {
-                        $updatedCount++;
-                        $details[] = "{$name} (Diperbarui Biodata)";
-                    }
+                    if ($student) {
+                        $oldClassroomId = $student->classroom_id;
+                        $oldClassName = $student->classroom?->name;
 
-                    $student->update($payload);
-                    $targetStudent = $student;
-                    $processedStudentIds[] = $student->id;
-                } else {
-                    $newStudent = Student::create($payload);
-                    $importedCount++;
-                    $targetStudent = $newStudent;
-                    $processedStudentIds[] = $newStudent->id;
-                    $details[] = "{$name} (Siswa Baru Ditambahkan)";
-                }
-
-                // Catat / sinkronkan riwayat penempatan rombel siswa (student_classrooms)
-                if ($targetStudent && $classroomId && $academicYearId) {
-                    // Deteksi apakah siswa mengulang (tinggal kelas)
-                    $isRepeating = false;
-                    $prevEnrollment = StudentClassroom::where('student_id', $targetStudent->id)
-                        ->where('academic_year_id', '<', $academicYearId)
-                        ->latest('academic_year_id')
-                        ->with('classroom.gradeLevel')
-                        ->first();
-
-                    if ($prevEnrollment && $matchedClass) {
-                        $prevGrade = $prevEnrollment->classroom?->gradeLevel?->level;
-                        $currGrade = $matchedClass->gradeLevel?->level;
-                        if ($prevGrade && $currGrade && $prevGrade === $currGrade) {
-                            $isRepeating = true;
+                        if ($classroomId && $oldClassroomId && $oldClassroomId != $classroomId && isset($payload['classroom_id'])) {
+                            $payload['last_classroom_name'] = $oldClassName;
+                            $localPromoted = true;
+                            $targetClassName = $matchedClass?->name ?? 'Rombel Baru';
+                            $localDetail = "{$name} (Naik/Pindah Rombel dari {$oldClassName} ke {$targetClassName})";
+                        } else {
+                            $localUpdated = true;
+                            $localDetail = "{$name} (Diperbarui Biodata)";
                         }
+
+                        $student->update($payload);
+                        $targetStudent = $student;
+                    } else {
+                        $newStudent = Student::create($payload);
+                        $targetStudent = $newStudent;
+                        $localImported = true;
+                        $localDetail = "{$name} (Siswa Baru Ditambahkan)";
                     }
 
-                    StudentClassroom::updateOrCreate(
-                        [
-                            'student_id' => $targetStudent->id,
-                            'academic_year_id' => $academicYearId,
-                        ],
-                        [
-                            'classroom_id' => $classroomId,
-                            'status' => $targetStudent->status ?: 'aktif',
-                            'is_repeating' => $isRepeating,
-                            'academic_year_name' => $academicYear,
-                            'classroom_name' => $matchedClass?->name ?? 'Rombel',
-                        ]
-                    );
-                }
+                    // Catat / sinkronkan riwayat penempatan rombel siswa (student_classrooms)
+                    if ($targetStudent && $classroomId && $academicYearId) {
+                        // Deteksi apakah siswa mengulang (tinggal kelas)
+                        $isRepeating = false;
+                        $prevEnrollment = StudentClassroom::where('student_id', $targetStudent->id)
+                            ->where('academic_year_id', '<', $academicYearId)
+                            ->latest('academic_year_id')
+                            ->with('classroom.gradeLevel')
+                            ->first();
+
+                        if ($prevEnrollment && $matchedClass) {
+                            $prevGrade = $prevEnrollment->classroom?->gradeLevel?->level;
+                            $currGrade = $matchedClass->gradeLevel?->level;
+                            if ($prevGrade && $currGrade && $prevGrade === $currGrade) {
+                                $isRepeating = true;
+                            }
+                        }
+
+                        StudentClassroom::updateOrCreate(
+                            [
+                                'student_id' => $targetStudent->id,
+                                'academic_year_id' => $academicYearId,
+                            ],
+                            [
+                                'classroom_id' => $classroomId,
+                                'status' => $targetStudent->status ?: 'aktif',
+                                'is_repeating' => $isRepeating,
+                                'academic_year_name' => $academicYear,
+                                'classroom_name' => $matchedClass?->name ?? 'Rombel',
+                            ]
+                        );
+                    }
+
+                    // Hanya perbarui metrik dan log memori jika seluruh penulisan database siswa ini berhasil!
+                    if ($localImported) {
+                        $importedCount++;
+                    } elseif ($localPromoted) {
+                        $promotedCount++;
+                    } elseif ($localUpdated) {
+                        $updatedCount++;
+                    }
+
+                    $processedStudentIds[] = $targetStudent->id;
+                    if ($classroomId) {
+                        $processedClassroomIds[$classroomId] = true;
+                    }
+                    if ($gradeLevel) {
+                        $processedGrades[$gradeLevel] = true;
+                    }
+                    if ($localDetail) {
+                        $details[] = $localDetail;
+                    }
+                });
             } catch (Throwable $e) {
                 $errors[] = 'Baris '.($r + 1)." ({$name}): ".$e->getMessage();
                 $skippedCount++;
@@ -598,27 +654,47 @@ class DapodikStudentImportService extends BaseExcelImportService
         // Luluskan Otomatis Siswa Kelas XII dari TP sebelumnya yang Tidak Ada di File Dapodik Baru
         $graduatedCount = 0;
         if ($autoGraduateGrade12 && ! empty($activeGrade12Before) && ! empty($processedStudentIds)) {
-            $graduatingStudentIds = array_diff($activeGrade12Before, $processedStudentIds);
+            $isSingleClassroomScope = $defaultClassroomId !== null || count($processedClassroomIds) <= 1;
+            $hasSeniorGradeInFile = ! empty($processedGrades['XII']) || ! empty($processedGrades['XI']);
 
-            if (! empty($graduatingStudentIds)) {
-                $graduatingStudents = Student::whereIn('id', $graduatingStudentIds)
-                    ->with('classroom')
-                    ->get();
+            if ($skippedCount > 0) {
+                $details[] = "Kelulusan otomatis kelas XII ditangguhkan karena terdapat {$skippedCount} baris siswa yang dilewati atau gagal diproses.";
+                $errors[] = "Kelulusan otomatis kelas XII ditangguhkan demi integritas data karena berkas mengandung {$skippedCount} baris bermasalah.";
+            } elseif ($isSingleClassroomScope) {
+                $details[] = 'Kelulusan otomatis kelas XII ditangguhkan karena berkas terdeteksi sebagai berkas parsial (hanya mencakup satu rombel).';
+                $errors[] = 'Kelulusan otomatis kelas XII ditangguhkan untuk mencegah siswa alumni salah kelulusan pada import parsial.';
+            } elseif (! $hasSeniorGradeInFile) {
+                $details[] = 'Kelulusan otomatis kelas XII ditangguhkan karena berkas hanya memuat rombel kelas X (PPDB / berkas tingkat bawah).';
+                $errors[] = 'Kelulusan otomatis kelas XII ditangguhkan karena berkas tidak memuat tingkatan kelas atas.';
+            } else {
+                $graduatingStudentIds = array_diff($activeGrade12Before, $processedStudentIds);
 
-                foreach ($graduatingStudents as $gStudent) {
-                    $lastClass = $gStudent->classroom?->name ?? 'Kelas XII';
-                    $gradYear = $previousAcademicYearName ?? $gStudent->classroom?->academic_year ?? $academicYear;
+                if (! empty($graduatingStudentIds)) {
+                    try {
+                        DB::transaction(function () use ($graduatingStudentIds, $previousAcademicYearName, $academicYear, &$graduatedCount, &$details) {
+                            $graduatingStudents = Student::whereIn('id', $graduatingStudentIds)
+                                ->with('classroom')
+                                ->get();
 
-                    $gStudent->update([
-                        'status' => 'lulus',
-                        'is_active' => false,
-                        'classroom_id' => null,
-                        'last_classroom_name' => $lastClass,
-                        'graduation_year' => $gradYear,
-                    ]);
+                            foreach ($graduatingStudents as $gStudent) {
+                                $lastClass = $gStudent->classroom?->name ?? 'Kelas XII';
+                                $gradYear = $previousAcademicYearName ?? $gStudent->classroom?->academic_year ?? $academicYear;
 
-                    $graduatedCount++;
-                    $details[] = "{$gStudent->name} (Lulus Otomatis ke Alumni - Terakhir {$lastClass})";
+                                $gStudent->update([
+                                    'status' => 'lulus',
+                                    'is_active' => false,
+                                    'classroom_id' => null,
+                                    'last_classroom_name' => $lastClass,
+                                    'graduation_year' => $gradYear,
+                                ]);
+
+                                $graduatedCount++;
+                                $details[] = "{$gStudent->name} (Lulus Otomatis ke Alumni - Terakhir {$lastClass})";
+                            }
+                        });
+                    } catch (Throwable $e) {
+                        $errors[] = 'Gagal memproses kelulusan otomatis kelas XII: '.$e->getMessage();
+                    }
                 }
             }
         }
@@ -626,40 +702,72 @@ class DapodikStudentImportService extends BaseExcelImportService
         // Pindahkan Otomatis Siswa Kelas X & XI dari TP sebelumnya yang Tidak Ada di File Dapodik Baru ke Mutasi / Keluar
         $mutatedCount = 0;
         if ($autoMutasiMissing && ! empty($activeUnderclassBefore) && ! empty($processedStudentIds)) {
-            $mutatingStudentIds = array_diff($activeUnderclassBefore, $processedStudentIds);
+            $isSingleClassroomScope = $defaultClassroomId !== null || count($processedClassroomIds) <= 1;
 
-            if (! empty($mutatingStudentIds)) {
-                $mutatingStudents = Student::whereIn('id', $mutatingStudentIds)
-                    ->with('classroom')
-                    ->get();
+            $hasActiveGrade11 = Classroom::where('is_active', true)
+                ->where(function ($q) {
+                    $q->whereHas('gradeLevel', fn ($gl) => $gl->where('level', 'XI'))
+                        ->orWhere('name', 'like', 'XI %')
+                        ->orWhere('name', 'like', '11 %');
+                })->exists();
 
-                foreach ($mutatingStudents as $mStudent) {
-                    $lastClass = $mStudent->classroom?->name ?? 'Kelas X/XI';
+            $totalUnderclassActive = count($activeUnderclassBefore);
+            $processedUnderclassCount = count(array_intersect($activeUnderclassBefore, $processedStudentIds));
 
-                    $mStudent->update([
-                        'status' => 'mutasi',
-                        'is_active' => false,
-                        'classroom_id' => null,
-                        'last_classroom_name' => $lastClass,
-                        'notes' => trim(($mStudent->notes ? $mStudent->notes.' | ' : '').'Tidak terdaftar di Dapodik baru (Mutasi/Keluar)'),
-                    ]);
+            if ($skippedCount > 0) {
+                $details[] = "Mutasi otomatis siswa tidak terdaftar ditangguhkan karena terdapat {$skippedCount} baris siswa yang dilewati atau gagal diproses.";
+                $errors[] = "Mutasi otomatis siswa ditangguhkan demi integritas data karena berkas mengandung {$skippedCount} baris bermasalah.";
+            } elseif ($isSingleClassroomScope) {
+                $details[] = 'Mutasi otomatis siswa tidak terdaftar ditangguhkan karena berkas terdeteksi sebagai berkas parsial (hanya mencakup satu rombel).';
+                $errors[] = 'Mutasi otomatis ditangguhkan untuk melindungi siswa aktif di rombel lain.';
+            } elseif ($hasActiveGrade11 && empty($processedGrades['XI'])) {
+                $details[] = 'Mutasi otomatis siswa tidak terdaftar ditangguhkan karena berkas tidak memuat siswa kelas XI sementara rombel kelas XI aktif terdaftar di sistem.';
+                $errors[] = 'Mutasi otomatis ditangguhkan untuk mencegah siswa kelas XI termutasi secara keliru.';
+            } elseif ($totalUnderclassActive >= 10 && $processedUnderclassCount < ($totalUnderclassActive * 0.5)) {
+                $details[] = "Mutasi otomatis siswa tidak terdaftar ditangguhkan karena jumlah siswa aktif yang cocok dalam berkas ({$processedUnderclassCount}) kurang dari 50% dari total populasi siswa aktif ({$totalUnderclassActive}).";
+                $errors[] = 'Mutasi otomatis ditangguhkan demi keamanan data (ambang batas anomali terlampaui).';
+            } else {
+                $mutatingStudentIds = array_diff($activeUnderclassBefore, $processedStudentIds);
 
-                    // Catat ke tabel riwayat mutasi resmi siswa jika belum ada
-                    StudentMutation::firstOrCreate(
-                        [
-                            'student_id' => $mStudent->id,
-                            'type' => 'keluar',
-                        ],
-                        [
-                            'mutation_date' => now()->toDateString(),
-                            'reason_category' => 'Lainnya',
-                            'reason_description' => "Tidak terdaftar pada Dapodik Tahun Pelajaran {$academicYear} (Sistem Otomatis)",
-                            'recorded_by' => auth()->id() ?? 1,
-                        ]
-                    );
+                if (! empty($mutatingStudentIds)) {
+                    try {
+                        DB::transaction(function () use ($mutatingStudentIds, $academicYear, &$mutatedCount, &$details) {
+                            $mutatingStudents = Student::whereIn('id', $mutatingStudentIds)
+                                ->with('classroom')
+                                ->get();
 
-                    $mutatedCount++;
-                    $details[] = "{$mStudent->name} (Mutasi/Keluar Otomatis - Terakhir {$lastClass})";
+                            foreach ($mutatingStudents as $mStudent) {
+                                $lastClass = $mStudent->classroom?->name ?? 'Kelas X/XI';
+
+                                $mStudent->update([
+                                    'status' => 'mutasi',
+                                    'is_active' => false,
+                                    'classroom_id' => null,
+                                    'last_classroom_name' => $lastClass,
+                                    'notes' => trim(($mStudent->notes ? $mStudent->notes.' | ' : '').'Tidak terdaftar di Dapodik baru (Mutasi/Keluar)'),
+                                ]);
+
+                                // Catat ke tabel riwayat mutasi resmi siswa jika belum ada
+                                StudentMutation::firstOrCreate(
+                                    [
+                                        'student_id' => $mStudent->id,
+                                        'type' => 'keluar',
+                                    ],
+                                    [
+                                        'mutation_date' => now()->toDateString(),
+                                        'reason_category' => 'Lainnya',
+                                        'reason_description' => "Tidak terdaftar pada Dapodik Tahun Pelajaran {$academicYear} (Sistem Otomatis)",
+                                        'recorded_by' => auth()->id() ?? 1,
+                                    ]
+                                );
+
+                                $mutatedCount++;
+                                $details[] = "{$mStudent->name} (Mutasi/Keluar Otomatis - Terakhir {$lastClass})";
+                            }
+                        });
+                    } catch (Throwable $e) {
+                        $errors[] = 'Gagal memproses mutasi otomatis siswa tidak terdaftar: '.$e->getMessage();
+                    }
                 }
             }
         }

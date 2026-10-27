@@ -7,16 +7,27 @@ use App\Models\PiketDutySwap;
 use App\Models\PiketJournal;
 use App\Models\PiketSchedule;
 use App\Models\SchoolSetting;
+use App\Services\AcademicYearContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PiketCalendarController extends Controller
 {
     public function index(Request $request): View
     {
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
         $semester = $request->query('semester', $setting->semester ?? 'Ganjil');
 
         $year = (int) $request->query('year', Carbon::now()->year);

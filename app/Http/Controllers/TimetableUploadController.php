@@ -9,6 +9,7 @@ use App\Models\Subject;
 use App\Models\TimetableItem;
 use App\Models\TimetableUpload;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\TimetableParserService;
 use App\Services\TimetableSyncService;
 use Illuminate\Http\Request;
@@ -52,16 +53,23 @@ class TimetableUploadController extends Controller
             'pdf_file' => 'required|mimes:pdf|max:15360',
             'title' => 'required|string|max:255',
             'notes' => 'nullable|string',
-            'academic_year' => 'nullable|string',
+            'academic_year' => 'nullable|string|exists:academic_years,name',
             'semester' => 'nullable|string',
         ]);
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year') ?: ($setting->academic_year ?? '2026/2027');
-        $semester = $request->input('semester') ?: ($setting->semester ?? 'Ganjil');
+        if ($request->filled('academic_year')) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($request->input('academic_year'));
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
+        $semester = $request->input('semester') ?: (SchoolSetting::getSetting()->semester ?? 'Ganjil');
 
         $file = $request->file('pdf_file');
-        $path = $file->store('timetables', 'public');
+        $path = $file->store('timetables', 'local');
 
         $upload = TimetableUpload::create([
             'academic_year' => $academicYear,
@@ -78,11 +86,14 @@ class TimetableUploadController extends Controller
         ]);
 
         try {
-            $parsedData = $parserService->parsePdf(storage_path('app/public/'.$path));
-            if (! empty($parsedData)) {
-                $result = TimetableSyncService::populateTranslationItems($parsedData, $upload);
+            $physicalPath = $this->getTimetablePhysicalPath($path);
+            if ($physicalPath && file_exists($physicalPath)) {
+                $parsedData = $parserService->parsePdf($physicalPath);
+                if (! empty($parsedData)) {
+                    $result = TimetableSyncService::populateTranslationItems($parsedData, $upload);
 
-                return redirect()->route('kurikulum.timetables.translation', $upload)->with('success', "File jadwal PDF berhasil diupload dan diterjemahkan ({$result['total_lessons']} slot, {$result['total_classes']} kelas). Silakan review & koreksi hasil terjemahan sebelum diterapkan ke jadwal aktif.");
+                    return redirect()->route('kurikulum.timetables.translation', $upload)->with('success', "File jadwal PDF berhasil diupload dan diterjemahkan ({$result['total_lessons']} slot, {$result['total_classes']} kelas). Silakan review & koreksi hasil terjemahan sebelum diterapkan ke jadwal aktif.");
+                }
             }
         } catch (Throwable $e) {
             // Keep uploaded file in archive
@@ -96,10 +107,11 @@ class TimetableUploadController extends Controller
         $this->authorizeAccess();
 
         // If items are empty but the physical PDF exists, parse it now
-        if ($upload->items()->count() === 0 && Storage::disk('public')->exists($upload->file_path)) {
+        $physicalPath = $this->getTimetablePhysicalPath($upload->file_path);
+        if ($upload->items()->count() === 0 && $physicalPath && file_exists($physicalPath)) {
             try {
                 $parserService = new TimetableParserService;
-                $parsedData = $parserService->parsePdf(storage_path('app/public/'.$upload->file_path));
+                $parsedData = $parserService->parsePdf($physicalPath);
                 if (! empty($parsedData)) {
                     TimetableSyncService::populateTranslationItems($parsedData, $upload);
                 }
@@ -301,38 +313,50 @@ class TimetableUploadController extends Controller
     {
         $this->authorizeAccess();
 
-        $result = TimetableSyncService::applyTranslationToLive($upload);
+        try {
+            $result = TimetableSyncService::applyTranslationToLive($upload);
 
-        if (! ($result['success'] ?? false)) {
-            return back()->with('error', $result['message'] ?? 'Gagal menerapkan hasil terjemahan.');
+            if (! ($result['success'] ?? false)) {
+                return back()->with('error', $result['message'] ?? 'Gagal menerapkan hasil terjemahan.');
+            }
+
+            return redirect()->route('kurikulum.schedules.index', [
+                'academic_year' => $upload->academic_year,
+                'semester' => $upload->semester,
+            ])->with('success', "Hasil terjemahan jadwal '{$upload->title}' berhasil diterapkan menjadi Jadwal Pelajaran Aktif ({$result['total_classes']} rombel, {$result['total_lessons']} slot jadwal).");
+        } catch (Throwable $e) {
+            Log::error('Gagal menerapkan hasil terjemahan jadwal: '.$e->getMessage(), [
+                'upload_id' => $upload->id,
+                'exception' => $e,
+            ]);
+
+            return back()->with('error', 'Gagal menerapkan hasil terjemahan jadwal: '.$e->getMessage());
         }
-
-        return redirect()->route('kurikulum.schedules.index', [
-            'academic_year' => $upload->academic_year,
-            'semester' => $upload->semester,
-        ])->with('success', "Hasil terjemahan jadwal '{$upload->title}' berhasil diterapkan menjadi Jadwal Pelajaran Aktif ({$result['total_classes']} rombel, {$result['total_lessons']} slot jadwal).");
     }
 
     public function download(TimetableUpload $upload)
     {
         $this->authorizeAccess();
 
-        if (! Storage::disk('public')->exists($upload->file_path)) {
-            return back()->with('error', 'File PDF tidak ditemukan di server.');
+        if (Storage::disk('local')->exists($upload->file_path)) {
+            return Storage::disk('local')->download($upload->file_path, $upload->original_filename);
         }
 
-        return Storage::disk('public')->download($upload->file_path, $upload->original_filename);
+        if (Storage::disk('public')->exists($upload->file_path)) {
+            return Storage::disk('public')->download($upload->file_path, $upload->original_filename);
+        }
+
+        return back()->with('error', 'File PDF tidak ditemukan di server.');
     }
 
     public function preview(TimetableUpload $upload)
     {
         $this->authorizeAccess();
 
-        if (! Storage::disk('public')->exists($upload->file_path)) {
+        $filePath = $this->getTimetablePhysicalPath($upload->file_path);
+        if (! $filePath || ! file_exists($filePath)) {
             abort(404, 'File PDF tidak ditemukan di server.');
         }
-
-        $filePath = Storage::disk('public')->path($upload->file_path);
 
         return response()->file($filePath, [
             'Content-Type' => 'application/pdf',
@@ -365,13 +389,37 @@ class TimetableUploadController extends Controller
     {
         $this->authorizeAccess();
 
-        if ($upload->file_path && Storage::disk('public')->exists($upload->file_path)) {
-            Storage::disk('public')->delete($upload->file_path);
+        if ($upload->file_path) {
+            if (Storage::disk('local')->exists($upload->file_path)) {
+                Storage::disk('local')->delete($upload->file_path);
+            } elseif (Storage::disk('public')->exists($upload->file_path)) {
+                Storage::disk('public')->delete($upload->file_path);
+            }
         }
 
         $upload->items()->delete();
         $upload->delete();
 
         return redirect()->route('kurikulum.timetables.index')->with('success', 'Arsip jadwal PDF dan data terjemahannya berhasil dihapus.');
+    }
+
+    /**
+     * Resolve physical file path on local or public disk securely.
+     */
+    protected function getTimetablePhysicalPath(?string $path): ?string
+    {
+        if (! $path || str_contains($path, '..')) {
+            return null;
+        }
+
+        if (Storage::disk('local')->exists($path)) {
+            return Storage::disk('local')->path($path);
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->path($path);
+        }
+
+        return null;
     }
 }

@@ -10,7 +10,7 @@
         $repTeacherActions .= '<a href="' . route('attendance.manual-gtk.index') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-bolt-off me-1"></i> Presensi Susulan</a> ';
     }
     $repTeacherActions .= '<a href="' . route('attendance.gtk-permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-event me-1 text-info"></i> Izin & Cuti GTK</a> ' .
-        '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Ke Mesin</a>';
+        '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-broadcast me-1"></i> Live Presensi</a>';
 @endphp
 <div class="container-xl px-0 mb-3">
     @include('layouts._hero_header', [

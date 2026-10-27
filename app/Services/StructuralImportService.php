@@ -116,10 +116,6 @@ class StructuralImportService extends BaseExcelImportService
                 ]
             );
 
-            if ($position->name && ! $teacher->hasRole(['super_admin', 'kepala_sekolah'])) {
-                $teacher->update(['position' => $position->name]);
-            }
-
             $updatedList[] = "{$position->name} &rarr; {$teacher->name}";
             $importedCount++;
         }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Attendance;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\AttendanceDevice;
 use App\Models\AttendanceDeviceCommand;
 use App\Models\AttendanceLog;
@@ -16,15 +17,19 @@ use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\StudentClassroom;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\AttendanceDeviceService;
+use App\Services\DailyKbmSnapshotService;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class AttendanceController extends Controller
@@ -37,18 +42,30 @@ class AttendanceController extends Controller
         $todayStr = Carbon::today()->toDateString();
         $latestLog = AttendanceLog::latest('scanned_at')->first();
 
-        if ($request->has('date')) {
+        if ($request->has('date') && $request->query('date') !== '') {
             $date = $request->query('date');
-        } elseif (AttendanceLog::whereDate('scanned_at', $todayStr)->exists()) {
-            $date = $todayStr;
-        } elseif ($latestLog) {
-            $date = $latestLog->scanned_at->toDateString();
         } else {
             $date = $todayStr;
         }
 
         $targetDateStr = ($date === 'all' || empty($date)) ? $todayStr : $date;
         $targetDate = Carbon::parse($targetDateStr);
+
+        if ($targetDateStr === $todayStr) {
+            try {
+                $targetAcademicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable $e) {
+                Log::warning('AttendanceController index operational year fallback: '.$e->getMessage());
+                $targetAcademicYear = SchoolSetting::getMasterYear();
+            }
+        } else {
+            try {
+                $targetAcademicYear = app(DailyKbmSnapshotService::class)->resolveAcademicYearForDate($targetDate)['academic_year'];
+            } catch (\Throwable $e) {
+                Log::warning('AttendanceController index date resolved year fallback: '.$e->getMessage());
+                $targetAcademicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
         $dayNames = [
             0 => 'Minggu',
@@ -68,7 +85,8 @@ class AttendanceController extends Controller
         // -------------------------------------------------------------
         // Batas Jam Pelajaran Sekolah Hari Ini (Standar Siswa, TU, Piket)
         // -------------------------------------------------------------
-        $schoolScheduleToday = $isHoliday ? null : LessonSchedule::where('day', $targetDay)
+        $schoolScheduleToday = $isHoliday ? null : LessonSchedule::where('academic_year', $targetAcademicYear)
+            ->where('day', $targetDay)
             ->selectRaw('MIN(start_time) as min_start, MAX(end_time) as max_end')
             ->first();
 
@@ -82,11 +100,13 @@ class AttendanceController extends Controller
         // 1. TAB GURU & STAF: Guru Jadwal + Guru Piket + Staf TU + Hadir
         // -------------------------------------------------------------
         $schedulesToday = $isHoliday ? collect() : LessonSchedule::with(['subject', 'classroom'])
+            ->where('academic_year', $targetAcademicYear)
             ->where('day', $targetDay)
             ->get()
             ->groupBy('teacher_id');
 
-        $piketSchedulesToday = $isHoliday ? collect() : PiketSchedule::where('day', $targetDay)
+        $piketSchedulesToday = $isHoliday ? collect() : PiketSchedule::where('academic_year', $targetAcademicYear)
+            ->where('day', $targetDay)
             ->where('is_active', true)
             ->get()
             ->keyBy('teacher_id');
@@ -215,12 +235,12 @@ class AttendanceController extends Controller
                     if ($firstScan->scanned_at->lte($expectedStart)) {
                         $status = 'ontime';
                         $diff = $firstScan->scanned_at->diffInMinutes($expectedStart);
-                        $statusText = $diff > 0 ? "Tepat Waktu (-{$diff}m)" : 'Tepat Waktu';
+                        $statusText = $diff > 0 ? 'Tepat Waktu (-'.self::formatDuration($diff).')' : 'Tepat Waktu';
                         $statusBadge = 'success';
                     } else {
                         $status = 'late';
                         $delayMinutes = $firstScan->scanned_at->diffInMinutes($expectedStart);
-                        $statusText = "Terlambat {$delayMinutes}m";
+                        $statusText = 'Terlambat '.self::formatDuration($delayMinutes);
                         $statusBadge = 'danger';
                     }
                 } else {
@@ -244,7 +264,7 @@ class AttendanceController extends Controller
                     if ($targetDateStr === $todayStr && $now->gt($expectedStart)) {
                         $status = 'absent';
                         $diff = $now->diffInMinutes($expectedStart);
-                        $statusText = "Belum Hadir (+{$diff}m)";
+                        $statusText = 'Belum Hadir (+'.self::formatDuration($diff).')';
                         $statusBadge = 'danger';
                     } elseif ($targetDateStr < $todayStr) {
                         $status = 'absent';
@@ -266,12 +286,12 @@ class AttendanceController extends Controller
                         if ($lastScan->scanned_at->gte($expectedEnd)) {
                             $checkoutStatus = 'ontime';
                             $diff = $lastScan->scanned_at->diffInMinutes($expectedEnd);
-                            $checkoutText = $diff > 0 ? "Sesuai Jadwal (+{$diff}m)" : 'Sesuai Jadwal';
+                            $checkoutText = $diff > 0 ? 'Sesuai Jadwal (+'.self::formatDuration($diff).')' : 'Sesuai Jadwal';
                             $checkoutBadge = 'success';
                         } else {
                             $checkoutStatus = 'early';
                             $earlyMinutes = $lastScan->scanned_at->diffInMinutes($expectedEnd);
-                            $checkoutText = "Pulang Awal (-{$earlyMinutes}m)";
+                            $checkoutText = 'Pulang Awal (-'.self::formatDuration($earlyMinutes).')';
                             $checkoutBadge = 'warning';
                         }
                     } else {
@@ -314,7 +334,7 @@ class AttendanceController extends Controller
                 'name' => $teacher->name,
                 'position' => $teacher->position ?: 'Guru',
                 'role_label' => $roleLabel,
-                'nigs' => $teacher->nigs_fix ?: $teacher->nigs,
+                'nigs' => $teacher->nigs,
                 'has_schedule' => $hasSchedule,
                 'is_piket' => $isPiket,
                 'is_staff_tu' => $isStaffTu,
@@ -322,7 +342,9 @@ class AttendanceController extends Controller
                 'expected_end_time' => $expectedEndTimeStr,
                 'lessons_summary' => implode('; ', $lessonsSummary) ?: ($isStaffTu ? 'Tugas Administrasi' : 'Tanpa Jam Pelajaran'),
                 'first_scan_at' => $firstScan?->scanned_at,
+                'first_scan_channel' => $firstScan?->channel_badge,
                 'last_scan_at' => $lastScan?->scanned_at,
+                'last_scan_channel' => $lastScan?->channel_badge,
                 'verify_type' => $firstScan?->verify_type,
                 'status' => $status,
                 'status_text' => $statusText,
@@ -392,7 +414,7 @@ class AttendanceController extends Controller
                             'scanned_at' => $firstScan->scanned_at,
                             'delay_minutes' => $delay,
                             'verify_type' => $firstScan->verify_type,
-                            'status_text' => $delay > 0 ? "Terlambat {$delay} Menit" : 'Terlambat (Surat Piket)',
+                            'status_text' => $delay > 0 ? 'Terlambat '.self::formatDuration($delay) : 'Terlambat (Surat Piket)',
                         ]);
                     }
 
@@ -422,7 +444,7 @@ class AttendanceController extends Controller
                             'scanned_out_at' => $lastScan->scanned_at,
                             'early_minutes' => $early,
                             'verify_type' => $lastScan->verify_type,
-                            'status_text' => "Pulang {$early} Menit Lebih Awal",
+                            'status_text' => 'Pulang '.self::formatDuration($early).' Lebih Awal',
                         ]);
                     }
                 } else {
@@ -469,6 +491,7 @@ class AttendanceController extends Controller
         $type = $request->query('type');
         $search = $request->query('search');
         $statusFilter = $request->query('status');
+        $channel = $request->query('channel');
 
         $query = AttendanceLog::with(['user', 'student', 'device'])
             ->latest('scanned_at');
@@ -483,6 +506,25 @@ class AttendanceController extends Controller
 
         if (! empty($statusFilter)) {
             $query->where('status', $statusFilter);
+        }
+
+        if (! empty($channel)) {
+            if ($channel === 'gps') {
+                $query->where(function ($q) {
+                    $q->where('verify_type', 'geotag')
+                        ->orWhere('device_sn', 'MOBILE-PWA');
+                });
+            } elseif ($channel === 'telegram') {
+                $query->where(function ($q) {
+                    $q->where('verify_type', 'telegram')
+                        ->orWhere('device_sn', 'TELEGRAM');
+                });
+            } elseif ($channel === 'machine') {
+                $query->where(function ($q) {
+                    $q->whereNotIn('verify_type', ['geotag', 'telegram'])
+                        ->whereNotIn('device_sn', ['MOBILE-PWA', 'TELEGRAM']);
+                });
+            }
         }
 
         if (! empty($search)) {
@@ -502,6 +544,13 @@ class AttendanceController extends Controller
 
         $stats = [
             'total_scans' => (clone $statsQuery)->count(),
+            'machine_scans' => (clone $statsQuery)->whereNotIn('verify_type', ['geotag', 'telegram'])->whereNotIn('device_sn', ['MOBILE-PWA', 'TELEGRAM'])->count(),
+            'gps_scans' => (clone $statsQuery)->where(function ($q) {
+                $q->where('verify_type', 'geotag')->orWhere('device_sn', 'MOBILE-PWA');
+            })->count(),
+            'telegram_scans' => (clone $statsQuery)->where(function ($q) {
+                $q->where('verify_type', 'telegram')->orWhere('device_sn', 'TELEGRAM');
+            })->count(),
             'total_teachers' => (clone $statsQuery)->where('user_type', 'teacher')->distinct('pin')->count('pin'),
             'total_students' => (clone $statsQuery)->where('user_type', 'student')->distinct('pin')->count('pin'),
             'total_unknown' => (clone $statsQuery)->where('user_type', 'unknown')->count(),
@@ -537,6 +586,7 @@ class AttendanceController extends Controller
             'logs',
             'date',
             'type',
+            'channel',
             'search',
             'statusFilter',
             'stats',
@@ -574,6 +624,8 @@ class AttendanceController extends Controller
         }
 
         $newLogs = $query->orderBy('scanned_at', 'desc')->get()->map(function ($log) {
+            $channelBadge = $log->channel_badge;
+
             return [
                 'id' => $log->id,
                 'pin' => $log->pin,
@@ -587,15 +639,18 @@ class AttendanceController extends Controller
                 'status' => $log->status,
                 'status_label' => $log->status === 'check_out' ? 'Pulang' : 'Masuk',
                 'verify_type' => $log->verify_type,
-                'verify_type_label' => match ($log->verify_type) {
-                    'face' => 'Wajah',
-                    'card' => 'Kartu RFID',
-                    'password' => 'PIN / Password',
-                    default => 'Sidik Jari',
-                },
+                'verify_type_label' => $log->verify_type_label,
+                'verify_icon' => $log->verify_icon,
+                'channel_label' => $channelBadge['label'],
+                'channel_class' => $channelBadge['class'],
+                'channel_icon' => $channelBadge['icon'],
                 'scanned_time' => $log->scanned_at ? $log->scanned_at->format('H:i:s') : '-',
                 'scanned_date' => $log->scanned_at ? $log->scanned_at->translatedFormat('d F Y') : '-',
-                'device_name' => $log->device?->name ?: ($log->device_sn ?: 'Revo WDV-204BNC'),
+                'device_name' => match (true) {
+                    $log->verify_type === 'geotag' || $log->device_sn === 'MOBILE-PWA' => 'GPS Mobile (PWA)',
+                    $log->verify_type === 'telegram' || $log->device_sn === 'TELEGRAM' => 'Bot Telegram',
+                    default => $log->device?->name ?: ($log->device_sn ?: 'Mesin Biometrik'),
+                },
             ];
         });
 
@@ -607,6 +662,13 @@ class AttendanceController extends Controller
 
         $stats = [
             'total_scans' => (clone $statsQuery)->count(),
+            'machine_scans' => (clone $statsQuery)->whereNotIn('verify_type', ['geotag', 'telegram'])->whereNotIn('device_sn', ['MOBILE-PWA', 'TELEGRAM'])->count(),
+            'gps_scans' => (clone $statsQuery)->where(function ($q) {
+                $q->where('verify_type', 'geotag')->orWhere('device_sn', 'MOBILE-PWA');
+            })->count(),
+            'telegram_scans' => (clone $statsQuery)->where(function ($q) {
+                $q->where('verify_type', 'telegram')->orWhere('device_sn', 'TELEGRAM');
+            })->count(),
             'total_teachers' => (clone $statsQuery)->where('user_type', 'teacher')->distinct('pin')->count('pin'),
             'total_students' => (clone $statsQuery)->where('user_type', 'student')->distinct('pin')->count('pin'),
             'total_unknown' => (clone $statsQuery)->where('user_type', 'unknown')->count(),
@@ -827,7 +889,7 @@ class AttendanceController extends Controller
                 $studentLimit = Carbon::parse($scannedDate->toDateString().' 07:00:00');
                 if ($firstScan->scanned_at->gt($studentLimit)) {
                     $diff = $firstScan->scanned_at->diffInMinutes($studentLimit);
-                    $status = "Terlambat {$diff}m";
+                    $status = 'Terlambat '.self::formatDuration($diff);
                 }
             } elseif ($type === 'teacher') {
                 if ($firstScan->scanned_at->format('H:i') > '07:15') {
@@ -917,7 +979,6 @@ class AttendanceController extends Controller
             $teachersQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('nigs', 'like', "%{$search}%")
-                    ->orWhere('nigs_fix', 'like', "%{$search}%")
                     ->orWhere('id', 'like', "%{$search}%");
             });
         }
@@ -1045,9 +1106,9 @@ class AttendanceController extends Controller
                     $teacherLimit = Carbon::parse($scannedDate->toDateString().' 07:15:00');
                     if ($first->scanned_at->gt($teacherLimit)) {
                         $diff = $first->scanned_at->diffInMinutes($teacherLimit);
-                        $status = "Terlambat {$diff}m";
+                        $status = 'Terlambat '.self::formatDuration($diff);
                         $terlambatCount++;
-                        $keteranganParts[] = "Terlambat {$diff} menit (Masuk {$first->scanned_at->format('H:i')})";
+                        $keteranganParts[] = 'Terlambat '.self::formatDuration($diff)." (Masuk {$first->scanned_at->format('H:i')})";
                     }
                 }
 
@@ -1083,7 +1144,7 @@ class AttendanceController extends Controller
                     'date_raw' => $scannedDate->toDateString(),
                     'day_name' => $scannedDate->translatedFormat('l'),
                     'date_formatted' => $scannedDate->translatedFormat('d/m/Y'),
-                    'pin' => $t->nigs_fix ?: ($t->nigs ?: (string) $t->id),
+                    'pin' => $t->nigs ?: (string) $t->id,
                     'name' => $t->name,
                     'jam_masuk' => $first->scanned_at->format('H:i:s'),
                     'jam_pulang' => $last ? $last->scanned_at->format('H:i:s') : '-',
@@ -1135,7 +1196,7 @@ class AttendanceController extends Controller
                         'date_raw' => $dateStr,
                         'day_name' => $effDate->translatedFormat('l'),
                         'date_formatted' => $effDate->translatedFormat('d/m/Y'),
-                        'pin' => $t->nigs_fix ?: ($t->nigs ?: (string) $t->id),
+                        'pin' => $t->nigs ?: (string) $t->id,
                         'name' => $t->name,
                         'jam_masuk' => '-',
                         'jam_pulang' => '-',
@@ -1172,7 +1233,7 @@ class AttendanceController extends Controller
                         'date_raw' => $dateStr,
                         'day_name' => $effDate->translatedFormat('l'),
                         'date_formatted' => $effDate->translatedFormat('d/m/Y'),
-                        'pin' => $t->nigs_fix ?: ($t->nigs ?: (string) $t->id),
+                        'pin' => $t->nigs ?: (string) $t->id,
                         'name' => $t->name,
                         'jam_masuk' => '-',
                         'jam_pulang' => '-',
@@ -1206,7 +1267,7 @@ class AttendanceController extends Controller
                         'date_raw' => $dateStr,
                         'day_name' => $effDate->translatedFormat('l'),
                         'date_formatted' => $effDate->translatedFormat('d/m/Y'),
-                        'pin' => $t->nigs_fix ?: ($t->nigs ?: (string) $t->id),
+                        'pin' => $t->nigs ?: (string) $t->id,
                         'name' => $t->name,
                         'jam_masuk' => '-',
                         'jam_pulang' => '-',
@@ -1241,7 +1302,7 @@ class AttendanceController extends Controller
                             'date_raw' => $dateStr,
                             'day_name' => $effDate->translatedFormat('l'),
                             'date_formatted' => $effDate->translatedFormat('d/m/Y'),
-                            'pin' => $t->nigs_fix ?: ($t->nigs ?: (string) $t->id),
+                            'pin' => $t->nigs ?: (string) $t->id,
                             'name' => $t->name,
                             'jam_masuk' => '-',
                             'jam_pulang' => '-',
@@ -1257,7 +1318,7 @@ class AttendanceController extends Controller
             $people->push((object) [
                 'id' => $t->id,
                 'name' => $t->name,
-                'pin' => $t->nigs_fix ?: ($t->nigs ?: (string) $t->id),
+                'pin' => $t->nigs ?: (string) $t->id,
                 'position' => $t->position ?: ($t->isStaff() ? 'Staf Administrasi' : 'Guru'),
                 'category' => $t->isStaff() ? 'Staf' : 'Guru',
                 'is_staff' => $t->isStaff(),
@@ -1299,12 +1360,34 @@ class AttendanceController extends Controller
         string $endDate,
         ?int $classroomId = null,
         ?int $studentId = null,
-        ?string $search = null
+        ?string $search = null,
+        ?string $academicYear = null
     ): array {
-        $studentsQuery = Student::with('classroom')->where('is_active', true);
+        $studentsQuery = Student::with('classroom');
 
         if (! empty($classroomId)) {
-            $studentsQuery->where('classroom_id', $classroomId);
+            $enrolledStudentIds = [];
+            if (! empty($academicYear)) {
+                $ayRecord = AcademicYear::where('name', $academicYear)->first();
+                $scQuery = StudentClassroom::where('classroom_id', $classroomId);
+                if ($ayRecord) {
+                    $scQuery->where(function ($q) use ($ayRecord, $academicYear) {
+                        $q->where('academic_year_id', $ayRecord->id)
+                            ->orWhere('academic_year_name', $academicYear);
+                    });
+                } else {
+                    $scQuery->where('academic_year_name', $academicYear);
+                }
+                $enrolledStudentIds = $scQuery->pluck('student_id')->filter()->unique()->toArray();
+            }
+
+            if (! empty($enrolledStudentIds)) {
+                $studentsQuery->whereIn('id', $enrolledStudentIds);
+            } else {
+                $studentsQuery->where('classroom_id', $classroomId)->where('is_active', true);
+            }
+        } else {
+            $studentsQuery->where('is_active', true);
         }
 
         if (! empty($studentId)) {
@@ -1398,11 +1481,11 @@ class AttendanceController extends Controller
                     $studentLimit = Carbon::parse($scannedDate->toDateString().' 07:00:00');
                     if ($first->scanned_at->gt($studentLimit)) {
                         $diff = $first->scanned_at->diffInMinutes($studentLimit);
-                        $status = "Terlambat {$diff}m";
+                        $status = 'Terlambat '.self::formatDuration($diff);
                         $terlambatCount++;
 
                         $latePermit = $sPermits->first(fn ($item) => (is_string($item->permit_date) ? $item->permit_date : $item->permit_date->toDateString()) === $dateStr && $item->permit_type === 'terlambat');
-                        $lateKet = "Terlambat {$diff} menit (Masuk {$first->scanned_at->format('H:i')})";
+                        $lateKet = 'Terlambat '.self::formatDuration($diff)." (Masuk {$first->scanned_at->format('H:i')})";
                         if ($latePermit && $latePermit->reason) {
                             $lateKet .= " - Alasan: {$latePermit->reason}";
                         }
@@ -1557,6 +1640,12 @@ class AttendanceController extends Controller
         }
 
         $setting = SchoolSetting::getSetting();
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
+
         $dateInfo = $this->resolveReportDates($request);
 
         $startDate = $dateInfo['startDate'];
@@ -1600,7 +1689,8 @@ class AttendanceController extends Controller
             'userId',
             'search',
             'teachersList',
-            'setting'
+            'setting',
+            'academicYear'
         ));
     }
 
@@ -1614,6 +1704,12 @@ class AttendanceController extends Controller
         }
 
         $setting = SchoolSetting::getSetting();
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
+
         $dateInfo = $this->resolveReportDates($request);
 
         $startDate = $dateInfo['startDate'];
@@ -1638,7 +1734,8 @@ class AttendanceController extends Controller
             'subType',
             'userId',
             'printType',
-            'setting'
+            'setting',
+            'academicYear'
         ));
     }
 
@@ -1652,6 +1749,12 @@ class AttendanceController extends Controller
         }
 
         $setting = SchoolSetting::getSetting();
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
+
         $dateInfo = $this->resolveReportDates($request);
 
         $startDate = $dateInfo['startDate'];
@@ -1685,7 +1788,7 @@ class AttendanceController extends Controller
         $search = $request->query('search');
 
         // Always build group recap for the Rekap Status table
-        $recap = $this->buildStudentIndividualRecap($startDate, $endDate, $classroomId, null, $search);
+        $recap = $this->buildStudentIndividualRecap($startDate, $endDate, $classroomId, null, $search, $academicYear);
         $people = $recap['people'];
         $summary = $recap['summary'];
 
@@ -1694,14 +1797,34 @@ class AttendanceController extends Controller
         if (! empty($studentId)) {
             $selectedPerson = $people->firstWhere('id', $studentId);
             if (! $selectedPerson) {
-                $singleRecap = $this->buildStudentIndividualRecap($startDate, $endDate, null, $studentId);
+                $singleRecap = $this->buildStudentIndividualRecap($startDate, $endDate, null, $studentId, null, $academicYear);
                 $selectedPerson = $singleRecap['people']->first();
             }
         }
 
-        $studentsList = $classroomId
-            ? Student::where('classroom_id', $classroomId)->where('is_active', true)->orderBy('name')->get()
-            : collect();
+        $studentsList = collect();
+        if ($classroomId) {
+            $enrolledStudentIds = [];
+            if (! empty($academicYear)) {
+                $ayRecord = AcademicYear::where('name', $academicYear)->first();
+                $scQuery = StudentClassroom::where('classroom_id', $classroomId);
+                if ($ayRecord) {
+                    $scQuery->where(function ($q) use ($ayRecord, $academicYear) {
+                        $q->where('academic_year_id', $ayRecord->id)
+                            ->orWhere('academic_year_name', $academicYear);
+                    });
+                } else {
+                    $scQuery->where('academic_year_name', $academicYear);
+                }
+                $enrolledStudentIds = $scQuery->pluck('student_id')->filter()->unique()->toArray();
+            }
+
+            if (! empty($enrolledStudentIds)) {
+                $studentsList = Student::whereIn('id', $enrolledStudentIds)->orderBy('name')->get();
+            } else {
+                $studentsList = Student::where('classroom_id', $classroomId)->where('is_active', true)->orderBy('name')->get();
+            }
+        }
 
         return view('attendance.report_students', compact(
             'people',
@@ -1719,7 +1842,8 @@ class AttendanceController extends Controller
             'studentsList',
             'search',
             'isHomeroomOnly',
-            'setting'
+            'setting',
+            'academicYear'
         ));
     }
 
@@ -1733,6 +1857,12 @@ class AttendanceController extends Controller
         }
 
         $setting = SchoolSetting::getSetting();
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
+
         $dateInfo = $this->resolveReportDates($request);
 
         $startDate = $dateInfo['startDate'];
@@ -1764,7 +1894,7 @@ class AttendanceController extends Controller
         $search = $request->query('search');
         $printType = $request->query('print_type');
 
-        $recap = $this->buildStudentIndividualRecap($startDate, $endDate, $classroomId, $studentId, $search);
+        $recap = $this->buildStudentIndividualRecap($startDate, $endDate, $classroomId, $studentId, $search, $academicYear);
         $people = $recap['people'];
         $summary = $recap['summary'];
 
@@ -1776,7 +1906,8 @@ class AttendanceController extends Controller
             'periodLabel',
             'selectedClassroom',
             'printType',
-            'setting'
+            'setting',
+            'academicYear'
         ));
     }
 
@@ -1999,7 +2130,7 @@ class AttendanceController extends Controller
                 $gtkCount = $teachers->count();
 
                 foreach ($teachers as $teacher) {
-                    $pin = $teacher->nigs_fix ?: (preg_replace('/\D/', '', (string) $teacher->nigs) ?: $teacher->id);
+                    $pin = $teacher->nigs ?: $teacher->id;
                     $cleanName = substr(trim(preg_replace('/[^\w\s\.\,\-]/', '', $teacher->name)), 0, 24);
 
                     AttendanceDeviceCommand::create([
@@ -2063,5 +2194,25 @@ class AttendanceController extends Controller
         AttendanceLog::query()->delete();
 
         return redirect()->back()->with('success', 'Semua riwayat log absensi di sistem web berhasil dikosongkan. Sistem siap menerima presensi baru.');
+    }
+
+    /**
+     * Format duration in minutes into a concise human-readable string (e.g. "15 m", "50 m", "1 h", "1 h 30 m").
+     */
+    public static function formatDuration(int $minutes): string
+    {
+        $minutes = abs($minutes);
+        if ($minutes < 60) {
+            return "{$minutes} m";
+        }
+
+        $hours = intdiv($minutes, 60);
+        $remMinutes = $minutes % 60;
+
+        if ($remMinutes === 0) {
+            return "{$hours} h";
+        }
+
+        return "{$hours} h {$remMinutes} m";
     }
 }

@@ -13,6 +13,7 @@ use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
@@ -21,7 +22,7 @@ class PiketSampleSeeder extends Seeder
     public function run(): void
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
         $semester = $setting->semester ?? 'Ganjil';
 
         $classrooms = Classroom::where('academic_year', $academicYear)->get();

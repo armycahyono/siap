@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\LessonSchedule;
@@ -11,6 +12,8 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\TimetableItem;
 use App\Models\TimetableUpload;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class TimetableSyncService
 {
@@ -197,8 +200,21 @@ class TimetableSyncService
     /**
      * Synchronize Master Classrooms
      */
-    public static function syncClassrooms(): array
+    public static function syncClassrooms(?string $targetAcademicYear = null): array
     {
+        if ($targetAcademicYear === null) {
+            try {
+                $targetAcademicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable) {
+                $targetAcademicYear = SchoolSetting::getMasterYear();
+            }
+        }
+
+        $academicYearModel = AcademicYear::where('name', $targetAcademicYear)->first();
+        if (! $academicYearModel) {
+            throw new InvalidArgumentException("Tahun ajaran '{$targetAcademicYear}' tidak terdaftar.");
+        }
+
         $deptTKR = Department::where('code', 'TKR')->first() ?? Department::create(['code' => 'TKR', 'name' => 'Teknik Kendaraan Ringan Otomotif']);
         $deptTKJ = Department::where('code', 'TKJ')->first() ?? Department::create(['code' => 'TKJ', 'name' => 'Teknik Komputer dan Jaringan']);
         $deptAKL = Department::where('code', 'AKL')->first() ?? Department::create(['code' => 'AKL', 'name' => 'Akuntansi dan Keuangan Lembaga']);
@@ -239,9 +255,9 @@ class TimetableSyncService
             };
 
             $classroom = Classroom::updateOrCreate(
-                ['name' => $name, 'academic_year' => '2026/2027'],
+                ['name' => $name, 'academic_year' => $academicYearModel->name],
                 [
-                    'academic_year_id' => 3,
+                    'academic_year_id' => $academicYearModel->id,
                     'grade_level_id' => $gradeId,
                     'department_id' => $meta['dept'],
                     'is_active' => true,
@@ -278,116 +294,130 @@ class TimetableSyncService
      */
     public static function processScheduleData(array $scheduleByClass, ?TimetableUpload $upload = null): array
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $upload?->academic_year ?? $setting->academic_year ?? '2026/2027';
-        $semester = $upload?->semester ?? $setting->semester ?? 'Ganjil';
+        $academicYear = $upload?->academic_year;
+        if (! $academicYear) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
-        $classrooms = self::syncClassrooms();
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
+        if (! $ayModel) {
+            throw new InvalidArgumentException("Tahun ajaran '{$academicYear}' tidak terdaftar.");
+        }
+
+        $semester = $upload?->semester ?? SchoolSetting::getSetting()->semester ?? 'Ganjil';
+
+        $classrooms = self::syncClassrooms($academicYear);
         $subjects = self::syncSubjects();
         $teacherMap = self::getTeacherMapping();
 
-        $totalLessons = 0;
-        $totalClasses = 0;
+        return DB::transaction(function () use ($scheduleByClass, $upload, $academicYear, $semester, $classrooms, $subjects, $teacherMap) {
+            $totalLessons = 0;
+            $totalClasses = 0;
 
-        // Sumber data 1 pintu: bersihkan jadwal lama pada tahun ajaran & semester ini
-        LessonSchedule::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->delete();
+            // Sumber data 1 pintu: bersihkan jadwal lama pada tahun ajaran & semester ini
+            LessonSchedule::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->delete();
 
-        // Collect assignment hours: [teacher_id_subject_id_classroom_id => hours]
-        $assignmentHours = [];
+            // Collect assignment hours: [teacher_id_subject_id_classroom_id => hours]
+            $assignmentHours = [];
 
-        foreach ($scheduleByClass as $className => $days) {
-            $classroom = $classrooms[$className] ?? Classroom::where('name', $className)->first();
-            if (! $classroom) {
-                continue;
-            }
-            $totalClasses++;
+            foreach ($scheduleByClass as $className => $days) {
+                $classroom = $classrooms[$className] ?? Classroom::where('name', $className)->first();
+                if (! $classroom) {
+                    continue;
+                }
+                $totalClasses++;
 
-            foreach ($days as $day => $slots) {
-                foreach ($slots as $slot) {
-                    $subjCode = $slot['subject'];
-                    $teacherNick = $slot['teacher'];
-                    $startPeriod = $slot['start'];
-                    $endPeriod = $slot['end'];
+                foreach ($days as $day => $slots) {
+                    foreach ($slots as $slot) {
+                        $subjCode = $slot['subject'];
+                        $teacherNick = $slot['teacher'];
+                        $startPeriod = $slot['start'];
+                        $endPeriod = $slot['end'];
 
-                    $subject = $subjects[$subjCode] ?? Subject::where('code', $subjCode)->first();
-                    $teacherId = $teacherMap[$teacherNick] ?? null;
+                        $subject = $subjects[$subjCode] ?? Subject::where('code', $subjCode)->first();
+                        $teacherId = $teacherMap[$teacherNick] ?? null;
 
-                    if (! $subject || ! $teacherId) {
-                        continue;
-                    }
+                        if (! $subject || ! $teacherId) {
+                            continue;
+                        }
 
-                    $times = LessonSchedule::getTimeForPeriod($startPeriod, $endPeriod);
+                        $times = LessonSchedule::getTimeForPeriod($startPeriod, $endPeriod);
 
-                    LessonSchedule::create([
-                        'timetable_upload_id' => $upload?->id,
-                        'classroom_id' => $classroom->id,
-                        'teacher_id' => $teacherId,
-                        'subject_id' => $subject->id,
-                        'academic_year' => $academicYear,
-                        'semester' => $semester,
-                        'day' => $day,
-                        'start_period' => $startPeriod,
-                        'end_period' => $endPeriod,
-                        'start_time' => $times['start_time'],
-                        'end_time' => $times['end_time'],
-                    ]);
-
-                    $totalLessons++;
-
-                    // Aggregate teaching hours per week
-                    $hours = ($endPeriod - $startPeriod) + 1;
-                    $key = "{$teacherId}_{$subject->id}_{$classroom->id}";
-                    if (! isset($assignmentHours[$key])) {
-                        $assignmentHours[$key] = [
+                        LessonSchedule::create([
+                            'timetable_upload_id' => $upload?->id,
+                            'classroom_id' => $classroom->id,
                             'teacher_id' => $teacherId,
                             'subject_id' => $subject->id,
-                            'classroom_id' => $classroom->id,
-                            'hours' => 0,
-                        ];
+                            'academic_year' => $academicYear,
+                            'semester' => $semester,
+                            'day' => $day,
+                            'start_period' => $startPeriod,
+                            'end_period' => $endPeriod,
+                            'start_time' => $times['start_time'],
+                            'end_time' => $times['end_time'],
+                        ]);
+
+                        $totalLessons++;
+
+                        // Aggregate teaching hours per week
+                        $hours = ($endPeriod - $startPeriod) + 1;
+                        $key = "{$teacherId}_{$subject->id}_{$classroom->id}";
+                        if (! isset($assignmentHours[$key])) {
+                            $assignmentHours[$key] = [
+                                'teacher_id' => $teacherId,
+                                'subject_id' => $subject->id,
+                                'classroom_id' => $classroom->id,
+                                'hours' => 0,
+                            ];
+                        }
+                        $assignmentHours[$key]['hours'] += $hours;
                     }
-                    $assignmentHours[$key]['hours'] += $hours;
                 }
             }
-        }
 
-        // Re-build TeacherSubjectAssignment sepenuhnya dari LessonSchedule
-        // (Sumber data hanya 1 pintu: jadwal dari upload PDF)
-        TeacherSubjectAssignment::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->delete();
+            // Re-build TeacherSubjectAssignment sepenuhnya dari LessonSchedule
+            // (Sumber data hanya 1 pintu: jadwal dari upload PDF)
+            TeacherSubjectAssignment::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->delete();
 
-        $rows = LessonSchedule::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->selectRaw('teacher_id, subject_id, classroom_id, academic_year, semester, SUM(end_period - start_period + 1) as total_hours')
-            ->groupBy('teacher_id', 'subject_id', 'classroom_id', 'academic_year', 'semester')
-            ->get();
+            $rows = LessonSchedule::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->selectRaw('teacher_id, subject_id, classroom_id, academic_year, semester, SUM(end_period - start_period + 1) as total_hours')
+                ->groupBy('teacher_id', 'subject_id', 'classroom_id', 'academic_year', 'semester')
+                ->get();
 
-        foreach ($rows as $row) {
-            TeacherSubjectAssignment::create([
-                'teacher_id' => $row->teacher_id,
-                'subject_id' => $row->subject_id,
-                'classroom_id' => $row->classroom_id,
-                'academic_year' => $row->academic_year,
-                'semester' => $row->semester,
-                'hours_per_week' => $row->total_hours,
-                'notes' => 'Disinkronkan otomatis dari Jadwal Pelajaran (aSc Timetables)',
-            ]);
-        }
+            foreach ($rows as $row) {
+                TeacherSubjectAssignment::create([
+                    'teacher_id' => $row->teacher_id,
+                    'subject_id' => $row->subject_id,
+                    'classroom_id' => $row->classroom_id,
+                    'academic_year' => $row->academic_year,
+                    'semester' => $row->semester,
+                    'hours_per_week' => $row->total_hours,
+                    'notes' => 'Disinkronkan otomatis dari Jadwal Pelajaran (aSc Timetables)',
+                ]);
+            }
 
-        if ($upload) {
-            $upload->update([
+            if ($upload) {
+                $upload->update([
+                    'total_classes' => $totalClasses,
+                    'total_lessons' => $totalLessons,
+                ]);
+            }
+
+            return [
                 'total_classes' => $totalClasses,
                 'total_lessons' => $totalLessons,
-            ]);
-        }
-
-        return [
-            'total_classes' => $totalClasses,
-            'total_lessons' => $totalLessons,
-            'total_assignments' => $rows->count(),
-        ];
+                'total_assignments' => $rows->count(),
+            ];
+        });
     }
 
     /**
@@ -395,11 +425,22 @@ class TimetableSyncService
      */
     public static function populateTranslationItems(array $scheduleByClass, TimetableUpload $upload): array
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $upload->academic_year ?? $setting->academic_year ?? '2026/2027';
+        $academicYear = $upload->academic_year;
+        if (! $academicYear) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
+        if (! $ayModel) {
+            throw new InvalidArgumentException("Tahun ajaran '{$academicYear}' tidak terdaftar.");
+        }
 
         // Ensure master classrooms and subjects exist
-        $classrooms = self::syncClassrooms();
+        $classrooms = self::syncClassrooms($academicYear);
         $subjects = self::syncSubjects();
         $teacherMap = self::getTeacherMapping();
 
@@ -496,9 +537,21 @@ class TimetableSyncService
      */
     public static function applyTranslationToLive(TimetableUpload $upload): array
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $upload->academic_year ?? $setting->academic_year ?? '2026/2027';
-        $semester = $upload->semester ?? $setting->semester ?? 'Ganjil';
+        $academicYear = $upload->academic_year;
+        if (! $academicYear) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
+        if (! $ayModel) {
+            throw new InvalidArgumentException("Tahun ajaran '{$academicYear}' tidak terdaftar.");
+        }
+
+        $semester = $upload->semester ?? SchoolSetting::getSetting()->semester ?? 'Ganjil';
 
         $items = $upload->items()->where('is_valid', true)->get();
 
@@ -511,72 +564,74 @@ class TimetableSyncService
             ];
         }
 
-        // 1. Bersihkan jadwal lama pada tahun ajaran & semester ini
-        LessonSchedule::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->delete();
+        return DB::transaction(function () use ($upload, $academicYear, $semester, $items) {
+            // 1. Bersihkan jadwal lama pada tahun ajaran & semester ini
+            LessonSchedule::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->delete();
 
-        $totalLessons = 0;
-        $uniqueClassIds = [];
+            $totalLessons = 0;
+            $uniqueClassIds = [];
 
-        foreach ($items as $item) {
-            LessonSchedule::create([
-                'timetable_upload_id' => $upload->id,
-                'classroom_id' => $item->classroom_id,
-                'teacher_id' => $item->teacher_id,
-                'subject_id' => $item->subject_id,
-                'academic_year' => $academicYear,
-                'semester' => $semester,
-                'day' => $item->day,
-                'start_period' => $item->start_period,
-                'end_period' => $item->end_period,
-                'start_time' => $item->start_time,
-                'end_time' => $item->end_time,
+            foreach ($items as $item) {
+                LessonSchedule::create([
+                    'timetable_upload_id' => $upload->id,
+                    'classroom_id' => $item->classroom_id,
+                    'teacher_id' => $item->teacher_id,
+                    'subject_id' => $item->subject_id,
+                    'academic_year' => $academicYear,
+                    'semester' => $semester,
+                    'day' => $item->day,
+                    'start_period' => $item->start_period,
+                    'end_period' => $item->end_period,
+                    'start_time' => $item->start_time,
+                    'end_time' => $item->end_time,
+                ]);
+
+                $totalLessons++;
+                $uniqueClassIds[$item->classroom_id] = true;
+            }
+
+            // 2. Re-build TeacherSubjectAssignment dari LessonSchedule
+            TeacherSubjectAssignment::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->delete();
+
+            $rows = LessonSchedule::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->selectRaw('teacher_id, subject_id, classroom_id, academic_year, semester, SUM(end_period - start_period + 1) as total_hours')
+                ->groupBy('teacher_id', 'subject_id', 'classroom_id', 'academic_year', 'semester')
+                ->get();
+
+            foreach ($rows as $row) {
+                TeacherSubjectAssignment::create([
+                    'teacher_id' => $row->teacher_id,
+                    'subject_id' => $row->subject_id,
+                    'classroom_id' => $row->classroom_id,
+                    'academic_year' => $row->academic_year,
+                    'semester' => $row->semester,
+                    'hours_per_week' => $row->total_hours,
+                    'notes' => 'Disinkronkan dari Hasil Terjemahan aSc Timetables ('.$upload->title.')',
+                ]);
+            }
+
+            // 3. Update status aktif upload arsip
+            TimetableUpload::where('academic_year', $academicYear)
+                ->where('semester', $semester)
+                ->update(['is_active' => false]);
+
+            $upload->update([
+                'is_active' => true,
+                'total_classes' => count($uniqueClassIds),
+                'total_lessons' => $totalLessons,
             ]);
 
-            $totalLessons++;
-            $uniqueClassIds[$item->classroom_id] = true;
-        }
-
-        // 2. Re-build TeacherSubjectAssignment dari LessonSchedule
-        TeacherSubjectAssignment::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->delete();
-
-        $rows = LessonSchedule::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->selectRaw('teacher_id, subject_id, classroom_id, academic_year, semester, SUM(end_period - start_period + 1) as total_hours')
-            ->groupBy('teacher_id', 'subject_id', 'classroom_id', 'academic_year', 'semester')
-            ->get();
-
-        foreach ($rows as $row) {
-            TeacherSubjectAssignment::create([
-                'teacher_id' => $row->teacher_id,
-                'subject_id' => $row->subject_id,
-                'classroom_id' => $row->classroom_id,
-                'academic_year' => $row->academic_year,
-                'semester' => $row->semester,
-                'hours_per_week' => $row->total_hours,
-                'notes' => 'Disinkronkan dari Hasil Terjemahan aSc Timetables ('.$upload->title.')',
-            ]);
-        }
-
-        // 3. Update status aktif upload arsip
-        TimetableUpload::where('academic_year', $academicYear)
-            ->where('semester', $semester)
-            ->update(['is_active' => false]);
-
-        $upload->update([
-            'is_active' => true,
-            'total_classes' => count($uniqueClassIds),
-            'total_lessons' => $totalLessons,
-        ]);
-
-        return [
-            'success' => true,
-            'total_classes' => count($uniqueClassIds),
-            'total_lessons' => $totalLessons,
-            'total_assignments' => $rows->count(),
-        ];
+            return [
+                'success' => true,
+                'total_classes' => count($uniqueClassIds),
+                'total_lessons' => $totalLessons,
+                'total_assignments' => $rows->count(),
+            ];
+        });
     }
 }

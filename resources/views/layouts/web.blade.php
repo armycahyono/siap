@@ -591,6 +591,16 @@
                             </a>
                         </li>
 
+                        <!-- Menu Live Presensi (Semua Jalur: Mesin, GPS, Telegram) -->
+                        <li class="nav-item {{ request()->routeIs('attendance.index') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('attendance.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-broadcast fs-2 text-cyan"></i>
+                                </span>
+                                <span class="nav-link-title">Live Presensi</span>
+                            </a>
+                        </li>
+
                         <!-- Menu Pribadi: Izin & Cuti Saya (Milik Semua GTK) -->
                         <li class="nav-item {{ (request()->routeIs('attendance.gtk-permits*') && request('scope') === 'personal') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('attendance.gtk-permits.index', ['scope' => 'personal']) }}">
@@ -679,8 +689,8 @@
                                 : 0;
                         @endphp
                         @if($canAccessAttendanceRecap)
-                        <li class="nav-item dropdown {{ (request()->routeIs('attendance.report.*', 'attendance.devices*', 'attendance.index') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-rekap-presensi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ (request()->routeIs('attendance.report.*', 'attendance.devices*', 'attendance.index') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'true' : 'false' }}">
+                        <li class="nav-item dropdown {{ (request()->routeIs('attendance.report.*', 'attendance.devices*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-rekap-presensi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ (request()->routeIs('attendance.report.*', 'attendance.devices*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-report-analytics fs-2 text-teal"></i>
                                 </span>
@@ -691,7 +701,7 @@
                                     <span class="badge bg-warning text-dark fw-bold ms-auto">{{ $todayGtkPermitBadgeCount }}</span>
                                 @endif
                             </a>
-                            <div class="dropdown-menu {{ (request()->routeIs('attendance.report.*', 'attendance.devices*', 'attendance.index') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'show' : '' }}">
+                            <div class="dropdown-menu {{ (request()->routeIs('attendance.report.*', 'attendance.devices*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'show' : '' }}">
                                 @if(auth()->user()->canAccessTeacherAttendanceReport())
                                 <a class="dropdown-item {{ request()->routeIs('attendance.report.teachers*') ? 'active' : '' }}" href="{{ route('attendance.report.teachers') }}">
                                     <i class="ti ti-user-check me-2 text-teal"></i> Presensi Guru &amp; Staf
@@ -712,12 +722,8 @@
                                 </a>
                                 @endif
 
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item {{ request()->routeIs('attendance.index') ? 'active' : '' }}" href="{{ route('attendance.index') }}">
-                                    <i class="ti ti-calendar-check me-2 text-cyan"></i> Log Absensi (Mesin)
-                                </a>
-
                                 @if(auth()->user()->canManageAttendanceDevices())
+                                <div class="dropdown-divider"></div>
                                 <a class="dropdown-item {{ request()->routeIs('attendance.devices*') ? 'active' : '' }}" href="{{ route('attendance.devices.index') }}">
                                     <i class="ti ti-devices me-2 text-primary"></i> Mesin Absensi
                                 </a>

@@ -8,6 +8,10 @@ use Illuminate\Support\Collection;
 
 class HomeroomImportService extends BaseExcelImportService
 {
+    public function __construct(
+        protected HomeroomAssignmentService $homeroomAssignmentService
+    ) {}
+
     /**
      * Import data wali kelas dari file Excel (.xlsx) atau CSV (.csv).
      *
@@ -84,7 +88,7 @@ class HomeroomImportService extends BaseExcelImportService
             $cleanTeacherName = $this->cleanTeacherName($rawTeacher);
             if (empty($cleanTeacherName) && empty($rawNigs)) {
                 // Jika sengaja dikosongkan, reset wali kelas
-                $classroom->update(['homeroom_teacher_id' => null]);
+                $this->homeroomAssignmentService->assignHomeroom($classroom, null, auth()->id());
                 $updatedList[] = "{$classroom->name}: (Dikosongkan)";
                 $importedCount++;
 
@@ -99,7 +103,7 @@ class HomeroomImportService extends BaseExcelImportService
                 continue;
             }
 
-            $classroom->update(['homeroom_teacher_id' => $teacher->id]);
+            $this->homeroomAssignmentService->assignHomeroom($classroom, $teacher->id, auth()->id());
             $updatedList[] = "{$classroom->name} &rarr; {$teacher->name}";
             $importedCount++;
         }

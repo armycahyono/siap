@@ -87,12 +87,9 @@ class TeacherImportService extends BaseExcelImportService
                 continue;
             }
 
-            $nigs = $this->getCellValue($row, $headerIndices['nigs_col'] ?? -1);
-            $nigsFix = $this->getCellValue($row, $headerIndices['nigs_fix_col'] ?? -1);
-            if (empty($nigsFix) && ! empty($nigs)) {
-                // Bersihkan karakter non-alfanumerik untuk nigs_fix
-                $nigsFix = preg_replace('/[^a-zA-Z0-9]/', '', $nigs);
-            }
+            $nigsRaw = $this->getCellValue($row, $headerIndices['nigs_col'] ?? -1);
+            $nigsFixRaw = $this->getCellValue($row, $headerIndices['nigs_fix_col'] ?? -1);
+            $nigs = ! empty($nigsFixRaw) ? preg_replace('/[^a-zA-Z0-9]/', '', $nigsFixRaw) : (! empty($nigsRaw) ? preg_replace('/[^a-zA-Z0-9]/', '', $nigsRaw) : null);
 
             $nip = $this->getCellValue($row, $headerIndices['nip_col'] ?? -1);
             $nuptk = $this->getCellValue($row, $headerIndices['nuptk_col'] ?? -1);
@@ -136,8 +133,8 @@ class TeacherImportService extends BaseExcelImportService
 
             // Cari apakah guru sudah ada di database
             $existing = null;
-            if (! empty($nigsFix)) {
-                $existing = User::where('nigs_fix', $nigsFix)->first();
+            if (! empty($nigs)) {
+                $existing = User::where('nigs', $nigs)->first();
             }
             if (! $existing && ! empty($nip)) {
                 $existing = User::where('nip', $nip)->first();
@@ -162,9 +159,6 @@ class TeacherImportService extends BaseExcelImportService
                 if (! empty($nigs)) {
                     $updateData['nigs'] = $nigs;
                 }
-                if (! empty($nigsFix)) {
-                    $updateData['nigs_fix'] = $nigsFix;
-                }
                 if (! empty($nip)) {
                     $updateData['nip'] = $nip;
                 }
@@ -186,8 +180,9 @@ class TeacherImportService extends BaseExcelImportService
                 if (! empty($gtkStatus)) {
                     $updateData['gtk_status'] = $gtkStatus;
                 }
-                if (! empty($position) && $existing->position !== $position) {
-                    $updateData['position'] = $position;
+                if (! empty($position)) {
+                    $groupPosition = User::isStaffPosition($position) ? 'staf' : (str_contains(strtolower($position), 'administrator') ? 'administrator' : 'guru');
+                    $updateData['position'] = $groupPosition;
                 }
                 if (! empty($educationLevel)) {
                     $updateData['education_level'] = $educationLevel;
@@ -242,6 +237,8 @@ class TeacherImportService extends BaseExcelImportService
 
                 $password = ! empty($rawPassword) ? $rawPassword : 'password';
 
+                $groupPosition = User::isStaffPosition($position) ? 'staf' : (str_contains(strtolower($position), 'administrator') ? 'administrator' : 'guru');
+
                 User::create([
                     'name' => $cleanName,
                     'short_name' => $shortName ?: null,
@@ -250,7 +247,6 @@ class TeacherImportService extends BaseExcelImportService
                     'password' => Hash::make($password),
                     'role_id' => $roleId,
                     'nigs' => $nigs ?: null,
-                    'nigs_fix' => $nigsFix ?: null,
                     'nip' => $nip ?: null,
                     'nuptk' => $nuptk ?: null,
                     'nik' => $nik ?: null,
@@ -258,7 +254,7 @@ class TeacherImportService extends BaseExcelImportService
                     'gender' => $gender ?: null,
                     'birth_info' => $birthInfo ?: null,
                     'gtk_status' => $gtkStatus ?: null,
-                    'position' => $position,
+                    'position' => $groupPosition,
                     'education_level' => $educationLevel ?: null,
                     'major' => $major ?: null,
                     'address' => $address ?: null,

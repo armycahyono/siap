@@ -688,7 +688,7 @@
                         <!-- Aksi Cepat Setujui / Tinjau -->
                         <div class="d-flex align-items-center justify-content-between pt-1 border-top border-warning-subtle mt-0.5">
                             @if($permit->document_path)
-                                <a href="{{ asset('storage/' . $permit->document_path) }}" target="_blank" class="badge bg-white text-primary border text-decoration-none py-0.5 px-1.5" style="font-size: 0.62rem;">
+                                <a href="{{ $permit->document_url }}" target="_blank" class="badge bg-white text-primary border text-decoration-none py-0.5 px-1.5" style="font-size: 0.62rem;">
                                     <i class="ti ti-paperclip"></i> Bukti
                                 </a>
                             @else

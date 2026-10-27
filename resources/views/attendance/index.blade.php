@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Presensi Sekolah (Mesin & Telegram)')
+@section('title', 'Live Presensi Sekolah (Mesin, GPS & Telegram)')
 
 @section('content')
 <!-- Page Header (Model 2: Hero Context Banner) -->
@@ -12,14 +12,13 @@
     if (auth()->user()->canManageAttendanceDevices()) {
         $attActions .= '<a href="' . route('attendance.devices.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-devices me-1 text-info"></i> Kelola Mesin</a> ';
     }
-    $attActions .= '<form action="' . route('attendance.logs.clear') . '" method="POST" class="d-inline">' . csrf_field() . '<button type="submit" class="btn btn-sm btn-outline-light shadow-xs text-danger" onclick="return confirm(\'Apakah Anda yakin ingin mengosongkan riwayat log presensi di aplikasi?\')"><i class="ti ti-trash me-1"></i> Bersihkan Log</button></form>';
 @endphp
 <div class="container-xl px-0 mb-3">
     @include('layouts._hero_header', [
-        'title' => 'Presensi Sekolah (Mesin & Telegram)',
-        'subtitle' => 'Rekaman presensi terpadu GTK dan siswa dari mesin biometrik fingerprint, face recognition, dan presensi Telegram.',
-        'icon' => 'ti ti-calendar-check',
-        'category' => 'PRESENSI & KEHADIRAN',
+        'title' => 'Live Presensi Sekolah',
+        'subtitle' => 'Pemantauan presensi terpadu GTK dan siswa secara real-time dari seluruh jalur: Mesin Biometrik (Fingerprint/Wajah/RFID), Geotagging GPS Mobile, dan Bot Telegram.',
+        'icon' => 'ti ti-broadcast',
+        'category' => 'KEDISIPLINAN & OPERASIONAL',
         'actions' => $attActions
     ])
 </div>
@@ -38,32 +37,43 @@
         <div class="card shadow-sm border-0 mb-3 d-print-none">
             <div class="card-body py-2">
                 <div class="row align-items-center">
-                    <div class="col-md-6 mb-2 mb-md-0">
+                    <div class="col-lg-5 mb-2 mb-lg-0">
                         <form method="GET" action="{{ route('attendance.index') }}" class="d-flex align-items-center gap-2">
-                            <span class="text-secondary small fw-medium">Tanggal Presensi:</span>
+                            @if(request('channel'))
+                                <input type="hidden" name="channel" value="{{ request('channel') }}">
+                            @endif
+                            <span class="text-secondary small fw-medium">Tanggal:</span>
                             <div class="input-icon">
                                 <span class="input-icon-addon"><i class="ti ti-calendar"></i></span>
                                 <input type="date" name="date" id="currentDateInput" class="form-control form-control-sm" value="{{ $date === 'all' ? '' : $date }}" onchange="this.form.submit()">
                             </div>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('attendance.index', ['date' => now()->toDateString()]) }}" class="btn btn-outline-secondary {{ $date === now()->toDateString() ? 'active' : '' }}">Hari Ini</a>
-                                <a href="{{ route('attendance.index', ['date' => 'all']) }}" class="btn btn-outline-secondary {{ $date === 'all' ? 'active' : '' }}">Semua</a>
+                                <a href="{{ route('attendance.index', ['date' => now()->toDateString(), 'channel' => request('channel')]) }}" class="btn btn-outline-secondary {{ $date === now()->toDateString() ? 'active' : '' }}">Hari Ini</a>
+                                <a href="{{ route('attendance.index', ['date' => 'all', 'channel' => request('channel')]) }}" class="btn btn-outline-secondary {{ $date === 'all' ? 'active' : '' }}">Semua</a>
                             </div>
                             <span class="badge bg-blue-lt ms-2">
-                                <i class="ti ti-calendar-event me-1"></i> Hari {{ $targetDay }}
+                                <i class="ti ti-calendar-event me-1"></i> {{ $targetDay }}
                             </span>
                         </form>
                     </div>
-                    <div class="col-md-6 text-md-end text-secondary small">
-                        <span>Total Scan Hari Ini: <strong class="text-primary fs-3">{{ $stats['total_scans'] }}</strong> kali &bull; </span>
-                        <span class="badge bg-success-lt text-success fw-bold">
-                            {{ $devices->where('status', 'online')->count() }} Mesin Online
-                        </span>
-                        @if(auth()->user()->canManageAttendanceDevices())
-                            <a href="{{ route('attendance.devices.index') }}" class="btn btn-sm btn-outline-primary ms-2 py-0">
-                                <i class="ti ti-devices me-1"></i> Konfigurasi Mesin
-                            </a>
-                        @endif
+                    <div class="col-lg-7 text-lg-end text-secondary small">
+                        <div class="d-inline-flex flex-wrap align-items-center justify-content-lg-end gap-2">
+                            <span class="badge bg-purple-lt text-purple" title="Presensi dari mesin fingerprint/face/kartu">
+                                <i class="ti ti-device-watch me-1"></i> Mesin: <strong class="ms-1" id="statMachineScans">{{ $stats['machine_scans'] ?? 0 }}</strong>
+                            </span>
+                            <span class="badge bg-primary-lt text-primary" title="Presensi dari PWA Geotagging GPS">
+                                <i class="ti ti-map-pin me-1"></i> GPS: <strong class="ms-1" id="statGpsScans">{{ $stats['gps_scans'] ?? 0 }}</strong>
+                            </span>
+                            <span class="badge bg-info-lt text-info" title="Presensi dari Bot Telegram">
+                                <i class="ti ti-brand-telegram me-1"></i> Telegram: <strong class="ms-1" id="statTelegramScans">{{ $stats['telegram_scans'] ?? 0 }}</strong>
+                            </span>
+                            <span class="text-dark fw-bold ms-1">Total: <span class="text-teal fs-3" id="statTotalScans">{{ $stats['total_scans'] }}</span> scan</span>
+                            @if(auth()->user()->canManageAttendanceDevices())
+                                <a href="{{ route('attendance.devices.index') }}" class="btn btn-sm btn-outline-primary ms-1 py-0">
+                                    <i class="ti ti-devices me-1"></i> Mesin
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
@@ -191,7 +201,7 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <a href="#tab-raw-logs" class="nav-link fw-bold" data-bs-toggle="tab" aria-selected="false" tabindex="-1" role="tab">
-                            <i class="ti ti-list-check me-2 text-primary"></i> Log Scan Mentah Mesin
+                            <i class="ti ti-broadcast me-2 text-primary"></i> Log Aktivitas Presensi (Semua Jalur)
                         </a>
                     </li>
                 </ul>
@@ -242,25 +252,25 @@
                                                     {{ $t->id }}
                                                 </span>
                                                 <div>
-                                                    <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                        <span class="fw-bold text-dark fs-3">{{ $t->name }}</span>
-                                                        @if($t->is_piket && $t->has_schedule)
-                                                            <span class="badge bg-purple-lt text-purple small">Piket & Mengajar</span>
-                                                        @elseif($t->is_piket)
-                                                            <span class="badge bg-teal-lt text-teal small">Guru Piket</span>
-                                                        @elseif($t->is_staff_tu)
-                                                            <span class="badge bg-blue-lt text-blue small">Staf TU</span>
-                                                        @elseif($t->has_schedule)
-                                                            <span class="badge bg-indigo-lt text-indigo small">Guru Mapel</span>
-                                                        @else
-                                                            <span class="badge bg-azure-lt text-azure small">Bebas Jam</span>
-                                                        @endif
-                                                    </div>
-                                                    <div class="text-secondary small">
+                                                    <div class="fw-bold text-dark fs-3">{{ $t->name }}</div>
+                                                    <div class="text-secondary small d-flex align-items-center gap-1 flex-wrap mt-1">
                                                         <span>{{ $t->position }}</span>
                                                         @if($t->nigs)
                                                             &bull; <code>NIGS: {{ $t->nigs }}</code>
                                                         @endif
+                                                        <span class="ms-1">
+                                                            @if($t->is_piket && $t->has_schedule)
+                                                                <span class="badge bg-purple-lt text-purple small">Piket &amp; Mengajar</span>
+                                                            @elseif($t->is_piket)
+                                                                <span class="badge bg-teal-lt text-teal small">Guru Piket</span>
+                                                            @elseif($t->is_staff_tu)
+                                                                <span class="badge bg-blue-lt text-blue small">Staf TU</span>
+                                                            @elseif($t->has_schedule)
+                                                                <span class="badge bg-indigo-lt text-indigo small">Guru Mapel</span>
+                                                            @else
+                                                                <span class="badge bg-azure-lt text-azure small">Bebas Jam</span>
+                                                            @endif
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -281,7 +291,15 @@
                                                     <strong class="text-dark font-monospace fs-3">
                                                         {{ $t->first_scan_at->format('H:i:s') }}
                                                     </strong>
-                                                    <span class="text-secondary small d-block">via {{ ucfirst($t->verify_type ?: 'Scan') }}</span>
+                                                    @if(!empty($t->first_scan_channel))
+                                                        <div class="mt-1">
+                                                            <span class="badge {{ $t->first_scan_channel['class'] }} small">
+                                                                <i class="{{ $t->first_scan_channel['icon'] }} me-1"></i>{{ $t->first_scan_channel['label'] }}
+                                                            </span>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-secondary small d-block">via {{ ucfirst($t->verify_type ?: 'Scan') }}</span>
+                                                    @endif
                                                 @else
                                                     <span class="badge bg-secondary-lt">Belum Scan</span>
                                                 @endif
@@ -310,6 +328,13 @@
                                                     <strong class="text-dark font-monospace fs-3">
                                                         {{ $t->last_scan_at->format('H:i:s') }}
                                                     </strong>
+                                                    @if(!empty($t->last_scan_channel))
+                                                        <div class="mt-1">
+                                                            <span class="badge {{ $t->last_scan_channel['class'] }} small">
+                                                                <i class="{{ $t->last_scan_channel['icon'] }} me-1"></i>{{ $t->last_scan_channel['label'] }}
+                                                            </span>
+                                                        </div>
+                                                    @endif
                                                 @elseif($t->first_scan_at)
                                                     <span class="text-muted small italic">-</span>
                                                 @else
@@ -591,16 +616,24 @@
                 </div>
             </div>
 
-            <!-- TAB 6: LOG SCAN MENTAH REAL-TIME (DENGAN AUTO-PREPEND) -->
+            <!-- TAB 6: LOG AKTIVITAS PRESENSI REAL-TIME (SEMUA JALUR) -->
             <div class="tab-pane" id="tab-raw-logs" role="tabpanel">
                 <div class="card shadow-sm border-0">
                     <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
                         <div class="d-flex align-items-center gap-2">
-                            <h3 class="card-title mb-0 fw-bold">Log Mentah Scan Mesin</h3>
+                            <h3 class="card-title mb-0 fw-bold">
+                                <i class="ti ti-broadcast text-primary me-1"></i> Log Aktivitas Presensi Real-Time
+                            </h3>
                             <span class="badge bg-secondary-lt" id="rawLogTotalBadge">{{ $logs->total() }} entri</span>
                         </div>
                         <form method="GET" action="{{ route('attendance.index') }}" class="d-flex flex-wrap align-items-center gap-2">
                             <input type="hidden" name="date" value="{{ $date }}">
+                            <select name="channel" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                                <option value="">Semua Jalur Absen</option>
+                                <option value="machine" {{ ($channel ?? '') === 'machine' ? 'selected' : '' }}>Mesin Biometrik</option>
+                                <option value="gps" {{ ($channel ?? '') === 'gps' ? 'selected' : '' }}>Presensi GPS (Mobile)</option>
+                                <option value="telegram" {{ ($channel ?? '') === 'telegram' ? 'selected' : '' }}>Bot Telegram</option>
+                            </select>
                             <select name="type" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
                                 <option value="">Semua Kategori</option>
                                 <option value="teacher" {{ $type === 'teacher' ? 'selected' : '' }}>Guru & Staf</option>
@@ -624,17 +657,21 @@
                             <thead>
                                 <tr>
                                     <th class="w-1">No</th>
-                                    <th>Waktu Scan</th>
+                                    <th>Waktu Presensi</th>
+                                    <th>Jalur Absen</th>
                                     <th>Kategori</th>
-                                    <th>PIN (ID Mesin)</th>
+                                    <th>PIN / ID</th>
                                     <th>Nama Lengkap</th>
                                     <th>Status Absen</th>
                                     <th>Metode Verifikasi</th>
-                                    <th>Perangkat</th>
+                                    <th>Perangkat / Sumber</th>
                                 </tr>
                             </thead>
                             <tbody id="rawLogsTableBody">
                                 @forelse($logs as $index => $log)
+                                    @php
+                                        $chBadge = $log->channel_badge;
+                                    @endphp
                                     <tr id="log-row-{{ $log->id }}">
                                         <td class="text-secondary">{{ $logs->firstItem() + $index }}</td>
                                         <td class="fw-bold">
@@ -642,6 +679,11 @@
                                             {{ $log->scanned_at ? $log->scanned_at->format('H:i:s') : '-' }}
                                             <span class="text-secondary small fw-normal d-block">
                                                 {{ $log->scanned_at ? $log->scanned_at->translatedFormat('d F Y') : '-' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ $chBadge['class'] }} fw-bold">
+                                                <i class="{{ $chBadge['icon'] }} me-1"></i>{{ $chBadge['label'] }}
                                             </span>
                                         </td>
                                         <td>
@@ -672,11 +714,11 @@
                                             </span>
                                             @if($log->status === 'check_out')
                                                 <div class="text-secondary small" style="font-size: 11px;">
-                                                    <i class="ti ti-device-watch me-1"></i>Mode Mesin: Pulang
+                                                    <i class="ti ti-arrow-right me-1"></i>Status: Pulang
                                                 </div>
                                             @elseif($log->status === 'check_in')
                                                 <div class="text-secondary small" style="font-size: 11px;">
-                                                    <i class="ti ti-device-watch me-1"></i>Mode Mesin: Masuk
+                                                    <i class="ti ti-arrow-left me-1"></i>Status: Masuk
                                                 </div>
                                             @endif
                                         </td>
@@ -687,17 +729,23 @@
                                             </span>
                                         </td>
                                         <td class="text-secondary small">
-                                            {{ $log->device ? $log->device->name : ($log->device_sn ?: 'Revo WDV-204BNC') }}
+                                            @if($log->verify_type === 'geotag' || $log->device_sn === 'MOBILE-PWA')
+                                                <span class="text-primary fw-medium"><i class="ti ti-device-mobile me-1"></i>GPS Mobile (PWA)</span>
+                                            @elseif($log->verify_type === 'telegram' || $log->device_sn === 'TELEGRAM')
+                                                <span class="text-info fw-medium"><i class="ti ti-brand-telegram me-1"></i>Bot Telegram</span>
+                                            @else
+                                                <span><i class="ti ti-device-watch me-1"></i>{{ $log->device ? $log->device->name : ($log->device_sn ?: 'Mesin Biometrik') }}</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
                                     <tr id="emptyRawLogRow">
-                                        <td colspan="8" class="text-center py-5">
+                                        <td colspan="9" class="text-center py-5">
                                             <div class="empty">
-                                                <div class="empty-icon text-muted"><i class="ti ti-fingerprint-off fs-1"></i></div>
-                                                <p class="empty-title">Belum ada rekaman scan presensi yang masuk</p>
+                                                <div class="empty-icon text-muted"><i class="ti ti-broadcast-off fs-1"></i></div>
+                                                <p class="empty-title">Belum ada rekaman presensi yang masuk</p>
                                                 <p class="empty-subtitle text-secondary">
-                                                    Log presensi akan langsung muncul secara otomatis di sini begitu guru/siswa scan di mesin tanpa perlu reload.
+                                                    Catatan presensi dari semua jalur (Mesin, GPS, Telegram) akan langsung muncul secara otomatis di sini secara real-time.
                                                 </p>
                                             </div>
                                         </td>
@@ -767,11 +815,11 @@
                                     <td class="text-center text-secondary">{{ $idx + 1 }}</td>
                                     <td class="text-center">
                                         <span class="badge bg-primary fs-3 px-3 font-monospace fw-bold text-white">
-                                            {{ $t->nigs_fix ?: (preg_replace('/\D/', '', (string) $t->nigs) ?: $t->id) }}
+                                            {{ $t->nigs ?: $t->id }}
                                         </span>
                                     </td>
                                     <td><strong>{{ $t->name }}</strong></td>
-                                    <td><code>{{ $t->nigs ?: ($t->nigs_fix ?: '-') }}</code></td>
+                                    <td><code>{{ $t->nigs ?: '-' }}</code></td>
                                     <td><span class="badge bg-secondary-lt">{{ $t->position ?: 'Guru' }}</span></td>
                                     <td class="text-center">
                                         @if($t->is_enrolled)
@@ -836,6 +884,11 @@ function pollNewAttendanceLogs() {
                                     <i class="ti ti-clock me-1"></i>${log.scanned_time}
                                     <span class="text-secondary small fw-normal d-block">${log.scanned_date}</span>
                                 </td>
+                                <td>
+                                    <span class="badge ${log.channel_class || 'bg-secondary-lt'} fw-bold">
+                                        <i class="${log.channel_icon || 'ti ti-check'} me-1"></i>${log.channel_label || 'Mesin'}
+                                    </span>
+                                </td>
                                 <td><span class="badge bg-teal-lt">${log.user_type_label}</span></td>
                                 <td><code class="fw-bold fs-3 text-dark">${log.pin}</code></td>
                                 <td><strong class="text-dark fs-3">${log.name}</strong></td>
@@ -844,10 +897,10 @@ function pollNewAttendanceLogs() {
                                         <i class="ti ti-scan me-1"></i>Scan Terverifikasi
                                     </span>
                                     <div class="text-secondary small" style="font-size: 11px;">
-                                        <i class="ti ti-device-watch me-1"></i>Mode Mesin: ${log.status_label}
+                                        <i class="ti ti-arrow-right me-1"></i>Status: ${log.status_label}
                                     </div>
                                 </td>
-                                <td><span class="small"><i class="ti ti-fingerprint me-1"></i>${log.verify_type_label}</span></td>
+                                <td><span class="small"><i class="${log.verify_icon || 'ti ti-fingerprint'} text-primary fs-2 me-1"></i>${log.verify_type_label}</span></td>
                                 <td class="text-secondary small">${log.device_name}</td>
                             </tr>
                         `;
@@ -859,8 +912,14 @@ function pollNewAttendanceLogs() {
                 if (data.stats) {
                     let stTotal = document.getElementById('statTotalScans');
                     let rawTotal = document.getElementById('rawLogTotalBadge');
+                    let stMachine = document.getElementById('statMachineScans');
+                    let stGps = document.getElementById('statGpsScans');
+                    let stTelegram = document.getElementById('statTelegramScans');
                     if (stTotal) stTotal.innerText = data.stats.total_scans;
                     if (rawTotal) rawTotal.innerText = data.stats.total_scans + ' entri';
+                    if (stMachine && data.stats.machine_scans !== undefined) stMachine.innerText = data.stats.machine_scans;
+                    if (stGps && data.stats.gps_scans !== undefined) stGps.innerText = data.stats.gps_scans;
+                    if (stTelegram && data.stats.telegram_scans !== undefined) stTelegram.innerText = data.stats.telegram_scans;
                 }
             }
 

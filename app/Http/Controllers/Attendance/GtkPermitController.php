@@ -226,7 +226,7 @@ class GtkPermitController extends Controller
 
         $documentPath = null;
         if ($request->hasFile('document')) {
-            $documentPath = $request->file('document')->store('gtk_permits', 'public');
+            $documentPath = $request->file('document')->store('gtk_permits', 'local');
         }
 
         // Jika Kepala Sekolah atau Super Admin yang menginput, otomatis langsung disetujui.
@@ -338,10 +338,14 @@ class GtkPermitController extends Controller
 
         $documentPath = $gtkPermit->document_path;
         if ($request->hasFile('document')) {
-            if ($documentPath && Storage::disk('public')->exists($documentPath)) {
-                Storage::disk('public')->delete($documentPath);
+            if ($documentPath) {
+                if (Storage::disk('local')->exists($documentPath)) {
+                    Storage::disk('local')->delete($documentPath);
+                } elseif (Storage::disk('public')->exists($documentPath)) {
+                    Storage::disk('public')->delete($documentPath);
+                }
             }
-            $documentPath = $request->file('document')->store('gtk_permits', 'public');
+            $documentPath = $request->file('document')->store('gtk_permits', 'local');
         }
 
         $gtkPermit->update([
@@ -369,13 +373,55 @@ class GtkPermitController extends Controller
             }
         }
 
-        if ($gtkPermit->document_path && Storage::disk('public')->exists($gtkPermit->document_path)) {
-            Storage::disk('public')->delete($gtkPermit->document_path);
+        if ($gtkPermit->document_path) {
+            if (Storage::disk('local')->exists($gtkPermit->document_path)) {
+                Storage::disk('local')->delete($gtkPermit->document_path);
+            } elseif (Storage::disk('public')->exists($gtkPermit->document_path)) {
+                Storage::disk('public')->delete($gtkPermit->document_path);
+            }
         }
 
         $gtkPermit->delete();
 
         return redirect()->back(fallback: route('attendance.gtk-permits.index'))->with('success', 'Data izin/cuti berhasil dihapus.');
+    }
+
+    /**
+     * Download / preview private GTK permit document with strict authorization.
+     */
+    public function downloadDocument(GtkPermit $gtkPermit)
+    {
+        $currentUser = Auth::user();
+        if (! $currentUser) {
+            abort(401);
+        }
+
+        $isAuthorized = $currentUser->isSuperAdmin()
+            || $currentUser->isPrincipal()
+            || $currentUser->isWakaKurikulum()
+            || ($gtkPermit->user_id === $currentUser->id);
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat atau mengunduh dokumen ini.');
+        }
+
+        $path = $gtkPermit->document_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Dokumen tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File dokumen tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path);
     }
 
     public function syncPiket(): RedirectResponse

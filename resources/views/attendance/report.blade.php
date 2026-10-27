@@ -5,7 +5,7 @@
 @section('content')
 <!-- Page Header (Model 2: Hero Context Banner) -->
 @php
-    $attRepActions = '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi</a> ' .
+    $attRepActions = '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-broadcast me-1"></i> Live Presensi</a> ' .
         '<a href="' . route('attendance.report.print', request()->query()) . '" target="_blank" id="btnPrintTop" onclick="openPrintReport(event)" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-printer me-1"></i> Cetak Lembar Resmi (A4)</a>';
 @endphp
 <div class="container-xl px-0 mb-3">
@@ -129,7 +129,7 @@
                                 <option value="">-- Semua Guru & Staf --</option>
                                 @foreach($teachersList as $t)
                                     <option value="{{ $t->id }}" {{ (int)$userId === $t->id ? 'selected' : '' }}>
-                                        {{ $t->name }} ({{ $t->nigs_fix ?: ($t->nigs ?: 'ID: '.$t->id) }})
+                                        {{ $t->name }} ({{ $t->nigs ?: 'ID: '.$t->id }})
                                     </option>
                                 @endforeach
                             </select>

@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Role;
 use App\Models\TeacherSupervisorAssignment;
 use App\Models\User;
+use App\Models\UserRoleAssignment;
 
 class SupervisorImportService extends BaseExcelImportService
 {
@@ -87,14 +88,24 @@ class SupervisorImportService extends BaseExcelImportService
                 ]
             );
 
-            // Jangan downgrade waka_kurikulum atau super_admin
-            if (! $teacher->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah'])) {
-                $updateData = ['role_id' => $supervisorRole->id];
-                if (! empty($rawPos) && ! str_contains(strtolower($rawPos), 'supervisor')) {
-                    $updateData['position'] = $rawPos;
-                }
-                $teacher->update($updateData);
+            // Sinkronkan ke UserRoleAssignment jika role supervisor tersedia
+            if ($supervisorRole) {
+                UserRoleAssignment::updateOrCreate(
+                    [
+                        'user_id' => $teacher->id,
+                        'role_id' => $supervisorRole->id,
+                        'academic_year' => $academicYear,
+                    ],
+                    [
+                        'academic_year_id' => $academicYearId,
+                        'status' => true,
+                        'notes' => 'Tim Penilai Supervisi Pembelajaran (Import Excel)',
+                    ]
+                );
             }
+
+            // CATATAN ARSITEKTUR:
+            // Import supervisor TIDAK mengubah users.role_id maupun users.position!
 
             $updatedList[] = $teacher->name;
             $importedCount++;

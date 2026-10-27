@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\LessonSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\StudentClassroom;
 use App\Models\SubjectAttendanceSession;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -38,7 +41,7 @@ class HomeroomAttendanceRecapController extends Controller
      * Bangun Rekap Presensi Harian Berdasarkan Jam Pelajaran (JP 1 s.d. JP N)
      * Mengakomodasi: Hadir (H), Sakit (S), Izin (I), Dispen (D), Terlambat (T), Pulang Cepat (P), Alfa (A), Bolos (B)
      */
-    protected function buildDailyRecap(?Classroom $classroom, $students, Carbon $date): array
+    protected function buildDailyRecap(?Classroom $classroom, $students, Carbon $date, ?string $academicYear = null): array
     {
         if (! $classroom) {
             return [
@@ -69,6 +72,7 @@ class HomeroomAttendanceRecapController extends Controller
         $schedules = LessonSchedule::with(['subject', 'teacher'])
             ->where('classroom_id', $classroom->id)
             ->where('day', $dayName)
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->orderBy('start_period')
             ->get();
 
@@ -76,6 +80,7 @@ class HomeroomAttendanceRecapController extends Controller
         $sessions = SubjectAttendanceSession::with(['subject', 'teacher', 'records'])
             ->where('classroom_id', $classroom->id)
             ->whereDate('attendance_date', $dateStr)
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->orderBy('start_period')
             ->get();
 
@@ -116,6 +121,7 @@ class HomeroomAttendanceRecapController extends Controller
                             ->whereDate('end_date', '>=', $dateStr);
                     });
             })
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->where('status', '!=', 'ditolak')
             ->get()
             ->groupBy('student_id');
@@ -313,7 +319,7 @@ class HomeroomAttendanceRecapController extends Controller
      * Bangun Rekap Presensi Mingguan (Senin s.d. Jumat - KBM 5 Hari Kerja)
      * Mengakomodasi: H, S, I, D, T, P, A, Bolos
      */
-    protected function buildWeeklyRecap(?Classroom $classroom, $students, Carbon $date): array
+    protected function buildWeeklyRecap(?Classroom $classroom, $students, Carbon $date, ?string $academicYear = null): array
     {
         if (! $classroom) {
             return ['weekDays' => [], 'studentWeeklyGrid' => []];
@@ -345,6 +351,7 @@ class HomeroomAttendanceRecapController extends Controller
         $sessions = SubjectAttendanceSession::with(['records'])
             ->where('classroom_id', $classroom->id)
             ->whereBetween('attendance_date', [$startOfWeek->toDateString(), $endOfWeek->toDateString()])
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->get();
 
         // Ambil perizinan piket di pekan ini
@@ -357,6 +364,7 @@ class HomeroomAttendanceRecapController extends Controller
                             ->whereDate('end_date', '>=', $startOfWeek->toDateString());
                     });
             })
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->where('status', '!=', 'ditolak')
             ->get()
             ->groupBy('student_id');
@@ -464,7 +472,7 @@ class HomeroomAttendanceRecapController extends Controller
     /**
      * Bangun Rekap Presensi Rentang Tanggal (Digunakan oleh Bulanan, Semesteran, Tahunan, dan Rentang Kustom)
      */
-    protected function buildRangeRecap(?Classroom $classroom, $students, Carbon $startDate, Carbon $endDate, string $periodTitle, array $extra = []): array
+    protected function buildRangeRecap(?Classroom $classroom, $students, Carbon $startDate, Carbon $endDate, string $periodTitle, array $extra = [], ?string $academicYear = null): array
     {
         if (! $classroom) {
             return array_merge([
@@ -484,6 +492,7 @@ class HomeroomAttendanceRecapController extends Controller
         $sessions = SubjectAttendanceSession::with('records')
             ->where('classroom_id', $classroom->id)
             ->whereBetween('attendance_date', [$startDateStr, $endDateStr])
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->get();
 
         // Ambil perizinan piket di rentang ini
@@ -496,6 +505,7 @@ class HomeroomAttendanceRecapController extends Controller
                             ->whereDate('end_date', '>=', $startDateStr);
                     });
             })
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->where('status', '!=', 'ditolak')
             ->get()
             ->groupBy('student_id');
@@ -606,7 +616,7 @@ class HomeroomAttendanceRecapController extends Controller
     /**
      * Bangun Rekap Presensi Bulanan (Akumulasi Angka & Persentase Kehadiran untuk Analisis Keaktifan Siswa)
      */
-    protected function buildMonthlyRecap(?Classroom $classroom, $students, Carbon $date): array
+    protected function buildMonthlyRecap(?Classroom $classroom, $students, Carbon $date, ?string $academicYear = null): array
     {
         $startOfMonth = $date->copy()->startOfMonth();
         $endOfMonth = $date->copy()->endOfMonth();
@@ -615,7 +625,7 @@ class HomeroomAttendanceRecapController extends Controller
             'monthName' => $date->translatedFormat('F Y'),
             'prevMonth' => $startOfMonth->copy()->subMonth()->toDateString(),
             'nextMonth' => $startOfMonth->copy()->addMonth()->toDateString(),
-        ]);
+        ], $academicYear);
     }
 
     /**
@@ -641,7 +651,7 @@ class HomeroomAttendanceRecapController extends Controller
             'activeSemester' => $semester,
             'academicYear' => $academicYear,
             'semesterTitle' => $title,
-        ]);
+        ], $academicYear);
     }
 
     /**
@@ -660,13 +670,13 @@ class HomeroomAttendanceRecapController extends Controller
         return $this->buildRangeRecap($classroom, $students, $startDate, $endDate, 'Rekap Tahunan: '.$title, [
             'academicYear' => $academicYear,
             'yearlyTitle' => $title,
-        ]);
+        ], $academicYear);
     }
 
     /**
      * Bangun Rekap Presensi Rentang Tanggal Tertentu (Kustom)
      */
-    protected function buildCustomRecap(?Classroom $classroom, $students, Carbon $startDate, Carbon $endDate): array
+    protected function buildCustomRecap(?Classroom $classroom, $students, Carbon $startDate, Carbon $endDate, ?string $academicYear = null): array
     {
         $title = 'Periode '.$startDate->translatedFormat('d M Y').' s.d. '.$endDate->translatedFormat('d M Y');
 
@@ -674,7 +684,7 @@ class HomeroomAttendanceRecapController extends Controller
             'customTitle' => $title,
             'startDate' => $startDate,
             'endDate' => $endDate,
-        ]);
+        ], $academicYear);
     }
 
     /**
@@ -684,22 +694,63 @@ class HomeroomAttendanceRecapController extends Controller
     {
         $user = Auth::user();
         $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
+
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
 
         $years = explode('/', (string) $academicYear);
         $y1 = (int) ($years[0] ?? now()->year);
         $y2 = (int) ($years[1] ?? ($y1 + 1));
         $academicYearClean = "{$y1}_{$y2}";
 
-        $canViewAll = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah');
+        $canViewAll = $user && ($user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah'));
+
+        $ayRecord = AcademicYear::where('name', $academicYear)->first();
 
         if ($canViewAll) {
-            $myClassrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+            $classroomQuery = Classroom::query();
+            if ($ayRecord) {
+                $classroomQuery->where(function ($q) use ($academicYear, $ayRecord) {
+                    $q->where('academic_year_id', $ayRecord->id)
+                        ->orWhere(function ($sub) use ($academicYear) {
+                            $sub->whereNull('academic_year_id')
+                                ->where('academic_year', $academicYear);
+                        });
+                });
+            } else {
+                $classroomQuery->where('academic_year', $academicYear);
+            }
+            $myClassrooms = $classroomQuery->orderBy('name')->get();
+            if ($myClassrooms->isEmpty()) {
+                $myClassrooms = Classroom::orderBy('name')->get();
+            }
         } else {
-            $myClassrooms = Classroom::where('homeroom_teacher_id', $user->id)
-                ->where('academic_year', $academicYear)
-                ->orderBy('name')
-                ->get();
+            $classroomQuery = Classroom::where('homeroom_teacher_id', $user?->id ?? 0)
+                ->where('is_active', true);
+
+            if ($ayRecord) {
+                $classroomQuery->where(function ($q) use ($academicYear, $ayRecord) {
+                    $q->where('academic_year_id', $ayRecord->id)
+                        ->orWhere(function ($sub) use ($academicYear) {
+                            $sub->whereNull('academic_year_id')
+                                ->where('academic_year', $academicYear);
+                        });
+                });
+            } else {
+                $classroomQuery->where('academic_year', $academicYear);
+            }
+
+            $myClassrooms = $classroomQuery->orderBy('name')->get();
+        }
+
+        if (! $canViewAll && $request->filled('classroom_id')) {
+            $requestedId = (int) $request->query('classroom_id');
+            if (! $myClassrooms->contains('id', $requestedId)) {
+                abort(403, 'Anda tidak memiliki hak akses untuk melihat rekapitulasi kelas ini.');
+            }
         }
 
         $selectedClassroomId = $request->query('classroom_id', $myClassrooms->first()?->id);
@@ -737,19 +788,37 @@ class HomeroomAttendanceRecapController extends Controller
 
         $students = collect();
         if ($selectedClassroom) {
-            $students = Student::where('classroom_id', $selectedClassroom->id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
+            $studentIdsQuery = StudentClassroom::where('classroom_id', $selectedClassroom->id);
+            if ($ayRecord) {
+                $studentIdsQuery->where(function ($q) use ($ayRecord, $academicYear) {
+                    $q->where('academic_year_id', $ayRecord->id)
+                        ->orWhere('academic_year_name', $academicYear);
+                });
+            } else {
+                $studentIdsQuery->where('academic_year_name', $academicYear);
+            }
+
+            $enrolledStudentIds = $studentIdsQuery->pluck('student_id')->filter()->unique()->toArray();
+
+            if (! empty($enrolledStudentIds)) {
+                $students = Student::whereIn('id', $enrolledStudentIds)
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                $students = Student::where('classroom_id', $selectedClassroom->id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            }
         }
 
         $recapData = match ($mode) {
-            'weekly' => $this->buildWeeklyRecap($selectedClassroom, $students, $currentDate),
-            'monthly' => $this->buildMonthlyRecap($selectedClassroom, $students, $currentDate),
+            'weekly' => $this->buildWeeklyRecap($selectedClassroom, $students, $currentDate, $academicYear),
+            'monthly' => $this->buildMonthlyRecap($selectedClassroom, $students, $currentDate, $academicYear),
             'semester' => $this->buildSemesterRecap($selectedClassroom, $students, $academicYear, $semesterParam),
             'yearly' => $this->buildYearlyRecap($selectedClassroom, $students, $academicYear),
-            'custom' => $this->buildCustomRecap($selectedClassroom, $students, $startDate, $endDate),
-            default => $this->buildDailyRecap($selectedClassroom, $students, $currentDate),
+            'custom' => $this->buildCustomRecap($selectedClassroom, $students, $startDate, $endDate, $academicYear),
+            default => $this->buildDailyRecap($selectedClassroom, $students, $currentDate, $academicYear),
         };
 
         return array_merge([
@@ -781,6 +850,10 @@ class HomeroomAttendanceRecapController extends Controller
     {
         $data = $this->resolveRecapData($request);
         $classroom = $data['selectedClassroom'];
+
+        if (! $classroom) {
+            abort(404, 'Kelas tidak ditemukan atau Anda tidak memiliki akses ke kelas ini.');
+        }
         $mode = $data['mode'];
         $currentDate = $data['currentDate'];
         $setting = $data['setting'];
@@ -937,6 +1010,10 @@ class HomeroomAttendanceRecapController extends Controller
     {
         $data = $this->resolveRecapData($request);
         $classroom = $data['selectedClassroom'];
+
+        if (! $classroom) {
+            abort(404, 'Kelas tidak ditemukan atau Anda tidak memiliki akses ke kelas ini.');
+        }
         $mode = $data['mode'];
         $currentDate = $data['currentDate'];
 

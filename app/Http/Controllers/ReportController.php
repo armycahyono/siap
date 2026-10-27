@@ -60,36 +60,30 @@ class ReportController extends Controller
             'nip' => $supervision->teacher?->nip,
             'nuptk' => $supervision->teacher?->nuptk,
             'nigs' => $supervision->teacher?->nigs,
-            'nigs_fix' => $supervision->teacher?->nigs_fix,
         ];
         $teacher['nip'] = Supervision::sanitizeNip($teacher['nip'] ?? null);
         $teacher['nuptk'] = Supervision::sanitizeNuptk($teacher['nuptk'] ?? null);
         $teacher['nigs'] = $teacher['nigs'] ?? $supervision->teacher?->nigs;
-        $teacher['nigs_fix'] = $teacher['nigs_fix'] ?? $supervision->teacher?->nigs_fix;
 
         $supervisor = $supervision->snapshot_data['supervisor'] ?? [
             'name' => $supervision->supervisor?->name,
             'nip' => $supervision->supervisor?->nip,
             'nuptk' => $supervision->supervisor?->nuptk,
             'nigs' => $supervision->supervisor?->nigs,
-            'nigs_fix' => $supervision->supervisor?->nigs_fix,
         ];
         $supervisor['nip'] = Supervision::sanitizeNip($supervisor['nip'] ?? null);
         $supervisor['nuptk'] = Supervision::sanitizeNuptk($supervisor['nuptk'] ?? null);
         $supervisor['nigs'] = $supervisor['nigs'] ?? $supervision->supervisor?->nigs;
-        $supervisor['nigs_fix'] = $supervisor['nigs_fix'] ?? $supervision->supervisor?->nigs_fix;
 
         $principal = $supervision->snapshot_data['principal'] ?? [
             'name' => $supervision->principal?->name ?? $schoolInfo['principal_name'],
             'nip' => $supervision->principal?->nip ?? $schoolInfo['principal_nip'],
             'nuptk' => $supervision->principal?->nuptk ?? null,
             'nigs' => $supervision->principal?->nigs ?? null,
-            'nigs_fix' => $supervision->principal?->nigs_fix ?? null,
         ];
         $principal['nip'] = Supervision::sanitizeNip($principal['nip'] ?? null);
         $principal['nuptk'] = Supervision::sanitizeNuptk($principal['nuptk'] ?? null);
         $principal['nigs'] = $principal['nigs'] ?? $supervision->principal?->nigs;
-        $principal['nigs_fix'] = $principal['nigs_fix'] ?? $supervision->principal?->nigs_fix;
 
         $penetapanCity = request('penetapan_city', 'Kediri');
         $rawPenetapanDate = request('penetapan_date');
@@ -146,36 +140,30 @@ class ReportController extends Controller
             'nip' => $supervision->teacher?->nip,
             'nuptk' => $supervision->teacher?->nuptk,
             'nigs' => $supervision->teacher?->nigs,
-            'nigs_fix' => $supervision->teacher?->nigs_fix,
         ];
         $teacher['nip'] = Supervision::sanitizeNip($teacher['nip'] ?? null);
         $teacher['nuptk'] = Supervision::sanitizeNuptk($teacher['nuptk'] ?? null);
         $teacher['nigs'] = $teacher['nigs'] ?? $supervision->teacher?->nigs;
-        $teacher['nigs_fix'] = $teacher['nigs_fix'] ?? $supervision->teacher?->nigs_fix;
 
         $supervisor = $supervision->snapshot_data['supervisor'] ?? [
             'name' => $supervision->supervisor?->name,
             'nip' => $supervision->supervisor?->nip,
             'nuptk' => $supervision->supervisor?->nuptk,
             'nigs' => $supervision->supervisor?->nigs,
-            'nigs_fix' => $supervision->supervisor?->nigs_fix,
         ];
         $supervisor['nip'] = Supervision::sanitizeNip($supervisor['nip'] ?? null);
         $supervisor['nuptk'] = Supervision::sanitizeNuptk($supervisor['nuptk'] ?? null);
         $supervisor['nigs'] = $supervisor['nigs'] ?? $supervision->supervisor?->nigs;
-        $supervisor['nigs_fix'] = $supervisor['nigs_fix'] ?? $supervision->supervisor?->nigs_fix;
 
         $principal = $supervision->snapshot_data['principal'] ?? [
             'name' => $supervision->principal?->name ?? $schoolInfo['principal_name'],
             'nip' => $supervision->principal?->nip ?? $schoolInfo['principal_nip'],
             'nuptk' => $supervision->principal?->nuptk ?? null,
             'nigs' => $supervision->principal?->nigs ?? null,
-            'nigs_fix' => $supervision->principal?->nigs_fix ?? null,
         ];
         $principal['nip'] = Supervision::sanitizeNip($principal['nip'] ?? null);
         $principal['nuptk'] = Supervision::sanitizeNuptk($principal['nuptk'] ?? null);
         $principal['nigs'] = $principal['nigs'] ?? $supervision->principal?->nigs;
-        $principal['nigs_fix'] = $principal['nigs_fix'] ?? $supervision->principal?->nigs_fix;
 
         $pdf = Pdf::loadView('reports.pdf', compact(
             'supervision',
@@ -325,7 +313,7 @@ class ReportController extends Controller
 
             $no = 1;
             foreach ($supervisions as $s) {
-                $teacherId = Supervision::sanitizeNip($s->teacher?->nip) ?: ($s->teacher?->nigs_fix ?: $s->teacher?->nigs ?: '-');
+                $teacherId = Supervision::sanitizeNip($s->teacher?->nip) ?: ($s->teacher?->nigs ?: '-');
                 $nuptk = Supervision::sanitizeNuptk($s->teacher?->nuptk) ?: '-';
 
                 fputcsv($handle, [
@@ -390,7 +378,7 @@ class ReportController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs_fix', 'like', "%{$search}%"))
+                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs', 'like', "%{$search}%"))
                     ->orWhereHas('supervisor', fn ($s) => $s->where('name', 'like', "%{$search}%"))
                     ->orWhere('subject', 'like', "%{$search}%")
                     ->orWhere('class_name', 'like', "%{$search}%")
@@ -435,7 +423,7 @@ class ReportController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs_fix', 'like', "%{$search}%"))
+                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs', 'like', "%{$search}%"))
                     ->orWhere('subject', 'like', "%{$search}%")
                     ->orWhere('report_number', 'like', "%{$search}%");
             });

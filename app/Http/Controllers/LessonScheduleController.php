@@ -9,6 +9,7 @@ use App\Models\Subject;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\TimetableUpload;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\TimetableParserService;
 use App\Services\TimetableSyncService;
 use Carbon\Carbon;
@@ -20,7 +21,12 @@ class LessonScheduleController extends Controller
     public function index(Request $request)
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->input('academic_year'));
+        } catch (Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
         $semester = $request->input('semester', session('active_semester', session('semester', $setting->semester ?? 'Ganjil')));
         $viewType = $request->input('view', 'class'); // 'class' or 'teacher'
 
@@ -198,13 +204,20 @@ class LessonScheduleController extends Controller
             'day' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat',
             'start_period' => 'required|integer|min:1|max:10',
             'end_period' => 'required|integer|min:1|max:10|gte:start_period',
-            'academic_year' => 'nullable|string',
+            'academic_year' => 'nullable|string|exists:academic_years,name',
             'semester' => 'nullable|string',
         ]);
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $validated['academic_year'] ?? $setting->academic_year ?? '2026/2027';
-        $semester = $validated['semester'] ?? $setting->semester ?? 'Ganjil';
+        if (! empty($validated['academic_year'])) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($validated['academic_year']);
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
+        $semester = $validated['semester'] ?? SchoolSetting::getSetting()->semester ?? 'Ganjil';
 
         // Check for collision in this classroom
         $collision = LessonSchedule::where('classroom_id', $validated['classroom_id'])
@@ -306,20 +319,26 @@ class LessonScheduleController extends Controller
             'pdf_file' => 'required|mimes:pdf|max:15360',
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'academic_year' => 'nullable|string|exists:academic_years,name',
+            'semester' => 'nullable|string',
         ]);
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
-        $semester = $setting->semester ?? 'Ganjil';
+        if ($request->filled('academic_year')) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($request->input('academic_year'));
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
+        $semester = $request->input('semester') ?: (SchoolSetting::getSetting()->semester ?? 'Ganjil');
 
         $file = $request->file('pdf_file');
         $originalFilename = $file->getClientOriginalName();
         $title = $request->input('title') ?: ('Jadwal Pelajaran '.pathinfo($originalFilename, PATHINFO_FILENAME));
 
         $path = $file->store('timetables', 'public');
-
-        // Deactivate previous active uploads
-        TimetableUpload::where('is_active', true)->update(['is_active' => false]);
 
         $upload = TimetableUpload::create([
             'academic_year' => $academicYear,
@@ -332,7 +351,7 @@ class LessonScheduleController extends Controller
             'notes' => $request->input('notes'),
             'total_classes' => 0,
             'total_lessons' => 0,
-            'is_active' => true,
+            'is_active' => false,
         ]);
 
         try {
@@ -348,6 +367,13 @@ class LessonScheduleController extends Controller
             } else {
                 $syncResult = TimetableSyncService::processScheduleData($parsedData, $upload);
             }
+
+            // Deactivate previous active uploads only after sync succeeds
+            TimetableUpload::where('id', '!=', $upload->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+
+            $upload->update(['is_active' => true]);
 
             return back()->with('success', "File jadwal PDF berhasil diupload dan disinkronkan! Terdaftar {$syncResult['total_classes']} rombel kelas dan {$syncResult['total_lessons']} slot jadwal pelajaran.");
         } catch (Throwable $e) {
@@ -403,7 +429,12 @@ class LessonScheduleController extends Controller
     public function print(Request $request)
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->input('academic_year'));
+        } catch (Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
         $semester = $request->input('semester', session('active_semester', session('semester', $setting->semester ?? 'Ganjil')));
         $viewType = $request->input('view', 'class'); // 'class' or 'teacher'
         $target = $request->input('target', 'all'); // 'all' or 'specific'

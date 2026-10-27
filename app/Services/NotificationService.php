@@ -18,6 +18,7 @@ use App\Models\Supervision;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
@@ -37,8 +38,15 @@ class NotificationService
         $todayStr = $today->toDateString();
         $todayDay = $today->locale('id')->isoFormat('dddd');
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
-        $semester = $setting->semester ?? 'Ganjil';
+        try {
+            $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+            $academicYear = $operationalYear->name;
+            $semester = $operationalYear->semester ?? ($setting->semester ?? 'Ganjil');
+        } catch (\Throwable $e) {
+            Log::warning('NotificationService operational academic year fallback: '.$e->getMessage());
+            $academicYear = SchoolSetting::getMasterYear();
+            $semester = $setting->semester ?? 'Ganjil';
+        }
 
         // ---------------------------------------------------------------------
         // 0. DATA DASAR PERAN & KEANGGOTAAN HARI INI

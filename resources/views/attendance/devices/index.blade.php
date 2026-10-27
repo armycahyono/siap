@@ -479,23 +479,31 @@
 
         <!-- PANDUAN PENGATURAN MESIN & ADMS -->
         <div class="card shadow-sm border-0 border-top border-3 border-indigo mb-3">
-            <div class="card-header bg-indigo-lt">
+            <div class="card-header bg-indigo-lt d-flex align-items-center justify-content-between">
                 <h3 class="card-title fw-bold text-indigo mb-0">
                     <i class="ti ti-help me-2"></i> Panduan Koneksi ADMS Solution & Fingerspot
                 </h3>
+                <span class="badge bg-indigo-lt text-indigo border border-indigo-subtle">
+                    <i class="ti ti-server me-1"></i> Mode Otomatis Jaringan Server
+                </span>
             </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded border h-100">
-                            <strong class="text-dark d-block mb-2">1. Pengaturan di Layar Mesin (Solution X601 / X606-S):</strong>
-                            <ol class="small text-secondary ps-3 mb-0">
+                            <strong class="text-dark d-block mb-2">1. Pengaturan di Layar Mesin (Solution X601 / X606-S / Fingerspot):</strong>
+                            <ol class="small text-secondary ps-3 mb-2">
                                 <li>Masuk ke <strong>Menu &rarr; Komunikasi &rarr; Pengaturan Server Cloud / Web (ADMS)</strong>.</li>
                                 <li>Aktifkan <strong>Server Cloud Domain: Nonaktif (Gunakan IP)</strong>.</li>
-                                <li>Isi <strong>Alamat Server IP: <code>192.168.1.10</code></strong>.</li>
-                                <li>Isi <strong>Port Server: <code>8014</code></strong>.</li>
+                                <li>Isi <strong>Alamat Server IP: <code class="text-indigo fs-6 fw-bold">{{ $serverIp }}</code></strong></li>
+                                <li>Isi <strong>Port Server: <code class="text-indigo fs-6 fw-bold">{{ $serverPort }}</code></strong></li>
                                 <li>Pastikan mesin dan server terhubung di jaringan lokal (LAN/WiFi) yang sama.</li>
                             </ol>
+                            @if(!empty($serverNetwork['domain']))
+                                <div class="mt-2 pt-2 border-top small text-muted">
+                                    <i class="ti ti-world me-1 text-primary"></i> <strong>Mode Domain (Cloud):</strong> Jika mesin mendukung domain, aktifkan Server Cloud Domain & isi <code>{{ $serverNetwork['domain'] }}</code> (Port: <code>{{ $serverNetwork['domain_port'] }}</code>).
+                                </div>
+                            @endif
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -654,7 +662,7 @@
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label class="form-label required">Port Server Web</label>
-                            <input type="number" name="server_port" class="form-control" value="8014" required>
+                            <input type="number" name="server_port" class="form-control" value="{{ $serverPort }}" required>
                         </div>
                         <div class="col-6">
                             <label class="form-label">Comm Key / Password</label>

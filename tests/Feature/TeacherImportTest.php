@@ -94,7 +94,7 @@ class TeacherImportTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'name' => 'Hendra Kusuma, M.Pd.',
-            'nigs_fix' => 'G771',
+            'nigs' => 'G771',
             'nip' => '198105052007011005',
             'phone' => '081333444555',
             'short_name' => 'HDK',
@@ -122,7 +122,7 @@ class TeacherImportTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'name' => 'Budi Wicaksono S.Pd.',
-            'nigs_fix' => 'G991',
+            'nigs' => 'G991',
             'nip' => '198001012005011001',
             'phone' => '081234567899',
             'short_name' => 'BWS',
@@ -139,7 +139,7 @@ class TeacherImportTest extends TestCase
             'username' => 'guru_siti_aminah',
             'role_id' => $guruRole->id,
             'nip' => '198202022006022002',
-            'nigs_fix' => 'G992',
+            'nigs' => 'G992',
             'phone' => '081111111111',
             'password' => Hash::make('secret_password_lama'),
             'is_active' => true,
@@ -188,7 +188,7 @@ class TeacherImportTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'name' => 'Rina Wijayanti S.Pd.',
-            'nigs_fix' => 'G993',
+            'nigs' => 'G993',
             'short_name' => 'RNW',
             'education_level' => 'S1',
         ]);

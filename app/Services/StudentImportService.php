@@ -8,6 +8,8 @@ use App\Models\Student;
 use App\Models\StudentClassroom;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class StudentImportService extends BaseExcelImportService
@@ -61,189 +63,214 @@ class StudentImportService extends BaseExcelImportService
             }
         }
 
-        $importedCount = 0;
-        $updated = [];
-        $errors = [];
+        try {
+            return DB::transaction(function () use (
+                $rows,
+                $startIndex,
+                $headerMap,
+                $classrooms,
+                $defaultClassroomId,
+                $academicYear,
+                $academicYearId
+            ) {
+                $importedCount = 0;
+                $updated = [];
+                $errors = [];
 
-        for ($i = $startIndex; $i < count($rows); $i++) {
-            $row = $rows[$i];
+                for ($i = $startIndex; $i < count($rows); $i++) {
+                    $row = $rows[$i];
 
-            // Abaikan baris kosong
-            $nonEmpty = array_filter($row, fn ($v) => trim((string) $v) !== '');
-            if (empty($nonEmpty)) {
-                continue;
-            }
+                    // Abaikan baris kosong
+                    $nonEmpty = array_filter($row, fn ($v) => trim((string) $v) !== '');
+                    if (empty($nonEmpty)) {
+                        continue;
+                    }
 
-            $name = mb_strtoupper(trim((string) ($row[$headerMap['name']] ?? '')), 'UTF-8');
-            if (empty($name)) {
-                $errors[] = 'Baris '.($i + 1).': Nama siswa kosong.';
+                    $name = mb_strtoupper(trim((string) ($row[$headerMap['name']] ?? '')), 'UTF-8');
+                    if (empty($name)) {
+                        $errors[] = 'Baris '.($i + 1).': Nama siswa kosong.';
 
-                continue;
-            }
+                        continue;
+                    }
 
-            // Sanitasi NISN
-            $nisn = trim((string) ($row[$headerMap['nisn']] ?? ''));
-            if (in_array($nisn, ['-', '0', 'null', 'none']) || strlen($nisn) < 4) {
-                $nisn = '';
-            }
+                    // Sanitasi NISN
+                    $nisn = trim((string) ($row[$headerMap['nisn']] ?? ''));
+                    if (in_array($nisn, ['-', '0', 'null', 'none']) || strlen($nisn) < 4) {
+                        $nisn = '';
+                    }
 
-            // Sanitasi NIS (jangan simpan 'L' atau 'P' atau '-' atau angka tidak valid)
-            $nis = trim((string) ($row[$headerMap['nis']] ?? ''));
-            if (in_array(strtoupper($nis), ['L', 'P', 'LK', 'PR', '-', '0']) || strlen($nis) < 2) {
-                $nis = '';
-            }
+                    // Sanitasi NIS (jangan simpan 'L' atau 'P' atau '-' atau angka tidak valid)
+                    $nis = trim((string) ($row[$headerMap['nis']] ?? ''));
+                    if (in_array(strtoupper($nis), ['L', 'P', 'LK', 'PR', '-', '0']) || strlen($nis) < 2) {
+                        $nis = '';
+                    }
 
-            // Sanitasi NIK
-            $nik = isset($headerMap['nik']) ? trim((string) ($row[$headerMap['nik']] ?? '')) : '';
-            if (in_array($nik, ['-', '0']) || strlen($nik) < 8) {
-                $nik = '';
-            }
+                    // Sanitasi NIK
+                    $nik = isset($headerMap['nik']) ? trim((string) ($row[$headerMap['nik']] ?? '')) : '';
+                    if (in_array($nik, ['-', '0']) || strlen($nik) < 8) {
+                        $nik = '';
+                    }
 
-            $className = trim((string) ($row[$headerMap['classroom']] ?? ''));
-            $gender = strtoupper(trim((string) ($row[$headerMap['gender']] ?? 'L')));
-            $gender = in_array($gender, ['P', 'PEREMPUAN', 'WANITA']) ? 'P' : 'L';
+                    $className = trim((string) ($row[$headerMap['classroom']] ?? ''));
+                    $gender = strtoupper(trim((string) ($row[$headerMap['gender']] ?? 'L')));
+                    $gender = in_array($gender, ['P', 'PEREMPUAN', 'WANITA']) ? 'P' : 'L';
 
-            $birthPlace = isset($headerMap['birth_place']) ? trim((string) ($row[$headerMap['birth_place']] ?? '')) : null;
-            $rawBirthDate = isset($headerMap['birth_date']) ? trim((string) ($row[$headerMap['birth_date']] ?? '')) : null;
-            $birthDate = $this->parseDate($rawBirthDate);
+                    $birthPlace = isset($headerMap['birth_place']) ? trim((string) ($row[$headerMap['birth_place']] ?? '')) : null;
+                    $rawBirthDate = isset($headerMap['birth_date']) ? trim((string) ($row[$headerMap['birth_date']] ?? '')) : null;
+                    $birthDate = $this->parseDate($rawBirthDate);
 
-            $religion = isset($headerMap['religion']) ? trim((string) ($row[$headerMap['religion']] ?? '')) : null;
+                    $religion = isset($headerMap['religion']) ? trim((string) ($row[$headerMap['religion']] ?? '')) : null;
 
-            // Format Alamat Lengkap (termasuk RT/RW/Dusun/Desa jika ada)
-            $address = isset($headerMap['address']) ? trim((string) ($row[$headerMap['address']] ?? '')) : null;
-            if (empty($address) || $address === '-') {
-                $parts = [];
-                $rt = isset($headerMap['rt']) ? trim((string) ($row[$headerMap['rt']] ?? '')) : '';
-                $rw = isset($headerMap['rw']) ? trim((string) ($row[$headerMap['rw']] ?? '')) : '';
-                if ($rt !== '' || $rw !== '') {
-                    $parts[] = 'RT '.$rt.'/RW '.$rw;
+                    // Format Alamat Lengkap (termasuk RT/RW/Dusun/Desa jika ada)
+                    $address = isset($headerMap['address']) ? trim((string) ($row[$headerMap['address']] ?? '')) : null;
+                    if (empty($address) || $address === '-') {
+                        $parts = [];
+                        $rt = isset($headerMap['rt']) ? trim((string) ($row[$headerMap['rt']] ?? '')) : '';
+                        $rw = isset($headerMap['rw']) ? trim((string) ($row[$headerMap['rw']] ?? '')) : '';
+                        if ($rt !== '' || $rw !== '') {
+                            $parts[] = 'RT '.$rt.'/RW '.$rw;
+                        }
+                        if (isset($headerMap['dusun']) && trim((string) ($row[$headerMap['dusun']] ?? '')) !== '' && trim((string) $row[$headerMap['dusun']]) !== '-') {
+                            $parts[] = 'Dsn. '.trim((string) $row[$headerMap['dusun']]);
+                        }
+                        if (isset($headerMap['village']) && trim((string) ($row[$headerMap['village']] ?? '')) !== '' && trim((string) $row[$headerMap['village']]) !== '-') {
+                            $parts[] = 'Desa/Kel. '.trim((string) $row[$headerMap['village']]);
+                        }
+                        if (isset($headerMap['district']) && trim((string) ($row[$headerMap['district']] ?? '')) !== '' && trim((string) $row[$headerMap['district']]) !== '-') {
+                            $parts[] = 'Kec. '.trim((string) $row[$headerMap['district']]);
+                        }
+                        if (! empty($parts)) {
+                            $address = implode(', ', $parts);
+                        }
+                    }
+
+                    $fatherName = isset($headerMap['father_name']) ? trim((string) ($row[$headerMap['father_name']] ?? '')) : null;
+                    $fatherJob = isset($headerMap['father_job']) ? trim((string) ($row[$headerMap['father_job']] ?? '')) : null;
+                    $fatherPhone = isset($headerMap['father_phone']) ? trim((string) ($row[$headerMap['father_phone']] ?? '')) : null;
+
+                    $motherName = isset($headerMap['mother_name']) ? trim((string) ($row[$headerMap['mother_name']] ?? '')) : null;
+                    $motherJob = isset($headerMap['mother_job']) ? trim((string) ($row[$headerMap['mother_job']] ?? '')) : null;
+                    $motherPhone = isset($headerMap['mother_phone']) ? trim((string) ($row[$headerMap['mother_phone']] ?? '')) : null;
+
+                    $guardianName = isset($headerMap['guardian_name']) ? trim((string) ($row[$headerMap['guardian_name']] ?? '')) : null;
+                    $guardianJob = isset($headerMap['guardian_job']) ? trim((string) ($row[$headerMap['guardian_job']] ?? '')) : null;
+                    $guardianPhone = isset($headerMap['guardian_phone']) ? trim((string) ($row[$headerMap['guardian_phone']] ?? '')) : null;
+
+                    $phoneParent = trim((string) ($row[$headerMap['phone_parent']] ?? ''));
+                    $phoneStudent = trim((string) ($row[$headerMap['phone_student']] ?? ''));
+                    $notes = isset($headerMap['notes']) ? trim((string) ($row[$headerMap['notes']] ?? '')) : null;
+
+                    // Tentukan kelas
+                    $targetClassroomId = $defaultClassroomId;
+                    $matchedClass = null;
+                    if (! empty($className)) {
+                        $matchedClass = $this->matchClassroom($classrooms, $className);
+                        if ($matchedClass) {
+                            $targetClassroomId = $matchedClass->id;
+                        }
+                    }
+
+                    // Cari siswa yang sudah ada secara aman
+                    $student = null;
+                    if (! empty($nisn)) {
+                        $student = Student::where('nisn', $nisn)->first();
+                    }
+                    if (! $student && ! empty($nis)) {
+                        $student = Student::where('nis', $nis)->first();
+                    }
+                    if (! $student && ! empty($nik)) {
+                        $student = Student::where('nik', $nik)->first();
+                    }
+                    if (! $student && ! empty($targetClassroomId)) {
+                        $student = Student::where('name', $name)
+                            ->where('classroom_id', $targetClassroomId)
+                            ->first();
+                    }
+
+                    $payload = [
+                        'nisn' => $nisn ?: ($student?->nisn),
+                        'nis' => $nis ?: ($student?->nis),
+                        'nik' => $nik ?: ($student?->nik),
+                        'name' => $name,
+                        'gender' => $gender,
+                        'birth_place' => $birthPlace ?: ($student?->birth_place),
+                        'birth_date' => $birthDate ?: ($student?->birth_date),
+                        'religion' => $religion ?: ($student?->religion),
+                        'address' => $address ?: ($student?->address),
+                        'classroom_id' => $targetClassroomId ?: ($student?->classroom_id),
+                        'father_name' => $fatherName ?: ($student?->father_name),
+                        'father_job' => $fatherJob ?: ($student?->father_job),
+                        'father_phone' => $fatherPhone ?: ($student?->father_phone),
+                        'mother_name' => $motherName ?: ($student?->mother_name),
+                        'mother_job' => $motherJob ?: ($student?->mother_job),
+                        'mother_phone' => $motherPhone ?: ($student?->mother_phone),
+                        'guardian_name' => $guardianName ?: ($student?->guardian_name),
+                        'guardian_job' => $guardianJob ?: ($student?->guardian_job),
+                        'guardian_phone' => $guardianPhone ?: ($student?->guardian_phone),
+                        'phone_parent' => $phoneParent ?: ($student?->phone_parent ?: $fatherPhone ?: $motherPhone ?: $guardianPhone),
+                        'phone_student' => $phoneStudent ?: ($student?->phone_student),
+                        'notes' => $notes ?: ($student?->notes),
+                        'status' => 'aktif',
+                        'is_active' => true,
+                    ];
+
+                    // Proteksi status jika siswa sudah resmi mutasi/keluar/lulus di SIAP
+                    if ($student && in_array($student->status, ['mutasi', 'keluar', 'lulus'])) {
+                        unset($payload['status'], $payload['is_active']);
+                        if ($student->classroom_id === null) {
+                            unset($payload['classroom_id']);
+                        }
+                    }
+
+                    $targetStudent = null;
+                    if ($student) {
+                        $student->update($payload);
+                        $targetStudent = $student;
+                        $updated[] = "{$name} (Diperbarui)";
+                    } else {
+                        $newStudent = Student::create($payload);
+                        $targetStudent = $newStudent;
+                        $importedCount++;
+                    }
+
+                    // Sinkronkan ke riwayat penempatan rombel siswa (student_classrooms)
+                    if ($targetStudent && $targetClassroomId && $academicYearId) {
+                        StudentClassroom::updateOrCreate(
+                            [
+                                'student_id' => $targetStudent->id,
+                                'academic_year_id' => $academicYearId,
+                            ],
+                            [
+                                'classroom_id' => $targetClassroomId,
+                                'status' => $targetStudent->status ?: 'aktif',
+                                'is_repeating' => false,
+                                'academic_year_name' => $academicYear,
+                                'classroom_name' => $student?->classroom?->name ?? $matchedClass?->name ?? 'Rombel',
+                            ]
+                        );
+                    }
                 }
-                if (isset($headerMap['dusun']) && trim((string) ($row[$headerMap['dusun']] ?? '')) !== '' && trim((string) $row[$headerMap['dusun']]) !== '-') {
-                    $parts[] = 'Dsn. '.trim((string) $row[$headerMap['dusun']]);
-                }
-                if (isset($headerMap['village']) && trim((string) ($row[$headerMap['village']] ?? '')) !== '' && trim((string) $row[$headerMap['village']]) !== '-') {
-                    $parts[] = 'Desa/Kel. '.trim((string) $row[$headerMap['village']]);
-                }
-                if (isset($headerMap['district']) && trim((string) ($row[$headerMap['district']] ?? '')) !== '' && trim((string) $row[$headerMap['district']]) !== '-') {
-                    $parts[] = 'Kec. '.trim((string) $row[$headerMap['district']]);
-                }
-                if (! empty($parts)) {
-                    $address = implode(', ', $parts);
-                }
-            }
 
-            $fatherName = isset($headerMap['father_name']) ? trim((string) ($row[$headerMap['father_name']] ?? '')) : null;
-            $fatherJob = isset($headerMap['father_job']) ? trim((string) ($row[$headerMap['father_job']] ?? '')) : null;
-            $fatherPhone = isset($headerMap['father_phone']) ? trim((string) ($row[$headerMap['father_phone']] ?? '')) : null;
+                return [
+                    'success' => ($importedCount > 0 || count($updated) > 0),
+                    'imported_count' => $importedCount,
+                    'updated' => $updated,
+                    'errors' => $errors,
+                ];
+            });
+        } catch (Throwable $e) {
+            Log::error('Gagal memproses transaksi import siswa manual: '.$e->getMessage(), [
+                'file' => $filePath,
+                'exception' => $e,
+            ]);
 
-            $motherName = isset($headerMap['mother_name']) ? trim((string) ($row[$headerMap['mother_name']] ?? '')) : null;
-            $motherJob = isset($headerMap['mother_job']) ? trim((string) ($row[$headerMap['mother_job']] ?? '')) : null;
-            $motherPhone = isset($headerMap['mother_phone']) ? trim((string) ($row[$headerMap['mother_phone']] ?? '')) : null;
-
-            $guardianName = isset($headerMap['guardian_name']) ? trim((string) ($row[$headerMap['guardian_name']] ?? '')) : null;
-            $guardianJob = isset($headerMap['guardian_job']) ? trim((string) ($row[$headerMap['guardian_job']] ?? '')) : null;
-            $guardianPhone = isset($headerMap['guardian_phone']) ? trim((string) ($row[$headerMap['guardian_phone']] ?? '')) : null;
-
-            $phoneParent = trim((string) ($row[$headerMap['phone_parent']] ?? ''));
-            $phoneStudent = trim((string) ($row[$headerMap['phone_student']] ?? ''));
-            $notes = isset($headerMap['notes']) ? trim((string) ($row[$headerMap['notes']] ?? '')) : null;
-
-            // Tentukan kelas
-            $targetClassroomId = $defaultClassroomId;
-            if (! empty($className)) {
-                $matchedClass = $this->matchClassroom($classrooms, $className);
-                if ($matchedClass) {
-                    $targetClassroomId = $matchedClass->id;
-                }
-            }
-
-            // Cari siswa yang sudah ada secara aman
-            $student = null;
-            if (! empty($nisn)) {
-                $student = Student::where('nisn', $nisn)->first();
-            }
-            if (! $student && ! empty($nis)) {
-                $student = Student::where('nis', $nis)->first();
-            }
-            if (! $student && ! empty($nik)) {
-                $student = Student::where('nik', $nik)->first();
-            }
-            if (! $student && ! empty($targetClassroomId)) {
-                $student = Student::where('name', $name)
-                    ->where('classroom_id', $targetClassroomId)
-                    ->first();
-            }
-
-            $payload = [
-                'nisn' => $nisn ?: ($student?->nisn),
-                'nis' => $nis ?: ($student?->nis),
-                'nik' => $nik ?: ($student?->nik),
-                'name' => $name,
-                'gender' => $gender,
-                'birth_place' => $birthPlace ?: ($student?->birth_place),
-                'birth_date' => $birthDate ?: ($student?->birth_date),
-                'religion' => $religion ?: ($student?->religion),
-                'address' => $address ?: ($student?->address),
-                'classroom_id' => $targetClassroomId ?: ($student?->classroom_id),
-                'father_name' => $fatherName ?: ($student?->father_name),
-                'father_job' => $fatherJob ?: ($student?->father_job),
-                'father_phone' => $fatherPhone ?: ($student?->father_phone),
-                'mother_name' => $motherName ?: ($student?->mother_name),
-                'mother_job' => $motherJob ?: ($student?->mother_job),
-                'mother_phone' => $motherPhone ?: ($student?->mother_phone),
-                'guardian_name' => $guardianName ?: ($student?->guardian_name),
-                'guardian_job' => $guardianJob ?: ($student?->guardian_job),
-                'guardian_phone' => $guardianPhone ?: ($student?->guardian_phone),
-                'phone_parent' => $phoneParent ?: ($student?->phone_parent ?: $fatherPhone ?: $motherPhone ?: $guardianPhone),
-                'phone_student' => $phoneStudent ?: ($student?->phone_student),
-                'notes' => $notes ?: ($student?->notes),
-                'status' => 'aktif',
-                'is_active' => true,
+            return [
+                'success' => false,
+                'imported_count' => 0,
+                'updated' => [],
+                'errors' => ['Terjadi kesalahan database saat menyimpan data siswa. Seluruh perubahan telah dibatalkan.'],
             ];
-
-            // Proteksi status jika siswa sudah resmi mutasi/keluar/lulus di SIAP
-            if ($student && in_array($student->status, ['mutasi', 'keluar', 'lulus'])) {
-                unset($payload['status'], $payload['is_active']);
-                if ($student->classroom_id === null) {
-                    unset($payload['classroom_id']);
-                }
-            }
-
-            $targetStudent = null;
-            if ($student) {
-                $student->update($payload);
-                $targetStudent = $student;
-                $updated[] = "{$name} (Diperbarui)";
-            } else {
-                $newStudent = Student::create($payload);
-                $targetStudent = $newStudent;
-                $importedCount++;
-            }
-
-            // Sinkronkan ke riwayat penempatan rombel siswa (student_classrooms)
-            if ($targetStudent && $targetClassroomId && $academicYearId) {
-                StudentClassroom::updateOrCreate(
-                    [
-                        'student_id' => $targetStudent->id,
-                        'academic_year_id' => $academicYearId,
-                    ],
-                    [
-                        'classroom_id' => $targetClassroomId,
-                        'status' => $targetStudent->status ?: 'aktif',
-                        'is_repeating' => false,
-                        'academic_year_name' => $academicYear,
-                        'classroom_name' => $student?->classroom?->name ?? $matchedClass?->name ?? 'Rombel',
-                    ]
-                );
-            }
         }
-
-        return [
-            'success' => ($importedCount > 0 || count($updated) > 0),
-            'imported_count' => $importedCount,
-            'updated' => $updated,
-            'errors' => $errors,
-        ];
     }
 
     /**

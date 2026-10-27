@@ -32,6 +32,10 @@ class PiketIncident extends Model
         'incident_date' => 'date',
     ];
 
+    protected $appends = [
+        'evidence_photo_url',
+    ];
+
     public function journal(): BelongsTo
     {
         return $this->belongsTo(PiketJournal::class, 'piket_journal_id');
@@ -79,7 +83,7 @@ class PiketIncident extends Model
 
     public function getEvidencePhotoUrlAttribute(): ?string
     {
-        return $this->evidence_photo ? asset('storage/'.$this->evidence_photo) : null;
+        return $this->evidence_photo ? route('piket.incidents.photo', $this) : null;
     }
 
     public function getActivityLogTitle(): string

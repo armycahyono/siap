@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
+use App\Models\Classroom;
 use App\Models\Role;
+use App\Models\SchoolSetting;
 use App\Models\User;
+use App\Models\UserRoleAssignment;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,14 +32,25 @@ class UserManagementController extends Controller
 
         // Statistics
         $totalUsers = User::count();
-        $superAdminCount = User::whereHas('role', fn ($q) => $q->where('slug', 'super_admin'))->count();
-        $guruCount = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'supervisor', 'kepala_sekolah']))->count();
-        $operatorCount = User::whereHas('role', fn ($q) => $q->where('slug', 'like', 'operator%'))->count();
+        $superAdminCount = User::where('position', 'administrator')->orWhereHas('role', fn ($q) => $q->where('slug', 'super_admin'))->count();
+        $guruCount = User::where('position', 'guru')->count();
+        $operatorCount = User::whereHas('role', fn ($q) => $q->where('slug', 'like', 'operator%'))
+            ->orWhereHas('activeRoleAssignments.role', fn ($q) => $q->where('slug', 'like', 'operator%'))
+            ->distinct()
+            ->count();
+        $stafCount = User::where('position', 'staf')->count();
         $activeCount = User::where('is_active', true)->count();
         $inactiveCount = User::where('is_active', false)->count();
 
         // Main Query
-        $query = User::with('role');
+        $query = User::with([
+            'role',
+            'structuralPositions',
+            'roleAssignments.role',
+            'roleAssignments.context',
+            'activeRoleAssignments.role',
+            'activeRoleAssignments.context',
+        ]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -43,12 +58,16 @@ class UserManagementController extends Controller
                     ->orWhere('username', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('nip', 'like', "%{$search}%")
+                    ->orWhere('nigs', 'like', "%{$search}%")
                     ->orWhere('position', 'like', "%{$search}%");
             });
         }
 
         if ($roleId) {
-            $query->where('role_id', $roleId);
+            $query->where(function ($q) use ($roleId) {
+                $q->where('role_id', $roleId)
+                    ->orWhereHas('activeRoleAssignments', fn ($sub) => $sub->where('role_id', $roleId));
+            });
         }
 
         if ($statusFilter !== null && $statusFilter !== '') {
@@ -56,22 +75,16 @@ class UserManagementController extends Controller
         }
 
         if ($typeFilter === 'admin') {
-            $query->whereHas('role', fn ($q) => $q->where('slug', 'super_admin'));
+            $query->where('position', 'administrator');
         } elseif ($typeFilter === 'guru') {
-            $query->whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'waka_kurikulum', 'supervisor', 'kepala_sekolah']));
+            $query->where('position', 'guru');
         } elseif ($typeFilter === 'operator') {
-            $query->whereHas('role', fn ($q) => $q->where('slug', 'like', 'operator%'));
+            $query->where(function ($q) {
+                $q->whereHas('role', fn ($r) => $r->where('slug', 'like', 'operator%'))
+                    ->orWhereHas('activeRoleAssignments.role', fn ($r) => $r->where('slug', 'like', 'operator%'));
+            });
         } elseif ($typeFilter === 'staf') {
-            $query->whereDoesntHave('role', fn ($q) => $q->where('slug', 'super_admin')->orWhere('slug', 'like', 'operator%'))
-                ->where(function ($q) {
-                    $q->where('position', 'like', '%administrasi%')
-                        ->orWhere('position', 'like', '%satpam%')
-                        ->orWhere('position', 'like', '%penjaga%')
-                        ->orWhere('position', 'like', '%toolman%')
-                        ->orWhere('position', 'like', '%tata usaha%')
-                        ->orWhere('position', 'like', '%kebun%')
-                        ->orWhere('position', 'like', '%staf%');
-                });
+            $query->where('position', 'staf');
         }
 
         $users = $query->orderBy('name')->paginate(20)->withQueryString();
@@ -85,10 +98,18 @@ class UserManagementController extends Controller
             ->toArray();
 
         $roles = Role::orderBy('id')->get();
+        $classrooms = Classroom::orderBy('name')->get();
+        $assignmentRoles = Role::whereNotIn('slug', ['super_admin', 'guru', 'staf', 'adm2'])->orderBy('name')->get();
+        $academicYears = AcademicYear::orderByDesc('name')->get();
+        $currentAcademicYear = SchoolSetting::getCurrentAcademicYear() ?? '2026/2027';
 
         return view('superadmin.users.index', compact(
             'users',
             'roles',
+            'classrooms',
+            'assignmentRoles',
+            'academicYears',
+            'currentAcademicYear',
             'search',
             'roleId',
             'statusFilter',
@@ -97,6 +118,7 @@ class UserManagementController extends Controller
             'superAdminCount',
             'guruCount',
             'operatorCount',
+            'stafCount',
             'activeCount',
             'inactiveCount',
             'onlineUserIds'
@@ -115,7 +137,8 @@ class UserManagementController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
             'role_id' => ['required', 'exists:roles,id'],
-            'position' => ['nullable', 'string', 'max:255'],
+            'position' => ['required', Rule::in(['guru', 'staf', 'administrator'])],
+            'nigs' => ['nullable', 'string', 'max:50'],
             'nip' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:30'],
             'is_active' => ['nullable', 'boolean'],
@@ -128,7 +151,8 @@ class UserManagementController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role_id' => $validated['role_id'],
-            'position' => $validated['position'] ?? null,
+            'position' => $validated['position'],
+            'nigs' => $validated['nigs'] ?? null,
             'nip' => $validated['nip'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'is_active' => $request->boolean('is_active', true),
@@ -155,7 +179,8 @@ class UserManagementController extends Controller
             'username' => ['required', 'string', 'max:50', Rule::unique('users')->ignore($user->id)],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'role_id' => ['required', 'exists:roles,id'],
-            'position' => ['nullable', 'string', 'max:255'],
+            'position' => ['required', Rule::in(['guru', 'staf', 'administrator'])],
+            'nigs' => ['nullable', 'string', 'max:50'],
             'nip' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:30'],
             'is_active' => ['nullable', 'boolean'],
@@ -181,7 +206,8 @@ class UserManagementController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'role_id' => $validated['role_id'],
-            'position' => $validated['position'] ?? null,
+            'position' => $validated['position'],
+            'nigs' => $validated['nigs'] ?? null,
             'nip' => $validated['nip'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $user->is_active,
@@ -279,5 +305,88 @@ class UserManagementController extends Controller
 
         return redirect()->route('users.index')
             ->with('success', "Pengguna {$userName} berhasil dihapus dari sistem.");
+    }
+
+    /**
+     * Store a new contextual role assignment for the specified user (Fase 2).
+     */
+    public function storeAssignment(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'role_id' => ['required', 'exists:roles,id'],
+            'academic_year' => ['nullable', 'string', 'max:20'],
+            'context_type' => ['nullable', 'string', 'max:150'],
+            'context_id' => ['nullable', 'integer'],
+            'valid_from' => ['nullable', 'date'],
+            'valid_until' => ['nullable', 'date', 'after_or_equal:valid_from'],
+            'sk_number' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $ay = null;
+        if (! empty($validated['academic_year'])) {
+            $ay = AcademicYear::where('name', $validated['academic_year'])->first();
+        }
+
+        $assignment = $user->roleAssignments()->create([
+            'role_id' => $validated['role_id'],
+            'academic_year_id' => $ay?->id,
+            'academic_year' => $validated['academic_year'] ?? SchoolSetting::getCurrentAcademicYear() ?? '2026/2027',
+            'context_type' => $validated['context_type'] ?: null,
+            'context_id' => $validated['context_id'] ?: null,
+            'valid_from' => $validated['valid_from'] ?? null,
+            'valid_until' => $validated['valid_until'] ?? null,
+            'sk_number' => $validated['sk_number'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'status' => true,
+            'assigned_by' => auth()->id(),
+        ]);
+
+        $roleName = $assignment->role?->name;
+        ActivityLogger::log(
+            'assign_role',
+            "Memberikan penugasan peran '{$roleName}' kepada {$user->name} ({$user->username}).",
+            $assignment
+        );
+
+        return back()->with('success', "Penugasan peran '{$roleName}' berhasil diberikan kepada {$user->name}.");
+    }
+
+    /**
+     * Delete a contextual role assignment.
+     */
+    public function destroyAssignment(UserRoleAssignment $assignment): RedirectResponse
+    {
+        $userName = $assignment->user?->name;
+        $roleName = $assignment->role?->name;
+
+        $assignment->delete();
+
+        ActivityLogger::log(
+            'remove_role_assignment',
+            "Menghapus penugasan peran '{$roleName}' dari {$userName}."
+        );
+
+        return back()->with('success', "Penugasan peran '{$roleName}' untuk {$userName} berhasil dihapus.");
+    }
+
+    /**
+     * Toggle active status of a contextual role assignment.
+     */
+    public function toggleAssignmentStatus(UserRoleAssignment $assignment): RedirectResponse
+    {
+        $assignment->status = ! $assignment->status;
+        $assignment->save();
+
+        $statusText = $assignment->status ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $roleName = $assignment->role?->name;
+        $userName = $assignment->user?->name;
+
+        ActivityLogger::log(
+            'toggle_role_assignment',
+            "Status penugasan peran '{$roleName}' untuk {$userName} {$statusText}."
+        );
+
+        return back()->with('success', "Penugasan peran '{$roleName}' untuk {$userName} berhasil {$statusText}.");
     }
 }

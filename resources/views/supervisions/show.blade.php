@@ -163,7 +163,7 @@
                             @if(!empty($supervision->teacher->nip))
                                 NIP: {{ $supervision->teacher->nip }}
                             @else
-                                NIGS: {{ $supervision->teacher->nigs_fix ?: $supervision->teacher->nigs ?: '-' }}
+                                NIGS: {{ $supervision->teacher->nigs ?: '-' }}
                             @endif
                             @if(!empty($supervision->teacher->nuptk))
                                 | NUPTK: {{ $supervision->teacher->nuptk }}
@@ -177,7 +177,7 @@
                             @if(!empty($supervision->supervisor->nip))
                                 NIP: {{ $supervision->supervisor->nip }}
                             @else
-                                NIGS: {{ $supervision->supervisor->nigs_fix ?: $supervision->supervisor->nigs ?: '-' }}
+                                NIGS: {{ $supervision->supervisor->nigs ?: '-' }}
                             @endif
                             @if(!empty($supervision->supervisor->nuptk))
                                 | NUPTK: {{ $supervision->supervisor->nuptk }}
@@ -224,7 +224,7 @@
                                 <div class="text-muted small">Diunggah pada: {{ $supervision->rpp_uploaded_at?->translatedFormat('d F Y, H:i') }} WIB</div>
                             </div>
                         </div>
-                        <a href="{{ asset('storage/' . $supervision->rpp_file_path) }}" target="_blank" class="btn btn-success">
+                        <a href="{{ route('supervisions.download-rpp', $supervision) }}" target="_blank" class="btn btn-success">
                             <i class="ti ti-download me-1"></i> Buka / Unduh Modul
                         </a>
                     </div>

@@ -7,10 +7,12 @@ use App\Models\PiketTelegramLog;
 use App\Models\SchoolSetting;
 use App\Models\Supervision;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class TelegramBotController extends Controller
@@ -181,8 +183,12 @@ class TelegramBotController extends Controller
         ];
         $targetDayName = $dayNames[$targetDate->dayOfWeekIso] ?? 'Senin';
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
+        try {
+            $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+        } catch (\Throwable $e) {
+            Log::warning('TelegramBotController sendReminder operational year fallback: '.$e->getMessage());
+            $academicYear = SchoolSetting::getMasterYear();
+        }
 
         $schedules = PiketSchedule::where('academic_year', $academicYear)
             ->where('day', $targetDayName)

@@ -43,8 +43,11 @@ class MasterStudentAndTelegramTest extends TestCase
                 'is_active' => true,
             ]);
 
+        $gradeLevel = GradeLevel::first() ?? GradeLevel::create(['name' => '10', 'level' => 10]);
+
         $this->classroom = Classroom::first() ?? Classroom::create([
             'name' => 'X TKRO 1',
+            'grade_level_id' => $gradeLevel->id,
             'academic_year' => '2026/2027',
             'homeroom_teacher_id' => $this->teacher->id,
             'is_active' => true,
@@ -291,6 +294,14 @@ class MasterStudentAndTelegramTest extends TestCase
     {
         $service = new StudentImportService;
 
+        $gradeLevel = GradeLevel::first() ?? GradeLevel::create(['name' => '10', 'level' => 10]);
+        Classroom::firstOrCreate(['name' => 'X AKL 1'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027']);
+        Classroom::firstOrCreate(['name' => 'X TKJ 1'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027']);
+        Classroom::firstOrCreate(['name' => 'XI AKL 1'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027']);
+        Classroom::firstOrCreate(['name' => 'XI TKJ 1'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027']);
+        Classroom::firstOrCreate(['name' => 'XII TKJ 2'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027']);
+        Classroom::firstOrCreate(['name' => 'X TKR 2'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027']);
+
         // Ambil kelas yang sudah di-seed
         $classrooms = Classroom::all();
 
@@ -330,6 +341,10 @@ class MasterStudentAndTelegramTest extends TestCase
 
     public function test_student_import_via_csv_resolves_x_ak_and_x_tkj_automatically(): void
     {
+        $gradeLevel = GradeLevel::first() ?? GradeLevel::create(['name' => '10', 'level' => 10]);
+        Classroom::firstOrCreate(['name' => 'X AKL 1'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027', 'is_active' => true]);
+        Classroom::firstOrCreate(['name' => 'X TKJ 1'], ['grade_level_id' => $gradeLevel->id, 'academic_year' => '2026/2027', 'is_active' => true]);
+
         $csvContent = "\xEF\xBB\xBF"
             ."NISN,NIS,NIK,Nama Siswa,Kelas,JK,Tempat Lahir,Tanggal Lahir,Agama,Alamat,Nama Ayah,Pekerjaan Ayah,No HP Ayah,Nama Ibu,Pekerjaan Ibu,No HP Ibu,Nama Wali,Pekerjaan Wali,No HP Wali,No HP Ortu,No HP Siswa,Catatan\n"
             ."0081111111,24201,3506123456780003,Siti Nurhaliza,X AK,P,Kediri,2008-08-15,Islam,Kras,Ayah Siti,Petani,08111,Ibu Siti,IRT,08222,,,,08111,08333,Juara 1\n"
@@ -489,8 +504,10 @@ class MasterStudentAndTelegramTest extends TestCase
 
     public function test_dapodik_import_automatically_graduates_old_grade_12_and_promotes_grade_11_to_12(): void
     {
-        $classGrade12 = Classroom::where('name', 'XII TKJ 2')->first();
-        $classGrade11 = Classroom::where('name', 'XI TKJ 1')->first();
+        $gradeLevel12 = GradeLevel::where('level', 'XII')->firstOrFail();
+        $gradeLevel11 = GradeLevel::where('level', 'XI')->firstOrFail();
+        $classGrade12 = Classroom::firstOrCreate(['name' => 'XII TKJ 2'], ['grade_level_id' => $gradeLevel12->id, 'academic_year' => '2026/2027', 'is_active' => true]);
+        $classGrade11 = Classroom::firstOrCreate(['name' => 'XI TKJ 1'], ['grade_level_id' => $gradeLevel11->id, 'academic_year' => '2026/2027', 'is_active' => true]);
 
         // 1. Siswa kelas XII tahun lalu (akan lulus karena tidak ada di file Dapodik baru)
         $budiGrade12 = Student::create([
@@ -921,7 +938,7 @@ class MasterStudentAndTelegramTest extends TestCase
 
     public function test_record_student_mutation_with_evidence_and_download(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $student = Student::create([
             'name' => 'Siswa Mundur Test',
@@ -953,7 +970,7 @@ class MasterStudentAndTelegramTest extends TestCase
         $this->assertEquals('mengundurkan_diri', $mutation->reason_category);
         $this->assertEquals('surat_pengunduran_diri.pdf', $mutation->attachment_name);
         $this->assertNotNull($mutation->attachment_path);
-        Storage::disk('public')->assertExists($mutation->attachment_path);
+        Storage::disk('local')->assertExists($mutation->attachment_path);
 
         // Student status updated
         $freshStudent = $student->fresh();

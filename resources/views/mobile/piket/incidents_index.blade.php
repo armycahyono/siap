@@ -205,7 +205,7 @@
                     </span>
                     <div class="d-flex align-items-center gap-1.5">
                         @if($inc->evidence_photo)
-                            <a href="{{ asset('storage/' . $inc->evidence_photo) }}" target="_blank" class="badge bg-blue-lt text-decoration-none py-1 px-1.5" style="font-size: 0.65rem;">
+                            <a href="{{ $inc->evidence_photo_url }}" target="_blank" class="badge bg-blue-lt text-decoration-none py-1 px-1.5" style="font-size: 0.65rem;">
                                 <i class="ti ti-photo me-0.5"></i> Foto
                             </a>
                         @endif

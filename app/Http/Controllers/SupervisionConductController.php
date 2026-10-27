@@ -71,13 +71,17 @@ class SupervisionConductController extends Controller
             'rpp_file' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:15360'], // max 15MB
         ]);
 
-        if ($supervision->rpp_file_path && Storage::disk('public')->exists($supervision->rpp_file_path)) {
-            Storage::disk('public')->delete($supervision->rpp_file_path);
+        if ($supervision->rpp_file_path) {
+            if (Storage::disk('local')->exists($supervision->rpp_file_path)) {
+                Storage::disk('local')->delete($supervision->rpp_file_path);
+            } elseif (Storage::disk('public')->exists($supervision->rpp_file_path)) {
+                Storage::disk('public')->delete($supervision->rpp_file_path);
+            }
         }
 
         $file = $request->file('rpp_file');
         $fileName = 'rpp_'.$supervision->id.'_'.time().'.'.$file->getClientOriginalExtension();
-        $path = $file->storeAs('modul_ajar', $fileName, 'public');
+        $path = $file->storeAs('modul_ajar', $fileName, 'local');
 
         $supervision->update([
             'rpp_file_path' => $path,
@@ -275,7 +279,7 @@ class SupervisionConductController extends Controller
 
         $file = $request->file('photo');
         $fileName = 'spv_'.$supervision->id.'_'.uniqid().'.'.$file->getClientOriginalExtension();
-        $path = $file->storeAs('dokumentasi_supervisi', $fileName, 'public');
+        $path = $file->storeAs('dokumentasi_supervisi', $fileName, 'local');
 
         $photo = SupervisionPhoto::create([
             'supervision_id' => $supervision->id,
@@ -304,8 +308,12 @@ class SupervisionConductController extends Controller
         $supervision = $photo->supervision;
         $this->authorizeAccess($supervision, true);
 
-        if (Storage::disk('public')->exists($photo->file_path)) {
-            Storage::disk('public')->delete($photo->file_path);
+        if ($photo->file_path) {
+            if (Storage::disk('local')->exists($photo->file_path)) {
+                Storage::disk('local')->delete($photo->file_path);
+            } elseif (Storage::disk('public')->exists($photo->file_path)) {
+                Storage::disk('public')->delete($photo->file_path);
+            }
         }
 
         $caption = $photo->caption;
@@ -393,7 +401,7 @@ class SupervisionConductController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs_fix', 'like', "%{$search}%"))
+                $q->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%")->orWhere('nigs', 'like', "%{$search}%"))
                     ->orWhereHas('supervisor', fn ($s) => $s->where('name', 'like', "%{$search}%"))
                     ->orWhere('subject', 'like', "%{$search}%")
                     ->orWhere('class_name', 'like', "%{$search}%");
@@ -424,5 +432,57 @@ class SupervisionConductController extends Controller
     public function indexResults(Request $request): View
     {
         return $this->stageIndex($request, 'results');
+    }
+
+    /**
+     * Download or view private supervision lesson plan / RPP.
+     */
+    public function downloadRpp(Supervision $supervision)
+    {
+        $this->authorizeAccess($supervision);
+
+        $path = $supervision->rpp_file_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Berkas Modul Ajar / RPP tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File Modul Ajar / RPP tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path, $supervision->rpp_original_name ?: 'modul-ajar.pdf');
+    }
+
+    /**
+     * View private supervision documentation photo.
+     */
+    public function viewPhoto(SupervisionPhoto $photo)
+    {
+        $this->authorizeAccess($photo->supervision);
+
+        $path = $photo->file_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Foto dokumentasi supervisi tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File foto dokumentasi tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path);
     }
 }

@@ -259,20 +259,14 @@
                         </div>
                     </td>
                     <td>
+                        {{-- 1. Peran Akun Utama --}}
                         @if($u->role)
                             @php
                                 $roleSlug = $u->role->slug;
                                 $roleBadge = match($roleSlug) {
                                     'super_admin' => 'bg-danger text-white shadow-xs',
-                                    'waka_kurikulum' => 'bg-purple text-white shadow-xs',
-                                    'supervisor' => 'bg-indigo text-white shadow-xs',
-                                    'kepala_sekolah' => 'bg-dark text-white shadow-xs',
                                     'guru' => 'bg-blue-lt border border-blue-subtle text-blue fw-bold',
-                                    'operator_kurikulum' => 'bg-teal text-white shadow-xs',
-                                    'operator_kesiswaan' => 'bg-cyan text-white shadow-xs',
-                                    'operator_sarpras' => 'bg-orange text-white shadow-xs',
-                                    'operator_humas' => 'bg-pink text-white shadow-xs',
-                                    'operator' => 'bg-teal-lt border border-teal-subtle text-teal fw-bold',
+                                    'staf' => 'bg-purple-lt border border-purple-subtle text-purple fw-bold',
                                     default => 'bg-secondary-lt border text-secondary fw-bold'
                                 };
                             @endphp
@@ -285,12 +279,51 @@
                         @else
                             <span class="badge bg-warning-lt">Tanpa Peran</span>
                         @endif
+
+                        {{-- 2. Penugasan Role Tambahan / Kontekstual (Fase 2) --}}
+                        @if($u->activeRoleAssignments->isNotEmpty())
+                            <div class="d-flex flex-column gap-1 mt-1.5">
+                                @foreach($u->activeRoleAssignments as $ra)
+                                    @php
+                                        $raBadge = match($ra->role?->slug) {
+                                            'waka_kurikulum', 'waka_kesiswaan', 'waka_sarpras', 'waka_humas' => 'bg-purple-lt border border-purple-subtle text-purple',
+                                            'kepala_sekolah' => 'bg-dark-lt border text-dark',
+                                            'supervisor' => 'bg-indigo-lt border border-indigo-subtle text-indigo',
+                                            'wali_kelas' => 'bg-teal-lt border border-teal-subtle text-teal',
+                                            'guru_piket' => 'bg-orange-lt border border-orange-subtle text-orange',
+                                            default => 'bg-cyan-lt border border-cyan-subtle text-cyan'
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $raBadge }} text-start py-0.5 px-1.5 d-inline-flex align-items-center" style="font-size: 0.68rem; line-height: 1.2;" title="{{ $ra->notes ?: $ra->role?->name }}">
+                                        <i class="ti ti-award me-1" style="font-size: 0.75rem;"></i>
+                                        <span>
+                                            {{ $ra->role?->name }}
+                                            @if($ra->context_label)
+                                                <strong class="ms-0.5 text-dark">({{ $ra->context_label }})</strong>
+                                            @endif
+                                        </span>
+                                    </span>
+                                @endforeach
+                            </div>
+                        @endif
                     </td>
                     <td>
-                        <div class="text-dark small fw-medium">{{ $u->position ?: '-' }}</div>
-                        @if($u->nip)
-                            <div class="text-muted" style="font-size: 0.75rem;"><i class="ti ti-id me-0.5"></i>NIP: {{ $u->nip }}</div>
-                        @endif
+                        <div class="text-dark small fw-medium">{{ $u->structural_title }}</div>
+                        <div class="d-flex flex-wrap gap-1 mt-0.5">
+                            <span class="badge {{ $u->position === 'guru' ? 'bg-blue-lt text-blue' : ($u->position === 'staf' ? 'bg-purple-lt text-purple' : 'bg-red-lt text-red') }} py-0 px-1" style="font-size: 0.65rem;">
+                                {{ ucfirst($u->position ?? 'guru') }}
+                            </span>
+                            @if($u->nigs)
+                                <span class="badge bg-purple-lt text-purple font-monospace py-0 px-1" style="font-size: 0.65rem;" title="NIGS">
+                                    NIGS: {{ $u->nigs }}
+                                </span>
+                            @endif
+                            @if($u->nip)
+                                <span class="badge bg-azure-lt text-azure font-monospace py-0 px-1" style="font-size: 0.65rem;" title="NIP">
+                                    NIP: {{ $u->nip }}
+                                </span>
+                            @endif
+                        </div>
                     </td>
                     <td>
                         @if($u->phone)
@@ -328,11 +361,22 @@
                                     data-email="{{ $u->email }}"
                                     data-role-id="{{ $u->role_id }}"
                                     data-position="{{ $u->position }}"
+                                    data-nigs="{{ $u->nigs }}"
                                     data-nip="{{ $u->nip }}"
                                     data-phone="{{ $u->phone }}"
                                     data-is-active="{{ $u->is_active ? '1' : '0' }}"
                                     data-update-url="{{ route('users.update', $u->id) }}">
                                     <i class="ti ti-edit me-2 text-primary"></i> Edit Data &amp; Peran
+                                </button>
+
+                                <!-- Manage Role Assignments (Fase 2) -->
+                                <button type="button" class="dropdown-item btn-manage-assignments text-azure"
+                                    data-user-id="{{ $u->id }}"
+                                    data-user-name="{{ $u->name }}"
+                                    data-user-username="{{ $u->username }}"
+                                    data-store-url="{{ route('users.assignments.store', $u->id) }}"
+                                    data-assignments="{{ json_encode($u->formatted_role_assignments) }}">
+                                    <i class="ti ti-award me-2"></i> Penugasan Peran (Fase 2)
                                 </button>
 
                                 <!-- Reset Password Modal Trigger -->
@@ -457,10 +501,19 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Jabatan Struktural / Posisi</label>
-                            <input type="text" name="position" class="form-control" placeholder="Contoh: Super Admin, Guru Mapel, Staf TU..." value="{{ old('position') }}">
+                            <label class="form-label required">Kelompok Pengguna (Posisi)</label>
+                            <select name="position" class="form-select" required>
+                                <option value="guru" {{ old('position', 'guru') === 'guru' ? 'selected' : '' }}>Guru (Pendidik)</option>
+                                <option value="staf" {{ old('position') === 'staf' ? 'selected' : '' }}>Staf / Tendik (Tenaga Kependidikan)</option>
+                                <option value="administrator" {{ old('position') === 'administrator' ? 'selected' : '' }}>Administrator (Sistem)</option>
+                            </select>
+                            <small class="form-hint">Kelompok dasar pengguna dalam institusi.</small>
                         </div>
 
+                        <div class="col-md-6">
+                            <label class="form-label">NIGS (Nomor Induk Pegawai Sekolah)</label>
+                            <input type="text" name="nigs" class="form-control" placeholder="Contoh: 48902" value="{{ old('nigs') }}">
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">NIP (Nomor Induk Pegawai)</label>
                             <input type="text" name="nip" class="form-control" placeholder="Nomor Induk Pegawai jika ada" value="{{ old('nip') }}">
@@ -560,10 +613,19 @@
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Jabatan Struktural / Posisi</label>
-                            <input type="text" name="position" id="edit_position" class="form-control">
+                            <label class="form-label required">Kelompok Pengguna (Posisi)</label>
+                            <select name="position" id="edit_position" class="form-select" required>
+                                <option value="guru">Guru (Pendidik)</option>
+                                <option value="staf">Staf / Tendik (Tenaga Kependidikan)</option>
+                                <option value="administrator">Administrator (Sistem)</option>
+                            </select>
+                            <small class="form-hint">Kelompok dasar pengguna dalam institusi.</small>
                         </div>
 
+                        <div class="col-md-6">
+                            <label class="form-label">NIGS (Nomor Induk Pegawai Sekolah)</label>
+                            <input type="text" name="nigs" id="edit_nigs" class="form-control" placeholder="Contoh: 48902">
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">NIP</label>
                             <input type="text" name="nip" id="edit_nip" class="form-control">
@@ -655,6 +717,128 @@
         </div>
     </div>
 </div>
+
+<!-- ========================================== -->
+<!-- MODAL 4: Penugasan Peran / Role (Fase 2)   -->
+<!-- ========================================== -->
+<div class="modal modal-blur fade" id="modalManageAssignments" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white">
+                <div>
+                    <h5 class="modal-title d-flex align-items-center mb-0">
+                        <i class="ti ti-award me-2 fs-2 text-warning"></i>
+                        Penugasan Peran Kontekstual (Fase 2)
+                    </h5>
+                    <div class="text-white-50 small mt-1">
+                        Pengguna: <strong class="text-white" id="assignment_user_name">-</strong> (<code class="text-warning-lt" id="assignment_user_username">-</code>)
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                {{-- Daftar Penugasan Saat Ini --}}
+                <div class="card border mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                        <div class="fw-bold small text-dark d-flex align-items-center">
+                            <i class="ti ti-list-check me-1.5 text-primary"></i> Daftar Penugasan Peran Aktif &amp; Riwayat
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table table-sm" id="tableUserAssignments">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Peran / Tugas</th>
+                                    <th>Konteks Objek</th>
+                                    <th>Tahun Ajaran</th>
+                                    <th>No. SK / Catatan</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyAssignmentsList">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">Memuat data penugasan...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Form Tambah Penugasan Baru --}}
+                <div class="card border border-primary-subtle shadow-none">
+                    <div class="card-header bg-primary-subtle py-2 px-3">
+                        <div class="fw-bold small text-primary d-flex align-items-center">
+                            <i class="ti ti-plus me-1.5"></i> Tambah Penugasan Peran Baru
+                        </div>
+                    </div>
+                    <form id="formStoreAssignment" action="" method="POST" class="card-body p-3">
+                        @csrf
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label required small">Peran Penugasan</label>
+                                <select name="role_id" id="assign_role_id" class="form-select form-select-sm" required onchange="handleRoleSelectionChange(this.value)">
+                                    <option value="">-- Pilih Peran Penugasan --</option>
+                                    @foreach($assignmentRoles as $ar)
+                                        <option value="{{ $ar->id }}" data-slug="{{ $ar->slug }}">{{ $ar->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Tahun Ajaran</label>
+                                <select name="academic_year" class="form-select form-select-sm">
+                                    @if(isset($academicYears) && $academicYears->isNotEmpty())
+                                        @foreach($academicYears as $ay)
+                                            <option value="{{ $ay->name }}" {{ ($currentAcademicYear ?? '2026/2027') === $ay->name ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                        @endforeach
+                                    @else
+                                        <option value="2026/2027" selected>2026/2027</option>
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="divContextClassroom">
+                                <label class="form-label small">Konteks Kelas / Rombel (Wali Kelas)</label>
+                                <select name="context_id" id="assign_classroom_id" class="form-select form-select-sm">
+                                    <option value="">-- Berlaku Global / Bukan Wali Kelas --</option>
+                                    @foreach($classrooms as $cls)
+                                        <option value="{{ $cls->id }}">{{ $cls->name }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="context_type" id="assign_context_type" value="">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small">Nomor SK / Surat Tugas</label>
+                                <input type="text" name="sk_number" class="form-control form-control-sm" placeholder="Contoh: 421.5/SK/2026">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Tanggal Berlaku Mulai</label>
+                                <input type="date" name="valid_from" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Tanggal Berakhir</label>
+                                <input type="date" name="valid_until" class="form-control form-control-sm">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small">Uraian / Catatan Tambahan</label>
+                                <input type="text" name="notes" class="form-control form-control-sm" placeholder="Catatan tugas atau keterangan tambahan">
+                            </div>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="ti ti-check me-1"></i> Simpan Penugasan
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-secondary ms-auto" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -676,6 +860,7 @@
                 document.getElementById('edit_email').value = this.getAttribute('data-email') || '';
                 document.getElementById('edit_role_id').value = this.getAttribute('data-role-id') || '';
                 document.getElementById('edit_position').value = this.getAttribute('data-position') || '';
+                document.getElementById('edit_nigs').value = this.getAttribute('data-nigs') || '';
                 document.getElementById('edit_nip').value = this.getAttribute('data-nip') || '';
                 document.getElementById('edit_phone').value = this.getAttribute('data-phone') || '';
                 document.getElementById('edit_is_active').checked = this.getAttribute('data-is-active') === '1';
@@ -703,6 +888,86 @@
                 modalReset.show();
             });
         });
+
+        // Manage Role Assignments Modal Population (Fase 2)
+        const manageButtons = document.querySelectorAll('.btn-manage-assignments');
+        const modalAssignments = new bootstrap.Modal(document.getElementById('modalManageAssignments'));
+        const formStoreAssignment = document.getElementById('formStoreAssignment');
+        const tbodyAssignments = document.getElementById('tbodyAssignmentsList');
+
+        manageButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userName = this.getAttribute('data-user-name');
+                const userUsername = this.getAttribute('data-user-username');
+                const storeUrl = this.getAttribute('data-store-url');
+                const assignmentsData = JSON.parse(this.getAttribute('data-assignments') || '[]');
+
+                document.getElementById('assignment_user_name').innerText = userName;
+                document.getElementById('assignment_user_username').innerText = userUsername;
+                formStoreAssignment.action = storeUrl;
+
+                renderAssignmentsTable(assignmentsData);
+                modalAssignments.show();
+            });
+        });
+
+        function renderAssignmentsTable(assignments) {
+            if (!assignments || assignments.length === 0) {
+                tbodyAssignments.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3"><i class="ti ti-info-circle me-1"></i> Belum ada penugasan peran tambahan untuk pengguna ini.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            assignments.forEach(a => {
+                const statusBadge = a.status 
+                    ? '<span class="badge bg-success-lt border border-success-subtle">Aktif</span>' 
+                    : '<span class="badge bg-secondary-lt border">Nonaktif</span>';
+
+                html += `
+                    <tr>
+                        <td><strong class="text-dark">${a.role_name}</strong></td>
+                        <td><span class="badge bg-light text-dark border">${a.context_label}</span></td>
+                        <td>${a.academic_year}</td>
+                        <td><small class="text-muted">${a.sk_number !== '-' ? a.sk_number : (a.notes !== '-' ? a.notes : '-')}</small></td>
+                        <td class="text-center">${statusBadge}</td>
+                        <td class="text-end">
+                            <form action="${a.toggle_url}" method="POST" class="d-inline">
+                                <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'}">
+                                <button type="submit" class="btn btn-xs ${a.status ? 'btn-outline-secondary' : 'btn-outline-success'} py-0 px-1" title="${a.status ? 'Nonaktifkan' : 'Aktifkan'}">
+                                    <i class="ti ${a.status ? 'ti-pause' : 'ti-play'}"></i>
+                                </button>
+                            </form>
+                            <form action="${a.delete_url}" method="POST" class="d-inline" onsubmit="return confirm('Hapus penugasan peran ini?');">
+                                <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'}">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1" title="Hapus">
+                                    <i class="ti ti-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbodyAssignments.innerHTML = html;
+        }
+
+        window.handleRoleSelectionChange = function(roleId) {
+            const select = document.getElementById('assign_role_id');
+            const selectedOpt = select.options[select.selectedIndex];
+            const slug = selectedOpt ? selectedOpt.getAttribute('data-slug') : '';
+
+            const contextTypeInput = document.getElementById('assign_context_type');
+            const contextClassroomSelect = document.getElementById('assign_classroom_id');
+
+            if (slug === 'wali_kelas') {
+                contextTypeInput.value = 'App\\Models\\Classroom';
+                contextClassroomSelect.required = true;
+            } else {
+                contextTypeInput.value = '';
+                contextClassroomSelect.required = false;
+                contextClassroomSelect.value = '';
+            }
+        };
     });
 
     // Helper: Toggle Password Visibility

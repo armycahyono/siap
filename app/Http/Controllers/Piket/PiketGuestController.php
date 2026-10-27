@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PiketGuest;
 use App\Models\PiketJournal;
 use App\Models\SchoolSetting;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -116,7 +117,7 @@ class PiketGuestController extends Controller
         $journal = PiketJournal::firstOrCreate(
             ['date' => $validated['visit_date']],
             [
-                'academic_year' => session('active_academic_year', '2026/2027'),
+                'academic_year' => app(AcademicYearContext::class)->getOperationalYear()->name,
                 'semester' => 'Ganjil',
                 'status' => 'berlangsung',
                 'coordinator_id' => Auth::id(),

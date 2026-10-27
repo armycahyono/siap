@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\SchoolSetting;
 use App\Models\Subject;
 use App\Models\Supervision;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class ScheduleController extends Controller
 {
@@ -18,8 +22,27 @@ class ScheduleController extends Controller
     {
         $user = Auth::user();
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', $setting->academic_year);
-        $semester = $request->query('semester', $setting->semester);
+        $context = app(AcademicYearContext::class);
+
+        if ($request->has('academic_year')) {
+            $rawYear = $request->query('academic_year');
+            if ($rawYear === 'all') {
+                $academicYear = 'all';
+            } else {
+                try {
+                    $academicYear = $context->getViewingYear($rawYear);
+                } catch (InvalidArgumentException $e) {
+                    throw ValidationException::withMessages([
+                        'academic_year' => $e->getMessage(),
+                    ]);
+                }
+            }
+        } else {
+            $academicYear = $context->getViewingYear();
+        }
+
+        $ayModel = $academicYear !== 'all' ? AcademicYear::where('name', $academicYear)->first() : null;
+        $semester = $request->query('semester', $ayModel?->semester ?? $setting->semester ?? 'Ganjil');
         $status = $request->query('status');
         $search = $request->query('search');
 
@@ -75,8 +98,26 @@ class ScheduleController extends Controller
         $this->authorizeManage();
 
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', $setting->academic_year);
-        $semester = $request->query('semester', $setting->semester);
+        $context = app(AcademicYearContext::class);
+
+        // Jika ada target tahun eksplisit pada query string, validasi keberadaannya
+        if ($request->filled('academic_year')) {
+            $targetYear = $context->resolveExplicitYear($request->query('academic_year'));
+            if (! $targetYear) {
+                throw ValidationException::withMessages([
+                    'academic_year' => 'Tahun ajaran target tidak valid.',
+                ]);
+            }
+            $academicYear = $targetYear->name;
+            $semester = $request->query('semester', $targetYear->semester ?? 'Ganjil');
+        } else {
+            // Default pembuatan jadwal baru selalu menggunakan tahun operasional, BUKAN session arsip
+            $operationalYear = $context->getOperationalYear();
+            $academicYear = $operationalYear->name;
+            $semester = $request->query('semester', $operationalYear->semester ?? 'Ganjil');
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor']))
             ->where('is_active', true)
@@ -114,7 +155,13 @@ class ScheduleController extends Controller
         }
 
         $subjects = Subject::where('is_active', true)->orderBy('name')->get();
-        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+        $classrooms = Classroom::where(function ($q) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $q->where('academic_year_id', $ayModel->id);
+            }
+            $q->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
+
         if ($classrooms->isEmpty()) {
             $classrooms = Classroom::orderBy('name')->get();
         }
@@ -126,7 +173,7 @@ class ScheduleController extends Controller
     {
         $this->authorizeManage();
 
-        $setting = SchoolSetting::getSetting();
+        $context = app(AcademicYearContext::class);
 
         $data = $request->validate([
             'teacher_id' => ['required', 'exists:users,id'],
@@ -141,10 +188,25 @@ class ScheduleController extends Controller
             'semester' => ['nullable', 'string', 'max:50'],
         ]);
 
+        // Resolusi tahun ajaran: jika diisi eksplisit, validasi target. Jika kosong, gunakan tahun operasional.
+        if (! empty($data['academic_year'])) {
+            try {
+                $targetYear = $context->resolveExplicitYear($data['academic_year']);
+                $data['academic_year'] = $targetYear;
+                $data['semester'] = ($data['semester'] ?? null) ?: 'Ganjil';
+            } catch (InvalidArgumentException $e) {
+                throw ValidationException::withMessages([
+                    'academic_year' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            $operationalYear = $context->getOperationalYear();
+            $data['academic_year'] = $operationalYear->name;
+            $data['semester'] = ($data['semester'] ?? null) ?: ($operationalYear->semester ?? 'Ganjil');
+        }
+
         $teacher = User::findOrFail($data['teacher_id']);
 
-        $data['academic_year'] = $data['academic_year'] ?: $setting->academic_year;
-        $data['semester'] = $data['semester'] ?: $setting->semester;
         $data['subject'] = $data['subject'] ?: ($teacher->subjectAssignments()->where('academic_year', $data['academic_year'])->first()?->subject?->name ?? '-');
         $data['class_name'] = $data['class_name'] ?: ($teacher->homeroomClassrooms()->where('academic_year', $data['academic_year'])->first()?->name ?? '-');
         $data['expertise_program'] = $data['expertise_program'] ?: ($teacher->homeroomClassrooms()->where('academic_year', $data['academic_year'])->first()?->department?->name ?? '-');
@@ -163,7 +225,9 @@ class ScheduleController extends Controller
         $this->authorizeManage();
 
         $setting = SchoolSetting::getSetting();
-        $academicYear = $schedule->academic_year ?: $setting->academic_year;
+        $context = app(AcademicYearContext::class);
+        $academicYear = $schedule->academic_year ?: $context->getOperationalYear()->name;
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         $teachers = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['guru', 'supervisor']))
             ->where('is_active', true)
@@ -200,7 +264,13 @@ class ScheduleController extends Controller
                 ->get();
         }
         $subjects = Subject::where('is_active', true)->orderBy('name')->get();
-        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+        $classrooms = Classroom::where(function ($q) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $q->where('academic_year_id', $ayModel->id);
+            }
+            $q->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
+
         if ($classrooms->isEmpty()) {
             $classrooms = Classroom::orderBy('name')->get();
         }
@@ -226,6 +296,10 @@ class ScheduleController extends Controller
             'status' => ['required', 'in:terjadwal,praobservasi,observasi,pascaobservasi,menunggu_persetujuan,disetujui,selesai'],
         ]);
 
+        // Selalu pertahankan tahun ajaran dan semester asli dokumen jadwal yang tersimpan (immutable)
+        $data['academic_year'] = $schedule->academic_year;
+        $data['semester'] = $schedule->semester;
+
         $schedule->update($data);
 
         return redirect()->route('schedules.index', [
@@ -237,6 +311,26 @@ class ScheduleController extends Controller
     public function destroy(Supervision $schedule): RedirectResponse
     {
         $this->authorizeManage();
+
+        // Jadwal yang sudah berjalan, selesai, disetujui, memiliki penilaian, atau disahkan tidak boleh dihapus
+        if (
+            $schedule->status !== 'terjadwal'
+            || $schedule->approved_by_principal
+            || $schedule->principal_approved_at !== null
+            || $schedule->supervisor_signed_at !== null
+            || $schedule->finalized_at !== null
+            || $schedule->scores()->exists()
+            || ($schedule->total_score ?? 0) > 0
+            || $schedule->photos()->exists()
+            || $schedule->pre_completed_at !== null
+            || $schedule->obs_completed_at !== null
+            || $schedule->post_completed_at !== null
+        ) {
+            return redirect()->route('schedules.index', [
+                'academic_year' => $schedule->academic_year,
+                'semester' => $schedule->semester,
+            ])->with('error', 'Jadwal supervisi tidak dapat dihapus karena sudah berjalan, memiliki data penilaian, atau telah disahkan.');
+        }
 
         $academicYear = $schedule->academic_year;
         $semester = $schedule->semester;

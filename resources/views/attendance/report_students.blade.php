@@ -10,7 +10,7 @@
         'subtitle' => 'Rekapitulasi presensi individu siswa per-kelas berdasarkan perekaman mesin dan verifikasi wali kelas.',
         'icon' => 'ti ti-users-group',
         'category' => 'REKAPITULASI PRESENSI SISWA',
-        'actions' => '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Ke Mesin Absensi</a>'
+        'actions' => '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-broadcast me-1"></i> Live Presensi</a>'
     ])
 </div>
 

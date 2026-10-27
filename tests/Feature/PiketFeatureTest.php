@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
+use App\Models\Department;
+use App\Models\GradeLevel;
 use App\Models\LessonSchedule;
 use App\Models\PiketDutySwap;
 use App\Models\PiketGuest;
@@ -51,9 +53,14 @@ class PiketFeatureTest extends TestCase
             ]);
         $this->teacher->update(['telegram_chat_id' => '123456789']);
 
+        $grade = GradeLevel::firstOrCreate(['name' => 'XII'], ['level' => 12]);
+        $dept = Department::firstOrCreate(['code' => 'TKJ'], ['name' => 'Teknik Komputer & Jaringan']);
+
         $this->classroom = Classroom::first() ?? Classroom::create([
             'name' => 'XII TKJ 1',
             'academic_year' => '2026/2027',
+            'grade_level_id' => $grade->id,
+            'department_id' => $dept->id,
             'homeroom_teacher_id' => $this->teacher->id,
             'is_active' => true,
         ]);
@@ -395,16 +402,16 @@ class PiketFeatureTest extends TestCase
         $this->assertTrue($setting->telegram_notifications_enabled);
     }
 
-    public function test_penugasan_guru_shows_piket_tab(): void
+    public function test_penugasan_guru_redirects_piket_tab_to_piket_schedules(): void
     {
         $response = $this->actingAs($this->user)->get(route('teacher-assignments.index', ['tab' => 'piket']));
-        $response->assertStatus(200);
-        $response->assertSee('Penugasan Piket');
+        $response->assertRedirect();
+        $this->assertStringContainsString('piket/jadwal', $response->headers->get('Location'));
     }
 
     public function test_piket_incident_can_be_recorded_with_photo_evidence(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $photo = UploadedFile::fake()->image('bukti_rokok.jpg', 600, 400);
 
@@ -428,7 +435,7 @@ class PiketFeatureTest extends TestCase
 
         $incident = PiketIncident::where('student_name', 'Siswa Pelanggar')->first();
         $this->assertNotNull($incident->evidence_photo);
-        Storage::disk('public')->assertExists($incident->evidence_photo);
+        Storage::disk('local')->assertExists($incident->evidence_photo);
     }
 
     public function test_telegram_webhook_responds_to_commands(): void

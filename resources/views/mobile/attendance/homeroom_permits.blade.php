@@ -115,7 +115,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             @if($p->attachment_path)
-                                <a href="{{ asset('storage/' . $p->attachment_path) }}" target="_blank" class="badge bg-blue-lt text-decoration-none py-1 px-2" style="font-size: 0.68rem;">
+                                <a href="{{ $p->attachment_url }}" target="_blank" class="badge bg-blue-lt text-decoration-none py-1 px-2" style="font-size: 0.68rem;">
                                     <i class="ti ti-paperclip me-0.5"></i> Lihat Bukti
                                 </a>
                             @else

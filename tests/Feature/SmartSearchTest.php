@@ -23,11 +23,13 @@ class SmartSearchTest extends TestCase
     {
         parent::setUp();
 
-        $this->guruRole = Role::create([
-            'name' => 'Guru Pengajar',
-            'slug' => 'guru',
-            'is_system' => true,
-        ]);
+        $this->guruRole = Role::firstOrCreate(
+            ['slug' => 'guru'],
+            [
+                'name' => 'Guru Pengajar',
+                'is_system' => true,
+            ]
+        );
 
         $this->user = User::create([
             'name' => 'Budi Santoso, M.Pd.',
@@ -35,8 +37,9 @@ class SmartSearchTest extends TestCase
             'email' => 'budi@test.com',
             'password' => bcrypt('password'),
             'role_id' => $this->guruRole->id,
+            'position' => 'guru',
             'is_active' => true,
-            'nigs_fix' => '198501012010011001',
+            'nigs' => '198501012010011001',
         ]);
     }
 

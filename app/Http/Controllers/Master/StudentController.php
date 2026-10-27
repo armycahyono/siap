@@ -9,6 +9,7 @@ use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\StudentClassroom;
 use App\Models\StudentMutation;
+use App\Services\AcademicYearContext;
 use App\Services\ActivityLogger;
 use App\Services\DapodikStudentImportService;
 use App\Services\StudentImportService;
@@ -16,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -178,7 +180,7 @@ class StudentController extends Controller
     public function index(Request $request): View
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
+        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? SchoolSetting::getMasterYear()));
 
         $tab = $request->query('tab', 'aktif');
         $classroomId = $request->query('classroom_id');
@@ -288,6 +290,12 @@ class StudentController extends Controller
 
         $availableAcademicYears = SchoolSetting::getAvailableAcademicYears();
 
+        $user = auth()->user();
+        $canManageMasterData = $user && ($user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']));
+        $canExport = $canManageMasterData || ($user && $user->isHomeroomTeacher());
+
         return view('master.students.index', compact(
             'students',
             'classrooms',
@@ -307,22 +315,126 @@ class StudentController extends Controller
             'alumniCount',
             'mutatedCount',
             'sort',
-            'direction'
+            'direction',
+            'canManageMasterData',
+            'canExport'
         ));
     }
 
     public function show(Student $student): JsonResponse
     {
-        $student->load([
-            'classroom.homeroomTeacher',
-            'latestMutation.recordedBy',
-            'permits' => fn ($q) => $q->latest()->limit(5),
-            'incidents' => fn ($q) => $q->latest()->limit(5),
-        ]);
+        $user = auth()->user();
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        $isAssignedHomeroom = $student->classroom !== null
+            && (bool) $student->classroom->is_active
+            && $user->isHomeroomTeacher($student->classroom);
+
+        if (! $canManageMasterData && ! $isAssignedHomeroom) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengakses rincian data siswa ini.');
+        }
+
+        // Susun payload eksplisit biodata umum
+        $studentPayload = [
+            'id' => $student->id,
+            'name' => $student->name,
+            'classroom_id' => $student->classroom_id,
+            'nisn' => $student->nisn,
+            'nis' => $student->nis,
+            'gender' => $student->gender,
+            'birth_place' => $student->birth_place,
+            'birth_date' => $student->birth_date?->format('Y-m-d'),
+            'religion' => $student->religion,
+            'address' => $student->address,
+            'phone_student' => $student->phone_student,
+            'email' => $student->email,
+            'entry_year' => $student->entry_year,
+            'father_name' => $student->father_name,
+            'father_job' => $student->father_job,
+            'father_phone' => $student->father_phone,
+            'father_birth_year' => $student->father_birth_year,
+            'father_education' => $student->father_education,
+            'mother_name' => $student->mother_name,
+            'mother_job' => $student->mother_job,
+            'mother_phone' => $student->mother_phone,
+            'mother_birth_year' => $student->mother_birth_year,
+            'mother_education' => $student->mother_education,
+            'guardian_name' => $student->guardian_name,
+            'guardian_job' => $student->guardian_job,
+            'guardian_phone' => $student->guardian_phone,
+            'guardian_birth_year' => $student->guardian_birth_year,
+            'guardian_education' => $student->guardian_education,
+            'phone_parent' => $student->phone_parent,
+            'status' => $student->status,
+            'is_active' => (bool) $student->is_active,
+            'graduation_year' => $student->graduation_year,
+            'last_classroom_name' => $student->last_classroom_name,
+            'distance_to_school_km' => $student->distance_to_school_km,
+            'transportation' => $student->transportation,
+            'residence_type' => $student->residence_type,
+            'school_origin' => $student->school_origin,
+            'child_order' => $student->child_order,
+            'siblings_count' => $student->siblings_count,
+            'height_cm' => $student->height_cm,
+            'weight_kg' => $student->weight_kg,
+            'head_circumference_cm' => $student->head_circumference_cm,
+            'notes' => $student->notes,
+        ];
+
+        // Hanya pengelola data pokok / pimpinan yang memperoleh data kependudukan dan finansial sensitif
+        if ($canManageMasterData) {
+            $studentPayload['nik'] = $student->nik;
+            $studentPayload['family_card_no'] = $student->family_card_no;
+            $studentPayload['birth_certificate_no'] = $student->birth_certificate_no;
+            $studentPayload['father_nik'] = $student->father_nik;
+            $studentPayload['mother_nik'] = $student->mother_nik;
+            $studentPayload['guardian_nik'] = $student->guardian_nik;
+            $studentPayload['father_income'] = $student->father_income;
+            $studentPayload['mother_income'] = $student->mother_income;
+            $studentPayload['guardian_income'] = $student->guardian_income;
+            $studentPayload['bank_name'] = $student->bank_name;
+            $studentPayload['bank_account_no'] = $student->bank_account_no;
+            $studentPayload['bank_account_name'] = $student->bank_account_name;
+            $studentPayload['latitude'] = $student->latitude;
+            $studentPayload['longitude'] = $student->longitude;
+            $studentPayload['special_needs'] = $student->special_needs;
+            $studentPayload['is_pip_eligible'] = $student->is_pip_eligible;
+            $studentPayload['pip_reason'] = $student->pip_reason;
+            $studentPayload['kip_recipient'] = $student->kip_recipient;
+            $studentPayload['kip_number'] = $student->kip_number;
+            $studentPayload['kks_number'] = $student->kks_number;
+            $studentPayload['kps_number'] = $student->kps_number;
+        }
+
+        $latestMutation = $student->latestMutation;
+        $mutationPayload = null;
+        if ($latestMutation) {
+            $mutationPayload = [
+                'id' => $latestMutation->id,
+                'type' => $latestMutation->type,
+                'type_label' => $latestMutation->type_label,
+                'type_badge' => $latestMutation->type_badge,
+                'mutation_date' => $latestMutation->mutation_date?->translatedFormat('d F Y'),
+                'reason_category' => $latestMutation->reason_category,
+                'reason_category_label' => $latestMutation->reason_category_label,
+                'reason_description' => $latestMutation->reason_description,
+                'target_school' => $latestMutation->target_school,
+                'letter_number' => $latestMutation->letter_number,
+                'attachment_name' => $latestMutation->attachment_name,
+                'attachment_path' => (bool) $latestMutation->attachment_path,
+                'recorded_by' => $latestMutation->recordedBy?->name ?? 'Sistem',
+            ];
+        }
 
         return response()->json([
             'success' => true,
-            'student' => $student,
+            'student' => $studentPayload,
             'formatted_birth' => $student->formatted_birth,
             'primary_parent' => $student->primary_parent_name,
             'primary_phone' => $student->primary_parent_phone,
@@ -330,18 +442,52 @@ class StudentController extends Controller
             'homeroom_name' => $student->classroom?->homeroomTeacher?->name ?? 'Belum ada wali kelas',
             'status_label' => $student->status_label,
             'status_badge' => $student->status_badge,
-            'latest_mutation' => $student->latestMutation ? [
-                'type_label' => $student->latestMutation->type_label,
-                'type_badge' => $student->latestMutation->type_badge,
-                'mutation_date' => $student->latestMutation->mutation_date?->translatedFormat('d F Y'),
-                'reason_category_label' => $student->latestMutation->reason_category_label,
-                'reason_description' => $student->latestMutation->reason_description,
-                'target_school' => $student->latestMutation->target_school,
-                'letter_number' => $student->latestMutation->letter_number,
-                'attachment_url' => $student->latestMutation->attachment_url,
-                'attachment_name' => $student->latestMutation->attachment_name,
-                'recorded_by' => $student->latestMutation->recordedBy?->name ?? 'Sistem',
-            ] : null,
+            'latest_mutation' => $mutationPayload,
+        ]);
+    }
+
+    /**
+     * Dapatkan atribut data yang diperlukan untuk formulir edit siswa.
+     * Hanya dapat diakses oleh pengguna yang berwenang mengelola data master siswa.
+     */
+    public function editData(Student $student): JsonResponse
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->isSuperAdmin() && ! $user->hasPermission('manage_master_data') && ! $user->hasRole(['waka_kurikulum', 'kepala_sekolah']))) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengubah data master siswa.');
+        }
+
+        return response()->json([
+            'success' => true,
+            'student' => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'classroom_id' => $student->classroom_id,
+                'nisn' => $student->nisn,
+                'nis' => $student->nis,
+                'nik' => $student->nik,
+                'gender' => $student->gender,
+                'birth_place' => $student->birth_place,
+                'birth_date' => $student->birth_date?->format('Y-m-d'),
+                'religion' => $student->religion,
+                'phone_student' => $student->phone_student,
+                'address' => $student->address,
+                'father_name' => $student->father_name,
+                'father_job' => $student->father_job,
+                'father_phone' => $student->father_phone,
+                'mother_name' => $student->mother_name,
+                'mother_job' => $student->mother_job,
+                'mother_phone' => $student->mother_phone,
+                'guardian_name' => $student->guardian_name,
+                'guardian_job' => $student->guardian_job,
+                'guardian_phone' => $student->guardian_phone,
+                'phone_parent' => $student->phone_parent,
+                'status' => $student->status,
+                'graduation_year' => $student->graduation_year,
+                'last_classroom_name' => $student->last_classroom_name,
+                'entry_year' => $student->entry_year,
+                'notes' => $student->notes,
+            ],
         ]);
     }
 
@@ -600,6 +746,7 @@ class StudentController extends Controller
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
             'classroom_id' => 'nullable|exists:classrooms,id',
+            'academic_year' => 'nullable|string|max:20',
         ]);
 
         $file = $request->file('file');
@@ -607,22 +754,40 @@ class StudentController extends Controller
         $path = $file->getRealPath();
 
         $defaultClassroomId = $request->input('classroom_id') ? (int) $request->input('classroom_id') : null;
-        $academicYear = session('active_academic_year', SchoolSetting::getSetting()->academic_year ?? '2026/2027');
 
-        $result = $this->importService->import($path, $ext, $defaultClassroomId, $academicYear);
-
-        if (! $result['success']) {
-            $err = implode(', ', array_slice($result['errors'], 0, 5));
-
-            return back()->with('error', 'Gagal mengimpor data siswa: '.($err ?: 'Format file tidak sesuai.'));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $request->filled('academic_year')
+                ? $academicYearContext->resolveExplicitYear(trim($request->input('academic_year')))
+                : $academicYearContext->getOperationalYear()->name;
+        } catch (\InvalidArgumentException) {
+            return back()->with('error', 'Gagal mengimpor data siswa: Tahun pelajaran target tidak terdaftar.');
+        } catch (\Throwable) {
+            return back()->with('error', 'Gagal mengimpor data siswa: Konfigurasi tahun pelajaran operasional tidak tersedia.');
         }
 
-        $msg = "Berhasil mengimpor {$result['imported_count']} siswa baru.";
-        if (count($result['updated']) > 0) {
-            $msg .= ' Sebanyak '.count($result['updated']).' data siswa diperbarui.';
-        }
+        try {
+            $result = $this->importService->import($path, $ext, $defaultClassroomId, $academicYear);
 
-        return back()->with('success', $msg);
+            if (! $result['success']) {
+                $err = implode(', ', array_slice($result['errors'], 0, 5));
+
+                return back()->with('error', 'Gagal mengimpor data siswa: '.($err ?: 'Format file tidak sesuai.'));
+            }
+
+            $msg = "Berhasil mengimpor {$result['imported_count']} siswa baru.";
+            if (count($result['updated']) > 0) {
+                $msg .= ' Sebanyak '.count($result['updated']).' data siswa diperbarui.';
+            }
+
+            return back()->with('success', $msg);
+        } catch (\Throwable $e) {
+            Log::error('Gagal mengimpor data siswa: '.$e->getMessage(), [
+                'exception' => $e,
+            ]);
+
+            return back()->with('error', 'Gagal mengimpor data siswa: Terjadi kesalahan sistem saat memproses file.');
+        }
     }
 
     public function importDapodik(Request $request): RedirectResponse
@@ -640,91 +805,256 @@ class StudentController extends Controller
         $file = $request->file('file');
         $ext = strtolower($file->getClientOriginalExtension());
         $origName = $file->getClientOriginalName();
-        $academicYear = $request->input('academic_year') ?: session('active_academic_year', SchoolSetting::getSetting()->academic_year ?? '2026/2027');
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $ayRecord = null;
+        $startYear = null;
+        $endYear = null;
+
+        if ($request->filled('academic_year')) {
+            $inputYear = trim($request->input('academic_year'));
+
+            // 1. Validasi format YYYY/YYYY
+            if (! preg_match('/^(\d{4})\/(\d{4})$/', $inputYear, $matches)) {
+                return back()->with('error', 'Gagal memproses file Dapodik: Format tahun pelajaran target tidak valid. Format harus YYYY/YYYY (contoh: 2026/2027).');
+            }
+
+            $startYear = (int) $matches[1];
+            $endYear = (int) $matches[2];
+
+            // 2. Validasi rentang tahun: tahun akhir harus tepat 1 tahun setelah tahun awal
+            if ($endYear !== $startYear + 1) {
+                return back()->with('error', "Gagal memproses file Dapodik: Rentang tahun pelajaran tidak valid. Tahun akhir ({$endYear}) harus tepat satu tahun setelah tahun awal ({$startYear}).");
+            }
+
+            // 3. Batas kewajaran tahun kalender pendidikan
+            if ($startYear < 2000 || $startYear > 2099) {
+                return back()->with('error', 'Gagal memproses file Dapodik: Tahun pelajaran di luar rentang kalender pendidikan yang diizinkan (2000-2099).');
+            }
+
+            $academicYear = $inputYear;
+            $ayRecord = AcademicYear::where('name', $academicYear)->first();
+        } else {
+            try {
+                $operationalYear = $academicYearContext->getOperationalYear();
+                $academicYear = $operationalYear->name;
+                $ayRecord = $operationalYear;
+                [$startYear, $endYear] = $this->parseAcademicYear($academicYear);
+            } catch (\Throwable $e) {
+                return back()->with('error', 'Gagal memproses sinkronisasi Dapodik: Konfigurasi tahun pelajaran operasional tidak tersedia ('.$e->getMessage().').');
+            }
+        }
+
+        // 4. Periksa apakah tahun target sedang dikunci/diarsipkan
+        if ($ayRecord && $ayRecord->is_locked) {
+            return back()->with('error', "Gagal memproses file Dapodik: Tahun pelajaran {$academicYear} sedang dikunci (arsip permanen) dan tidak dapat dimodifikasi.");
+        }
+
+        // 5. Jika tahun belum terdaftar, buat record baru dengan data kalender standar
+        if (! $ayRecord) {
+            $ayRecord = AcademicYear::create([
+                'name' => $academicYear,
+                'semester' => 'Ganjil',
+                'start_date' => "{$startYear}-07-01",
+                'end_date' => "{$endYear}-06-30",
+                'is_active' => false,
+                'is_locked' => false,
+                'description' => 'Dibuat otomatis dari sinkronisasi Dapodik',
+            ]);
+        }
 
         // Simpan file asli Dapodik secara permanen di storage server sebagai arsip induk
         $safeYear = str_replace(['/', '\\'], '_', $academicYear);
         $safeOrigName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $origName);
         $savedFilename = "dapodik_{$safeYear}_".date('Ymd_His')."_{$safeOrigName}";
-        $storedPath = $file->storeAs('dapodik_archives', $savedFilename);
-        $path = Storage::path($storedPath);
+        $storedPath = $file->storeAs('dapodik_archives', $savedFilename, 'local');
+        $path = Storage::disk('local')->path($storedPath);
 
         $defaultClassroomId = $request->input('classroom_id') ? (int) $request->input('classroom_id') : null;
 
         $options = [
-            'auto_graduate_grade_12' => $request->boolean('auto_graduate_grade_12', true),
-            'auto_mutasi_missing_students' => $request->boolean('auto_mutasi_missing_students', true),
+            'auto_graduate_grade_12' => $request->boolean('auto_graduate_grade_12', false),
+            'auto_mutasi_missing_students' => $request->boolean('auto_mutasi_missing_students', false),
             'auto_create_classes' => $request->boolean('auto_create_classes', true),
         ];
 
-        $result = $this->dapodikImportService->import($path, $ext, $defaultClassroomId, $academicYear, $options);
+        try {
+            $result = $this->dapodikImportService->import($path, $ext, $defaultClassroomId, $academicYear, $options);
 
-        if (! $result['success']) {
-            $err = implode(', ', array_slice($result['errors'], 0, 5));
+            if (! $result['success']) {
+                $err = implode(', ', array_slice($result['errors'], 0, 5));
 
-            return back()->with('error', 'Gagal memproses file Dapodik: '.($err ?: 'Pastikan file adalah ekspor resmi "Daftar PD" dari Dapodik.'));
-        }
+                return back()->with('error', 'Gagal memproses file Dapodik: '.($err ?: 'Pastikan file adalah ekspor resmi "Daftar PD" dari Dapodik.'));
+            }
 
-        // Jika opsi jadikan tahun aktif dicentang, perbarui status tahun aktif sistem
-        if ($request->boolean('set_as_active_year')) {
-            $ayRecord = AcademicYear::firstOrCreate(['name' => $academicYear], [
-                'semester' => 'Ganjil',
-                'is_active' => true,
-                'is_locked' => false,
-            ]);
-            $ayRecord->setAsActive();
-            session([
-                'active_academic_year' => $academicYear,
+            // Aktivasi tahun ajaran jika opsi centang dipilih
+            $activationFailed = false;
+            $activationErrorMessage = null;
+            if ($request->boolean('set_as_active_year')) {
+                try {
+                    $ayRecord->setAsActive();
+                    session([
+                        'active_academic_year' => $academicYear,
+                        'academic_year' => $academicYear,
+                    ]);
+                } catch (\Throwable $e) {
+                    $activationFailed = true;
+                    $activationErrorMessage = $e->getMessage();
+                    Log::error('Sinkronisasi Dapodik berhasil disimpan namun aktivasi tahun ajaran gagal: '.$e->getMessage(), [
+                        'academic_year' => $academicYear,
+                        'exception' => $e,
+                    ]);
+                }
+            }
+
+            $parts = [];
+            if ($result['imported_count'] > 0) {
+                $parts[] = "{$result['imported_count']} siswa baru ditambahkan";
+            }
+            if ($result['promoted_count'] > 0) {
+                $parts[] = "{$result['promoted_count']} siswa naik/pindah rombel";
+            }
+            if ($result['updated_count'] > 0) {
+                $parts[] = "{$result['updated_count']} data siswa diperbarui";
+            }
+            if ($result['graduated_count'] > 0) {
+                $parts[] = "{$result['graduated_count']} siswa kelas XII lama otomatis dialihkan ke status Alumni";
+            }
+            if (($result['mutated_count'] ?? 0) > 0) {
+                $parts[] = "{$result['mutated_count']} siswa kelas X/XI yang tidak ada di file dialihkan ke status Mutasi/Keluar";
+            }
+
+            $summary = ! empty($parts) ? implode(', ', $parts) : 'Data telah sesuai dan mutakhir';
+
+            // Catat ke log aktivitas dengan path file arsip
+            ActivityLogger::log('import_dapodik', "Sinkronisasi Dapodik {$academicYear} dari file {$origName}", null, [
                 'academic_year' => $academicYear,
+                'original_filename' => $origName,
+                'stored_archive_path' => $storedPath,
+                'summary' => $summary,
+                'activation_status' => $request->boolean('set_as_active_year') ? ($activationFailed ? 'failed' : 'active') : 'unchanged',
             ]);
-        }
 
-        $parts = [];
-        if ($result['imported_count'] > 0) {
-            $parts[] = "{$result['imported_count']} siswa baru ditambahkan";
-        }
-        if ($result['promoted_count'] > 0) {
-            $parts[] = "{$result['promoted_count']} siswa naik/pindah rombel";
-        }
-        if ($result['updated_count'] > 0) {
-            $parts[] = "{$result['updated_count']} data siswa diperbarui";
-        }
-        if ($result['graduated_count'] > 0) {
-            $parts[] = "{$result['graduated_count']} siswa kelas XII lama otomatis dialihkan ke status Alumni";
-        }
-        if (($result['mutated_count'] ?? 0) > 0) {
-            $parts[] = "{$result['mutated_count']} siswa kelas X/XI yang tidak ada di file dialihkan ke status Mutasi/Keluar";
-        }
+            // Jika impor data berhasil namun aktivasi gagal, sampaikan pesan jujur dan tidak menyesatkan
+            if ($activationFailed) {
+                $msg = "Sinkronisasi data siswa dari Dapodik berhasil ({$summary}), NAMUN penetapan Tahun Pelajaran {$academicYear} sebagai tahun aktif sekolah gagal: {$activationErrorMessage}. Data siswa telah tersimpan, silakan tetapkan status tahun aktif secara manual melalui menu Tahun Pelajaran.";
 
-        $summary = ! empty($parts) ? implode(', ', $parts) : 'Data telah sesuai dan mutakhir';
+                return back()->with('warning', $msg);
+            }
 
-        // Catat ke log aktivitas dengan path file arsip
-        ActivityLogger::log('import_dapodik', "Sinkronisasi Dapodik {$academicYear} dari file {$origName}", null, [
-            'academic_year' => $academicYear,
-            'original_filename' => $origName,
-            'stored_archive_path' => $storedPath,
-            'summary' => $summary,
-        ]);
+            $msg = "Sinkronisasi Dapodik & Kenaikan Kelas Berhasil! ({$summary}).";
+            if ($request->boolean('set_as_active_year')) {
+                $msg .= " Tahun Pelajaran {$academicYear} kini resmi aktif.";
+            }
+            if ($result['skipped_count'] > 0) {
+                $msg .= " Catatan: {$result['skipped_count']} baris dilewati karena format tidak lengkap.";
+            }
 
-        $msg = "Sinkronisasi Dapodik & Kenaikan Kelas Berhasil! ({$summary}).";
-        if ($result['skipped_count'] > 0) {
-            $msg .= " Catatan: {$result['skipped_count']} baris dilewati karena format tidak lengkap.";
+            return back()->with('success', $msg);
+        } catch (\Throwable $e) {
+            Log::error('Gagal memproses file Dapodik: '.$e->getMessage(), [
+                'file' => $origName,
+                'exception' => $e,
+            ]);
+
+            return back()->with('error', 'Gagal memproses file Dapodik: Terjadi kesalahan sistem saat memproses file.');
         }
-
-        return back()->with('success', $msg);
     }
 
     public function export(Request $request): StreamedResponse
     {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        $isHomeroom = $user->isHomeroomTeacher();
+
+        if (! $canManageMasterData && ! $isHomeroom) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengekspor data siswa.');
+        }
+
         $tab = $request->query('tab', 'aktif');
-        $graduationYear = $request->query('graduation_year');
+        if (! in_array($tab, ['aktif', 'alumni', 'mutasi'], true)) {
+            $tab = 'aktif';
+        }
+
+        // Wali kelas hanya memiliki hak akses ekspor pada siswa aktif rombel binaannya
+        if (! $canManageMasterData && $tab !== 'aktif') {
+            abort(403, 'Akses ekspor data alumni dan mutasi hanya diperuntukkan bagi pengelola data pokok.');
+        }
+
+        $setting = SchoolSetting::getSetting();
+        $requestedAy = $request->query('academic_year');
+
+        // Validasi tahun ajaran terhadap data tahun ajaran sistem
+        if ($requestedAy) {
+            $activeAy = AcademicYear::where('name', $requestedAy)->first();
+            if (! $activeAy) {
+                abort(404, 'Tahun ajaran tidak valid.');
+            }
+            $academicYear = $requestedAy;
+        } else {
+            $academicYear = session('active_academic_year', $setting->academic_year ?? SchoolSetting::getMasterYear());
+            $activeAy = AcademicYear::where('name', $academicYear)->first();
+        }
+
         $classroomId = $request->query('classroom_id');
+
+        // Pembatasan cakupan rombel dan tahun ajaran untuk wali kelas (hanya rombel aktif yang sah)
+        if (! $canManageMasterData) {
+            $assignedClassrooms = Classroom::where('is_active', true)
+                ->where('homeroom_teacher_id', $user->id)
+                ->get();
+
+            if ($assignedClassrooms->isEmpty()) {
+                abort(403, 'Anda belum ditugaskan sebagai wali kelas pada rombel aktif.');
+            }
+
+            $assignedClassroomIds = $assignedClassrooms->pluck('id')->all();
+
+            // Validasi tahun ajaran untuk wali kelas: harus memiliki rombel aktif pada tahun ajaran yang diminta
+            if ($requestedAy) {
+                $hasActiveInRequestedYear = $assignedClassrooms->contains(fn ($c) => $c->academic_year === $requestedAy);
+                if (! $hasActiveInRequestedYear) {
+                    abort(403, 'Anda tidak memiliki penugasan wali kelas aktif pada tahun ajaran yang diminta.');
+                }
+            }
+
+            // Validasi parameter classroom_id
+            if ($classroomId) {
+                if (! in_array((int) $classroomId, $assignedClassroomIds, true)) {
+                    abort(403, 'Anda tidak memiliki wewenang untuk mengekspor data rombel ini.');
+                }
+                $targetClassroomIds = [(int) $classroomId];
+            } else {
+                $targetClassroomIds = $assignedClassrooms
+                    ->when($requestedAy, fn ($col) => $col->where('academic_year', $requestedAy))
+                    ->pluck('id')
+                    ->all();
+            }
+        } else {
+            // Untuk master data manager: jika classroom_id diberikan, pastikan rombel ada
+            if ($classroomId) {
+                $targetClassroom = Classroom::find($classroomId);
+                if (! $targetClassroom) {
+                    abort(404, 'Rombel tidak ditemukan.');
+                }
+                $targetClassroomIds = [(int) $classroomId];
+            } else {
+                $targetClassroomIds = null;
+            }
+        }
+
+        $graduationYear = $request->query('graduation_year');
         $gender = $request->query('gender');
         $status = $request->query('status');
         $search = $request->query('search');
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
-        $activeAy = AcademicYear::where('name', $academicYear)->first();
+
         [$startYear, $endYear] = $this->parseAcademicYear($academicYear);
         $masterYear = SchoolSetting::getMasterYear();
         $isCurrentOrMasterYear = ($academicYear === $masterYear || (bool) $activeAy?->is_active);
@@ -744,23 +1074,23 @@ class StudentController extends Controller
         } elseif ($tab === 'mutasi') {
             $this->scopeMutasiForYear($query, $academicYear, $activeAy, $startYear, $endYear, $status, $isCurrentOrMasterYear);
         } else {
-            if ($classroomId) {
-                $query->where(function ($cq) use ($classroomId, $activeAy) {
+            if ($targetClassroomIds !== null) {
+                $query->where(function ($cq) use ($targetClassroomIds, $activeAy) {
                     if ($activeAy) {
-                        $cq->whereHas('studentClassrooms', function ($sq) use ($classroomId, $activeAy) {
+                        $cq->whereHas('studentClassrooms', function ($sq) use ($targetClassroomIds, $activeAy) {
                             $sq->where('academic_year_id', $activeAy->id)
-                                ->where('classroom_id', $classroomId)
+                                ->whereIn('classroom_id', $targetClassroomIds)
                                 ->where('status', 'aktif');
                         });
                     }
-                    $cq->orWhere('classroom_id', $classroomId);
+                    $cq->orWhereIn('classroom_id', $targetClassroomIds);
                 });
             } else {
                 $this->scopeActiveForYear($query, $academicYear, $activeAy, $startYear);
             }
         }
 
-        if ($gender && in_array($gender, ['L', 'P'])) {
+        if ($gender && in_array($gender, ['L', 'P'], true)) {
             $query->where('gender', $gender);
         }
         if ($search) {
@@ -776,37 +1106,69 @@ class StudentController extends Controller
         $dateStr = date('Ymd_His');
         $filename = "data-siswa-{$tab}-smk-pgri-kras-{$dateStr}.csv";
 
-        return response()->streamDownload(function () use ($students, $tab) {
+        return response()->streamDownload(function () use ($students, $tab, $canManageMasterData) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF"); // BOM for UTF-8
 
-            fputcsv($handle, [
-                'No',
-                'NISN',
-                'NIS',
-                'NIK',
-                'Nama Siswa',
-                'Jenis Kelamin',
-                'Kelas / Rombel',
-                'Tahun Lulus / Angkatan',
-                'Tempat Lahir',
-                'Tanggal Lahir',
-                'Agama',
-                'Alamat Lengkap',
-                'Nama Ayah',
-                'Pekerjaan Ayah',
-                'No HP Ayah',
-                'Nama Ibu',
-                'Pekerjaan Ibu',
-                'No HP Ibu',
-                'Nama Wali',
-                'Pekerjaan Wali',
-                'No HP Wali',
-                'Kontak Ortu Utama',
-                'No HP Siswa',
-                'Status',
-                'Catatan',
-            ]);
+            // Header kolom dibedakan: pengelola data pokok mendapatkan NIK, wali kelas tidak mendapatkan NIK
+            if ($canManageMasterData) {
+                $headers = [
+                    'No',
+                    'NISN',
+                    'NIS',
+                    'NIK',
+                    'Nama Siswa',
+                    'Jenis Kelamin',
+                    'Kelas / Rombel',
+                    'Tahun Lulus / Angkatan',
+                    'Tempat Lahir',
+                    'Tanggal Lahir',
+                    'Agama',
+                    'Alamat Lengkap',
+                    'Nama Ayah',
+                    'Pekerjaan Ayah',
+                    'No HP Ayah',
+                    'Nama Ibu',
+                    'Pekerjaan Ibu',
+                    'No HP Ibu',
+                    'Nama Wali',
+                    'Pekerjaan Wali',
+                    'No HP Wali',
+                    'Kontak Ortu Utama',
+                    'No HP Siswa',
+                    'Status',
+                    'Catatan',
+                ];
+            } else {
+                $headers = [
+                    'No',
+                    'NISN',
+                    'NIS',
+                    'Nama Siswa',
+                    'Jenis Kelamin',
+                    'Kelas / Rombel',
+                    'Tahun Lulus / Angkatan',
+                    'Tempat Lahir',
+                    'Tanggal Lahir',
+                    'Agama',
+                    'Alamat Lengkap',
+                    'Nama Ayah',
+                    'Pekerjaan Ayah',
+                    'No HP Ayah',
+                    'Nama Ibu',
+                    'Pekerjaan Ibu',
+                    'No HP Ibu',
+                    'Nama Wali',
+                    'Pekerjaan Wali',
+                    'No HP Wali',
+                    'Kontak Ortu Utama',
+                    'No HP Siswa',
+                    'Status',
+                    'Catatan',
+                ];
+            }
+
+            fputcsv($handle, $headers);
 
             foreach ($students as $index => $s) {
                 $enrolment = $s->studentClassrooms->first();
@@ -821,33 +1183,64 @@ class StudentController extends Controller
                     default => $s->status_label,
                 };
 
-                fputcsv($handle, [
-                    $index + 1,
-                    $s->nisn,
-                    $s->nis,
-                    $s->nik,
-                    $s->name,
-                    $s->gender === 'P' ? 'Perempuan' : 'Laki-laki',
-                    $className,
-                    $s->graduation_year ?: ($s->entry_year ? "Angkatan {$s->entry_year}" : '-'),
-                    $s->birth_place,
-                    $s->birth_date?->format('d/m/Y'),
-                    $s->religion,
-                    $s->address,
-                    $s->father_name,
-                    $s->father_job,
-                    $s->father_phone,
-                    $s->mother_name,
-                    $s->mother_job,
-                    $s->mother_phone,
-                    $s->guardian_name,
-                    $s->guardian_job,
-                    $s->guardian_phone,
-                    $s->phone_parent,
-                    $s->phone_student,
-                    $statusLabel,
-                    $s->notes,
-                ]);
+                if ($canManageMasterData) {
+                    $row = [
+                        $index + 1,
+                        $s->nisn,
+                        $s->nis,
+                        $s->nik,
+                        $s->name,
+                        $s->gender === 'P' ? 'Perempuan' : 'Laki-laki',
+                        $className,
+                        $s->graduation_year ?: ($s->entry_year ? "Angkatan {$s->entry_year}" : '-'),
+                        $s->birth_place,
+                        $s->birth_date?->format('d/m/Y'),
+                        $s->religion,
+                        $s->address,
+                        $s->father_name,
+                        $s->father_job,
+                        $s->father_phone,
+                        $s->mother_name,
+                        $s->mother_job,
+                        $s->mother_phone,
+                        $s->guardian_name,
+                        $s->guardian_job,
+                        $s->guardian_phone,
+                        $s->phone_parent,
+                        $s->phone_student,
+                        $statusLabel,
+                        $s->notes,
+                    ];
+                } else {
+                    $row = [
+                        $index + 1,
+                        $s->nisn,
+                        $s->nis,
+                        $s->name,
+                        $s->gender === 'P' ? 'Perempuan' : 'Laki-laki',
+                        $className,
+                        $s->graduation_year ?: ($s->entry_year ? "Angkatan {$s->entry_year}" : '-'),
+                        $s->birth_place,
+                        $s->birth_date?->format('d/m/Y'),
+                        $s->religion,
+                        $s->address,
+                        $s->father_name,
+                        $s->father_job,
+                        $s->father_phone,
+                        $s->mother_name,
+                        $s->mother_job,
+                        $s->mother_phone,
+                        $s->guardian_name,
+                        $s->guardian_job,
+                        $s->guardian_phone,
+                        $s->phone_parent,
+                        $s->phone_student,
+                        $statusLabel,
+                        $s->notes,
+                    ];
+                }
+
+                fputcsv($handle, $row);
             }
 
             fclose($handle);
@@ -934,7 +1327,7 @@ class StudentController extends Controller
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachmentName = $file->getClientOriginalName();
-            $attachmentPath = $file->store('student_mutations', 'public');
+            $attachmentPath = $file->store('student_mutations', 'local');
         }
 
         DB::transaction(function () use ($student, $validated, $attachmentPath, $attachmentName) {
@@ -982,8 +1375,12 @@ class StudentController extends Controller
         $student = $mutation->student;
 
         DB::transaction(function () use ($mutation, $student) {
-            if ($mutation->attachment_path && Storage::disk('public')->exists($mutation->attachment_path)) {
-                Storage::disk('public')->delete($mutation->attachment_path);
+            if ($mutation->attachment_path) {
+                if (Storage::disk('local')->exists($mutation->attachment_path)) {
+                    Storage::disk('local')->delete($mutation->attachment_path);
+                } elseif (Storage::disk('public')->exists($mutation->attachment_path)) {
+                    Storage::disk('public')->delete($mutation->attachment_path);
+                }
             }
 
             $prevClassroomId = $mutation->classroom_id;
@@ -1021,10 +1418,22 @@ class StudentController extends Controller
      */
     public function downloadMutationAttachment(StudentMutation $mutation)
     {
-        if (! $mutation->attachment_path || ! Storage::disk('public')->exists($mutation->attachment_path)) {
+        $path = $mutation->attachment_path;
+        if (! $path || str_contains($path, '..')) {
             return back()->with('error', 'Berkas bukti pendukung tidak ditemukan pada server.');
         }
 
-        return Storage::disk('public')->download($mutation->attachment_path, $mutation->attachment_name ?: 'dokumen-mutasi.pdf');
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            return back()->with('error', 'Berkas bukti pendukung tidak ditemukan pada server.');
+        }
+
+        return Storage::disk($disk)->download($path, $mutation->attachment_name ?: 'dokumen-mutasi.pdf');
     }
 }

@@ -114,6 +114,10 @@ Route::middleware('auth')->group(function () {
     Route::get('siswa/template-import', [StudentController::class, 'downloadTemplate'])->name('students.template');
     Route::get('siswa/{student}', [StudentController::class, 'show'])->name('students.show')->whereNumber('student');
 
+    // Akses Berkas Tanda Tangan Digital Terotorisasi (FND-04)
+    Route::get('structural-positions/{structuralPosition}/signature', [StructuralPositionController::class, 'viewSignature'])->name('structural-positions.signature');
+    Route::get('stakeholders/{stakeholder}/signature', [SchoolStakeholderController::class, 'viewSignature'])->name('stakeholders.signature');
+
     // Data Pokok (Tahun Ajaran, Jurusan, Tingkat & Rombel, Mata Pelajaran, Penugasan Guru, Pejabat)
     Route::middleware('permission:manage_master_data')->group(function () {
         // Kenaikan & Kelulusan Kelas (Alumni) & Pindah Rombel
@@ -161,6 +165,7 @@ Route::middleware('auth')->group(function () {
         Route::post('siswa/mutasi', [StudentController::class, 'recordMutation'])->name('students.mutations.store');
         Route::delete('siswa/mutasi/{mutation}', [StudentController::class, 'destroyMutation'])->name('students.mutations.destroy');
         Route::get('siswa/mutasi/download/{mutation}', [StudentController::class, 'downloadMutationAttachment'])->name('students.mutations.download');
+        Route::get('siswa/{student}/edit-data', [StudentController::class, 'editData'])->name('students.edit-data')->whereNumber('student');
         Route::put('siswa/{student}', [StudentController::class, 'update'])->name('students.update');
         Route::delete('siswa/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
     });
@@ -246,6 +251,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('supervisi')->name('supervisions.')->group(function () {
         Route::get('/{supervision}', [SupervisionConductController::class, 'show'])->name('show');
         Route::post('/{supervision}/upload-rpp', [SupervisionConductController::class, 'uploadRpp'])->name('upload-rpp');
+        Route::get('/{supervision}/unduh-rpp', [SupervisionConductController::class, 'downloadRpp'])->name('download-rpp');
+        Route::get('/foto/{photo}', [SupervisionConductController::class, 'viewPhoto'])->name('view-photo');
 
         // Tahap 1: Praobservasi
         Route::get('/{supervision}/praobservasi', [SupervisionConductController::class, 'preObservation'])->name('pre-observation');
@@ -328,6 +335,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('catatan-perbaikan')->name('feedbacks.')->group(function () {
         Route::get('/', [AppFeedbackController::class, 'index'])->name('index');
         Route::post('/', [AppFeedbackController::class, 'store'])->name('store');
+        Route::get('/{feedback}/lampiran', [AppFeedbackController::class, 'downloadAttachment'])->name('attachment');
         Route::put('/{feedback}/tanggapan', [AppFeedbackController::class, 'updateResponse'])->name('response');
         Route::delete('/{feedback}', [AppFeedbackController::class, 'destroy'])->name('destroy');
     });
@@ -382,6 +390,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // 6. Perizinan Siswa
+        Route::get('perizinan/{permit}/lampiran', [PiketPermitController::class, 'downloadAttachment'])->name('permits.attachment');
         Route::middleware('permission:operate_piket')->group(function () {
             Route::get('perizinan', [PiketPermitController::class, 'index'])->name('permits.index');
             Route::get('perizinan/buat', [PiketPermitController::class, 'create'])->name('permits.create');
@@ -400,6 +409,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // 8. Catatan Kejadian / Kasus
+        Route::get('kasus/{incident}/foto', [PiketIncidentController::class, 'viewPhoto'])->name('incidents.photo');
         Route::middleware('permission:manage_piket_cases')->group(function () {
             Route::get('kasus', [PiketIncidentController::class, 'index'])->name('incidents.index');
             Route::get('kasus/catat', [PiketIncidentController::class, 'create'])->name('incidents.create');
@@ -454,6 +464,11 @@ Route::middleware('auth')->group(function () {
         Route::post('pengguna/{user}/toggle-status', [UserManagementController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::delete('pengguna/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
 
+        // Penugasan Role Kontekstual (Fase 2)
+        Route::post('pengguna/{user}/penugasan', [UserManagementController::class, 'storeAssignment'])->name('users.assignments.store');
+        Route::delete('pengguna/penugasan/{assignment}', [UserManagementController::class, 'destroyAssignment'])->name('users.assignments.destroy');
+        Route::post('pengguna/penugasan/{assignment}/toggle', [UserManagementController::class, 'toggleAssignmentStatus'])->name('users.assignments.toggle');
+
         // User Aktif & Monitoring Sesi
         Route::get('user-aktif', [ActiveUserController::class, 'index'])->name('active-users.index');
         Route::delete('user-aktif/sesi/{sessionId}', [ActiveUserController::class, 'destroySession'])->name('active-users.destroy-session');
@@ -481,6 +496,7 @@ Route::middleware('auth')->group(function () {
         Route::prefix('geotag')->name('geotag.')->group(function () {
             Route::get('/', [GeotagAttendanceController::class, 'index'])->name('index');
             Route::post('/simpan', [GeotagAttendanceController::class, 'store'])->name('store');
+            Route::get('/selfie/{log}', [GeotagAttendanceController::class, 'viewSelfie'])->name('selfie');
         });
 
         // Presensi Siswa oleh Guru Mapel (Masuk Kelas & Tukar Jam)
@@ -510,6 +526,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/izin-cuti-gtk/ajukan', [GtkPermitController::class, 'create'])->name('gtk-permits.create');
         Route::get('/izin-cuti-gtk', [GtkPermitController::class, 'index'])->name('gtk-permits.index');
         Route::post('/izin-cuti-gtk', [GtkPermitController::class, 'store'])->name('gtk-permits.store');
+        Route::get('/izin-cuti-gtk/{gtkPermit}/dokumen', [GtkPermitController::class, 'downloadDocument'])->name('gtk-permits.document');
         Route::post('/izin-cuti-gtk/sinkron-piket', [GtkPermitController::class, 'syncPiket'])->name('gtk-permits.sync-piket');
         Route::post('/izin-cuti-gtk/{gtkPermit}/setujui', [GtkPermitController::class, 'approve'])->name('gtk-permits.approve');
         Route::post('/izin-cuti-gtk/{gtkPermit}/tolak', [GtkPermitController::class, 'reject'])->name('gtk-permits.reject');

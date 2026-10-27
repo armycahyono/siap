@@ -32,16 +32,14 @@ class CurriculumScheduleTest extends TestCase
     {
         parent::setUp();
 
-        $adminRole = Role::create([
+        $adminRole = Role::firstOrCreate(['slug' => 'super_admin'], [
             'name' => 'Super Admin',
-            'slug' => 'super_admin',
             'description' => 'Administrator',
             'is_system' => true,
         ]);
 
-        $teacherRole = Role::create([
+        $teacherRole = Role::firstOrCreate(['slug' => 'guru'], [
             'name' => 'Guru',
-            'slug' => 'guru',
             'description' => 'Guru Pengampu',
             'is_system' => false,
         ]);

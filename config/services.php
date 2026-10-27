@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'adms' => [
+        'server_ip' => env('ADMS_SERVER_IP'),
+        'server_port' => env('ADMS_SERVER_PORT'),
+    ],
+
 ];

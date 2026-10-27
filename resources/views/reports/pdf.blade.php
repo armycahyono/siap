@@ -115,7 +115,7 @@
     <div class="section-title">A. Identitas Guru & KBM</div>
     @php
         $teacherIdLabel = !empty($teacher['nip']) ? 'NIP' : 'NIGS';
-        $teacherIdVal = !empty($teacher['nip']) ? $teacher['nip'] : ($teacher['nigs_fix'] ?? $teacher['nigs'] ?? '-');
+        $teacherIdVal = !empty($teacher['nip']) ? $teacher['nip'] : ($teacher['nigs'] ?? '-');
         $hasValidNuptk = !empty($teacher['nuptk']);
     @endphp
     <table>

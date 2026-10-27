@@ -42,6 +42,10 @@ class PiketStudentPermit extends Model
         'notified_subject_teacher' => 'boolean',
     ];
 
+    protected $appends = [
+        'attachment_url',
+    ];
+
     public function journal(): BelongsTo
     {
         return $this->belongsTo(PiketJournal::class, 'piket_journal_id');
@@ -137,5 +141,14 @@ class PiketStudentPermit extends Model
         }
 
         return null;
+    }
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return route('piket.permits.attachment', $this);
     }
 }

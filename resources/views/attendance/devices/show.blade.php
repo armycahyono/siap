@@ -24,7 +24,7 @@
                     <span class="badge bg-blue-lt font-monospace px-2 py-1">SN: {{ $device->device_sn ?: 'Belum Terdeteksi' }}</span>
                 </div>
                 <div class="text-secondary small mt-1">
-                    IP: <strong>{{ $device->ip_address }}:{{ $device->port }}</strong> &bull; Server ADMS: <strong>192.168.1.10:{{ $device->server_port }}</strong> &bull; Terakhir Aktif: <span id="liveDeviceActivity">{{ $device->last_activity_at ? $device->last_activity_at->diffForHumans() : '-' }}</span>
+                    IP: <strong>{{ $device->ip_address }}:{{ $device->port }}</strong> &bull; Server ADMS: <strong>{{ $serverIp }}:{{ $device->server_port ?: $serverPort }}</strong> &bull; Terakhir Aktif: <span id="liveDeviceActivity">{{ $device->last_activity_at ? $device->last_activity_at->diffForHumans() : '-' }}</span>
                 </div>
             </div>
             <div class="col-auto ms-auto d-print-none">

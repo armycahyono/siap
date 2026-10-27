@@ -290,8 +290,7 @@ class AttendanceDeviceService
         // Mesin ZKTeco/Solution menolak template (Return=-10) jika PIN belum terdaftar di memori USERINFO mesin
         $teachers = User::operationalPersonnel()
             ->where(function ($q) use ($uniquePins) {
-                $q->whereIn('nigs_fix', $uniquePins)
-                    ->orWhereIn('nigs', $uniquePins)
+                $q->whereIn('nigs', $uniquePins)
                     ->orWhereIn('id', $uniquePins);
             })
             ->get();
@@ -303,7 +302,7 @@ class AttendanceDeviceService
         })->get();
 
         foreach ($uniquePins as $pin) {
-            $matchedTeacher = $teachers->first(fn ($t) => (string) ($t->nigs_fix ?: ($t->nigs ?: $t->id)) === (string) $pin || (string) $t->id === (string) $pin);
+            $matchedTeacher = $teachers->first(fn ($t) => (string) ($t->nigs ?: $t->id) === (string) $pin || (string) $t->id === (string) $pin);
             $matchedStudent = $students->first(fn ($s) => (string) ($s->nisn ?: ($s->nis ?: $s->id)) === (string) $pin || (string) $s->id === (string) $pin);
 
             $userName = $matchedTeacher?->name ?? ($matchedStudent?->name ?? 'User '.$pin);
@@ -617,5 +616,68 @@ print(success)
         }
 
         return (~$sum) & 0xFFFF;
+    }
+
+    /**
+     * Resolve the active server network IP, Port, and domain for ADMS communication.
+     *
+     * @return array{ip: string, port: int, domain: ?string, domain_port: int}
+     */
+    public function getActiveServerNetwork(): array
+    {
+        // 1. Port resolution
+        $configuredPort = config('services.adms.server_port');
+        $defaultPort = (int) ($configuredPort
+            ?: request()->server('SERVER_PORT')
+            ?: request()->getPort()
+            ?: 80);
+
+        // Physical devices on LAN connect via plain HTTP (port 80) even if accessed via HTTPS (443) proxy
+        $lanPort = in_array($defaultPort, [443, 8443], true) ? 80 : $defaultPort;
+
+        // 2. IP resolution
+        $serverIp = config('services.adms.server_ip');
+
+        if (! $serverIp) {
+            $host = request()->getHost();
+            if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && $host !== '127.0.0.1') {
+                $serverIp = $host;
+            }
+        }
+
+        if (! $serverIp) {
+            $serverAddr = request()->server('SERVER_ADDR');
+            if (filter_var($serverAddr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && $serverAddr !== '127.0.0.1') {
+                $serverIp = $serverAddr;
+            }
+        }
+
+        if (! $serverIp && PHP_OS_FAMILY === 'Linux') {
+            $detected = trim((string) @shell_exec("hostname -I | awk '{print $1}'"));
+            if (filter_var($detected, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                $serverIp = $detected;
+            }
+        }
+
+        if (! $serverIp) {
+            $resolved = @gethostbyname(gethostname());
+            if (filter_var($resolved, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && $resolved !== '127.0.0.1') {
+                $serverIp = $resolved;
+            }
+        }
+
+        if (! $serverIp || $serverIp === '127.0.0.1') {
+            $serverIp = '192.168.1.50';
+        }
+
+        $domain = request()->getHost();
+        $isDomain = ! filter_var($domain, FILTER_VALIDATE_IP) && ! str_ends_with($domain, '.test') && $domain !== 'localhost';
+
+        return [
+            'ip' => $serverIp,
+            'port' => $lanPort,
+            'domain' => $isDomain ? $domain : null,
+            'domain_port' => $defaultPort,
+        ];
     }
 }

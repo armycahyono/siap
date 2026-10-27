@@ -30,6 +30,10 @@ class AppFeedback extends Model
         'responded_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'attachment_url',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -113,5 +117,14 @@ class AppFeedback extends Model
             'rendah' => 'secondary',
             default => 'secondary',
         };
+    }
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return route('feedbacks.attachment', $this);
     }
 }

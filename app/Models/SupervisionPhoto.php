@@ -32,6 +32,6 @@ class SupervisionPhoto extends Model
 
     public function getUrlAttribute(): string
     {
-        return asset('storage/'.$this->file_path);
+        return route('supervisions.view-photo', $this);
     }
 }

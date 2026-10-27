@@ -125,8 +125,8 @@
                     </td>
                     <td>
                         @if($item->signature_image_path)
-                            <a href="{{ asset('storage/' . $item->signature_image_path) }}" target="_blank">
-                                <img src="{{ asset('storage/' . $item->signature_image_path) }}" alt="TTD" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white">
+                            <a href="{{ route('stakeholders.signature', $item) }}" target="_blank">
+                                <img src="{{ route('stakeholders.signature', $item) }}" alt="TTD" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white">
                             </a>
                         @else
                             <span class="text-muted small fst-italic">-</span>
@@ -251,7 +251,7 @@
                                             <small class="text-muted">Maksimal 2MB. Disarankan berlatar transparan.</small>
                                             @if($item->signature_image_path)
                                                 <div class="mt-2 p-2 bg-light rounded border d-flex align-items-center justify-content-between">
-                                                    <img src="{{ asset('storage/' . $item->signature_image_path) }}" alt="TTD" style="height: 35px;">
+                                                    <img src="{{ route('stakeholders.signature', $item) }}" alt="TTD" style="height: 35px;">
                                                     <div class="form-check">
                                                         <input class="form-check-input" type="checkbox" name="remove_signature" value="1" id="del_sig_{{ $item->id }}">
                                                         <label class="form-check-label text-danger small" for="del_sig_{{ $item->id }}">Hapus Scan TTD</label>

@@ -47,6 +47,7 @@ class UserManagementTest extends TestCase
             'email' => 'superadmin@sekolah.sch.id',
             'password' => Hash::make('password123'),
             'role_id' => $this->superAdminRole->id,
+            'position' => 'administrator',
             'is_active' => true,
         ]);
 
@@ -56,6 +57,7 @@ class UserManagementTest extends TestCase
             'email' => 'guru1@sekolah.sch.id',
             'password' => Hash::make('password123'),
             'role_id' => $this->guruRole->id,
+            'position' => 'guru',
             'is_active' => true,
         ]);
     }
@@ -90,7 +92,7 @@ class UserManagementTest extends TestCase
                 'role_id' => $this->superAdminRole->id,
                 'password' => 'secret1234',
                 'password_confirmation' => 'secret1234',
-                'position' => 'Super Admin Cadangan',
+                'position' => 'administrator',
                 'phone' => '081299998888',
                 'is_active' => 1,
             ]);
@@ -119,7 +121,8 @@ class UserManagementTest extends TestCase
                 'username' => 'guru1_edited',
                 'email' => 'guru1_new@sekolah.sch.id',
                 'role_id' => $this->kurikulumRole->id,
-                'position' => 'Koordinator Kurikulum',
+                'position' => 'guru',
+                'nigs' => '48902',
                 'nip' => '198501012010011001',
                 'phone' => '081234567890',
                 'is_active' => 1,
@@ -134,6 +137,8 @@ class UserManagementTest extends TestCase
             'username' => 'guru1_edited',
             'email' => 'guru1_new@sekolah.sch.id',
             'role_id' => $this->kurikulumRole->id,
+            'position' => 'guru',
+            'nigs' => '48902',
             'nip' => '198501012010011001',
         ]);
     }
@@ -147,6 +152,7 @@ class UserManagementTest extends TestCase
                 'username' => $this->superAdmin->username,
                 'email' => $this->superAdmin->email,
                 'role_id' => $this->guruRole->id, // Try demoting to guru
+                'position' => 'administrator',
                 'is_active' => 1,
             ]);
 
@@ -240,7 +246,7 @@ class UserManagementTest extends TestCase
                 'role_id' => $operatorRole->id,
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
-                'position' => 'Operator Pembagian Jam & Jadwal',
+                'position' => 'guru',
                 'is_active' => 1,
             ]);
 

@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AdmsController extends Controller
@@ -50,13 +51,20 @@ class AdmsController extends Controller
 
         // 2. Data Push request (POST)
         $rawContent = $request->getContent();
-        Log::info("ADMS Push [SN: {$sn}, Table: {$table}]: ".substr($rawContent, 0, 500));
 
-        if (! $device->is_active) {
-            Log::warning("ADMS Push [SN: {$sn}, IP: {$request->ip()}] diabaikan karena mesin belum diverifikasi admin.");
+        if (! $device || ! $device->is_active) {
+            Log::warning("ADMS Push [SN: {$sn}, IP: {$request->ip()}] diabaikan karena mesin belum diverifikasi admin atau IP tidak valid.");
 
             return response("OK: 0\n", 200, ['Content-Type' => 'text/plain']);
         }
+
+        if (! $this->verifyDeviceCommKey($request, $device)) {
+            Log::warning("ADMS Push [SN: {$sn}, IP: {$request->ip()}] diabaikan karena CommKey tidak cocok.");
+
+            return response("OK: 0\n", 200, ['Content-Type' => 'text/plain']);
+        }
+
+        Log::info("ADMS Push [SN: {$sn}, Table: {$table}]: ".substr($rawContent, 0, 500));
 
         $count = 0;
         if ($table === 'OPERLOG' || $table === 'FINGERTMP' || $table === 'BIODATA' || $table === 'BIOPHOTO' || (str_contains($rawContent, 'PIN=') && str_contains($rawContent, 'TMP='))) {
@@ -77,6 +85,18 @@ class AdmsController extends Controller
         $raw = $request->getContent();
         $ip = $request->ip();
 
+        // Validasi karakteristik payload Revo/FKDataHS:
+        // Revo mengirim payload biner berawalan \x10/\x11 atau string JSON dengan fk_info / user_id / data
+        $isJsonPayload = (str_contains($raw, '{') && str_contains($raw, '}'));
+        $isBinaryFk = str_starts_with($raw, "\x10") || str_starts_with($raw, "\x11");
+        $isAttlogLines = (str_contains($raw, "\t") && preg_match('/^[0-9A-Za-z_-]+\t[0-9]{4}-[0-9]{2}-[0-9]{2}/m', $raw));
+
+        if (! $isJsonPayload && ! $isBinaryFk && ! $isAttlogLines) {
+            Log::warning("Revo Root Push from {$ip} rejected: payload tidak sesuai format mesin presensi.");
+
+            return response('Bad Request: Invalid push payload format', 400);
+        }
+
         Log::info("REVO ROOT PUSH from {$ip}:", [
             'method' => $request->method(),
             'query' => $request->query(),
@@ -88,8 +108,18 @@ class AdmsController extends Controller
         $sn = $request->input('SN', $request->query('SN', ''));
         $device = $this->resolveDevice($sn, $ip);
 
-        if (! $device->is_active) {
-            Log::warning("Revo Root Push [SN: {$sn}, IP: {$ip}] diabaikan karena mesin belum diverifikasi admin.");
+        if (! $device || ! $device->is_active) {
+            Log::warning("Revo Root Push [SN: {$sn}, IP: {$ip}] diabaikan karena mesin belum diverifikasi admin atau IP tidak valid.");
+
+            return response("result=OK\n", 200, [
+                'Content-Type' => 'text/plain',
+                'Connection' => 'close',
+                'response_code' => 'OK',
+            ]);
+        }
+
+        if (! $this->verifyDeviceCommKey($request, $device)) {
+            Log::warning("Revo Root Push [SN: {$sn}, IP: {$ip}] diabaikan karena CommKey tidak cocok.");
 
             return response("result=OK\n", 200, [
                 'Content-Type' => 'text/plain',
@@ -114,57 +144,55 @@ class AdmsController extends Controller
             $this->processRawLines($raw, $device);
         }
 
-        // Check if there is a pending SET_TIME command for this device
-        $pendingCmd = AttendanceDeviceCommand::where('status', 'pending')
-            ->where(function ($q) use ($sn) {
-                if (! empty($sn)) {
-                    $q->where('device_sn', $sn);
+        // Check if there is a pending command for this specific active device
+        $targetSn = $device->device_sn;
+        if (! empty($targetSn)) {
+            $pendingCmd = AttendanceDeviceCommand::where('status', 'pending')
+                ->where('device_sn', $targetSn)
+                ->latest()
+                ->first();
+
+            if ($pendingCmd) {
+                $cmdName = $pendingCmd->command;
+
+                if ($cmdName === 'SET_TIME') {
+                    $nowStr = now()->format('YmdHis');
+                    $payloadJson = json_encode(['time' => $nowStr]);
+                    $prefix = pack('V', strlen($payloadJson));
+                    $body = $prefix.$payloadJson."\0";
+
+                    $pendingCmd->update([
+                        'status' => 'executed',
+                        'executed_at' => now(),
+                        'response' => "Injected SET_TIME {$nowStr}",
+                    ]);
+
+                    Log::info("AdmsController: Injected SET_TIME ({$nowStr}) to device in response to heartbeat");
+
+                    return response($body, 200, [
+                        'Content-Type' => 'application/octet-stream',
+                        'Connection' => 'close',
+                        'response_code' => 'OK',
+                        'cmd_code' => 'SET_TIME',
+                    ]);
                 }
-                $q->orWhere('device_sn', 'REVO_TEST');
-            })
-            ->latest()
-            ->first();
 
-        if ($pendingCmd) {
-            $cmdName = $pendingCmd->command;
+                if (in_array($cmdName, ['CLEAR_ENROLL_DATA', 'CLEAR_LOG_DATA', 'CLEAR_ALL_ADMIN'])) {
+                    $pendingCmd->update([
+                        'status' => 'executed',
+                        'executed_at' => now(),
+                        'response' => "Injected {$cmdName}",
+                    ]);
 
-            if ($cmdName === 'SET_TIME') {
-                $nowStr = now()->format('YmdHis');
-                $payloadJson = json_encode(['time' => $nowStr]);
-                $prefix = pack('V', strlen($payloadJson));
-                $body = $prefix.$payloadJson."\0";
+                    Log::info("AdmsController: Injected {$cmdName} to device in response to heartbeat");
 
-                $pendingCmd->update([
-                    'status' => 'executed',
-                    'executed_at' => now(),
-                    'response' => "Injected SET_TIME {$nowStr}",
-                ]);
-
-                Log::info("AdmsController: Injected SET_TIME ({$nowStr}) to device in response to heartbeat");
-
-                return response($body, 200, [
-                    'Content-Type' => 'application/octet-stream',
-                    'Connection' => 'close',
-                    'response_code' => 'OK',
-                    'cmd_code' => 'SET_TIME',
-                ]);
-            }
-
-            if (in_array($cmdName, ['CLEAR_ENROLL_DATA', 'CLEAR_LOG_DATA', 'CLEAR_ALL_ADMIN'])) {
-                $pendingCmd->update([
-                    'status' => 'executed',
-                    'executed_at' => now(),
-                    'response' => "Injected {$cmdName}",
-                ]);
-
-                Log::info("AdmsController: Injected {$cmdName} to device in response to heartbeat");
-
-                return response('', 200, [
-                    'Content-Type' => 'application/octet-stream',
-                    'Connection' => 'close',
-                    'response_code' => 'OK',
-                    'cmd_code' => $cmdName,
-                ]);
+                    return response('', 200, [
+                        'Content-Type' => 'application/octet-stream',
+                        'Connection' => 'close',
+                        'response_code' => 'OK',
+                        'cmd_code' => $cmdName,
+                    ]);
+                }
             }
         }
 
@@ -182,34 +210,54 @@ class AdmsController extends Controller
      */
     public function getrequest(Request $request): Response
     {
-        $sn = $request->query('SN', '');
+        $sn = $request->query('SN', $request->input('SN', ''));
+        $ip = $request->ip();
 
-        if (! empty($sn)) {
-            AttendanceDevice::where('device_sn', $sn)->update([
-                'status' => 'online',
-                'last_activity_at' => now(),
-            ]);
+        if (empty($sn)) {
+            return response("OK\n", 200, ['Content-Type' => 'text/plain']);
+        }
 
-            $device = AttendanceDevice::where('device_sn', $sn)->first();
-            if ($device && ! $device->is_active) {
-                return response("OK\n", 200, ['Content-Type' => 'text/plain']);
+        $device = AttendanceDevice::where('device_sn', $sn)->first();
+
+        // Verifikasi 1: Perangkat harus terdaftar dan aktif
+        if (! $device || ! $device->is_active) {
+            return response("OK\n", 200, ['Content-Type' => 'text/plain']);
+        }
+
+        // Verifikasi 2: IP pengirim harus sesuai dengan IP perangkat terdaftar
+        if ($device->ip_address && $device->ip_address !== $ip) {
+            Log::warning("ADMS getrequest: Untrusted command request for [SN: {$sn}] from mismatched IP [{$ip}]. Expected [{$device->ip_address}]. Commands blocked.");
+
+            return response("OK\n", 200, ['Content-Type' => 'text/plain']);
+        }
+
+        // Verifikasi 3: CommKey jika dikonfigurasi
+        if (! $this->verifyDeviceCommKey($request, $device)) {
+            Log::warning("ADMS getrequest: CommKey mismatch for [SN: {$sn}]. Commands blocked.");
+
+            return response("OK\n", 200, ['Content-Type' => 'text/plain']);
+        }
+
+        // Update status online hanya setelah seluruh pemeriksaan identitas lolos
+        $device->update([
+            'status' => 'online',
+            'last_activity_at' => now(),
+        ]);
+
+        $commands = AttendanceDeviceCommand::where('device_sn', $sn)
+            ->where('status', 'pending')
+            ->oldest()
+            ->take(30)
+            ->get();
+
+        if ($commands->isNotEmpty()) {
+            $output = '';
+            foreach ($commands as $command) {
+                $command->update(['status' => 'sent']);
+                $output .= "C:{$command->id}:{$command->command}\n";
             }
 
-            $commands = AttendanceDeviceCommand::where('device_sn', $sn)
-                ->where('status', 'pending')
-                ->oldest()
-                ->take(30)
-                ->get();
-
-            if ($commands->isNotEmpty()) {
-                $output = '';
-                foreach ($commands as $command) {
-                    $command->update(['status' => 'sent']);
-                    $output .= "C:{$command->id}:{$command->command}\n";
-                }
-
-                return response($output, 200, ['Content-Type' => 'text/plain']);
-            }
+            return response($output, 200, ['Content-Type' => 'text/plain']);
         }
 
         return response("OK\n", 200, ['Content-Type' => 'text/plain']);
@@ -220,6 +268,16 @@ class AdmsController extends Controller
      */
     public function devicecmd(Request $request): Response
     {
+        $sn = trim((string) $request->query('SN', $request->input('SN', '')));
+        $ip = $request->ip();
+
+        // 1. Parameter SN wajib disertakan dan tidak boleh kosong
+        if (empty($sn)) {
+            Log::warning("ADMS devicecmd: Request ditolak dari IP [{$ip}] karena parameter SN kosong atau tidak dikirim.");
+
+            return response("OK\n", 200, ['Content-Type' => 'text/plain']);
+        }
+
         $raw = $request->getContent();
         $lines = explode("\n", trim($raw));
 
@@ -233,64 +291,142 @@ class AdmsController extends Controller
             $id = $parsed['ID'] ?? null;
             $return = $parsed['Return'] ?? null;
 
-            if ($id) {
-                $cmd = AttendanceDeviceCommand::find($id);
-                if ($cmd) {
-                    $isSuccess = ($return === '0' || $return === 0);
-                    $cmd->update([
-                        'status' => $isSuccess ? 'executed' : 'failed',
-                        'response' => $line,
-                        'executed_at' => now(),
-                    ]);
+            if (! $id) {
+                continue;
+            }
 
-                    if ($isSuccess && ! empty($cmd->device_sn)) {
-                        // 1. Jika perintah kirim biometrik (FINGERTMP) berhasil dieksekusi di mesin
-                        if (str_contains($cmd->command, 'DATA UPDATE FINGERTMP')) {
-                            preg_match('/PIN=([^\t\s]+)/', $cmd->command, $mPin);
-                            preg_match('/FID=([0-9]+)/', $cmd->command, $mFid);
-                            if (! empty($mPin[1])) {
-                                AttendanceDeviceBiometric::updateOrCreate(
-                                    [
-                                        'device_sn' => $cmd->device_sn,
-                                        'pin' => $mPin[1],
-                                        'bio_type' => 'fingerprint',
-                                        'finger_id' => isset($mFid[1]) ? (int) $mFid[1] : 0,
-                                    ],
-                                    ['synced_at' => now()]
-                                );
-                            }
-                        }
+            $cmd = AttendanceDeviceCommand::find($id);
+            if (! $cmd) {
+                continue;
+            }
 
-                        // 2. Jika perintah kirim biometrik wajah (BIOPHOTO/FACE) berhasil
-                        if (str_contains($cmd->command, 'DATA UPDATE BIOPHOTO') || str_contains($cmd->command, 'DATA UPDATE FACE')) {
-                            preg_match('/PIN=([^\t\s]+)/', $cmd->command, $mPin);
-                            if (! empty($mPin[1])) {
-                                AttendanceDeviceBiometric::updateOrCreate(
-                                    [
-                                        'device_sn' => $cmd->device_sn,
-                                        'pin' => $mPin[1],
-                                        'bio_type' => 'face',
-                                        'finger_id' => 0,
-                                    ],
-                                    ['synced_at' => now()]
-                                );
-                            }
-                        }
+            // 2. Wajibkan SN pada request cocok persis dengan device_sn milik command
+            if ($cmd->device_sn !== $sn) {
+                Log::warning("ADMS devicecmd: SN pengirim [{$sn}] tidak cocok dengan target perintah ID {$id} [{$cmd->device_sn}]. Konfirmasi ditolak.");
 
-                        // 3. Jika perintah format/kosongkan user dijalankan di mesin
-                        if ($cmd->command === 'CLEAR DATA' || $cmd->command === 'CLEAR_ENROLL_DATA') {
-                            AttendanceDeviceBiometric::where('device_sn', $cmd->device_sn)->delete();
+                continue;
+            }
+
+            // 3. Verifikasi perangkat target terdaftar dan aktif
+            $targetDevice = AttendanceDevice::where('device_sn', $cmd->device_sn)->first();
+            if (! $targetDevice || ! $targetDevice->is_active) {
+                Log::warning("ADMS devicecmd: Konfirmasi perintah ID {$id} diabaikan karena perangkat target [{$cmd->device_sn}] tidak aktif/terdaftar.");
+
+                continue;
+            }
+
+            // 4. Verifikasi IP pengirim terhadap target device (wajib terdaftar dan cocok persis)
+            if (empty($targetDevice->ip_address) || $targetDevice->ip_address !== $ip) {
+                Log::warning("ADMS devicecmd: IP tidak cocok untuk perintah ID {$id}. Terdaftar: [{$targetDevice->ip_address}], Pengirim: [{$ip}]. Konfirmasi ditolak.");
+
+                continue;
+            }
+
+            // 5. Verifikasi CommKey wajib (tidak boleh null, kosong, '0', dan harus cocok)
+            if (! $this->verifyDeviceCommKey($request, $targetDevice)) {
+                Log::warning("ADMS devicecmd: CommKey tidak valid atau tidak cocok untuk [SN: {$targetDevice->device_sn}]. Konfirmasi perintah ID {$id} ditolak.");
+
+                continue;
+            }
+
+            // 6. Cegah pemrosesan ulang perintah yang sudah berstatus final (idempotency)
+            if ($cmd->status === 'executed' || $cmd->status === 'failed') {
+                continue;
+            }
+
+            // 7. Validasi status: hanya perintah yang sudah dikirim ('sent') yang dapat dikonfirmasi
+            if ($cmd->status !== 'sent') {
+                Log::warning("ADMS devicecmd: Perintah ID {$id} berstatus [{$cmd->status}], tidak diizinkan untuk dikonfirmasi. Konfirmasi ditolak.");
+
+                continue;
+            }
+
+            $isSuccess = ($return === '0' || $return === 0);
+
+            // 8. Lindungi seluruh efek samping dalam transaksi database
+            DB::transaction(function () use ($cmd, $isSuccess, $line) {
+                $cmd->update([
+                    'status' => $isSuccess ? 'executed' : 'failed',
+                    'response' => $line,
+                    'executed_at' => now(),
+                ]);
+
+                // Eksekusi efek samping hanya jika status berhasil dan verifikasi perangkat lolos
+                if ($isSuccess && ! empty($cmd->device_sn)) {
+                    // 8a. Jika perintah kirim biometrik (FINGERTMP) berhasil dieksekusi di mesin
+                    if (str_contains($cmd->command, 'DATA UPDATE FINGERTMP')) {
+                        preg_match('/PIN=([^\t\s]+)/', $cmd->command, $mPin);
+                        preg_match('/FID=([0-9]+)/', $cmd->command, $mFid);
+                        if (! empty($mPin[1])) {
+                            AttendanceDeviceBiometric::updateOrCreate(
+                                [
+                                    'device_sn' => $cmd->device_sn,
+                                    'pin' => $mPin[1],
+                                    'bio_type' => 'fingerprint',
+                                    'finger_id' => isset($mFid[1]) ? (int) $mFid[1] : 0,
+                                ],
+                                ['synced_at' => now()]
+                            );
                         }
                     }
+
+                    // 8b. Jika perintah kirim biometrik wajah (BIOPHOTO/FACE) berhasil
+                    if (str_contains($cmd->command, 'DATA UPDATE BIOPHOTO') || str_contains($cmd->command, 'DATA UPDATE FACE')) {
+                        preg_match('/PIN=([^\t\s]+)/', $cmd->command, $mPin);
+                        if (! empty($mPin[1])) {
+                            AttendanceDeviceBiometric::updateOrCreate(
+                                [
+                                    'device_sn' => $cmd->device_sn,
+                                    'pin' => $mPin[1],
+                                    'bio_type' => 'face',
+                                    'finger_id' => 0,
+                                ],
+                                ['synced_at' => now()]
+                            );
+                        }
+                    }
+
+                    // 8c. Jika perintah format/kosongkan user dijalankan di mesin
+                    if ($cmd->command === 'CLEAR DATA' || $cmd->command === 'CLEAR_ENROLL_DATA') {
+                        AttendanceDeviceBiometric::where('device_sn', $cmd->device_sn)->delete();
+                    }
                 }
-            }
+            });
         }
 
         return response("OK\n", 200, ['Content-Type' => 'text/plain']);
     }
 
     /**
-     * Find or create device and update its activity status
+     * Verifikasi CommKey perangkat jika dikonfigurasi (bukan default '0')
+     */
+    protected function verifyDeviceCommKey(Request $request, AttendanceDevice $device): bool
+    {
+        // Enforce strict CommKey validation: device must have a non-null, non-empty, non-'0' key, and the request must provide a matching key.
+        $storedKey = $device->comm_key;
+        // Reject if stored CommKey is missing, empty, whitespace-only, or the literal string "0".
+        if (is_null($storedKey) || trim((string) $storedKey) === '' || $storedKey === '0') {
+            return false;
+        }
+        // Retrieve provided CommKey from request (body or query) respecting existing priority order.
+        $providedKey = (string) $request->input('PushCommKey', $request->query('PushCommKey',
+            $request->input('commkey', $request->query('commkey',
+                $request->input('comm_key', $request->query('comm_key', ''))))));
+        // Reject if client did not supply a key or supplied an empty/placeholder value.
+        if (trim($providedKey) === '' || $providedKey === '0') {
+            return false;
+        }
+        // Finally, compare keys.
+        if ($providedKey !== (string) $storedKey) {
+            return false;
+        }
+
+        // All checks passed.
+        return true;
+    }
+
+    /**
+     * Find device and update its activity status, or trigger throttled auto-registration
      */
     protected function resolveDevice(?string $sn, string $ip): ?AttendanceDevice
     {
@@ -299,45 +435,73 @@ class AdmsController extends Controller
             $device = AttendanceDevice::where('device_sn', $sn)->first();
         }
 
-        if (! $device) {
+        if (! $device && ! empty($ip)) {
             $device = AttendanceDevice::where('ip_address', $ip)->first();
+        }
 
-            if ($device) {
+        if ($device) {
+            // Jika perangkat sudah diverifikasi admin (is_active = true)
+            if ($device->is_active) {
+                // Aturan ID-03-03: IP perangkat aktif tidak boleh ditimpa otomatis oleh request masuk.
+                // Jika request datang dari IP yang berbeda, tolak dan jangan dianggap tepercaya.
+                if ($device->ip_address && $device->ip_address !== $ip) {
+                    Log::warning("ADMS Security: IP mismatch untuk perangkat aktif [SN: {$sn}]. Terdaftar: {$device->ip_address}, Request: {$ip}. Request ditolak.");
+
+                    return null;
+                }
+
+                $device->update([
+                    'status' => 'online',
+                    'last_activity_at' => now(),
+                ]);
+            } else {
+                // Perangkat belum aktif: update waktu aktivitas
                 $updates = ['status' => 'online', 'last_activity_at' => now()];
-                if (! empty($sn) && empty($device->device_sn)) {
+                if (empty($device->device_sn) && ! empty($sn)) {
                     $updates['device_sn'] = $sn;
                 }
                 $device->update($updates);
-            } else {
-                $name = 'Perangkat Baru ('.$ip.')';
-                if (! empty($sn) && str_starts_with($sn, 'AEYU')) {
-                    $name = 'Solution X601 ('.$sn.')';
-                } elseif (! empty($sn) && str_starts_with($sn, 'AEWD')) {
-                    $name = 'Solution X606-S ('.$sn.')';
-                } elseif ($ip === '192.168.1.25') {
-                    $name = 'Fingerspot Revo WDV-204BNC';
-                }
+            }
 
-                $device = AttendanceDevice::create([
-                    'name' => $name,
-                    'device_sn' => $sn ?: null,
-                    'ip_address' => $ip ?: '192.168.1.18',
-                    'port' => 4370,
-                    'server_port' => 8014,
-                    'status' => 'online',
-                    'is_active' => false,
-                    'last_activity_at' => now(),
-                ]);
-            }
-        } else {
-            $updates = ['status' => 'online', 'last_activity_at' => now()];
-            if ($ip && $device->ip_address !== $ip) {
-                $updates['ip_address'] = $ip;
-            }
-            $device->update($updates);
+            return $device;
         }
 
-        return $device;
+        // Pendaftaran otomatis perangkat baru (ID-03-06)
+        return $this->registerNewDevice($sn, $ip);
+    }
+
+    /**
+     * Daftarkan perangkat baru yang belum terverifikasi (is_active = false) dengan batasan frekuensi
+     */
+    protected function registerNewDevice(?string $sn, string $ip): ?AttendanceDevice
+    {
+        // Cegah flooding pendaftaran perangkat baru: batasi maksimal 10 perangkat baru per 10 menit
+        $recentCount = AttendanceDevice::where('created_at', '>=', now()->subMinutes(10))->count();
+        if ($recentCount >= 10) {
+            Log::warning("ADMS Security: Batas auto-registration tercapai. Pendaftaran perangkat baru ditangguhkan untuk IP: {$ip}, SN: {$sn}");
+
+            return null;
+        }
+
+        $name = 'Perangkat Baru ('.$ip.')';
+        if (! empty($sn) && str_starts_with($sn, 'AEYU')) {
+            $name = 'Solution X601 ('.$sn.')';
+        } elseif (! empty($sn) && str_starts_with($sn, 'AEWD')) {
+            $name = 'Solution X606-S ('.$sn.')';
+        } elseif ($ip === '192.168.1.25') {
+            $name = 'Fingerspot Revo WDV-204BNC';
+        }
+
+        return AttendanceDevice::create([
+            'name' => $name,
+            'device_sn' => $sn ?: null,
+            'ip_address' => $ip ?: '192.168.1.18',
+            'port' => 4370,
+            'server_port' => 8014,
+            'status' => 'online',
+            'is_active' => false,
+            'last_activity_at' => now(),
+        ]);
     }
 
     /**
@@ -616,12 +780,9 @@ class AdmsController extends Controller
         $studentId = null;
         $userName = null;
 
-        // 1. Match Guru/Karyawan by NIGS (or nigs_fix)
+        // 1. Match Guru/Karyawan by NIGS
         $teacher = User::operationalPersonnel()
-            ->where(function ($q) use ($pin) {
-                $q->where('nigs', $pin)
-                    ->orWhere('nigs_fix', $pin);
-            })
+            ->where('nigs', $pin)
             ->first();
 
         if ($teacher) {

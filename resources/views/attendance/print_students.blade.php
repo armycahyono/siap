@@ -429,8 +429,8 @@
                     @if($selectedClassroom && $selectedClassroom->homeroomTeacher)
                         Wali Kelas {{ $selectedClassroom->name }}<br><br><br><br><br>
                         <strong><u>{{ $selectedClassroom->homeroomTeacher->name }}</u></strong><br>
-                        @if(!empty($selectedClassroom->homeroomTeacher->nigs_fix ?: $selectedClassroom->homeroomTeacher->nigs))
-                            NIGS. {{ $selectedClassroom->homeroomTeacher->nigs_fix ?: $selectedClassroom->homeroomTeacher->nigs }}
+                        @if(!empty($selectedClassroom->homeroomTeacher->nigs))
+                            NIGS. {{ $selectedClassroom->homeroomTeacher->nigs }}
                         @endif
                     @else
                         Waka Kesiswaan<br><br><br><br><br>

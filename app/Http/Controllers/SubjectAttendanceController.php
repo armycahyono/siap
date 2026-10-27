@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
@@ -12,10 +13,12 @@ use App\Models\PiketInvalClass;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\StudentClassroom;
 use App\Models\Subject;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\DailyKbmSnapshotService;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
@@ -56,8 +59,27 @@ class SubjectAttendanceController extends Controller
         $dayName = $this->getIndonesianDayName($date->format('l'));
 
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year;
-        $semester = $setting->semester;
+        if ($request->filled('academic_year')) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($request->query('academic_year'));
+                $semester = $request->query('semester', $setting->semester ?? 'Ganjil');
+            } catch (\Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+                $semester = $setting->semester ?? 'Ganjil';
+            }
+        } elseif ($date->isToday()) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getViewingYear();
+                $semester = session('active_semester', $setting->semester ?? 'Ganjil');
+            } catch (\Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+                $semester = $setting->semester ?? 'Ganjil';
+            }
+        } else {
+            $resolved = app(DailyKbmSnapshotService::class)->resolveAcademicYearForDate($date);
+            $academicYear = $resolved['academic_year'];
+            $semester = $request->query('semester', $resolved['semester'] ?? $setting->semester ?? 'Ganjil');
+        }
 
         // 1. Agenda / Kegiatan Sekolah pada tanggal ini dari Kalender Kurikulum
         $dateStr = $date->toDateString();
@@ -673,11 +695,47 @@ class SubjectAttendanceController extends Controller
             }
         }
 
-        // Ambil daftar siswa aktif di kelas tersebut
-        $students = Student::where('classroom_id', $classroom->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        // Tentukan tahun ajaran target untuk pengambilan data siswa di kelas
+        if ($session && ! empty($session->academic_year)) {
+            $targetAcademicYear = $session->academic_year;
+        } elseif ($schedule && ! empty($schedule->academic_year)) {
+            $targetAcademicYear = $schedule->academic_year;
+        } elseif ($request->filled('academic_year')) {
+            $targetAcademicYear = $request->query('academic_year');
+        } elseif ($date->isToday()) {
+            try {
+                $targetAcademicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable) {
+                $targetAcademicYear = SchoolSetting::getMasterYear();
+            }
+        } else {
+            $targetAcademicYear = app(DailyKbmSnapshotService::class)->resolveAcademicYearForDate($date)['academic_year'];
+        }
+
+        // Ambil daftar siswa yang terdaftar di kelas pada tahun ajaran target
+        $ayRecord = AcademicYear::where('name', $targetAcademicYear)->first();
+        $studentIdsQuery = StudentClassroom::where('classroom_id', $classroom->id);
+        if ($ayRecord) {
+            $studentIdsQuery->where(function ($q) use ($ayRecord, $targetAcademicYear) {
+                $q->where('academic_year_id', $ayRecord->id)
+                    ->orWhere('academic_year_name', $targetAcademicYear);
+            });
+        } else {
+            $studentIdsQuery->where('academic_year_name', $targetAcademicYear);
+        }
+        $enrolledStudentIds = $studentIdsQuery->pluck('student_id')->filter()->unique()->toArray();
+
+        if (! empty($enrolledStudentIds)) {
+            $students = Student::whereIn('id', $enrolledStudentIds)
+                ->orderBy('name')
+                ->get();
+        } else {
+            // Fallback ke siswa kelas aktif jika belum ada riwayat student_classrooms
+            $students = Student::where('classroom_id', $classroom->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        }
 
         $studentIds = $students->pluck('id');
         $dateStr = $date->toDateString();
@@ -798,6 +856,8 @@ class SubjectAttendanceController extends Controller
 
         $validated = $request->validate([
             'date' => ['required', 'date'],
+            'academic_year' => ['nullable', 'string', 'exists:academic_years,name'],
+            'semester' => ['nullable', 'string', 'in:ganjil,genap,Ganjil,Genap'],
             'classroom_id' => ['required', 'exists:classrooms,id'],
             'subject_id' => ['required', 'exists:subjects,id'],
             'start_period' => ['required', 'integer', 'min:1', 'max:15'],
@@ -875,28 +935,70 @@ class SubjectAttendanceController extends Controller
                 $lessonScheduleId = $existingSession->lesson_schedule_id;
             }
 
+            // Tentukan tahun ajaran dan semester untuk sesi presensi
+            if (! empty($validated['academic_year'])) {
+                $targetAcademicYear = $validated['academic_year'];
+                $targetSemester = ! empty($validated['semester']) ? strtolower($validated['semester']) : null;
+            } elseif ($existingSession && ! empty($existingSession->academic_year)) {
+                // Pertahankan tahun ajaran asli dari rekaman presensi lama yang diperbarui
+                $targetAcademicYear = $existingSession->academic_year;
+                $targetSemester = $existingSession->semester;
+            } elseif ($date->isToday()) {
+                try {
+                    $opYear = app(AcademicYearContext::class)->getOperationalYear();
+                    $targetAcademicYear = $opYear->name;
+                    $targetSemester = ! empty($opYear->semester) ? strtolower($opYear->semester) : null;
+                } catch (\Throwable) {
+                    $targetAcademicYear = SchoolSetting::getMasterYear();
+                }
+            } elseif ($schedule && ! empty($schedule->academic_year)) {
+                $targetAcademicYear = $schedule->academic_year;
+                $targetSemester = ! empty($schedule->semester) ? strtolower($schedule->semester) : null;
+            } else {
+                $resolved = app(DailyKbmSnapshotService::class)->resolveAcademicYearForDate($date);
+                $targetAcademicYear = $resolved['academic_year'];
+                $targetSemester = ! empty($resolved['semester']) ? strtolower($resolved['semester']) : null;
+            }
+
+            if (! $targetSemester) {
+                $targetSemester = strtolower((string) ($setting->semester ?? 'ganjil'));
+            }
+
             // Temukan atau buat sesi presensi
-            $session = SubjectAttendanceSession::updateOrCreate(
-                [
-                    'classroom_id' => $validated['classroom_id'],
-                    'subject_id' => $validated['subject_id'],
-                    'attendance_date' => $date->toDateString(),
-                    'start_period' => $validated['start_period'],
-                ],
-                [
+            if ($existingSession) {
+                $existingSession->update([
                     'lesson_schedule_id' => $lessonScheduleId,
                     'teacher_id' => $user->id,
-                    'scheduled_teacher_id' => $validated['scheduled_teacher_id'] ?? $existingSession?->scheduled_teacher_id ?? null,
+                    'scheduled_teacher_id' => $validated['scheduled_teacher_id'] ?? $existingSession->scheduled_teacher_id,
                     'end_period' => $validated['end_period'],
-                    'academic_year' => $setting->academic_year,
-                    'semester' => strtolower((string) ($setting->semester ?? 'ganjil')),
+                    'academic_year' => $targetAcademicYear,
+                    'semester' => $targetSemester,
                     'is_swap' => $request->boolean('is_swap'),
                     'swap_type' => $validated['swap_type'] ?? null,
                     'swap_notes' => $validated['swap_notes'] ?? null,
                     'topic' => $validated['topic'] ?? null,
                     'notes' => $validated['notes'] ?? null,
-                ]
-            );
+                ]);
+                $session = $existingSession;
+            } else {
+                $session = SubjectAttendanceSession::create([
+                    'classroom_id' => $validated['classroom_id'],
+                    'subject_id' => $validated['subject_id'],
+                    'attendance_date' => $date->toDateString(),
+                    'start_period' => $validated['start_period'],
+                    'lesson_schedule_id' => $lessonScheduleId,
+                    'teacher_id' => $user->id,
+                    'scheduled_teacher_id' => $validated['scheduled_teacher_id'] ?? null,
+                    'end_period' => $validated['end_period'],
+                    'academic_year' => $targetAcademicYear,
+                    'semester' => $targetSemester,
+                    'is_swap' => $request->boolean('is_swap'),
+                    'swap_type' => $validated['swap_type'] ?? null,
+                    'swap_notes' => $validated['swap_notes'] ?? null,
+                    'topic' => $validated['topic'] ?? null,
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+            }
 
             // Simpan / update status setiap siswa
             foreach ($validated['attendance'] as $studentId => $data) {
@@ -968,6 +1070,10 @@ class SubjectAttendanceController extends Controller
             $query->where('subject_id', $subjectId);
         }
 
+        if ($request->filled('academic_year')) {
+            $query->where('academic_year', $request->query('academic_year'));
+        }
+
         $sessions = $query->latest('attendance_date')
             ->latest('start_period')
             ->paginate(15)
@@ -989,7 +1095,11 @@ class SubjectAttendanceController extends Controller
     public function schoolSchedule(Request $request): View
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->input('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
         $semester = $request->input('semester', session('active_semester', session('semester', $setting->semester ?? 'Ganjil')));
 
         $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
@@ -1011,9 +1121,21 @@ class SubjectAttendanceController extends Controller
         $teacherId = $request->input('teacher_id');
         $search = trim((string) $request->input('search', ''));
 
+        $ayRecord = AcademicYear::where('name', $academicYear)->first();
+
         // Ambil semua kelas aktif
         $classrooms = Classroom::with('homeroomTeacher')
-            ->where('academic_year', $academicYear)
+            ->when($ayRecord, function ($q) use ($academicYear, $ayRecord) {
+                $q->where(function ($sub) use ($academicYear, $ayRecord) {
+                    $sub->where('academic_year_id', $ayRecord->id)
+                        ->orWhere(function ($s2) use ($academicYear) {
+                            $s2->whereNull('academic_year_id')
+                                ->where('academic_year', $academicYear);
+                        });
+                });
+            }, function ($q) use ($academicYear) {
+                $q->where('academic_year', $academicYear);
+            })
             ->where('is_active', true)
             ->orderBy('name')
             ->get();

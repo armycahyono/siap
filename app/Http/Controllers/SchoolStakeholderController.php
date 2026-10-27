@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class SchoolStakeholderController extends Controller
 {
@@ -85,7 +86,7 @@ class SchoolStakeholderController extends Controller
         if ($request->hasFile('signature_image')) {
             $file = $request->file('signature_image');
             $filename = 'sig_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $data['signature_image_path'] = $file->storeAs('signatures', $filename, 'public');
+            $data['signature_image_path'] = $file->storeAs('signatures', $filename, 'local');
         }
 
         unset($data['signature_image']);
@@ -121,17 +122,30 @@ class SchoolStakeholderController extends Controller
         $data['order_index'] = $data['order_index'] ?? $stakeholder->order_index;
 
         if ($request->boolean('remove_signature') && $stakeholder->signature_image_path) {
-            Storage::disk('public')->delete($stakeholder->signature_image_path);
+            if (Storage::disk('local')->exists($stakeholder->signature_image_path)) {
+                Storage::disk('local')->delete($stakeholder->signature_image_path);
+            } elseif (Storage::disk('public')->exists($stakeholder->signature_image_path)) {
+                Storage::disk('public')->delete($stakeholder->signature_image_path);
+            }
             $data['signature_image_path'] = null;
         }
 
         if ($request->hasFile('signature_image')) {
-            if ($stakeholder->signature_image_path) {
-                Storage::disk('public')->delete($stakeholder->signature_image_path);
-            }
             $file = $request->file('signature_image');
             $filename = 'sig_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $data['signature_image_path'] = $file->storeAs('signatures', $filename, 'public');
+            $newPath = $file->storeAs('signatures', $filename, 'local');
+
+            if ($newPath) {
+                // Hapus file lama hanya setelah file baru berhasil disimpan ke disk privat
+                if ($stakeholder->signature_image_path) {
+                    if (Storage::disk('local')->exists($stakeholder->signature_image_path)) {
+                        Storage::disk('local')->delete($stakeholder->signature_image_path);
+                    } elseif (Storage::disk('public')->exists($stakeholder->signature_image_path)) {
+                        Storage::disk('public')->delete($stakeholder->signature_image_path);
+                    }
+                }
+                $data['signature_image_path'] = $newPath;
+            }
         }
 
         unset($data['signature_image'], $data['remove_signature']);
@@ -147,12 +161,57 @@ class SchoolStakeholderController extends Controller
         $name = $stakeholder->name;
 
         if ($stakeholder->signature_image_path) {
-            Storage::disk('public')->delete($stakeholder->signature_image_path);
+            if (Storage::disk('local')->exists($stakeholder->signature_image_path)) {
+                Storage::disk('local')->delete($stakeholder->signature_image_path);
+            } elseif (Storage::disk('public')->exists($stakeholder->signature_image_path)) {
+                Storage::disk('public')->delete($stakeholder->signature_image_path);
+            }
         }
 
         $stakeholder->delete();
 
         return redirect()->route('stakeholders.index')
             ->with('success', "Data {$name} berhasil dihapus.");
+    }
+
+    /**
+     * Tampilkan tanda tangan digital pejabat/stakeholder dengan otorisasi ketat.
+     */
+    public function viewSignature(Request $request, SchoolStakeholder $stakeholder): Response
+    {
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        // Otorisasi: Super Admin, Kepala Sekolah, atau Pengelola Master Data
+        $isAuthorized = $user->isSuperAdmin()
+            || $user->isPrincipal()
+            || $user->hasPermission('manage_master_data');
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat tanda tangan digital ini.');
+        }
+
+        $path = $stakeholder->signature_image_path;
+
+        // Path Traversal & Whitelist Protection
+        if (! $path || str_contains($path, '..') || str_contains($path, "\0") || ! str_starts_with(str_replace('\\', '/', $path), 'signatures/')) {
+            abort(404, 'File tanda tangan tidak valid.');
+        }
+
+        // Dual-disk resolution: prioritaskan disk privat 'local', fallback ke disk 'public' untuk data warisan
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File tanda tangan tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path);
     }
 }

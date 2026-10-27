@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role;
 use App\Models\Supervision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,11 +66,12 @@ class AuthorizationAndRoleAccessTest extends TestCase
 
     public function test_unassigned_supervisor_cannot_grade_other_teachers_supervision(): void
     {
+        $supervisorRole = Role::where('slug', 'supervisor')->first();
         $supervisors = User::whereHas('role', fn ($q) => $q->where('slug', 'supervisor'))->get();
 
         if ($supervisors->count() < 2) {
             $otherSupervisor = User::factory()->create([
-                'role_id' => $supervisors->first()->role_id,
+                'role_id' => $supervisors->first()?->role_id ?? $supervisorRole?->id,
             ]);
         } else {
             $otherSupervisor = $supervisors->last();
@@ -110,7 +112,8 @@ class AuthorizationAndRoleAccessTest extends TestCase
 
     public function test_supervisor_cannot_approve_supervision_as_principal(): void
     {
-        $supervisor = User::whereHas('role', fn ($q) => $q->where('slug', 'supervisor'))->first();
+        $supervisor = User::whereHas('role', fn ($q) => $q->where('slug', 'supervisor'))->first()
+            ?? User::factory()->create(['role_id' => Role::where('slug', 'supervisor')->value('id')]);
         $supervision = Supervision::first();
 
         $response = $this->actingAs($supervisor)->post(route('approvals.approve', $supervision));

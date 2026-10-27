@@ -3,18 +3,24 @@
 namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\LessonSchedule;
 use App\Models\PiketJournal;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
+use App\Models\Student;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PiketPermitController extends Controller
 {
@@ -22,8 +28,16 @@ class PiketPermitController extends Controller
 
     public function index(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         $type = $request->query('type');
         $classroomId = $request->query('classroom_id');
@@ -107,9 +121,12 @@ class PiketPermitController extends Controller
             'tidak_masuk' => $allPermitsInScope->where('permit_type', 'izin_tidak_masuk')->count(),
         ];
 
-        $classrooms = Classroom::where('academic_year', $academicYear)
-            ->orderBy('name')
-            ->get();
+        $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
 
         if (DeviceDetector::isMobile($request)) {
             return view('mobile.piket.permits_index', compact('permits', 'classrooms', 'date', 'startDate', 'endDate', 'period', 'type', 'classroomId', 'search', 'academicYear', 'stats'));
@@ -120,10 +137,16 @@ class PiketPermitController extends Controller
 
     public function create(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $academicYear = $operationalYear->name;
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
-        $classrooms = Classroom::where('academic_year', $academicYear)
+        $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })
             ->with('homeroomTeacher')
             ->orderBy('name')
             ->get();
@@ -176,15 +199,17 @@ class PiketPermitController extends Controller
         // Simpan file bukti / lampiran surat jika diupload
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('piket/permits', 'public');
+            $attachmentPath = $request->file('attachment')->store('piket/permits', 'local');
         }
+
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
 
         // Cari atau buat jurnal harian untuk tanggal ini
         $journal = PiketJournal::firstOrCreate(
             ['date' => $todayStr],
             [
-                'academic_year' => session('active_academic_year', '2026/2027'),
-                'semester' => 'Ganjil',
+                'academic_year' => $operationalYear->name,
+                'semester' => $operationalYear->semester ?? 'Ganjil',
                 'status' => 'berlangsung',
                 'coordinator_id' => Auth::id(),
             ]
@@ -283,8 +308,58 @@ class PiketPermitController extends Controller
 
     public function destroy(PiketStudentPermit $permit): RedirectResponse
     {
+        if ($permit->attachment_path) {
+            if (Storage::disk('local')->exists($permit->attachment_path)) {
+                Storage::disk('local')->delete($permit->attachment_path);
+            } elseif (Storage::disk('public')->exists($permit->attachment_path)) {
+                Storage::disk('public')->delete($permit->attachment_path);
+            }
+        }
+
         $permit->delete();
 
         return back()->with('success', 'Data izin siswa berhasil dihapus.');
+    }
+
+    /**
+     * Download or view private student permit attachment with strict authorization.
+     */
+    public function downloadAttachment(PiketStudentPermit $permit)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $user->isSuperAdmin()
+            || $user->isPrincipal()
+            || (method_exists($user, 'isWakaKesiswaan') && $user->isWakaKesiswaan())
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
+            || $user->can('operate_piket')
+            || $user->can('manage_piket_cases')
+            || ($permit->given_by === $user->id)
+            || ($permit->classroom_id && $permit->classroom && $permit->classroom->homeroom_teacher_id === $user->id);
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat lampiran izin siswa ini.');
+        }
+
+        $path = $permit->attachment_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Lampiran surat izin tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File lampiran tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path);
     }
 }

@@ -6,6 +6,7 @@ use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class SchoolStakeholder extends Model
 {
@@ -123,5 +124,41 @@ class SchoolStakeholder extends Model
     public function getActivityLogTitle(): string
     {
         return "Stakeholder '{$this->name}' ({$this->category_label})";
+    }
+
+    /**
+     * Dapatkan path fisik berkas tanda tangan untuk keperluan pemrosesan server / PDF.
+     */
+    public function getSignatureRealPath(): ?string
+    {
+        if (! $this->signature_image_path) {
+            return null;
+        }
+
+        if (Storage::disk('local')->exists($this->signature_image_path)) {
+            return Storage::disk('local')->path($this->signature_image_path);
+        }
+
+        if (Storage::disk('public')->exists($this->signature_image_path)) {
+            return Storage::disk('public')->path($this->signature_image_path);
+        }
+
+        return null;
+    }
+
+    /**
+     * Dapatkan representasi Base64 Data URI untuk disematkan langsung pada dokumen PDF tanpa akses URL.
+     */
+    public function getSignatureBase64(): ?string
+    {
+        $path = $this->getSignatureRealPath();
+        if (! $path || ! file_exists($path)) {
+            return null;
+        }
+
+        $mime = mime_content_type($path) ?: 'image/png';
+        $data = file_get_contents($path);
+
+        return 'data:'.$mime.';base64,'.base64_encode($data);
     }
 }

@@ -237,8 +237,8 @@ class CbtSyncService
             $updated = 0;
 
             foreach ($teachers as $teacher) {
-                // Identitas permanen guru = NIGS (nigs_fix / nigs bersih)
-                $nigs = $teacher->nigs_fix ?: ($teacher->nigs ? preg_replace('/[^0-9]/', '', $teacher->nigs) : null);
+                // Identitas permanen guru = NIGS
+                $nigs = $teacher->nigs ? preg_replace('/[^0-9]/', '', $teacher->nigs) : null;
                 if (! $nigs) {
                     $nigs = ! empty($teacher->nip) ? trim($teacher->nip) : 'GURU'.str_pad((string) $teacher->id, 4, '0', STR_PAD_LEFT);
                 }
@@ -401,7 +401,7 @@ class CbtSyncService
                 $guruId = null;
                 if ($room->homeroomTeacher) {
                     $teacher = $room->homeroomTeacher;
-                    $nigs = $teacher->nigs_fix ?: ($teacher->nigs ? preg_replace('/[^0-9]/', '', $teacher->nigs) : null);
+                    $nigs = $teacher->nigs ? preg_replace('/[^0-9]/', '', $teacher->nigs) : null;
                     if ($nigs) {
                         $guruId = CbtGuru::where('nip', $nigs)->value('id_guru');
                     }

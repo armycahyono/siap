@@ -169,7 +169,9 @@ class TelegramService
 
         try {
             $fullPath = null;
-            if (Storage::disk('public')->exists($photoPath)) {
+            if (Storage::disk('local')->exists($photoPath)) {
+                $fullPath = Storage::disk('local')->path($photoPath);
+            } elseif (Storage::disk('public')->exists($photoPath)) {
                 $fullPath = Storage::disk('public')->path($photoPath);
             } elseif (file_exists($photoPath)) {
                 $fullPath = $photoPath;
@@ -242,7 +244,8 @@ class TelegramService
             $extension = pathinfo($telegramFilePath, PATHINFO_EXTENSION) ?: 'jpg';
             $fileName = $subDir.'/tg_'.time().'_'.bin2hex(random_bytes(4)).'.'.$extension;
 
-            Storage::disk('public')->put($fileName, $fileContent);
+            $disk = ($subDir === 'piket/incidents') ? 'local' : 'public';
+            Storage::disk($disk)->put($fileName, $fileContent);
 
             return $fileName;
         } catch (Throwable $e) {
@@ -433,8 +436,7 @@ class TelegramService
                 7 => 'Minggu',
             ];
             $today = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
-            $setting = SchoolSetting::getSetting();
-            $academicYear = $setting->academic_year ?? '2026/2027';
+            $academicYear = $this->getOperationalAcademicYear();
 
             $piketOfficers = User::whereHas('piketSchedules', function ($q) use ($today, $academicYear) {
                 $q->where('academic_year', $academicYear)
@@ -514,7 +516,7 @@ class TelegramService
             7 => 'Minggu',
         ];
         $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $piketOfficers = User::whereHas('piketSchedules', function ($q) use ($todayDay, $academicYear) {
             $q->where('academic_year', $academicYear)
@@ -591,8 +593,7 @@ class TelegramService
 
         // 3. Jika pengajuan mandiri oleh guru, kirim juga notifikasi ke Petugas Piket yang bertugas pada hari tersebut
         if ($isSelfSubmission) {
-            $setting = SchoolSetting::getSetting();
-            $academicYear = $setting->academic_year ?? '2026/2027';
+            $academicYear = $this->getOperationalAcademicYear();
 
             $piketOfficers = User::whereHas('piketSchedules', function ($q) use ($day, $academicYear) {
                 $q->where('academic_year', $academicYear)
@@ -815,8 +816,7 @@ class TelegramService
             7 => 'Minggu',
         ];
         $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $todayOfficers = PiketSchedule::where('academic_year', $academicYear)
             ->where('day', $todayDay)
@@ -1217,6 +1217,20 @@ class TelegramService
                 'success' => false,
                 'message' => 'Koneksi ke server Telegram gagal: '.$e->getMessage(),
             ];
+        }
+    }
+
+    /**
+     * Dapatkan tahun ajaran operasional untuk notifikasi background/telegram.
+     */
+    protected function getOperationalAcademicYear(): string
+    {
+        try {
+            return app(AcademicYearContext::class)->getOperationalYear()->name;
+        } catch (Throwable $e) {
+            Log::warning('TelegramService operational academic year fallback: '.$e->getMessage());
+
+            return SchoolSetting::getMasterYear();
         }
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
@@ -15,6 +16,7 @@ use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\SubjectAttendanceSession;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -24,9 +26,20 @@ class PiketDashboardController extends Controller
 {
     public function index(Request $request): View
     {
+        $academicYearContext = app(AcademicYearContext::class);
+        if ($request->filled('academic_year')) {
+            try {
+                $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+            } catch (\InvalidArgumentException $e) {
+                $academicYear = $academicYearContext->getOperationalYear()->name;
+            }
+        } else {
+            $academicYear = $academicYearContext->getOperationalYear()->name;
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
-        $semester = $request->query('semester', $setting->semester ?? 'Ganjil');
+        $semester = $request->query('semester', $ayModel?->semester ?? $setting->semester ?? 'Ganjil');
 
         $now = Carbon::now('Asia/Jakarta');
         $today = Carbon::today();
@@ -152,7 +165,12 @@ class PiketDashboardController extends Controller
         $selectedDay = $todayDay;
 
         // Ambil semua kelas aktif
-        $allClassrooms = Classroom::where('academic_year', $academicYear)
+        $allClassrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })
             ->where('is_active', true)
             ->with(['homeroomTeacher', 'gradeLevel'])
             ->orderBy('name')

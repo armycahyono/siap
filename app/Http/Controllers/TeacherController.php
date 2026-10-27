@@ -38,7 +38,6 @@ class TeacherController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('nik', 'like', "%{$search}%")
                     ->orWhere('nigs', 'like', "%{$search}%")
-                    ->orWhere('nigs_fix', 'like', "%{$search}%")
                     ->orWhere('nip', 'like', "%{$search}%")
                     ->orWhere('nuptk', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
@@ -176,7 +175,7 @@ class TeacherController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
             'nik' => ['nullable', 'string', 'max:30'],
-            'nigs_fix' => ['nullable', 'string', 'max:30'],
+            'nigs' => ['nullable', 'string', 'max:30'],
             'nip' => ['nullable', 'string', 'max:50'],
             'nuptk' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:30'],
@@ -190,6 +189,7 @@ class TeacherController extends Controller
 
         $data['password'] = Hash::make($data['password']);
         $data['role_id'] = $guruRole->id;
+        $data['position'] = 'guru';
         $data['is_active'] = true;
 
         User::create($data);
@@ -211,7 +211,7 @@ class TeacherController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$teacher->id],
             'password' => ['nullable', 'string', 'min:6'],
             'nik' => ['nullable', 'string', 'max:30'],
-            'nigs_fix' => ['nullable', 'string', 'max:30'],
+            'nigs' => ['nullable', 'string', 'max:30'],
             'nip' => ['nullable', 'string', 'max:50'],
             'nuptk' => ['nullable', 'string', 'max:50'],
             'phone' => ['nullable', 'string', 'max:30'],

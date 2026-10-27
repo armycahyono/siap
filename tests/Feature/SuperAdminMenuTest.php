@@ -29,19 +29,23 @@ class SuperAdminMenuTest extends TestCase
     {
         parent::setUp();
 
-        $this->superAdminRole = Role::create([
-            'name' => 'Super Administrator',
-            'slug' => 'super_admin',
-            'description' => 'Super Administrator Sistem',
-            'is_system' => true,
-        ]);
+        $this->superAdminRole = Role::firstOrCreate(
+            ['slug' => 'super_admin'],
+            [
+                'name' => 'Super Administrator',
+                'description' => 'Super Administrator Sistem',
+                'is_system' => true,
+            ]
+        );
 
-        $this->guruRole = Role::create([
-            'name' => 'Guru Pengajar',
-            'slug' => 'guru',
-            'description' => 'Guru Pengajar',
-            'is_system' => true,
-        ]);
+        $this->guruRole = Role::firstOrCreate(
+            ['slug' => 'guru'],
+            [
+                'name' => 'Guru Pengajar',
+                'description' => 'Guru Pengajar',
+                'is_system' => true,
+            ]
+        );
 
         $this->superAdmin = User::create([
             'name' => 'Super Admin Test',
@@ -255,11 +259,13 @@ class SuperAdminMenuTest extends TestCase
 
     public function test_supervision_approval_and_rejection_are_recorded_in_activity_logs(): void
     {
-        $kepsekRole = Role::create([
-            'name' => 'Kepala Sekolah',
-            'slug' => 'kepala_sekolah',
-            'is_system' => true,
-        ]);
+        $kepsekRole = Role::firstOrCreate(
+            ['slug' => 'kepala_sekolah'],
+            [
+                'name' => 'Kepala Sekolah',
+                'is_system' => true,
+            ]
+        );
 
         $kepsek = User::create([
             'name' => 'Kepala Sekolah Test',

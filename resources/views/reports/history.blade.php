@@ -91,7 +91,7 @@
                             </span>
                             <div>
                                 <div class="fw-bold text-dark">{{ $s->teacher->name }}</div>
-                                <small class="text-muted">NIGS: {{ $s->teacher->nigs_fix ?? '-' }}</small>
+                                <small class="text-muted">NIGS: {{ $s->teacher->nigs ?? '-' }}</small>
                             </div>
                         </div>
                     </td>

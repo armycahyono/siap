@@ -42,7 +42,7 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-bold text-teal">NIGS (Nomor Induk Guru Sekolah)</label>
-                    <input type="text" name="nigs_fix" class="form-control" value="{{ old('nigs_fix', $teacher->nigs_fix ?? $teacher->nigs) }}" placeholder="Contoh: 48902...">
+                    <input type="text" name="nigs" class="form-control" value="{{ old('nigs', $teacher->nigs) }}" placeholder="Contoh: 48902...">
                     <div class="form-text small">Nomor induk resmi guru di sekolah.</div>
                 </div>
 

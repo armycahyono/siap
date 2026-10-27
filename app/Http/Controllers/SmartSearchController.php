@@ -82,7 +82,6 @@ class SmartSearchController extends Controller
                 $q->where('name', 'like', "%{$query}%")
                     ->orWhere('username', 'like', "%{$query}%")
                     ->orWhere('nip', 'like', "%{$query}%")
-                    ->orWhere('nigs_fix', 'like', "%{$query}%")
                     ->orWhere('nigs', 'like', "%{$query}%")
                     ->orWhere('nuptk', 'like', "%{$query}%")
                     ->orWhere('major', 'like', "%{$query}%")
@@ -95,7 +94,7 @@ class SmartSearchController extends Controller
 
         return $teachers->map(function (User $teacher) {
             $mapelList = $teacher->subjectAssignments->pluck('subject.name')->filter()->unique()->take(2)->implode(', ');
-            $idStr = $teacher->nigs_fix ?: ($teacher->nip ?: ($teacher->username ?? '-'));
+            $idStr = $teacher->nigs ?: ($teacher->nip ?: ($teacher->username ?? '-'));
 
             return [
                 'id' => $teacher->id,

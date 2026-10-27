@@ -5,15 +5,33 @@
 @section('content')
 <!-- Header Halaman (Model 2: Hero Context Banner) -->
 @php
-    $studentActions = '<a href="' . route('students.promotions.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-up-right-circle me-1 text-warning"></i> Kenaikan & Kelulusan</a> ';
-    if ($tab !== 'alumni' && $tab !== 'mutasi') {
-        $studentActions .= '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-mutasi-siswa"><i class="ti ti-user-x me-1 text-danger"></i> Catat Mutasi</button> ';
+    $canManageMaster = $canManageMasterData ?? (
+        auth()->user()?->isSuperAdmin()
+        || (auth()->user()?->hasPermission('manage_master_data') ?? false)
+        || (auth()->user()?->hasRole(['waka_kurikulum', 'kepala_sekolah']) ?? false)
+    );
+    $canExportStudent = $canExport ?? (
+        $canManageMaster || (auth()->user()?->isHomeroomTeacher() ?? false)
+    );
+
+    $studentActions = '';
+    if ($canManageMaster) {
+        $studentActions .= '<a href="' . route('students.promotions.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-up-right-circle me-1 text-warning"></i> Kenaikan & Kelulusan</a> ';
+        if ($tab !== 'alumni' && $tab !== 'mutasi') {
+            $studentActions .= '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-mutasi-siswa"><i class="ti ti-user-x me-1 text-danger"></i> Catat Mutasi</button> ';
+        }
+        $studentActions .= '<a href="' . route('students.template') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-download me-1"></i> Format Excel</a> ';
     }
-    $studentActions .= '<a href="' . route('students.template') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-download me-1"></i> Format Excel</a> ' .
-        '<a href="' . route('students.export', ['classroom_id' => $classroomId, 'gender' => $gender, 'search' => $search, 'tab' => $tab, 'graduation_year' => $graduationYear, 'academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor CSV</a> ' .
-        '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-import-dapodik"><i class="ti ti-cloud-upload me-1 text-cyan"></i> Upload Dapodik</button> ' .
-        '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-import-siswa"><i class="ti ti-file-import me-1 text-info"></i> Import Siswa</button> ' .
-        '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-create-siswa"><i class="ti ti-plus me-1"></i> Tambah Siswa</button>';
+
+    if ($canExportStudent) {
+        $studentActions .= '<a href="' . route('students.export', ['classroom_id' => $classroomId, 'gender' => $gender, 'search' => $search, 'tab' => $tab, 'graduation_year' => $graduationYear, 'academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor CSV</a> ';
+    }
+
+    if ($canManageMaster) {
+        $studentActions .= '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-import-dapodik"><i class="ti ti-cloud-upload me-1 text-cyan"></i> Upload Dapodik</button> ' .
+            '<button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-import-siswa"><i class="ti ti-file-import me-1 text-info"></i> Import Siswa</button> ' .
+            '<button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-create-siswa"><i class="ti ti-plus me-1"></i> Tambah Siswa</button>';
+    }
 @endphp
 @include('layouts._hero_header', [
     'title' => 'Data Induk Siswa & Alumni',
@@ -246,9 +264,11 @@
                             $contextStatusLabel = $s->status_label;
                             $contextStatusBadge = $s->status_badge;
                         }
+                        $safeStudentJson = json_encode($s->toSafeUiArray(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
                     @endphp
                     <tr class="student-row" style="cursor: pointer;"
-                        data-student="{{ json_encode($s) }}"
+                        data-student="{{ $safeStudentJson }}"
+                        data-student-id="{{ $s->id }}"
                         data-classroom="{{ $displayClassName }}"
                         data-homeroom="{{ $displayHomeroom }}"
                         data-status-label="{{ $contextStatusLabel }}"
@@ -316,7 +336,8 @@
                             <td class="text-end" onclick="event.stopPropagation()">
                                 <div class="btn-group">
                                     <button type="button" class="btn btn-sm btn-outline-info btn-detail-siswa" 
-                                        data-student="{{ json_encode($s) }}"
+                                        data-student="{{ $safeStudentJson }}"
+                                        data-student-id="{{ $s->id }}"
                                         data-classroom="{{ $displayClassName }}"
                                         data-homeroom="{{ $displayHomeroom }}"
                                         data-status-label="{{ $contextStatusLabel }}"
@@ -417,7 +438,8 @@
                             <td class="text-end" onclick="event.stopPropagation()">
                                 <div class="btn-group">
                                     <button type="button" class="btn btn-sm btn-outline-info btn-detail-siswa" 
-                                        data-student="{{ json_encode($s) }}"
+                                        data-student="{{ $safeStudentJson }}"
+                                        data-student-id="{{ $s->id }}"
                                         data-classroom="{{ $displayClassName }}"
                                         data-homeroom="{{ $displayHomeroom }}"
                                         data-status-label="{{ $contextStatusLabel }}"
@@ -436,7 +458,8 @@
                                         </button>
                                     @endif
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-edit-siswa"
-                                        data-student="{{ json_encode($s) }}"
+                                        data-student="{{ $safeStudentJson }}"
+                                        data-student-id="{{ $s->id }}"
                                         title="Edit Siswa">
                                         <i class="ti ti-edit"></i>
                                     </button>
@@ -1239,9 +1262,7 @@
         <div class="modal-content shadow border-0">
             <form action="{{ route('students.import-dapodik') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                <!-- Opsi Otomasi Berjalan Penuh di Belakang Layar -->
-                <input type="hidden" name="auto_graduate_grade_12" value="1">
-                <input type="hidden" name="auto_mutasi_missing_students" value="1">
+                <!-- Opsi Otomasi Rombel Baru -->
                 <input type="hidden" name="auto_create_classes" value="1">
 
                 <div class="modal-header text-white" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);">
@@ -1258,12 +1279,11 @@
                             <div class="fw-bold mb-1">Unggah Langsung File Resmi Dapodik:</div>
                             <div>Cukup unggah file unduhan asli <b>Daftar PD (Peserta Didik)</b> dari aplikasi Dapodik Kemendikbud (format <code>.xlsx</code> atau <code>.csv</code> tanpa perlu diubah susunannya).</div>
                             <div class="mt-2 text-muted">
-                                💡 <b>Otomasi Penuh Sistem:</b>
+                                💡 <b>Operasi Standar Sinkronisasi:</b>
                                 <ul class="mb-0 ps-3">
-                                    <li>Siswa baru otomatis ditambahkan ke kelas X.</li>
+                                    <li>Siswa baru otomatis ditambahkan sesuai data rombel berkas.</li>
                                     <li>Kenaikan kelas & pembaruan rombel otomatis disesuaikan.</li>
-                                    <li>Siswa kelas XII tahun lalu otomatis dialihkan ke status Alumni.</li>
-                                    <li>Siswa lama yang tidak terdaftar otomatis dipindahkan ke status Mutasi / Keluar.</li>
+                                    <li>Status kelulusan alumni & mutasi massal tidak diubah secara default (tersedia pada opsi rekonsiliasi lanjutan di bawah).</li>
                                 </ul>
                             </div>
                         </div>
@@ -1283,6 +1303,38 @@
                             @endforeach
                         </select>
                         <small class="text-muted">Data rombel, kenaikan kelas, dan sinkronisasi siswa akan langsung dikaitkan ke tahun pelajaran ini.</small>
+                    </div>
+
+                    <!-- Opsi Rekonsiliasi Massal (Lanjutan) -->
+                    <div class="border rounded p-3 bg-light mt-3">
+                        <div class="fw-bold text-dark mb-2 d-flex align-items-center">
+                            <i class="ti ti-settings me-1 text-primary"></i>
+                            Opsi Rekonsiliasi Massal (Lanjutan)
+                        </div>
+                        <div class="alert alert-warning py-2 px-3 small border-0 mb-3" style="background-color: #fef3c7; color: #92400e;">
+                            <i class="ti ti-alert-triangle me-1"></i>
+                            <b>Penting:</b> Jangan aktifkan opsi di bawah jika Anda hanya mengunggah file per rombel/kelas atau berkas siswa baru (PPDB).
+                        </div>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="auto_graduate_grade_12" id="dapodik_auto_graduate_grade_12" value="1">
+                            <label class="form-check-label fw-semibold" for="dapodik_auto_graduate_grade_12">
+                                Luluskan otomatis siswa Kelas XII ke Alumni
+                            </label>
+                            <div class="form-text text-muted small">
+                                Hanya aktifkan jika berkas mencakup seluruh data siswa sekolah untuk tahun pelajaran baru.
+                            </div>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="auto_mutasi_missing_students" id="dapodik_auto_mutasi_missing_students" value="1">
+                            <label class="form-check-label fw-semibold text-danger" for="dapodik_auto_mutasi_missing_students">
+                                Mutasikan siswa aktif yang tidak tercantum dalam berkas
+                            </label>
+                            <div class="form-text text-danger small">
+                                <b>BAHAYA:</b> Mengaktifkan opsi ini pada berkas parsial akan memutasikan seluruh siswa di rombel lainnya.
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -1611,6 +1663,35 @@ function openStudentDetailModal(student, classroomName, homeroomName, statusLabe
 
     const modal = new bootstrap.Modal(document.getElementById('modal-detail-siswa'));
     modal.show();
+
+    if (student.id) {
+        fetch(`/siswa/${student.id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success && data.student) {
+                    const s = data.student;
+                    if (s.nik) document.getElementById('dt-nik').textContent = s.nik;
+                    if (s.family_card_no) document.getElementById('dt-family-card-no').textContent = s.family_card_no;
+                    if (s.birth_certificate_no) document.getElementById('dt-birth-cert-no').textContent = s.birth_certificate_no;
+                    if (s.father_nik) document.getElementById('dt-father-nik').textContent = s.father_nik;
+                    if (s.father_income) document.getElementById('dt-father-income').textContent = s.father_income;
+                    if (s.mother_nik) document.getElementById('dt-mother-nik').textContent = s.mother_nik;
+                    if (s.mother_income) document.getElementById('dt-mother-income').textContent = s.mother_income;
+                    if (s.guardian_nik) document.getElementById('dt-guardian-nik').textContent = s.guardian_nik;
+                    if (s.guardian_income) document.getElementById('dt-guardian-income').textContent = s.guardian_income;
+                    if (s.latitude || s.longitude) {
+                        document.getElementById('dt-coordinates').textContent = `${s.latitude || '-'}, ${s.longitude || '-'}`;
+                    }
+                    if (s.bank_name || s.bank_account_no) {
+                        let bText = `${s.bank_name || ''} ${s.bank_account_no || ''}`;
+                        if (s.bank_account_name) bText += ` a.n ${s.bank_account_name}`;
+                        document.getElementById('dt-bank-account').textContent = bText.trim() || '-';
+                    }
+                    if (s.special_needs) document.getElementById('dt-special-needs').textContent = s.special_needs;
+                }
+            })
+            .catch(() => {});
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -1846,8 +1927,36 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_entry_year').value = student.entry_year || '';
             document.getElementById('edit_notes').value = student.notes || '';
 
-            const modal = new bootstrap.Modal(document.getElementById('modal-edit-siswa'));
-            modal.show();
+            if (student.id) {
+                fetch(`/siswa/${student.id}/edit-data`)
+                    .then(res => {
+                        if (res.status === 403) {
+                            throw new Error('FORBIDDEN');
+                        }
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data && data.success && data.student) {
+                            const s = data.student;
+                            if (s.nik) document.getElementById('edit_nik').value = s.nik;
+                            if (s.name) document.getElementById('edit_name').value = s.name;
+                            if (s.classroom_id) document.getElementById('edit_classroom_id').value = s.classroom_id;
+                        }
+                        const modal = new bootstrap.Modal(document.getElementById('modal-edit-siswa'));
+                        modal.show();
+                    })
+                    .catch(err => {
+                        if (err.message === 'FORBIDDEN') {
+                            alert('Akses Ditolak: Anda tidak memiliki wewenang untuk mengubah data master siswa.');
+                        } else {
+                            const modal = new bootstrap.Modal(document.getElementById('modal-edit-siswa'));
+                            modal.show();
+                        }
+                    });
+            } else {
+                const modal = new bootstrap.Modal(document.getElementById('modal-edit-siswa'));
+                modal.show();
+            }
         });
     });
 });

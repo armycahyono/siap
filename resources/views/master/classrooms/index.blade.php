@@ -104,7 +104,7 @@
                                 </span>
                                 <div>
                                     <div class="fw-semibold text-dark">{{ $cls->homeroomTeacher->name }}</div>
-                                    <small class="text-muted">NIGS: {{ $cls->homeroomTeacher->nigs_fix ?? '-' }}</small>
+                                    <small class="text-muted">NIGS: {{ $cls->homeroomTeacher->nigs ?? '-' }}</small>
                                 </div>
                             </div>
                         @else
@@ -183,7 +183,7 @@
                                                     <option value="">-- Belum Ada Wali Kelas --</option>
                                                     @foreach($teachers as $t)
                                                         <option value="{{ $t->id }}" {{ $cls->homeroom_teacher_id == $t->id ? 'selected' : '' }}>
-                                                            {{ $t->name }} (NIGS: {{ $t->nigs_fix ?? '-' }})
+                                                            {{ $t->name }} (NIGS: {{ $t->nigs ?? '-' }})
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -264,7 +264,7 @@
                         <select name="homeroom_teacher_id" class="form-select">
                             <option value="">-- Pilih Guru (Opsional) --</option>
                             @foreach($teachers as $t)
-                                <option value="{{ $t->id }}">{{ $t->name }} (NIGS: {{ $t->nigs_fix ?? '-' }})</option>
+                                <option value="{{ $t->id }}">{{ $t->name }} (NIGS: {{ $t->nigs ?? '-' }})</option>
                             @endforeach
                         </select>
                     </div>

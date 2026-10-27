@@ -77,7 +77,7 @@ class AppFeedbackController extends Controller
             $file = $request->file('attachment');
             $attachmentOriginalName = $file->getClientOriginalName();
             $fileName = 'fb_'.uniqid().'.'.$file->getClientOriginalExtension();
-            $attachmentPath = $file->storeAs('feedback_attachments', $fileName, 'public');
+            $attachmentPath = $file->storeAs('feedback_attachments', $fileName, 'local');
         }
 
         AppFeedback::create([
@@ -137,13 +137,55 @@ class AppFeedbackController extends Controller
             abort(403, 'Anda tidak memiliki hak untuk menghapus catatan perbaikan ini.');
         }
 
-        if ($feedback->attachment_path && Storage::disk('public')->exists($feedback->attachment_path)) {
-            Storage::disk('public')->delete($feedback->attachment_path);
+        if ($feedback->attachment_path) {
+            if (Storage::disk('local')->exists($feedback->attachment_path)) {
+                Storage::disk('local')->delete($feedback->attachment_path);
+            } elseif (Storage::disk('public')->exists($feedback->attachment_path)) {
+                Storage::disk('public')->delete($feedback->attachment_path);
+            }
         }
 
         $feedback->delete();
 
         return redirect()->route('feedbacks.index')
             ->with('success', 'Catatan perbaikan berhasil dihapus.');
+    }
+
+    /**
+     * Download or view private feedback attachment.
+     */
+    public function downloadAttachment(AppFeedback $feedback)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = ($feedback->user_id === $user->id)
+            || $user->hasRole('super_admin')
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
+            || (method_exists($user, 'isPrincipal') && $user->isPrincipal());
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengunduh lampiran masukan ini.');
+        }
+
+        $path = $feedback->attachment_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Lampiran tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File lampiran tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path, $feedback->attachment_original_name);
     }
 }

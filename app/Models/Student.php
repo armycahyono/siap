@@ -86,6 +86,35 @@ class Student extends Model
         'is_active',
     ];
 
+    /**
+     * Atribut yang disembunyikan secara default dari serialisasi model (JSON / Array).
+     * Mencegah kebocoran data identitas kependudukan, finansial, dan data fisik rahasia.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'nik',
+        'family_card_no',
+        'birth_certificate_no',
+        'father_nik',
+        'mother_nik',
+        'guardian_nik',
+        'father_income',
+        'mother_income',
+        'guardian_income',
+        'bank_name',
+        'bank_account_no',
+        'bank_account_name',
+        'latitude',
+        'longitude',
+        'dapodik_payload',
+        'special_needs',
+        'pip_reason',
+        'kks_number',
+        'kps_number',
+        'kip_number',
+    ];
+
     protected $casts = [
         'birth_date' => 'date',
         'is_active' => 'boolean',
@@ -229,6 +258,46 @@ class Student extends Model
     public function latestMutation()
     {
         return $this->hasOne(StudentMutation::class)->latestOfMany();
+    }
+
+    /**
+     * Payload data siswa minimum yang aman untuk disematkan pada antarmuka web (DOM).
+     * Mengecualikan seluruh data identitas kependudukan rahasia, finansial, dan koordinat fisik.
+     *
+     * @return array<string, mixed>
+     */
+    public function toSafeUiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'classroom_id' => $this->classroom_id,
+            'nisn' => $this->nisn,
+            'nis' => $this->nis,
+            'gender' => $this->gender,
+            'birth_place' => $this->birth_place,
+            'birth_date' => $this->birth_date?->format('Y-m-d'),
+            'religion' => $this->religion,
+            'address' => $this->address,
+            'phone_student' => $this->phone_student,
+            'email' => $this->email,
+            'entry_year' => $this->entry_year,
+            'father_name' => $this->father_name,
+            'father_job' => $this->father_job,
+            'father_phone' => $this->father_phone,
+            'mother_name' => $this->mother_name,
+            'mother_job' => $this->mother_job,
+            'mother_phone' => $this->mother_phone,
+            'guardian_name' => $this->guardian_name,
+            'guardian_job' => $this->guardian_job,
+            'guardian_phone' => $this->guardian_phone,
+            'phone_parent' => $this->phone_parent,
+            'status' => $this->status,
+            'is_active' => (bool) $this->is_active,
+            'graduation_year' => $this->graduation_year,
+            'last_classroom_name' => $this->last_classroom_name,
+            'notes' => $this->notes,
+        ];
     }
 
     public function getActivityLogTitle(): string

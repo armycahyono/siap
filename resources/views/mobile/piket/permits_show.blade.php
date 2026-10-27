@@ -137,7 +137,7 @@
                 @if($permit->attachment_path)
                     <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
                         <span class="text-muted">Foto / Bukti Surat</span>
-                        <a href="{{ asset('storage/' . $permit->attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.7rem;">
+                        <a href="{{ $permit->attachment_url }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.7rem;">
                             <i class="ti ti-file me-1"></i> Lihat Dokumen
                         </a>
                     </div>

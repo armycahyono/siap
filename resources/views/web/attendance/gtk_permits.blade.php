@@ -322,7 +322,7 @@
                             </td>
                             <td class="text-center">
                                 @if($permit->document_path)
-                                    <a href="{{ Storage::disk('public')->url($permit->document_path) }}" target="_blank" class="btn btn-sm btn-ghost-primary px-2" title="Lihat Dokumen / Surat">
+                                    <a href="{{ $permit->document_url }}" target="_blank" class="btn btn-sm btn-ghost-primary px-2" title="Lihat Dokumen / Surat">
                                         <i class="ti ti-paperclip me-1"></i> Berkas
                                     </a>
                                 @else

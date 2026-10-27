@@ -37,7 +37,7 @@
                             @if(!empty($supervision->teacher->nip))
                                 NIP: {{ $supervision->teacher->nip }}
                             @else
-                                NIGS: {{ $supervision->teacher->nigs_fix ?: $supervision->teacher->nigs ?: '-' }}
+                                NIGS: {{ $supervision->teacher->nigs ?: '-' }}
                             @endif
                             @if(!empty($supervision->teacher->nuptk))
                                 | NUPTK: {{ $supervision->teacher->nuptk }}
@@ -51,7 +51,7 @@
                             @if(!empty($supervision->supervisor->nip))
                                 NIP: {{ $supervision->supervisor->nip }}
                             @else
-                                NIGS: {{ $supervision->supervisor->nigs_fix ?: $supervision->supervisor->nigs ?: '-' }}
+                                NIGS: {{ $supervision->supervisor->nigs ?: '-' }}
                             @endif
                             @if(!empty($supervision->supervisor->nuptk))
                                 | NUPTK: {{ $supervision->supervisor->nuptk }}

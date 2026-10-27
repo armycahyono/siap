@@ -28,5 +28,11 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             MasterDataSeeder::class,
         ]);
+
+        // Run test-specific seeders only in testing environment.
+        if (app()->environment('testing')) {
+            $this->call(TestUserSeeder::class);
+            $this->call(TestSupervisionSeeder::class);
+        }
     }
 }

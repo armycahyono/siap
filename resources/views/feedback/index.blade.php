@@ -167,7 +167,7 @@
             <!-- Attachment (if any) -->
             @if($item->attachment_path)
             <div class="mb-3">
-                <a href="{{ asset('storage/' . $item->attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                <a href="{{ $item->attachment_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
                     <i class="ti ti-paperclip me-1"></i> Lampiran: {{ $item->attachment_original_name ?: 'Lihat Berkas / Tangkapan Layar' }}
                 </a>
             </div>

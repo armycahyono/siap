@@ -94,9 +94,9 @@
                                     <span class="badge bg-teal-lt text-teal fw-bold px-2 py-0" style="font-size: 0.72rem;" title="Singkatan Nama untuk Jadwal">
                                         <i class="ti ti-id me-1"></i>{{ $t->formatted_short_name }}
                                     </span>
-                                    @if($t->nigs_fix ?? $t->nigs)
+                                    @if($t->nigs)
                                         <span class="badge bg-purple-lt fw-bold font-monospace" style="font-size: 0.70rem;" title="NIGS (Nomor Induk Guru Sekolah)">
-                                            NIGS: {{ $t->nigs_fix ?? $t->nigs }}
+                                            NIGS: {{ $t->nigs }}
                                         </span>
                                     @endif
                                     @if($t->nip)
@@ -307,7 +307,7 @@
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded border border-light-subtle">
                             <div class="text-muted small">NIGS (Nomor Induk Guru Sekolah)</div>
-                            <div class="fw-bold font-monospace text-dark fs-3">{{ $t->nigs_fix ?? $t->nigs ?: '-' }}</div>
+                            <div class="fw-bold font-monospace text-dark fs-3">{{ $t->nigs ?: '-' }}</div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -507,7 +507,7 @@
                                     </td>
                                     <td>
                                         <div class="fw-semibold text-dark">{{ $teacherItem->name }}</div>
-                                        <div class="text-muted small">NIGS: {{ $teacherItem->nigs_fix ?? $teacherItem->nigs ?: '-' }} &bull; NIK: {{ $teacherItem->nik ?: '-' }}</div>
+                                        <div class="text-muted small">NIGS: {{ $teacherItem->nigs ?: '-' }} &bull; NIK: {{ $teacherItem->nik ?: '-' }}</div>
                                     </td>
                                     <td>
                                         <span class="text-secondary small">{{ $teacherItem->subject ?: '-' }}</span>

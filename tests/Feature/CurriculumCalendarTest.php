@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicCalendarUpload;
+use App\Models\AcademicYear;
 use App\Models\CurriculumEvent;
 use App\Models\Role;
 use App\Models\SchoolSetting;
@@ -25,16 +26,14 @@ class CurriculumCalendarTest extends TestCase
     {
         parent::setUp();
 
-        $adminRole = Role::create([
+        $adminRole = Role::firstOrCreate(['slug' => 'super_admin'], [
             'name' => 'Super Admin',
-            'slug' => 'super_admin',
             'description' => 'Administrator',
             'is_system' => true,
         ]);
 
-        $teacherRole = Role::create([
+        $teacherRole = Role::firstOrCreate(['slug' => 'guru'], [
             'name' => 'Guru',
-            'slug' => 'guru',
             'description' => 'Guru Pengampu',
             'is_system' => false,
         ]);
@@ -56,6 +55,13 @@ class CurriculumCalendarTest extends TestCase
             'role_id' => $teacherRole->id,
             'short_name' => 'AD',
             'is_active' => true,
+        ]);
+
+        AcademicYear::firstOrCreate(['name' => '2026/2027'], [
+            'is_active' => true,
+            'semester' => 'Ganjil',
+            'start_date' => '2026-07-15',
+            'end_date' => '2027-06-20',
         ]);
 
         SchoolSetting::create([

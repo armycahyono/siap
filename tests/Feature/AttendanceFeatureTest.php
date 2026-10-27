@@ -60,7 +60,13 @@ class AttendanceFeatureTest extends TestCase
         ]);
 
         // Create student
-        $classroom = Classroom::first();
+        $classroom = Classroom::first() ?? Classroom::create([
+            'name' => 'X TKJ 1',
+            'grade_level_id' => 1,
+            'department_id' => 2,
+            'academic_year' => '2026/2027',
+            'is_active' => true,
+        ]);
 
         $student = Student::create([
             'name' => 'Budi Pratama',

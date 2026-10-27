@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\Role;
+use App\Models\SchoolSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -109,5 +110,100 @@ class AcademicYearTest extends TestCase
 
         $studentResponse = $this->actingAs($this->regularTeacher)->get(route('students.index'));
         $studentResponse->assertStatus(200);
+    }
+
+    public function test_set_as_active_enforces_strictly_single_active_year(): void
+    {
+        $year1 = AcademicYear::firstOrCreate(['name' => '2025/2026'], [
+            'semester' => 'Genap',
+            'is_active' => true,
+            'is_locked' => false,
+        ]);
+        $year1->update(['is_active' => true]);
+
+        $year2 = AcademicYear::firstOrCreate(['name' => '2026/2027'], [
+            'semester' => 'Ganjil',
+            'is_active' => false,
+            'is_locked' => false,
+        ]);
+        $year2->update(['is_active' => false]);
+
+        $year3 = AcademicYear::firstOrCreate(['name' => '2027/2028'], [
+            'semester' => 'Ganjil',
+            'is_active' => false,
+            'is_locked' => false,
+        ]);
+        $year3->update(['is_active' => false]);
+
+        $year2->setAsActive();
+
+        $this->assertTrue($year2->fresh()->is_active);
+        $this->assertFalse($year1->fresh()->is_active);
+        $this->assertFalse($year3->fresh()->is_active);
+        $this->assertSame(1, AcademicYear::where('is_active', true)->count());
+
+        $setting = SchoolSetting::first();
+        $this->assertNotNull($setting);
+        $this->assertEquals('2026/2027', $setting->academic_year);
+    }
+
+    public function test_set_as_active_rolls_back_entire_transaction_on_failure(): void
+    {
+        $year1 = AcademicYear::firstOrCreate(['name' => '2025/2026'], [
+            'semester' => 'Genap',
+            'is_active' => true,
+            'is_locked' => false,
+        ]);
+        $year1->update(['is_active' => true]);
+
+        $year2 = AcademicYear::firstOrCreate(['name' => '2026/2027'], [
+            'semester' => 'Ganjil',
+            'is_active' => false,
+            'is_locked' => false,
+        ]);
+        $year2->update(['is_active' => false]);
+
+        $setting = SchoolSetting::first();
+        $setting->update(['academic_year' => '2025/2026']);
+
+        // Simulate a failure during SchoolSetting update
+        SchoolSetting::updating(function () {
+            throw new \RuntimeException('Simulated SchoolSetting database crash');
+        });
+
+        try {
+            $year2->setAsActive();
+            $this->fail('Expected RuntimeException was not thrown');
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('Simulated SchoolSetting database crash', $e->getMessage());
+        }
+
+        // Verify full rollback: Year 1 remains active, Year 2 remains inactive
+        $this->assertTrue($year1->fresh()->is_active);
+        $this->assertFalse($year2->fresh()->is_active);
+        $this->assertSame(1, AcademicYear::where('is_active', true)->count());
+        $this->assertEquals('2025/2026', $setting->fresh()->academic_year);
+    }
+
+    public function test_set_as_active_refuses_locked_academic_year(): void
+    {
+        $year1 = AcademicYear::firstOrCreate(['name' => '2025/2026'], [
+            'semester' => 'Genap',
+            'is_active' => true,
+            'is_locked' => false,
+        ]);
+        $year1->update(['is_active' => true]);
+
+        $lockedYear = AcademicYear::firstOrCreate(['name' => '2023/2024'], [
+            'semester' => 'Ganjil',
+            'is_active' => false,
+            'is_locked' => true,
+        ]);
+        $lockedYear->update(['is_locked' => true, 'is_active' => false]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('dikunci');
+
+        $lockedYear->setAsActive();
     }
 }

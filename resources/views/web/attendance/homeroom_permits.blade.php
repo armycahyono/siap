@@ -98,7 +98,7 @@
                             <div class="d-flex align-items-center justify-content-between">
                                 <div>
                                     @if($p->attachment_path)
-                                        <a href="{{ asset('storage/' . $p->attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-info py-1 px-2">
+                                        <a href="{{ $p->attachment_url }}" target="_blank" class="btn btn-sm btn-outline-info py-1 px-2">
                                             <i class="ti ti-paperclip me-1"></i> Foto Bukti
                                         </a>
                                     @else
@@ -170,7 +170,7 @@
                                 </td>
                                 <td>
                                     @if($p->attachment_path)
-                                        <a href="{{ asset('storage/' . $p->attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="Lihat Foto Bukti / Surat">
+                                        <a href="{{ $p->attachment_url }}" target="_blank" class="btn btn-sm btn-outline-info py-0 px-2" title="Lihat Foto Bukti / Surat">
                                             <i class="ti ti-paperclip me-1"></i> Lihat Foto
                                         </a>
                                     @else

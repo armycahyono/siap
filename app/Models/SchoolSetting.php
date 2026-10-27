@@ -120,7 +120,12 @@ class SchoolSetting extends Model
     {
         $master = self::find(1);
 
-        return $master->academic_year ?? '2026/2027';
+        return $master->academic_year ?? (AcademicYear::getActive()?->name ?? (date('n') >= 7 ? date('Y').'/'.(date('Y') + 1) : (date('Y') - 1).'/'.date('Y')));
+    }
+
+    public static function getCurrentAcademicYear(): string
+    {
+        return self::getMasterYear();
     }
 
     public static function getMasterSemester(): string

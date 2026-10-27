@@ -52,14 +52,6 @@
                             <span class="badge bg-indigo-lt ms-2">{{ $structuralAssignments->total() }}</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ route('teacher-assignments.index', ['tab' => 'piket', 'academic_year' => $academicYear]) }}" 
-                           class="nav-link {{ $tab === 'piket' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
-                            <i class="ti ti-shield-check me-2 text-warning"></i>
-                            Penugasan Piket
-                            <span class="badge bg-warning-lt ms-2">{{ $piketSchedules->count() }}</span>
-                        </a>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -104,7 +96,7 @@
                                     </span>
                                     <div>
                                         <div class="fw-bold text-dark text-truncate" style="max-width: 160px;" title="{{ $tr->name }}">{{ $tr->name }}</div>
-                                        <div class="text-muted" style="font-size: 0.72rem;">NIGS: {{ $tr->nigs_fix ?: ($tr->nigs ?: '-') }}</div>
+                                        <div class="text-muted" style="font-size: 0.72rem;">NIGS: {{ $tr->nigs ?: '-' }}</div>
                                     </div>
                                 </div>
                                 <span class="badge bg-primary-lt fw-bold fs-5 text-nowrap">
@@ -186,7 +178,7 @@
                 <select name="teacher_id" class="form-select">
                     <option value="">-- Semua Guru --</option>
                     @foreach($teachers as $t)
-                        <option value="{{ $t->id }}" {{ $teacherId == $t->id ? 'selected' : '' }}>{{ $t->name }} ({{ $t->nigs_fix ?? '-' }})</option>
+                        <option value="{{ $t->id }}" {{ $teacherId == $t->id ? 'selected' : '' }}>{{ $t->name }} ({{ $t->nigs ?? '-' }})</option>
                     @endforeach
                 </select>
             </div>
@@ -257,7 +249,7 @@
                         </div>
                     </td>
                     <td>
-                        <div class="fw-semibold text-dark">{{ $assign->teacher?->nigs_fix ?? '-' }}</div>
+                        <div class="fw-semibold text-dark">{{ $assign->teacher?->nigs ?? '-' }}</div>
                         <small class="badge bg-secondary-lt">{{ $assign->teacher?->gtk_status ?? 'GTY' }}</small>
                     </td>
                     <td>
@@ -333,7 +325,7 @@
                         <select name="teacher_id" class="form-select" required>
                             <option value="">-- Pilih Guru --</option>
                             @foreach($teachers as $t)
-                                <option value="{{ $t->id }}">{{ $t->name }} (NIGS: {{ $t->nigs_fix ?? '-' }})</option>
+                                <option value="{{ $t->id }}">{{ $t->name }} (NIGS: {{ $t->nigs ?? '-' }})</option>
                             @endforeach
                         </select>
                     </div>
@@ -405,7 +397,7 @@
                     <div>
                         <h4 class="modal-title fw-bold text-dark mb-0">{{ $tr->name }}</h4>
                         <div class="text-muted small">
-                            NIGS: {{ $tr->nigs_fix ?: ($tr->nigs ?: '-') }}
+                            NIGS: {{ $tr->nigs ?: '-' }}
                             @if($tr->nip) | NIP: {{ $tr->nip }} @endif
                             | Status: <span class="badge bg-success-lt">Aktif Mengajar</span>
                         </div>
@@ -552,7 +544,7 @@
                                 </span>
                                 <div>
                                     <div class="fw-bold text-dark">{{ $cls->homeroomTeacher->name }}</div>
-                                    <small class="text-muted">NIGS: {{ $cls->homeroomTeacher->nigs_fix ?? '-' }}</small>
+                                    <small class="text-muted">NIGS: {{ $cls->homeroomTeacher->nigs ?? '-' }}</small>
                                 </div>
                             </div>
                         @else
@@ -603,7 +595,7 @@
                                                     <option value="">-- Kosongkan / Belum Ditetapkan --</option>
                                                     @foreach($teachers as $t)
                                                         <option value="{{ $t->id }}" {{ $cls->homeroom_teacher_id == $t->id ? 'selected' : '' }}>
-                                                            {{ $t->name }} (NIGS: {{ $t->nigs_fix ?? '-' }})
+                                                            {{ $t->name }} (NIGS: {{ $t->nigs ?? '-' }})
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -739,7 +731,7 @@
                             </span>
                             <div>
                                 <div class="fw-bold text-dark">{{ $spv->name }}</div>
-                                <small class="text-muted">NIGS: {{ $spv->nigs_fix ?: '-' }}</small>
+                                <small class="text-muted">NIGS: {{ $spv->nigs ?: '-' }}</small>
                             </div>
                         </div>
                     </td>
@@ -996,9 +988,6 @@
             <button type="button" class="btn btn-sm btn-indigo" data-bs-toggle="modal" data-bs-target="#modalAssignStructural">
                 <i class="ti ti-user-plus me-1"></i> Tugaskan Guru
             </button>
-            <a href="{{ route('teacher-assignments.template-structural', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="ti ti-download me-1"></i> Format Template
-            </a>
             <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalImportStructural">
                 <i class="ti ti-file-spreadsheet me-1"></i> Import Excel
             </button>
@@ -1009,20 +998,21 @@
             <thead>
                 <tr class="text-muted small">
                     <th style="width: 50px;" class="text-center">No</th>
-                    <th style="width: 120px;">Kode</th>
-                    <th>Nama Jabatan Struktural</th>
-                    <th>Kategori</th>
-                    <th>Pejabat / Guru yang Ditugaskan</th>
-                    <th>Nomor SK & TMT</th>
+                    <th>Nama Jabatan</th>
+                    <th style="width: 100px;">Kode</th>
+                    <th>GTK yang Ditugaskan</th>
+                    <th>Nomor SK &amp; TMT</th>
                     <th style="width: 110px;" class="text-center">Tanda Tangan</th>
                     <th class="text-center" style="width: 90px;">Status</th>
                     <th class="w-1 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($structuralAssignments as $index => $pos)
                 @php
-                    $currentAsgn = $pos->activeAssignments->first();
+                    $rowNo = $structuralAssignments->firstItem();
+                @endphp
+                @forelse($structuralAssignments as $posIndex => $pos)
+                @php
                     $catClass = match($pos->category) {
                         'Pimpinan' => 'bg-danger-lt',
                         'Wakil Kepala Sekolah' => 'bg-indigo-lt',
@@ -1031,143 +1021,260 @@
                         'Tata Kelola & Keuangan' => 'bg-purple-lt',
                         default => 'bg-secondary-lt'
                     };
+                    $isMultiple = (bool) $pos->allows_multiple;
+                    $activeCount = $pos->activeAssignments->count();
                 @endphp
-                <tr>
-                    <td class="text-center text-muted fw-bold">{{ $structuralAssignments->firstItem() + $index }}</td>
-                    <td>
-                        <span class="badge bg-blue-lt fw-bold font-monospace">{{ $pos->code ?? '-' }}</span>
-                    </td>
-                    <td>
-                        <div class="fw-bold text-dark fs-3">{{ $pos->name }}</div>
-                        @if($pos->description)
-                            <div class="text-muted small">{{ $pos->description }}</div>
-                        @endif
-                    </td>
-                    <td>
-                        <span class="badge {{ $catClass }}">{{ $pos->category ?? 'Umum' }}</span>
-                    </td>
-                    <td>
-                        @if($currentAsgn && $currentAsgn->teacher)
-                            <div class="d-flex align-items-center">
-                                <span class="avatar avatar-sm bg-indigo-lt rounded-circle me-2 fw-bold">
-                                    {{ strtoupper(substr($currentAsgn->teacher->name, 0, 1)) }}
-                                </span>
-                                <div>
-                                    <div class="fw-bold text-dark">{{ $currentAsgn->teacher->name }}</div>
-                                    <div class="text-muted small" style="font-size: 0.75rem;">
-                                        NIGS: {{ $currentAsgn->teacher->nigs_fix ?? '-' }} | NIP: {{ $currentAsgn->teacher->nip ?? '-' }}
+
+                @if($isMultiple && $activeCount > 0)
+                    {{-- JAMAK: Render 1 baris per personil penugasan --}}
+                    @foreach($pos->activeAssignments as $asgnIndex => $asgn)
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ $rowNo++ }}</td>
+                        <td>
+                            <div class="fw-bold text-dark fs-3">{{ $pos->name }}</div>
+                            @if($pos->description)
+                                <div class="text-muted small">{{ $pos->description }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="badge bg-blue-lt fw-bold font-monospace">{{ $pos->code ?? '-' }}</span>
+                        </td>
+                        <td>
+                            @if($asgn->teacher)
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-xs bg-indigo-lt rounded-circle me-2 fw-bold" style="font-size: 0.70rem;">
+                                        {{ strtoupper(substr($asgn->teacher->name, 0, 1)) }}
+                                    </span>
+                                    <div>
+                                        <div class="fw-bold text-dark small">{{ $asgn->teacher->name }}</div>
+                                        <div class="text-muted" style="font-size: 0.70rem;">
+                                            NIGS: {{ $asgn->teacher->nigs ?? '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <span class="text-muted small fst-italic">Data personil tidak ditemukan</span>
+                            @endif
+                        </td>
+                        <td>
+                            <div class="small">
+                                @if($asgn->sk_number)
+                                    <div class="fw-semibold text-dark text-nowrap" style="font-size: 0.75rem;">
+                                        <i class="ti ti-file-certificate me-1 text-primary"></i>{{ $asgn->sk_number }}
+                                    </div>
+                                @endif
+                                @if($asgn->sk_date)
+                                    <div class="text-muted" style="font-size: 0.70rem;">
+                                        <i class="ti ti-calendar me-1"></i>TMT: {{ $asgn->sk_date->format('d/m/Y') }}
+                                    </div>
+                                @endif
+                                @if($asgn->notes)
+                                    <div class="text-secondary fst-italic" style="font-size: 0.70rem;" title="{{ $asgn->notes }}">
+                                        <i class="ti ti-notes me-1"></i>{{ Str::limit($asgn->notes, 30) }}
+                                    </div>
+                                @endif
+                                @if(!$asgn->sk_number && !$asgn->sk_date && !$asgn->notes)
+                                    <span class="text-muted" style="font-size: 0.70rem;">-</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            @if($pos->signature_image_path)
+                                <a href="{{ route('structural-positions.signature', $pos) }}" target="_blank" title="Lihat Tanda Tangan">
+                                    <img src="{{ route('structural-positions.signature', $pos) }}" alt="TTD {{ $pos->name }}" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white shadow-xs">
+                                </a>
+                            @else
+                                <span class="text-muted small fst-italic">-</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-success-lt">Aktif</span>
+                        </td>
+                        <td class="text-center text-nowrap">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditAsgn{{ $asgn->id }}" title="Ubah SK / Ganti Personil Ini">
+                                    <i class="ti ti-edit me-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAddPersonilPos{{ $pos->id }}" title="Tambah Personil Baru untuk {{ $pos->name }}">
+                                    <i class="ti ti-plus"></i>
+                                </button>
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-light btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalEditPos{{ $pos->id }}">
+                                            <i class="ti ti-adjustments me-2 text-muted"></i> Edit Master Jabatan
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                        <form action="{{ route('teacher-assignments.destroy-structural', $asgn) }}" method="POST" onsubmit="return confirm('Cabut penugasan {{ $asgn->teacher?->name }} dari jabatan {{ $pos->name }}?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="ti ti-user-x me-2"></i> Cabut Penugasan Ini
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
-                        @else
-                            <div class="d-flex align-items-center gap-2">
+                        </td>
+                    </tr>
+                    @endforeach
+                @else
+                    {{-- TUNGGAL atau JAMAK BELUM TERISI: Render 1 baris --}}
+                    @php
+                        $currentAsgn = $pos->activeAssignments->first();
+                    @endphp
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ $rowNo++ }}</td>
+                        <td>
+                            <div class="fw-bold text-dark fs-3">{{ $pos->name }}</div>
+                            @if($pos->description)
+                                <div class="text-muted small">{{ $pos->description }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="badge bg-blue-lt fw-bold font-monospace">{{ $pos->code ?? '-' }}</span>
+                        </td>
+                        <td>
+                            @if($currentAsgn && $currentAsgn->teacher)
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-xs bg-indigo-lt rounded-circle me-2 fw-bold" style="font-size: 0.70rem;">
+                                        {{ strtoupper(substr($currentAsgn->teacher->name, 0, 1)) }}
+                                    </span>
+                                    <div>
+                                        <div class="fw-bold text-dark small">{{ $currentAsgn->teacher->name }}</div>
+                                        <div class="text-muted" style="font-size: 0.70rem;">
+                                            NIGS: {{ $currentAsgn->teacher->nigs ?? '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
                                 <span class="badge bg-secondary-lt text-secondary fst-italic">Belum Ditugaskan</span>
-                                <button type="button" class="btn btn-xs btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAssignPos{{ $pos->id }}">
-                                    <i class="ti ti-plus me-1"></i> Tugaskan
-                                </button>
-                            </div>
-                        @endif
-                    </td>
-                    <td>
-                        @if($currentAsgn && ($currentAsgn->sk_number || $currentAsgn->sk_date || $currentAsgn->notes))
-                            @if($currentAsgn->sk_number)
-                                <div class="fw-semibold text-dark small text-nowrap">
-                                    <i class="ti ti-file-certificate me-1 text-primary"></i>{{ $currentAsgn->sk_number }}
-                                </div>
                             @endif
-                            @if($currentAsgn->sk_date)
-                                <div class="text-muted small text-nowrap" style="font-size: 0.72rem;">
-                                    <i class="ti ti-calendar me-1"></i>TMT: {{ $currentAsgn->sk_date->format('d/m/Y') }}
-                                </div>
-                            @endif
-                            @if($currentAsgn->notes)
-                                <div class="text-secondary small fst-italic mt-1" style="font-size: 0.72rem;" title="{{ $currentAsgn->notes }}">
-                                    <i class="ti ti-notes me-1"></i>{{ Str::limit($currentAsgn->notes, 35) }}
-                                </div>
-                            @endif
-                        @else
-                            <span class="text-muted small">-</span>
-                        @endif
-                    </td>
-                    <td class="text-center">
-                        @if($pos->signature_image_path)
-                            <a href="{{ asset('storage/' . $pos->signature_image_path) }}" target="_blank" title="Lihat Tanda Tangan">
-                                <img src="{{ asset('storage/' . $pos->signature_image_path) }}" alt="TTD {{ $pos->name }}" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white shadow-xs">
-                            </a>
-                        @else
-                            <span class="text-muted small fst-italic">-</span>
-                        @endif
-                    </td>
-                    <td class="text-center">
-                        @if($pos->is_active)
-                            <span class="badge bg-success-lt">Aktif</span>
-                        @else
-                            <span class="badge bg-danger-lt">Nonaktif</span>
-                        @endif
-                    </td>
-                    <td class="text-center text-nowrap">
-                        <div class="d-inline-flex align-items-center gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAssignPos{{ $pos->id }}" title="{{ $currentAsgn ? 'Ubah Pejabat / SK' : 'Tugaskan Guru' }}">
-                                <i class="ti {{ $currentAsgn ? 'ti-user-edit' : 'ti-user-plus' }} me-1"></i>
-                                {{ $currentAsgn ? 'Ubah' : 'Tugaskan' }}
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditPos{{ $pos->id }}" title="Edit Master Jabatan">
-                                <i class="ti ti-edit"></i>
-                            </button>
-                            <div class="dropdown d-inline-block">
-                                <button class="btn btn-sm btn-light btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="ti ti-dots-vertical"></i>
-                                </button>
-                                <div class="dropdown-menu dropdown-menu-end shadow-sm">
-                                    @if($currentAsgn)
-                                    <form action="{{ route('teacher-assignments.destroy-structural', $currentAsgn) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mencabut penugasan guru ini dari jabatan {{ $pos->name }}?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="dropdown-item text-warning">
-                                            <i class="ti ti-user-x me-2"></i> Cabut Penugasan Guru
-                                        </button>
-                                    </form>
-                                    <div class="dropdown-divider"></div>
+                        </td>
+                        <td>
+                            @if($currentAsgn)
+                                <div class="small">
+                                    @if($currentAsgn->sk_number)
+                                        <div class="fw-semibold text-dark text-nowrap" style="font-size: 0.75rem;">
+                                            <i class="ti ti-file-certificate me-1 text-primary"></i>{{ $currentAsgn->sk_number }}
+                                        </div>
                                     @endif
-                                    <form action="{{ route('structural-positions.destroy', $pos) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus master jabatan {{ $pos->name }}?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="dropdown-item text-danger">
-                                            <i class="ti ti-trash me-2"></i> Hapus Master Jabatan
+                                    @if($currentAsgn->sk_date)
+                                        <div class="text-muted" style="font-size: 0.70rem;">
+                                            <i class="ti ti-calendar me-1"></i>TMT: {{ $currentAsgn->sk_date->format('d/m/Y') }}
+                                        </div>
+                                    @endif
+                                    @if($currentAsgn->notes)
+                                        <div class="text-secondary fst-italic" style="font-size: 0.70rem;" title="{{ $currentAsgn->notes }}">
+                                            <i class="ti ti-notes me-1"></i>{{ Str::limit($currentAsgn->notes, 30) }}
+                                        </div>
+                                    @endif
+                                    @if(!$currentAsgn->sk_number && !$currentAsgn->sk_date && !$currentAsgn->notes)
+                                        <span class="text-muted" style="font-size: 0.70rem;">-</span>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-muted small">-</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            @if($pos->signature_image_path)
+                                <a href="{{ route('structural-positions.signature', $pos) }}" target="_blank" title="Lihat Tanda Tangan">
+                                    <img src="{{ route('structural-positions.signature', $pos) }}" alt="TTD {{ $pos->name }}" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white shadow-xs">
+                                </a>
+                            @else
+                                <span class="text-muted small fst-italic">-</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            @if($currentAsgn)
+                                <span class="badge bg-success-lt">Aktif</span>
+                            @else
+                                <span class="badge bg-warning-lt">Kosong</span>
+                            @endif
+                        </td>
+                        <td class="text-center text-nowrap">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                @if($currentAsgn)
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditAsgn{{ $currentAsgn->id }}" title="Ubah SK / Ganti Pejabat">
+                                        <i class="ti ti-edit me-1"></i> Ganti Pejabat
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddPersonilPos{{ $pos->id }}" title="Tugaskan Pejabat">
+                                        <i class="ti ti-user-plus me-1"></i> Tugaskan
+                                    </button>
+                                @endif
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-light btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalEditPos{{ $pos->id }}">
+                                            <i class="ti ti-adjustments me-2 text-muted"></i> Edit Master Jabatan
                                         </button>
-                                    </form>
+                                        @if($currentAsgn)
+                                            <div class="dropdown-divider"></div>
+                                            <form action="{{ route('teacher-assignments.destroy-structural', $currentAsgn) }}" method="POST" onsubmit="return confirm('Cabut penugasan {{ $currentAsgn->teacher?->name }} dari jabatan {{ $pos->name }}?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="ti ti-user-x me-2"></i> Cabut Penugasan
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </td>
-                </tr>
+                        </td>
+                    </tr>
+                @endif
 
-                <!-- Modal Tugaskan / Ubah Guru untuk Jabatan ini -->
-                <div class="modal fade" id="modalAssignPos{{ $pos->id }}" tabindex="-1" aria-hidden="true">
+                <!-- Modal Tambah / Ganti Personil untuk Jabatan ini -->
+                @php
+                    $posCurrentAsgn = $pos->activeAssignments->first();
+                @endphp
+                <div class="modal fade" id="modalAddPersonilPos{{ $pos->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <form action="{{ route('teacher-assignments.store-structural') }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="academic_year" value="{{ $academicYear }}">
                                 <input type="hidden" name="structural_position_id" value="{{ $pos->id }}">
-                                @if($currentAsgn)
-                                    <input type="hidden" name="assignment_id" value="{{ $currentAsgn->id }}">
-                                @endif
                                 <div class="modal-header">
                                     <h5 class="modal-title fw-bold">
-                                        <i class="ti ti-briefcase me-1 text-indigo"></i>
-                                        {{ $currentAsgn ? 'Ubah Penugasan' : 'Tugaskan Guru' }}: {{ $pos->name }}
+                                        <i class="ti ti-briefcase me-1 {{ $pos->allows_multiple ? 'text-teal' : ($posCurrentAsgn ? 'text-warning' : 'text-indigo') }}"></i>
+                                        {{ $pos->allows_multiple ? 'Tambah Personil' : ($posCurrentAsgn ? 'Ganti Pejabat' : 'Tugaskan Pejabat') }}: {{ $pos->name }}
                                     </h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
+                                    @if(!$pos->allows_multiple)
+                                        @if($posCurrentAsgn)
+                                            <div class="alert alert-warning py-2 px-3 mb-3 small">
+                                                <div class="fw-bold mb-1"><i class="ti ti-alert-triangle me-1"></i> Kapasitas Penugasan: Tunggal (hanya 1 orang)</div>
+                                                <div>Kode: <code>{{ $pos->code ?? '-' }}</code> &bull; Saat ini dijabat oleh: <strong>{{ $posCurrentAsgn->teacher?->name }}</strong> (NIGS: {{ $posCurrentAsgn->teacher?->nigs ?? '-' }}).</div>
+                                                <div class="text-danger mt-1"><i class="ti ti-info-circle me-1"></i> Menyimpan form ini akan <strong>menggantikan</strong> pejabat di atas.</div>
+                                            </div>
+                                        @else
+                                            <div class="alert alert-info py-2 px-3 mb-3 small">
+                                                <i class="ti ti-info-circle me-1"></i> <strong>Kapasitas Penugasan: Tunggal (hanya 1 orang)</strong> &bull; Kode: <code>{{ $pos->code ?? '-' }}</code> (Belum ada pejabat aktif).
+                                            </div>
+                                        @endif
+                                    @else
+                                        <div class="alert alert-teal py-2 px-3 mb-3 small">
+                                            <i class="ti ti-users me-1 text-teal"></i> <strong>Kapasitas Penugasan: Jamak (bisa lebih 1 orang)</strong> &bull; Kode: <code>{{ $pos->code ?? '-' }}</code>. Penugasan baru akan ditambahkan ke <strong>baris baru</strong>.
+                                        </div>
+                                    @endif
+
                                     <div class="mb-3">
-                                        <label class="form-label required fw-bold">Pilih Guru / Pejabat</label>
+                                        <label class="form-label required fw-bold">Pilih Pegawai / Guru / Staf</label>
                                         <select name="teacher_id" class="form-select" required>
-                                            <option value="">-- Pilih Guru yang Ditugaskan --</option>
+                                            <option value="">-- Pilih Pegawai yang Ditugaskan --</option>
                                             @foreach($allTeachers as $at)
-                                                <option value="{{ $at->id }}" {{ ($currentAsgn?->teacher_id == $at->id) ? 'selected' : '' }}>
-                                                    {{ $at->name }} {{ $at->nip ? '(NIP: ' . $at->nip . ')' : '' }}
+                                                <option value="{{ $at->id }}">
+                                                    {{ $at->name }} {{ $at->nigs ? '(NIGS: ' . $at->nigs . ')' : '' }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -1175,28 +1282,83 @@
                                     <div class="row g-2 mb-3">
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Nomor SK Pengangkatan</label>
-                                            <input type="text" name="sk_number" class="form-control" value="{{ old('sk_number', $currentAsgn?->sk_number) }}" placeholder="Contoh: 421.5/028/SMK-PK/2026">
+                                            <input type="text" name="sk_number" class="form-control" placeholder="Contoh: 421.5/028/SMK-PK/2026">
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Tanggal SK / TMT</label>
-                                            <input type="date" name="sk_date" class="form-control" value="{{ old('sk_date', $currentAsgn?->sk_date ? $currentAsgn->sk_date->format('Y-m-d') : date('Y-m-d')) }}">
+                                            <input type="date" name="sk_date" class="form-control" value="{{ date('Y-m-d') }}">
                                         </div>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">Keterangan / Catatan Tambahan (Opsional)</label>
-                                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tugas pokok atau wewenang tambahan...">{{ old('notes', $currentAsgn?->notes) }}</textarea>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tugas pokok atau wewenang tambahan..."></textarea>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="ti ti-check me-1"></i> Simpan Penugasan
+                                        <i class="ti ti-check me-1"></i> {{ $posCurrentAsgn && !$pos->allows_multiple ? 'Ganti Pejabat' : 'Simpan Penugasan' }}
                                     </button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
+
+                <!-- Modals Edit untuk masing-masing penugasan personil yang ada -->
+                @foreach($pos->activeAssignments as $asgn)
+                <div class="modal fade" id="modalEditAsgn{{ $asgn->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <form action="{{ route('teacher-assignments.store-structural') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="academic_year" value="{{ $academicYear }}">
+                                <input type="hidden" name="structural_position_id" value="{{ $pos->id }}">
+                                <input type="hidden" name="assignment_id" value="{{ $asgn->id }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="ti ti-briefcase me-1 text-indigo"></i>
+                                        Ubah Penugasan: {{ $pos->name }}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label required fw-bold">Pegawai / Guru / Staf</label>
+                                        <select name="teacher_id" class="form-select" required>
+                                            @foreach($allTeachers as $at)
+                                                <option value="{{ $at->id }}" {{ ($asgn->teacher_id == $at->id) ? 'selected' : '' }}>
+                                                    {{ $at->name }} {{ $at->nigs ? '(NIGS: ' . $at->nigs . ')' : '' }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Nomor SK Pengangkatan</label>
+                                            <input type="text" name="sk_number" class="form-control" value="{{ old('sk_number', $asgn->sk_number) }}" placeholder="Contoh: 421.5/028/SMK-PK/2026">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Tanggal SK / TMT</label>
+                                            <input type="date" name="sk_date" class="form-control" value="{{ old('sk_date', $asgn->sk_date ? $asgn->sk_date->format('Y-m-d') : date('Y-m-d')) }}">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Keterangan / Catatan Tambahan (Opsional)</label>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tugas pokok atau wewenang tambahan...">{{ old('notes', $asgn->notes) }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-check me-1"></i> Perbarui Penugasan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
 
                 <!-- Modal Edit Master Jabatan -->
                 <div class="modal fade" id="modalEditPos{{ $pos->id }}" tabindex="-1" aria-hidden="true">
@@ -1225,6 +1387,35 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
+                                        <label class="form-label required fw-bold">Kapasitas Penugasan</label>
+                                        <div class="row g-2">
+                                            <div class="col-sm-6">
+                                                <label class="form-selectgroup-item w-100">
+                                                    <input type="radio" name="allows_multiple" value="0" class="form-selectgroup-input" {{ empty($pos->allows_multiple) ? 'checked' : '' }}>
+                                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                                        <span class="me-2"><i class="ti ti-user text-indigo fs-2"></i></span>
+                                                        <span>
+                                                            <span class="fw-bold d-block text-dark">Tunggal (hanya 1 orang)</span>
+                                                            <span class="text-muted small">Input baru menggantikan pejabat</span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <label class="form-selectgroup-item w-100">
+                                                    <input type="radio" name="allows_multiple" value="1" class="form-selectgroup-input" {{ !empty($pos->allows_multiple) ? 'checked' : '' }}>
+                                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                                        <span class="me-2"><i class="ti ti-users text-teal fs-2"></i></span>
+                                                        <span>
+                                                            <span class="fw-bold d-block text-dark">Jamak (bisa lebih 1 orang)</span>
+                                                            <span class="text-muted small">Bisa tambah personil baris baru</span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
                                         <label class="form-label">Kategori Jabatan</label>
                                         <input type="text" name="category" class="form-control" list="categoryOptions" value="{{ old('category', $pos->category) }}" placeholder="Pilih atau ketik kategori...">
                                     </div>
@@ -1238,7 +1429,7 @@
                                         <small class="text-muted">Maksimal 2MB. Disarankan PNG berlatar transparan.</small>
                                         @if($pos->signature_image_path)
                                             <div class="mt-2 p-2 bg-light rounded border d-flex align-items-center justify-content-between">
-                                                <img src="{{ asset('storage/' . $pos->signature_image_path) }}" alt="TTD" style="height: 35px; max-width: 80px; object-fit: contain;">
+                                                <img src="{{ route('structural-positions.signature', $pos) }}" alt="TTD" style="height: 35px; max-width: 80px; object-fit: contain;">
                                                 <div class="form-check m-0">
                                                     <input class="form-check-input" type="checkbox" name="remove_signature" value="1" id="del_sig_pos_{{ $pos->id }}">
                                                     <label class="form-check-label text-danger small" for="del_sig_pos_{{ $pos->id }}">Hapus TTD</label>
@@ -1263,7 +1454,7 @@
                 </div>
                 @empty
                 <tr>
-                    <td colspan="9" class="text-center py-5 text-muted">
+                    <td colspan="8" class="text-center py-5 text-muted">
                         <i class="ti ti-briefcase-off fs-1 mb-2 d-block text-secondary"></i>
                         Belum ada data jabatan struktural yang sesuai kriteria.
                         <div class="mt-2">
@@ -1312,6 +1503,35 @@
                         <div class="col-md-6">
                             <label class="form-label">Urutan</label>
                             <input type="number" name="order" class="form-control" value="{{ \App\Models\StructuralPosition::max('order') + 1 }}" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label required fw-bold">Kapasitas Penugasan</label>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="allows_multiple" value="0" class="form-selectgroup-input" checked>
+                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                        <span class="me-2"><i class="ti ti-user text-indigo fs-2"></i></span>
+                                        <span>
+                                            <span class="fw-bold d-block text-dark">Tunggal (hanya 1 orang)</span>
+                                            <span class="text-muted small">Input baru menggantikan pejabat</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="allows_multiple" value="1" class="form-selectgroup-input">
+                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                        <span class="me-2"><i class="ti ti-users text-teal fs-2"></i></span>
+                                        <span>
+                                            <span class="fw-bold d-block text-dark">Jamak (bisa lebih 1 orang)</span>
+                                            <span class="text-muted small">Bisa tambah personil baris baru</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -1366,14 +1586,23 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label required fw-bold">Pilih Jabatan Struktural</label>
-                        <select name="structural_position_id" class="form-select" required>
+                        <select name="structural_position_id" id="selectStructuralPosition" class="form-select" required>
                             <option value="">-- Pilih Jabatan Struktural --</option>
                             @foreach($structuralPositions as $sp)
-                                <option value="{{ $sp->id }}" {{ $positionId == $sp->id ? 'selected' : '' }}>
-                                    {{ $sp->name }} ({{ $sp->category ?? 'Umum' }})
+                                @php
+                                    $spCurrentAsgn = $sp->activeAssignments->first();
+                                @endphp
+                                <option value="{{ $sp->id }}" 
+                                    data-allows-multiple="{{ $sp->allows_multiple ? '1' : '0' }}"
+                                    data-code="{{ $sp->code ?? '-' }}"
+                                    data-current-name="{{ $spCurrentAsgn?->teacher?->name ?? '' }}"
+                                    data-current-nigs="{{ $spCurrentAsgn?->teacher?->nigs ? 'NIGS: ' . $spCurrentAsgn->teacher->nigs : '' }}"
+                                    {{ $positionId == $sp->id ? 'selected' : '' }}>
+                                    {{ $sp->name }} ({{ $sp->category ?? 'Umum' }}) — [{{ $sp->allows_multiple ? 'Jamak' : 'Tunggal' }}]
                                 </option>
                             @endforeach
                         </select>
+                        <div id="alertPositionCapacity" class="mt-2 d-none"></div>
                     </div>
 
                     <div class="mb-3">
@@ -1382,7 +1611,7 @@
                             <option value="">-- Pilih Guru yang Ditugaskan --</option>
                             @foreach($allTeachers as $at)
                                 <option value="{{ $at->id }}" {{ $teacherId == $at->id ? 'selected' : '' }}>
-                                    {{ $at->name }} {{ $at->nip ? '(NIP: ' . $at->nip . ')' : '' }}
+                                    {{ $at->name }} {{ $at->nigs ? '(NIGS: ' . $at->nigs . ')' : '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -1467,88 +1696,51 @@
         </form>
     </div>
 </div>
-@elseif($tab === 'piket')
-<!-- ======================= TAB 5: PENUGASAN PIKET ======================= -->
-<div class="row">
-    <div class="col-12">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-3 gap-2">
-                <div>
-                    <h3 class="card-title fw-bold text-dark mb-0">
-                        <i class="ti ti-shield-check text-warning me-2"></i>
-                        Rekapitulasi Penugasan Guru Piket (TP {{ $academicYear }})
-                    </h3>
-                    <div class="text-secondary small mt-1">
-                        Daftar guru yang ditugaskan sebagai petugas piket harian. Untuk pengelolaan operasional harian, kunjungi modul piket.
-                    </div>
-                </div>
-                <div>
-                    <a href="{{ route('piket.schedules.index', ['academic_year' => $academicYear]) }}" class="btn btn-primary">
-                        <i class="ti ti-settings me-1"></i> Kelola Jadwal Piket Lengkap
-                    </a>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-vcenter table-hover card-table">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 50px;">No</th>
-                            <th>Hari Tugas</th>
-                            <th>Nama Guru Petugas</th>
-                            <th>Peran</th>
-                            <th>Pos / Lokasi Tugas</th>
-                            <th class="text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($piketSchedules as $idx => $ps)
-                            <tr>
-                                <td>{{ $idx + 1 }}</td>
-                                <td>
-                                    <span class="badge bg-primary text-white px-2 py-1">{{ $ps->day }}</span>
-                                </td>
-                                <td>
-                                    <div class="fw-bold text-dark fs-3">{{ $ps->teacher?->name ?? '-' }}</div>
-                                    <span class="text-muted small">{{ $ps->teacher?->formatted_id ?? '-' }}</span>
-                                </td>
-                                <td>
-                                    @if($ps->role === 'koordinator')
-                                        <span class="badge bg-purple text-white"><i class="ti ti-crown me-1"></i> Koordinator</span>
-                                    @else
-                                        <span class="badge bg-secondary-lt">Anggota</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="text-secondary small">{{ $ps->duty_location ?: 'Meja Piket Utama' }}</span>
-                                </td>
-                                <td class="text-center">
-                                    @if($ps->is_active)
-                                        <span class="badge bg-success-lt">Aktif</span>
-                                    @else
-                                        <span class="badge bg-secondary-lt">Non-Aktif</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="ti ti-calendar-off fs-1 d-block mb-2"></i>
-                                    Belum ada penugasan guru piket untuk Tahun Pelajaran {{ $academicYear }}.
-                                    <div class="mt-2">
-                                        <a href="{{ route('piket.schedules.index') }}" class="btn btn-sm btn-outline-primary">
-                                            + Buat Jadwal Petugas Piket
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
 @endif
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const posSelect = document.getElementById('selectStructuralPosition');
+    const alertBox = document.getElementById('alertPositionCapacity');
+
+    if (posSelect && alertBox) {
+        function updateCapacityAlert() {
+            const opt = posSelect.options[posSelect.selectedIndex];
+            if (!opt || !opt.value) {
+                alertBox.className = 'mt-2 d-none';
+                alertBox.innerHTML = '';
+                return;
+            }
+
+            const allowsMultiple = opt.getAttribute('data-allows-multiple') === '1';
+            const code = opt.getAttribute('data-code') || '-';
+            const curName = opt.getAttribute('data-current-name');
+            const curNigs = opt.getAttribute('data-current-nigs');
+
+            if (!allowsMultiple) {
+                if (curName) {
+                    alertBox.className = 'mt-2 alert alert-warning py-2 px-3 small';
+                    alertBox.innerHTML = '<div class="fw-bold mb-1"><i class="ti ti-alert-triangle text-warning me-1"></i> Kapasitas Penugasan: Tunggal (hanya 1 orang)</div>' +
+                        '<div>Kode: <code>' + code + '</code> &bull; Saat ini dijabat oleh: <strong>' + curName + '</strong> ' + (curNigs ? '(' + curNigs + ')' : '') + '.</div>' +
+                        '<div class="text-danger mt-1"><i class="ti ti-info-circle me-1"></i> Menyimpan form ini akan <strong>menggantikan</strong> pejabat di atas.</div>';
+                } else {
+                    alertBox.className = 'mt-2 alert alert-info py-2 px-3 small';
+                    alertBox.innerHTML = '<div><i class="ti ti-info-circle me-1"></i> <strong>Kapasitas Penugasan: Tunggal (hanya 1 orang)</strong> &bull; Kode: <code>' + code + '</code> (Belum ada pejabat aktif).</div>';
+                }
+            } else {
+                alertBox.className = 'mt-2 alert alert-teal py-2 px-3 small';
+                alertBox.innerHTML = '<div><i class="ti ti-users me-1 text-teal"></i> <strong>Kapasitas Penugasan: Jamak (bisa lebih 1 orang)</strong> &bull; Kode: <code>' + code + '</code>. Penugasan baru akan ditambahkan ke <strong>baris baru</strong>.</div>';
+            }
+        }
+
+        posSelect.addEventListener('change', updateCapacityAlert);
+        if (posSelect.value) {
+            updateCapacityAlert();
+        }
+    }
+});
+</script>
+@endpush
 
 @endsection

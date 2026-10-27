@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Role;
 use App\Models\SchoolSetting;
-use App\Models\StructuralPosition;
 use App\Models\Supervision;
-use App\Models\TeacherStructuralAssignment;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,29 +13,18 @@ class SettingController extends Controller
 {
     public function index(): View
     {
-        $setting = SchoolSetting::getSetting();
+        $setting = SchoolSetting::getSetting(true);
         $teachers = User::operationalPersonnel()->where('is_active', true)->orderBy('name')->get();
 
-        $structuralPrincipal = TeacherStructuralAssignment::with('teacher')
-            ->whereHas('structuralPosition', fn ($q) => $q->where('code', 'KS')->orWhere('name', 'Kepala Sekolah'))
-            ->where('academic_year', $setting->academic_year)
-            ->where('is_active', true)
-            ->latest('id')
-            ->first();
-
-        $structuralCurriculumHead = TeacherStructuralAssignment::with('teacher')
-            ->whereHas('structuralPosition', fn ($q) => $q->where('code', 'WAKA_KUR')->orWhere('name', 'like', '%Kurikulum%'))
-            ->where('academic_year', $setting->academic_year)
-            ->where('is_active', true)
-            ->latest('id')
-            ->first();
+        $structuralPrincipal = $setting->getPrincipalOfficial();
+        $structuralCurriculumHead = $setting->getCurriculumHeadOfficial();
 
         return view('settings.index', compact('setting', 'teachers', 'structuralPrincipal', 'structuralCurriculumHead'));
     }
 
     public function update(Request $request): RedirectResponse
     {
-        $setting = SchoolSetting::getSetting();
+        $setting = SchoolSetting::getSetting(true);
 
         $data = $request->validate([
             'foundation_name' => ['nullable', 'string'],
@@ -93,44 +79,26 @@ class SettingController extends Controller
         $fillableData['geotag_require_selfie'] = $request->boolean('geotag_require_selfie');
         $fillableData['geotag_strict_radius'] = $request->boolean('geotag_strict_radius');
 
-        // Sync Kepala Sekolah dari Data Guru jika ada input
+        // Simpan pejabat Kepala Sekolah untuk metadata profil / fallback cetak (jika ada input)
         if ($request->filled('principal_id')) {
             $principalUser = User::find($data['principal_id']);
             if ($principalUser) {
                 $fillableData['principal_id'] = $principalUser->id;
-                $fillableData['principal_name'] = $data['principal_name'] ?: $principalUser->name;
-                $fillableData['principal_nip'] = Supervision::sanitizeNip($data['principal_nip'] ?: $principalUser->nip);
-
-                if (! empty($fillableData['principal_nip']) && $principalUser->nip !== $fillableData['principal_nip']) {
-                    $principalUser->update(['nip' => $fillableData['principal_nip']]);
-                }
-
-                $ksRole = Role::where('slug', 'kepala_sekolah')->first();
-                if ($ksRole && $principalUser->role_id !== $ksRole->id) {
-                    $principalUser->update(['role_id' => $ksRole->id]);
-                }
+                $fillableData['principal_name'] = ($data['principal_name'] ?? null) ?: $principalUser->name;
+                $fillableData['principal_nip'] = Supervision::sanitizeNip(($data['principal_nip'] ?? null) ?: $principalUser->nip);
             }
         } elseif ($request->filled('principal_name')) {
             $fillableData['principal_name'] = $data['principal_name'];
             $fillableData['principal_nip'] = Supervision::sanitizeNip($data['principal_nip'] ?? null);
         }
 
-        // Sync Waka Kurikulum dari Data Guru jika ada input
+        // Simpan pejabat Waka Kurikulum untuk metadata profil / fallback cetak (jika ada input)
         if ($request->filled('curriculum_head_id')) {
             $wakaUser = User::find($data['curriculum_head_id']);
             if ($wakaUser) {
                 $fillableData['curriculum_head_id'] = $wakaUser->id;
-                $fillableData['curriculum_head_name'] = $data['curriculum_head_name'] ?: $wakaUser->name;
-                $fillableData['curriculum_head_nip'] = Supervision::sanitizeNip($data['curriculum_head_nip'] ?: $wakaUser->nip);
-
-                if (! empty($fillableData['curriculum_head_nip']) && $wakaUser->nip !== $fillableData['curriculum_head_nip']) {
-                    $wakaUser->update(['nip' => $fillableData['curriculum_head_nip']]);
-                }
-
-                $wakaRole = Role::where('slug', 'waka_kurikulum')->first();
-                if ($wakaRole && $wakaUser->role_id !== $wakaRole->id) {
-                    $wakaUser->update(['role_id' => $wakaRole->id]);
-                }
+                $fillableData['curriculum_head_name'] = ($data['curriculum_head_name'] ?? null) ?: $wakaUser->name;
+                $fillableData['curriculum_head_nip'] = Supervision::sanitizeNip(($data['curriculum_head_nip'] ?? null) ?: $wakaUser->nip);
             }
         } elseif ($request->filled('curriculum_head_name')) {
             $fillableData['curriculum_head_name'] = $data['curriculum_head_name'];
@@ -145,40 +113,6 @@ class SettingController extends Controller
         foreach (['academic_year', 'semester', 'grade_a_min', 'grade_b_min', 'grade_c_min'] as $field) {
             if ($request->filled($field)) {
                 $fillableData[$field] = $data[$field];
-            }
-        }
-
-        // Sync Penugasan Struktural untuk Kepala Sekolah jika posisi KS ada
-        if (! empty($fillableData['principal_id'])) {
-            $ksPosition = StructuralPosition::where('code', 'KS')->orWhere('name', 'Kepala Sekolah')->first();
-            if ($ksPosition) {
-                TeacherStructuralAssignment::updateOrCreate(
-                    [
-                        'structural_position_id' => $ksPosition->id,
-                        'academic_year' => $fillableData['academic_year'] ?? $setting->academic_year,
-                    ],
-                    [
-                        'teacher_id' => $fillableData['principal_id'],
-                        'is_active' => true,
-                    ]
-                );
-            }
-        }
-
-        // Sync Penugasan Struktural untuk Waka Kurikulum jika posisi WAKA_KUR ada
-        if (! empty($fillableData['curriculum_head_id'])) {
-            $wakaPosition = StructuralPosition::where('code', 'WAKA_KUR')->orWhere('name', 'like', '%Kurikulum%')->first();
-            if ($wakaPosition) {
-                TeacherStructuralAssignment::updateOrCreate(
-                    [
-                        'structural_position_id' => $wakaPosition->id,
-                        'academic_year' => $fillableData['academic_year'] ?? $setting->academic_year,
-                    ],
-                    [
-                        'teacher_id' => $fillableData['curriculum_head_id'],
-                        'is_active' => true,
-                    ]
-                );
             }
         }
 

@@ -15,6 +15,7 @@ use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +29,20 @@ use Throwable;
 class TelegramBotWebhookController extends Controller
 {
     public function __construct(protected TelegramService $telegramService) {}
+
+    /**
+     * Dapatkan tahun ajaran operasional untuk webhook telegram tanpa ketergantungan sesi web.
+     */
+    protected function getOperationalAcademicYear(): string
+    {
+        try {
+            return app(AcademicYearContext::class)->getOperationalYear()->name;
+        } catch (Throwable $e) {
+            Log::warning('Telegram webhook operational academic year fallback: '.$e->getMessage());
+
+            return SchoolSetting::getMasterYear();
+        }
+    }
 
     /**
      * Handle incoming webhook updates from Telegram Bot API.
@@ -279,8 +294,7 @@ class TelegramBotWebhookController extends Controller
         $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
         $todayFormatted = Carbon::today()->translatedFormat('l, d F Y');
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $schedules = PiketSchedule::where('academic_year', $academicYear)
             ->where('day', $todayDay)
@@ -369,8 +383,7 @@ class TelegramBotWebhookController extends Controller
             }
         }
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $text = "🏫 <b>JADWAL PELAJARAN KELAS SAAT INI</b>\n"
             ."⏰ <b>Waktu:</b> {$currentTime} WIB\n"
@@ -418,8 +431,7 @@ class TelegramBotWebhookController extends Controller
     protected function commandInvalToday(string $chatId, ?User $user = null): void
     {
         $today = Carbon::today()->format('Y-m-d');
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $invals = PiketInvalClass::whereHas('journal', function ($q) use ($today, $academicYear) {
             $q->whereDate('date', $today)
@@ -857,7 +869,7 @@ class TelegramBotWebhookController extends Controller
     ): void {
         $todayStr = Carbon::today()->toDateString();
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $journal = PiketJournal::firstOrCreate(
             ['date' => $todayStr],
@@ -1219,8 +1231,7 @@ class TelegramBotWebhookController extends Controller
                 return;
             }
 
-            $setting = SchoolSetting::getSetting();
-            $academicYear = $setting->academic_year ?? '2026/2027';
+            $academicYear = $this->getOperationalAcademicYear();
 
             // Ambil jadwal mengajar guru pada hari tersebut
             $schedules = LessonSchedule::where('teacher_id', $teacher->id)
@@ -1288,8 +1299,7 @@ class TelegramBotWebhookController extends Controller
             $clsParam = substr($data, 7);
 
             if ($clsParam === 'all') {
-                $setting = SchoolSetting::getSetting();
-                $academicYear = $setting->academic_year ?? '2026/2027';
+                $academicYear = $this->getOperationalAcademicYear();
                 $schedIds = LessonSchedule::where('teacher_id', $state['teacher_id'])
                     ->where('day', $state['day'])
                     ->where('academic_year', $academicYear)
@@ -1395,7 +1405,7 @@ class TelegramBotWebhookController extends Controller
         $targetDateFormatted = Carbon::parse($targetDate)->translatedFormat('l, d F Y');
 
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $journal = PiketJournal::firstOrCreate(
             ['date' => $targetDate],
@@ -1661,8 +1671,7 @@ class TelegramBotWebhookController extends Controller
             $state['day'] = $targetDay;
             $state['date'] = $targetDate->format('Y-m-d');
 
-            $setting = SchoolSetting::getSetting();
-            $academicYear = $setting->academic_year ?? '2026/2027';
+            $academicYear = $this->getOperationalAcademicYear();
 
             // Ambil jadwal mengajar guru pada hari tersebut
             $schedules = LessonSchedule::where('teacher_id', $user->id)
@@ -1733,8 +1742,7 @@ class TelegramBotWebhookController extends Controller
             $clsParam = substr($data, 8);
 
             if ($clsParam === 'all') {
-                $setting = SchoolSetting::getSetting();
-                $academicYear = $setting->academic_year ?? '2026/2027';
+                $academicYear = $this->getOperationalAcademicYear();
                 $schedIds = LessonSchedule::where('teacher_id', $user->id)
                     ->where('day', $state['day'])
                     ->where('academic_year', $academicYear)
@@ -1848,7 +1856,7 @@ class TelegramBotWebhookController extends Controller
         string $task
     ): void {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
         $targetDate = $state['date'] ?? Carbon::today()->format('Y-m-d');
         $targetDay = $state['day'] ?? $this->getTodayDayName();
         $targetDateFormatted = Carbon::parse($targetDate)->translatedFormat('l, d F Y');
@@ -2008,7 +2016,7 @@ class TelegramBotWebhookController extends Controller
         }
 
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $mySchedules = PiketSchedule::where('teacher_id', $user->id)
             ->where('academic_year', $academicYear)
@@ -2815,7 +2823,7 @@ class TelegramBotWebhookController extends Controller
     ): void {
         $today = Carbon::today()->format('Y-m-d');
         $setting = SchoolSetting::getSetting();
-        $academicYear = $setting->academic_year ?? '2026/2027';
+        $academicYear = $this->getOperationalAcademicYear();
 
         $journal = PiketJournal::firstOrCreate(
             ['date' => $today],

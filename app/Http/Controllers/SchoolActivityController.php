@@ -9,18 +9,24 @@ use App\Models\SchoolActivity;
 use App\Models\SchoolSetting;
 use App\Models\Supervision;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Throwable;
 
 class SchoolActivityController extends Controller
 {
     public function index(Request $request): View
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->input('academic_year'));
+        } catch (Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
 
         $search = $request->input('search');
         $category = $request->input('category');
@@ -173,7 +179,7 @@ class SchoolActivityController extends Controller
             'disengaged_student_max_period' => ['nullable', 'integer', 'min:1', 'max:10'],
             'disengaged_student_dismissal_time' => ['nullable', 'string', 'max:10'],
             'description' => ['nullable', 'string'],
-            'academic_year' => ['nullable', 'string'],
+            'academic_year' => ['nullable', 'string', 'exists:academic_years,name'],
         ]);
 
         $name = trim((string) ($request->input('name') ?: $request->input('title')));
@@ -181,8 +187,15 @@ class SchoolActivityController extends Controller
             return back()->withErrors(['name' => 'Nama / Judul kegiatan wajib diisi.'])->withInput();
         }
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        if ($request->filled('academic_year')) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($request->input('academic_year'));
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
         $catDefs = CurriculumEvent::categoryDefinitions();
         $categoryKey = $validated['category'];
@@ -313,7 +326,7 @@ class SchoolActivityController extends Controller
             'disengaged_student_max_period' => ['nullable', 'integer', 'min:1', 'max:10'],
             'disengaged_student_dismissal_time' => ['nullable', 'string', 'max:10'],
             'description' => ['nullable', 'string'],
-            'academic_year' => ['nullable', 'string'],
+            'academic_year' => ['nullable', 'string', 'exists:academic_years,name'],
         ]);
 
         $name = trim((string) ($request->input('name') ?: $request->input('title')));
@@ -321,8 +334,15 @@ class SchoolActivityController extends Controller
             return back()->withErrors(['name' => 'Nama / Judul kegiatan wajib diisi.'])->withInput();
         }
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        if ($request->filled('academic_year')) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($request->input('academic_year'));
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
         $catDefs = CurriculumEvent::categoryDefinitions();
         $categoryKey = $validated['category'];
@@ -449,12 +469,19 @@ class SchoolActivityController extends Controller
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
-            'academic_year' => ['nullable', 'string'],
+            'academic_year' => ['nullable', 'string', 'exists:academic_years,name'],
             'is_holiday' => ['nullable', 'boolean'],
         ]);
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $validated['academic_year'] ?? session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027'));
+        if (! empty($validated['academic_year'])) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($validated['academic_year']);
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
         $startDate = $validated['start_date'];
         $endDate = $validated['end_date'] ?: $startDate;

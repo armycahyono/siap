@@ -10,19 +10,29 @@ use App\Models\PiketDutySwap;
 use App\Models\PiketJournal;
 use App\Models\PiketSchedule;
 use App\Models\SchoolSetting;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PiketJournalController extends Controller
 {
     public function index(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
         $month = $request->query('month');
 
         $query = PiketJournal::with(['coordinator', 'attendances.teacher'])
@@ -47,9 +57,11 @@ class PiketJournalController extends Controller
     public function today(): RedirectResponse
     {
         $todayStr = Carbon::today()->toDateString();
+        $context = app(AcademicYearContext::class);
+        $operationalYear = $context->getOperationalYear();
+        $academicYear = $operationalYear->name;
         $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
-        $semester = $setting->semester ?? 'Ganjil';
+        $semester = $operationalYear->semester ?? $setting->semester ?? 'Ganjil';
 
         $dayNames = [
             1 => 'Senin',

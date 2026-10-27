@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $nigsVal = $user->nigs_fix ?: ($user->nigs ?: ($user->id_number !== '-' ? $user->id_number : null));
+    $nigsVal = $user->nigs ?: ($user->id_number !== '-' ? $user->id_number : null);
     $nigsDisplay = $nigsVal ? "NIGS.{$nigsVal}" : ($user->formatted_id !== '-' ? $user->formatted_id : 'GTK');
     $primaryPosition = $user->structuralPositions->first()?->name ?: ($user->position ?: ($user->role?->name ?? 'Tenaga Pendidik'));
     $nameLen = mb_strlen($user->name);

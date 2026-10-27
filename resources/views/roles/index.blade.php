@@ -15,6 +15,12 @@
 <form action="{{ route('roles.update') }}" method="POST">
     @csrf
 
+    @foreach($roles as $role)
+        @if($role->slug !== 'super_admin')
+            <input type="hidden" name="roles_present[]" value="{{ $role->id }}">
+        @endif
+    @endforeach
+
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h3 class="card-title fw-bold text-dark mb-0">

@@ -12,6 +12,7 @@ use App\Models\Subject;
 use App\Models\TeacherStructuralAssignment;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\User;
+use App\Models\UserRoleAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -200,6 +201,8 @@ class MasterDataTest extends TestCase
     {
         $waka = User::where('username', 'waka')->first();
         $teacher = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))->first();
+        $originalRoleSlug = $teacher->role->slug;
+        $originalPosition = $teacher->position;
 
         // 1. View supervisor tab
         $response = $this->actingAs($waka)->get(route('teacher-assignments.index', ['tab' => 'supervisor']));
@@ -214,14 +217,22 @@ class MasterDataTest extends TestCase
 
         $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => '2026/2027']));
         $teacher->refresh();
-        $this->assertEquals('supervisor', $teacher->role->slug);
-        $this->assertEquals('Koordinator Supervisor Senior', $teacher->position);
+        $this->assertEquals($originalRoleSlug, $teacher->role->slug);
+        $this->assertEquals($originalPosition, $teacher->position);
+        $this->assertTrue($teacher->isSupervisor('2026/2027'));
+        $this->assertDatabaseHas('teacher_supervisor_assignments', [
+            'teacher_id' => $teacher->id,
+            'academic_year' => '2026/2027',
+            'position_title' => 'Koordinator Supervisor Senior',
+        ]);
 
-        // 3. Remove supervisor role
+        // 3. Remove supervisor assignment
         $response = $this->actingAs($waka)->delete(route('teacher-assignments.remove-supervisor', $teacher));
         $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => '2026/2027']));
         $teacher->refresh();
-        $this->assertEquals('guru', $teacher->role->slug);
+        $this->assertEquals($originalRoleSlug, $teacher->role->slug);
+        $this->assertEquals($originalPosition, $teacher->position);
+        $this->assertFalse($teacher->isSupervisor('2026/2027'));
     }
 
     public function test_supervisor_assignment_is_scoped_by_academic_year(): void
@@ -374,6 +385,314 @@ class MasterDataTest extends TestCase
         $this->assertDatabaseMissing('teacher_structural_assignments', ['id' => $assignment->id]);
     }
 
+    public function test_waka_can_assign_multiple_personnel_to_same_structural_position(): void
+    {
+        $waka = User::where('username', 'waka')->first();
+        $staffRole = Role::firstOrCreate(['slug' => 'staf'], ['name' => 'Staf / Karyawan']);
+
+        $satpamA = User::create([
+            'name' => 'Satpam Satu',
+            'username' => 'satpam1_test',
+            'email' => 'satpam1@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $staffRole->id,
+            'position' => 'staf',
+            'is_active' => true,
+        ]);
+
+        $satpamB = User::create([
+            'name' => 'Satpam Dua',
+            'username' => 'satpam2_test',
+            'email' => 'satpam2@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $staffRole->id,
+            'position' => 'staf',
+            'is_active' => true,
+        ]);
+
+        $position = StructuralPosition::firstOrCreate(
+            ['code' => 'SATPAM'],
+            ['name' => 'Satpam / Penjaga Keamanan', 'level' => 'staf', 'is_active' => true, 'allows_multiple' => true]
+        );
+        $position->update(['allows_multiple' => true]);
+
+        // 1. Assign Satpam Satu
+        $this->actingAs($waka)->post(route('teacher-assignments.store-structural'), [
+            'teacher_id' => $satpamA->id,
+            'structural_position_id' => $position->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/SATPAM/01',
+        ]);
+
+        // 2. Assign Satpam Dua (same position, without assignment_id)
+        $this->actingAs($waka)->post(route('teacher-assignments.store-structural'), [
+            'teacher_id' => $satpamB->id,
+            'structural_position_id' => $position->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/SATPAM/02',
+        ]);
+
+        // 3. Assert both records exist and count is 2
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $satpamA->id,
+            'structural_position_id' => $position->id,
+            'academic_year' => '2026/2027',
+        ]);
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $satpamB->id,
+            'structural_position_id' => $position->id,
+            'academic_year' => '2026/2027',
+        ]);
+        $this->assertEquals(2, TeacherStructuralAssignment::where('structural_position_id', $position->id)->where('academic_year', '2026/2027')->count());
+
+        // 4. Check that view renders both names
+        $response = $this->actingAs($waka)->get(route('teacher-assignments.index', ['tab' => 'struktural', 'academic_year' => '2026/2027']));
+        $response->assertStatus(200);
+        $response->assertSee('Satpam Satu');
+        $response->assertSee('Satpam Dua');
+    }
+
+    public function test_singular_position_replaces_incumbent_when_new_personnel_assigned(): void
+    {
+        $waka = User::where('username', 'waka')->first();
+        $guruRole = Role::firstOrCreate(['slug' => 'guru'], ['name' => 'Guru']);
+
+        $teacherA = User::create([
+            'name' => 'Guru KS Lama',
+            'username' => 'ks_lama_test',
+            'email' => 'ks_lama@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $guruRole->id,
+            'position' => 'guru',
+            'is_active' => true,
+        ]);
+
+        $teacherB = User::create([
+            'name' => 'Guru KS Baru',
+            'username' => 'ks_baru_test',
+            'email' => 'ks_baru@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $guruRole->id,
+            'position' => 'guru',
+            'is_active' => true,
+        ]);
+
+        $ksPos = StructuralPosition::firstOrCreate(
+            ['code' => 'KS'],
+            ['name' => 'Kepala Sekolah', 'allows_multiple' => false, 'is_active' => true]
+        );
+        $ksPos->update(['allows_multiple' => false]);
+
+        // 1. Assign Teacher A as KS
+        $this->actingAs($waka)->post(route('teacher-assignments.store-structural'), [
+            'teacher_id' => $teacherA->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/01',
+        ]);
+
+        $this->assertEquals(1, TeacherStructuralAssignment::where('structural_position_id', $ksPos->id)->where('academic_year', '2026/2027')->count());
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $teacherA->id,
+            'structural_position_id' => $ksPos->id,
+            'sk_number' => 'SK/KS/01',
+            'is_active' => true,
+        ]);
+
+        // 2. Assign Teacher B as KS (without assignment_id) -> must deactivate Teacher A and create Teacher B record!
+        $this->actingAs($waka)->post(route('teacher-assignments.store-structural'), [
+            'teacher_id' => $teacherB->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/02',
+        ]);
+
+        // 3. History is preserved! Total count = 2
+        $this->assertEquals(2, TeacherStructuralAssignment::where('structural_position_id', $ksPos->id)->where('academic_year', '2026/2027')->count());
+
+        // Pejabat lama dinonaktifkan, nomor SK asli tetap dipertahankan
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $teacherA->id,
+            'structural_position_id' => $ksPos->id,
+            'sk_number' => 'SK/KS/01',
+            'is_active' => false,
+        ]);
+
+        // Pejabat pengganti aktif dengan SK baru
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $teacherB->id,
+            'structural_position_id' => $ksPos->id,
+            'sk_number' => 'SK/KS/02',
+            'is_active' => true,
+        ]);
+
+        // Query pejabat aktif hanya mengembalikan pejabat pengganti (Teacher B)
+        $this->assertEquals($teacherB->id, $ksPos->currentAssignment('2026/2027')->first()->teacher_id);
+
+        // Contextual role user_role_assignments disinkronkan: Teacher A dicabut, Teacher B diberikan
+        $ksRole = Role::where('slug', 'kepala_sekolah')->first();
+        if ($ksRole) {
+            $this->assertDatabaseMissing('user_role_assignments', [
+                'user_id' => $teacherA->id,
+                'role_id' => $ksRole->id,
+                'academic_year' => '2026/2027',
+            ]);
+            $this->assertDatabaseHas('user_role_assignments', [
+                'user_id' => $teacherB->id,
+                'role_id' => $ksRole->id,
+                'academic_year' => '2026/2027',
+                'status' => true,
+            ]);
+        }
+
+        // users.role_id dan users.position tidak berubah
+        $this->assertEquals($guruRole->id, $teacherA->fresh()->role_id);
+        $this->assertEquals('guru', $teacherA->fresh()->position);
+        $this->assertEquals($guruRole->id, $teacherB->fresh()->role_id);
+        $this->assertEquals('guru', $teacherB->fresh()->position);
+
+        // 4. Update data pejabat yang sama tanpa duplikasi
+        $this->actingAs($waka)->post(route('teacher-assignments.store-structural'), [
+            'teacher_id' => $teacherB->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/02-REVISI',
+            'notes' => 'Catatan revisi',
+        ]);
+
+        $this->assertEquals(2, TeacherStructuralAssignment::where('structural_position_id', $ksPos->id)->where('academic_year', '2026/2027')->count());
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $teacherB->id,
+            'structural_position_id' => $ksPos->id,
+            'sk_number' => 'SK/KS/02-REVISI',
+            'notes' => 'Catatan revisi',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_singular_position_replacement_preserves_past_year_history_and_handles_modal_replacement(): void
+    {
+        $waka = User::where('username', 'waka')->first();
+        $guruRole = Role::firstOrCreate(['slug' => 'guru'], ['name' => 'Guru']);
+
+        $teacherPast = User::create([
+            'name' => 'Guru KS Tahun Lalu',
+            'username' => 'ks_past_test',
+            'email' => 'ks_past@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $guruRole->id,
+            'position' => 'guru',
+            'is_active' => true,
+        ]);
+
+        $teacherA = User::create([
+            'name' => 'Guru KS 1',
+            'username' => 'ks1_test',
+            'email' => 'ks1@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $guruRole->id,
+            'position' => 'guru',
+            'is_active' => true,
+        ]);
+
+        $teacherB = User::create([
+            'name' => 'Guru KS 2',
+            'username' => 'ks2_test',
+            'email' => 'ks2@test.com',
+            'password' => bcrypt('password'),
+            'role_id' => $guruRole->id,
+            'position' => 'guru',
+            'is_active' => true,
+        ]);
+
+        $ksPos = StructuralPosition::firstOrCreate(
+            ['code' => 'KS'],
+            ['name' => 'Kepala Sekolah', 'allows_multiple' => false, 'is_active' => true]
+        );
+        $ksPos->update(['allows_multiple' => false]);
+
+        // Past year assignment (2025/2026)
+        $pastAsgn = TeacherStructuralAssignment::create([
+            'teacher_id' => $teacherPast->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2025/2026',
+            'sk_number' => 'SK/KS/PAST',
+            'is_active' => true,
+        ]);
+
+        // Current year initial assignment (2026/2027)
+        $currentAsgnA = TeacherStructuralAssignment::create([
+            'teacher_id' => $teacherA->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/CURR-A',
+            'is_active' => true,
+        ]);
+
+        // Contextual role for Teacher A
+        $ksRole = Role::firstOrCreate(['slug' => 'kepala_sekolah'], ['name' => 'Kepala Sekolah']);
+        UserRoleAssignment::updateOrCreate(
+            ['user_id' => $teacherA->id, 'role_id' => $ksRole->id, 'academic_year' => '2026/2027'],
+            ['status' => true]
+        );
+
+        // Replace Teacher A with Teacher B using modal edit (sending assignment_id)
+        $this->actingAs($waka)->post(route('teacher-assignments.store-structural'), [
+            'assignment_id' => $currentAsgnA->id,
+            'teacher_id' => $teacherB->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/CURR-B',
+        ]);
+
+        // 1. Past year assignment must remain intact and active
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'id' => $pastAsgn->id,
+            'teacher_id' => $teacherPast->id,
+            'academic_year' => '2025/2026',
+            'sk_number' => 'SK/KS/PAST',
+            'is_active' => true,
+        ]);
+
+        // 2. Teacher A's assignment in current year is deactivated but retains SK details
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'id' => $currentAsgnA->id,
+            'teacher_id' => $teacherA->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/CURR-A',
+            'is_active' => false,
+        ]);
+
+        // 3. New record created for Teacher B
+        $this->assertDatabaseHas('teacher_structural_assignments', [
+            'teacher_id' => $teacherB->id,
+            'structural_position_id' => $ksPos->id,
+            'academic_year' => '2026/2027',
+            'sk_number' => 'SK/KS/CURR-B',
+            'is_active' => true,
+        ]);
+
+        // 4. Role synchronization: Teacher A revoked, Teacher B granted
+        $this->assertDatabaseMissing('user_role_assignments', [
+            'user_id' => $teacherA->id,
+            'role_id' => $ksRole->id,
+            'academic_year' => '2026/2027',
+        ]);
+        $this->assertDatabaseHas('user_role_assignments', [
+            'user_id' => $teacherB->id,
+            'role_id' => $ksRole->id,
+            'academic_year' => '2026/2027',
+            'status' => true,
+        ]);
+
+        // 5. Query active official for SchoolSetting
+        $setting = SchoolSetting::firstOrCreate(['id' => 1]);
+        $setting->update(['academic_year' => '2026/2027']);
+        $official = $setting->getPrincipalOfficial();
+        $this->assertNotNull($official);
+        $this->assertEquals($teacherB->id, $official->teacher_id);
+    }
+
     public function test_school_settings_can_detect_and_sync_structural_officials(): void
     {
         $waka = User::where('username', 'waka')->first();
@@ -400,7 +719,7 @@ class MasterDataTest extends TestCase
         $response->assertSee('Tanda Tangan');
 
         // 4. Upload signature image to structural position
-        Storage::fake('public');
+        Storage::fake('local');
         $file = UploadedFile::fake()->image('ttd_ks.png');
 
         $response = $this->actingAs($waka)->put(route('structural-positions.update', $ksPos), [
@@ -412,7 +731,7 @@ class MasterDataTest extends TestCase
         $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'struktural']));
         $ksPos->refresh();
         $this->assertNotNull($ksPos->signature_image_path);
-        Storage::disk('public')->assertExists($ksPos->signature_image_path);
+        Storage::disk('local')->assertExists($ksPos->signature_image_path);
     }
 
     public function test_waka_can_view_teachers_list_without_errors(): void
@@ -449,7 +768,7 @@ class MasterDataTest extends TestCase
     public function test_waka_can_import_homeroom_data_via_csv(): void
     {
         $waka = User::where('username', 'waka')->first();
-        $guru = User::where('nigs_fix', '41709')->first(); // Indra Yustiawan
+        $guru = User::where('nigs', '41709')->first(); // Indra Yustiawan
         $classroom = Classroom::where('name', 'X TKR 1')->first();
 
         // Reset homeroom first
@@ -475,7 +794,7 @@ class MasterDataTest extends TestCase
     public function test_waka_can_import_homeroom_data_via_xlsx(): void
     {
         $waka = User::where('username', 'waka')->first();
-        $guru = User::where('nigs_fix', '42009')->first(); // Afif Bey Ridhotulloh
+        $guru = User::where('nigs', '42009')->first(); // Afif Bey Ridhotulloh
         $classroom = Classroom::where('name', 'X TKR 2')->first();
 
         $classroom->update(['homeroom_teacher_id' => null]);
@@ -539,7 +858,20 @@ class MasterDataTest extends TestCase
     public function test_waka_can_import_supervisor_data(): void
     {
         $waka = User::where('username', 'waka')->first();
-        $guru = User::where('nigs_fix', '41709')->first(); // Indra Yustiawan
+        $guruRole = Role::where('slug', 'guru')->first();
+        $guru = User::firstOrCreate(
+            ['nigs' => '41709'],
+            [
+                'name' => 'Indra Yustiawan, M.Pd.',
+                'username' => 'indra_y',
+                'email' => 'indra@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $guruRole->id,
+                'position' => 'guru',
+                'is_active' => true,
+                'is_operational' => true,
+            ]
+        );
 
         $csvContent = "\xEF\xBB\xBFNama Guru,NIGS,Keterangan\n";
         $csvContent .= "\"Indra Yustiawan, M.Pd.\",41709,\"Koordinator Supervisi\"\n";
@@ -555,8 +887,9 @@ class MasterDataTest extends TestCase
         $response->assertSessionHas('success');
 
         $guru->refresh();
-        $this->assertEquals('supervisor', $guru->role->slug);
-        $this->assertEquals('Koordinator Supervisi', $guru->position);
+        $this->assertEquals('guru', $guru->role->slug);
+        $this->assertEquals('guru', $guru->position);
+        $this->assertTrue($guru->isSupervisor('2026/2027'));
     }
 
     public function test_waka_can_download_structural_template(): void
@@ -578,13 +911,14 @@ class MasterDataTest extends TestCase
         $guruRole = Role::where('slug', 'guru')->first();
 
         $guru = User::firstOrCreate(
-            ['nigs_fix' => '42009'],
+            ['nigs' => '42009'],
             [
                 'name' => 'Afif Bey Ridhotulloh',
                 'username' => 'afif_bey',
                 'email' => 'afif@example.com',
                 'password' => bcrypt('password'),
                 'role_id' => $guruRole->id,
+                'position' => 'guru',
                 'is_active' => true,
                 'is_operational' => true,
             ]

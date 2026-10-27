@@ -60,6 +60,10 @@ class DeviceManagementController extends Controller
         $savedBiometricsCount = AttendanceBiometric::count();
         $recentCommands = AttendanceDeviceCommand::with('device')->latest('id')->take(6)->get();
 
+        $serverNetwork = $this->deviceService->getActiveServerNetwork();
+        $serverIp = $serverNetwork['ip'];
+        $serverPort = $serverNetwork['port'];
+
         return view('attendance.devices.index', compact(
             'devices',
             'pendingDevices',
@@ -69,7 +73,10 @@ class DeviceManagementController extends Controller
             'pendingCommands',
             'savedBiometricsCount',
             'biometricUsersPerDevice',
-            'recentCommands'
+            'recentCommands',
+            'serverNetwork',
+            'serverIp',
+            'serverPort'
         ));
     }
 
@@ -250,7 +257,7 @@ class DeviceManagementController extends Controller
             if ($targetType === 'gtk' || $targetType === 'both') {
                 $teachers = User::operationalPersonnel()->where('is_active', true)->get();
                 foreach ($teachers as $t) {
-                    $pin = $t->nigs_fix ?: $t->id;
+                    $pin = $t->nigs ?: $t->id;
                     $name = addslashes(mb_substr($t->name, 0, 24));
                     $cmd = "DATA UPDATE USERINFO PIN={$pin}\tName={$name}\tPri=0\tPasswd=\tCard=\tGrp=1";
                     AttendanceDeviceCommand::create([
@@ -341,6 +348,10 @@ class DeviceManagementController extends Controller
         // Count of biometrics currently backed up in server
         $savedBiometricsCount = AttendanceBiometric::count();
 
+        $serverNetwork = $this->deviceService->getActiveServerNetwork();
+        $serverIp = $serverNetwork['ip'];
+        $serverPort = $serverNetwork['port'];
+
         return view('attendance.devices.show', compact(
             'device',
             'commands',
@@ -352,7 +363,10 @@ class DeviceManagementController extends Controller
             'classrooms',
             'graduatedStudentsCount',
             'otherDevices',
-            'savedBiometricsCount'
+            'savedBiometricsCount',
+            'serverNetwork',
+            'serverIp',
+            'serverPort'
         ));
     }
 
@@ -479,7 +493,7 @@ class DeviceManagementController extends Controller
         if ($target === 'gtk') {
             $teachers = User::operationalPersonnel()->where('is_active', true)->get();
             foreach ($teachers as $t) {
-                $pin = $t->nigs_fix ?: (preg_replace('/\D/', '', (string) $t->nigs) ?: $t->id);
+                $pin = $t->nigs ?: $t->id;
                 $cleanName = substr(trim(preg_replace('/[^\w\s\.\,\-]/', '', $t->name)), 0, 24);
 
                 AttendanceDeviceCommand::create([
@@ -774,19 +788,14 @@ class DeviceManagementController extends Controller
         $teachers = User::operationalPersonnel()
             ->where(function ($q) use ($enrolledPins) {
                 $q->whereIn('nigs', $enrolledPins)
-                    ->orWhereIn('nigs_fix', $enrolledPins)
                     ->orWhereIn('id', $enrolledPins);
             })
             ->get();
 
         $teachersByPin = collect();
         foreach ($teachers as $t) {
-            if ($t->nigs_fix) {
-                $teachersByPin->put((string) $t->nigs_fix, $t);
-            }
             if ($t->nigs) {
                 $teachersByPin->put((string) $t->nigs, $t);
-                $teachersByPin->put(str_replace(' ', '', (string) $t->nigs), $t);
             }
             $teachersByPin->put((string) $t->id, $t);
         }
@@ -811,7 +820,7 @@ class DeviceManagementController extends Controller
             if ($teacher) {
                 $userName = $teacher->name;
                 $userType = 'teacher';
-                $nigsDisplay = $teacher->nigs_fix ?: $teacher->nigs;
+                $nigsDisplay = $teacher->nigs ?: '-';
                 $info = 'GTK / Guru (NIGS: '.$nigsDisplay.')';
             } elseif ($student) {
                 $userName = $student->name;
@@ -846,7 +855,6 @@ class DeviceManagementController extends Controller
         $missingTeachers = User::operationalPersonnel()
             ->where('is_active', true)
             ->whereNotIn('nigs', $enrolledPins)
-            ->whereNotIn('nigs_fix', $enrolledPins)
             ->whereNotIn('id', $enrolledPins)
             ->orderBy('name')
             ->take(50)
@@ -865,7 +873,6 @@ class DeviceManagementController extends Controller
         $totalMissingTeachers = User::operationalPersonnel()
             ->where('is_active', true)
             ->whereNotIn('nigs', $enrolledPins)
-            ->whereNotIn('nigs_fix', $enrolledPins)
             ->whereNotIn('id', $enrolledPins)
             ->count();
 
@@ -964,11 +971,15 @@ class DeviceManagementController extends Controller
     }
 
     /**
-     * Download saved backup files for Geisa (04)
+     * Download saved backup files for Geisa (04) securely from private disk.
      */
     public function downloadGeisaBackup(string $file = 'zip')
     {
-        $baseDir = public_path('downloads/backup_geisa_04');
+        $user = auth()->user();
+        if (! $user || ! $user->isSuperAdmin()) {
+            abort(403, 'Akses unduhan cadangan biometrik hanya diizinkan untuk Super Administrator.');
+        }
+
         $fileMap = [
             'zip' => 'backup_geisa_04_lengkap.zip',
             'users_csv' => 'users.csv',
@@ -980,13 +991,22 @@ class DeviceManagementController extends Controller
             'info' => 'device_info.json',
         ];
 
-        $filename = $fileMap[$file] ?? 'backup_geisa_04_lengkap.zip';
+        if (! isset($fileMap[$file])) {
+            abort(404, 'Tipe berkas cadangan biometrik tidak valid.');
+        }
+
+        $filename = $fileMap[$file];
+        $baseDir = storage_path('app/private/backups/geisa_04');
         $filePath = $baseDir.DIRECTORY_SEPARATOR.$filename;
 
         if (! file_exists($filePath)) {
-            abort(404, 'File backup tidak ditemukan.');
+            abort(404, 'Berkas cadangan tidak ditemukan.');
         }
 
-        return response()->download($filePath);
+        return response()->download($filePath, $filename, [
+            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 }

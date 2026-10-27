@@ -11,6 +11,7 @@ use App\Models\SchoolSetting;
 use App\Models\Supervision;
 use App\Models\User;
 use App\Services\AcademicCalendarService;
+use App\Services\AcademicYearContext;
 use App\Services\DailyKbmSnapshotService;
 use App\Services\DeviceDetector;
 use Illuminate\Http\JsonResponse;
@@ -23,10 +24,14 @@ class CurriculumCalendarController extends Controller
     public function index(Request $request)
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->input('academic_year'));
+        } catch (Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
 
-        // Seed baseline Kaldik for 2026/2027 if none exists
-        if (AcademicCalendarUpload::where('academic_year', '2026/2027')->count() === 0) {
+        // Seed baseline Kaldik for 2026/2027 only if viewing 2026/2027 and none exists
+        if ($academicYear === '2026/2027' && AcademicCalendarUpload::where('academic_year', '2026/2027')->count() === 0) {
             try {
                 AcademicCalendarService::seedDefaultKaldik2026((int) auth()->id());
             } catch (Throwable $e) {
@@ -166,7 +171,11 @@ class CurriculumCalendarController extends Controller
     public function events(Request $request): JsonResponse
     {
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->input('academic_year'));
+        } catch (Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
 
         $query = CurriculumEvent::with(['users', 'creator'])
             ->where('academic_year', $academicYear);
@@ -388,13 +397,20 @@ class CurriculumCalendarController extends Controller
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:20',
-            'academic_year' => 'nullable|string',
+            'academic_year' => 'nullable|string|exists:academic_years,name',
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
         ]);
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $validated['academic_year'] ?? session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027'));
+        if (! empty($validated['academic_year'])) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($validated['academic_year']);
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
         $isAllDay = $request->boolean('is_all_day', true);
         $isHoliday = $request->boolean('is_holiday', false);
@@ -428,7 +444,7 @@ class CurriculumCalendarController extends Controller
             'title' => $validated['title'],
             'category' => $validated['category'],
             'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'] ?: $validated['start_date'],
+            'end_date' => (! empty($validated['end_date'])) ? $validated['end_date'] : $validated['start_date'],
             'start_time' => $isAllDay ? null : ($validated['start_time'] ?? null),
             'end_time' => $isAllDay ? null : ($validated['end_time'] ?? null),
             'is_all_day' => $isAllDay,
@@ -644,11 +660,18 @@ class CurriculumCalendarController extends Controller
             'kaldik_file' => 'required|mimes:pdf,xlsx,xls|max:15360',
             'title' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
-            'academic_year' => 'nullable|string',
+            'academic_year' => 'nullable|string|exists:academic_years,name',
         ]);
 
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->input('academic_year', session('active_academic_year', session('academic_year', $setting->academic_year ?? '2026/2027')));
+        if ($request->filled('academic_year')) {
+            $academicYear = app(AcademicYearContext::class)->resolveExplicitYear($request->input('academic_year'));
+        } else {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
 
         $file = $request->file('kaldik_file');
         $originalFilename = $file->getClientOriginalName();

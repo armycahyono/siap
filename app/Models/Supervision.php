@@ -297,7 +297,6 @@ class Supervision extends Model
                 'nip' => self::sanitizeNip($this->teacher?->nip),
                 'nuptk' => self::sanitizeNuptk($this->teacher?->nuptk),
                 'nigs' => $this->teacher?->nigs,
-                'nigs_fix' => $this->teacher?->nigs_fix,
             ],
             'supervisor' => [
                 'id' => $this->supervisor_id,
@@ -305,7 +304,6 @@ class Supervision extends Model
                 'nip' => self::sanitizeNip($this->supervisor?->nip),
                 'nuptk' => self::sanitizeNuptk($this->supervisor?->nuptk),
                 'nigs' => $this->supervisor?->nigs,
-                'nigs_fix' => $this->supervisor?->nigs_fix,
             ],
             'principal' => [
                 'id' => $this->principal_id,

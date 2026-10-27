@@ -131,7 +131,7 @@
                                 <div class="fw-bold text-dark">{{ $s->teacher->name }}</div>
                                 <div class="small text-muted">
                                     <span class="text-primary fw-semibold">{{ $s->subject }}</span>
-                                    @if($s->teacher->nigs_fix) &bull; NIGS: {{ $s->teacher->nigs_fix }} @endif
+                                    @if($s->teacher->nigs) &bull; NIGS: {{ $s->teacher->nigs }} @endif
                                 </div>
                             </div>
                         </div>

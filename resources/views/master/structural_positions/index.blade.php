@@ -69,6 +69,11 @@
                     <td class="text-center text-muted fw-bold">{{ $positions->firstItem() + $index }}</td>
                     <td>
                         <span class="badge bg-blue-lt fw-bold font-monospace">{{ $pos->code ?? '-' }}</span>
+                        @if($pos->allows_multiple)
+                            <span class="badge bg-teal-lt ms-1" title="Kapasitas Jamak: bisa lebih 1 orang">Jamak</span>
+                        @else
+                            <span class="badge bg-secondary-lt ms-1" title="Kapasitas Tunggal: hanya 1 orang">Tunggal</span>
+                        @endif
                     </td>
                     <td>
                         <div class="fw-bold text-dark fs-3">{{ $pos->name }}</div>
@@ -116,8 +121,8 @@
                     </td>
                     <td>
                         @if($pos->signature_image_path)
-                            <a href="{{ asset('storage/' . $pos->signature_image_path) }}" target="_blank" title="Lihat Tanda Tangan">
-                                <img src="{{ asset('storage/' . $pos->signature_image_path) }}" alt="TTD {{ $pos->name }}" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white">
+                            <a href="{{ route('structural-positions.signature', $pos) }}" target="_blank" title="Lihat Tanda Tangan">
+                                <img src="{{ route('structural-positions.signature', $pos) }}" alt="TTD {{ $pos->name }}" style="height: 38px; max-width: 80px; object-fit: contain;" class="border p-1 rounded bg-white">
                             </a>
                         @else
                             <span class="text-muted small fst-italic">-</span>
@@ -174,6 +179,35 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
+                                        <label class="form-label required fw-bold">Kapasitas Penugasan</label>
+                                        <div class="row g-2">
+                                            <div class="col-sm-6">
+                                                <label class="form-selectgroup-item w-100">
+                                                    <input type="radio" name="allows_multiple" value="0" class="form-selectgroup-input" {{ empty($pos->allows_multiple) ? 'checked' : '' }}>
+                                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                                        <span class="me-2"><i class="ti ti-user text-indigo fs-2"></i></span>
+                                                        <span>
+                                                            <span class="fw-bold d-block text-dark">Tunggal (hanya 1 orang)</span>
+                                                            <span class="text-muted small">Input baru menggantikan pejabat</span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <label class="form-selectgroup-item w-100">
+                                                    <input type="radio" name="allows_multiple" value="1" class="form-selectgroup-input" {{ !empty($pos->allows_multiple) ? 'checked' : '' }}>
+                                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                                        <span class="me-2"><i class="ti ti-users text-teal fs-2"></i></span>
+                                                        <span>
+                                                            <span class="fw-bold d-block text-dark">Jamak (bisa lebih 1 orang)</span>
+                                                            <span class="text-muted small">Bisa tambah personil baris baru</span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
                                         <label class="form-label">Kategori Jabatan</label>
                                         <input type="text" name="category" class="form-control" list="categoryOptions" value="{{ old('category', $pos->category) }}" placeholder="Pilih atau ketik kategori...">
                                     </div>
@@ -187,7 +221,7 @@
                                         <small class="text-muted">Maksimal 2MB. Disarankan PNG berlatar transparan.</small>
                                         @if($pos->signature_image_path)
                                             <div class="mt-2 p-2 bg-light rounded border d-flex align-items-center justify-content-between">
-                                                <img src="{{ asset('storage/' . $pos->signature_image_path) }}" alt="TTD" style="height: 35px; max-width: 80px; object-fit: contain;">
+                                                <img src="{{ route('structural-positions.signature', $pos) }}" alt="TTD" style="height: 35px; max-width: 80px; object-fit: contain;">
                                                 <div class="form-check m-0">
                                                     <input class="form-check-input" type="checkbox" name="remove_signature" value="1" id="del_sig_pos_{{ $pos->id }}">
                                                     <label class="form-check-label text-danger small" for="del_sig_pos_{{ $pos->id }}">Hapus TTD</label>
@@ -256,6 +290,35 @@
                         <div class="col-md-6">
                             <label class="form-label">Urutan</label>
                             <input type="number" name="order" class="form-control" value="{{ \App\Models\StructuralPosition::max('order') + 1 }}" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label required fw-bold">Kapasitas Penugasan</label>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="allows_multiple" value="0" class="form-selectgroup-input" checked>
+                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                        <span class="me-2"><i class="ti ti-user text-indigo fs-2"></i></span>
+                                        <span>
+                                            <span class="fw-bold d-block text-dark">Tunggal (hanya 1 orang)</span>
+                                            <span class="text-muted small">Input baru menggantikan pejabat</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="allows_multiple" value="1" class="form-selectgroup-input">
+                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                        <span class="me-2"><i class="ti ti-users text-teal fs-2"></i></span>
+                                        <span>
+                                            <span class="fw-bold d-block text-dark">Jamak (bisa lebih 1 orang)</span>
+                                            <span class="text-muted small">Bisa tambah personil baris baru</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">

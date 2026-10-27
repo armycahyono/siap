@@ -6,7 +6,6 @@ use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class StudentMutation extends Model
 {
@@ -28,6 +27,10 @@ class StudentMutation extends Model
 
     protected $casts = [
         'mutation_date' => 'date',
+    ];
+
+    protected $appends = [
+        'attachment_url',
     ];
 
     public function student(): BelongsTo
@@ -83,10 +86,10 @@ class StudentMutation extends Model
 
     public function getAttachmentUrlAttribute(): ?string
     {
-        if ($this->attachment_path && Storage::disk('public')->exists($this->attachment_path)) {
-            return Storage::disk('public')->url($this->attachment_path);
+        if (! $this->attachment_path) {
+            return null;
         }
 
-        return null;
+        return route('students.mutations.download', $this);
     }
 }

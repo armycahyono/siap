@@ -53,6 +53,7 @@ class AttendanceLog extends Model
             'card' => 'Kartu RFID',
             'password' => 'PIN / Password',
             'geotag' => 'Geotagging GPS',
+            'telegram' => 'Bot Telegram',
             default => 'Sidik Jari',
         };
     }
@@ -64,8 +65,37 @@ class AttendanceLog extends Model
             'card' => 'ti ti-id',
             'password' => 'ti ti-key',
             'geotag' => 'ti ti-map-pin',
+            'telegram' => 'ti ti-brand-telegram',
             default => 'ti ti-fingerprint',
         };
+    }
+
+    /**
+     * @return array{label: string, class: string, icon: string}
+     */
+    public function getChannelBadgeAttribute(): array
+    {
+        if ($this->verify_type === 'geotag' || $this->device_sn === 'MOBILE-PWA') {
+            return [
+                'label' => 'GPS Mobile',
+                'class' => 'bg-primary-lt text-primary',
+                'icon' => 'ti ti-map-pin',
+            ];
+        }
+
+        if ($this->verify_type === 'telegram' || $this->device_sn === 'TELEGRAM') {
+            return [
+                'label' => 'Bot Telegram',
+                'class' => 'bg-info-lt text-info',
+                'icon' => 'ti ti-brand-telegram',
+            ];
+        }
+
+        return [
+            'label' => 'Mesin Absensi',
+            'class' => 'bg-purple-lt text-purple',
+            'icon' => 'ti ti-device-watch',
+        ];
     }
 
     public function getIsCheckInAttribute(): bool

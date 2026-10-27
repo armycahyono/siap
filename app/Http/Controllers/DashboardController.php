@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
@@ -16,6 +17,7 @@ use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\Supervision;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -30,6 +32,12 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $setting = SchoolSetting::getSetting();
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalYear = $academicYearContext->getOperationalYear();
+        $operationalAcademicYear = $operationalYear->name;
+        $operationalSemester = $operationalYear->semester ?? SchoolSetting::getSetting(true)->semester ?? 'Ganjil';
+        $operationalAyModel = AcademicYear::where('name', $operationalAcademicYear)->first();
 
         $todayStr = now()->toDateString();
         $todayDay = match (now()->dayOfWeekIso) {
@@ -51,24 +59,22 @@ class DashboardController extends Controller
         $myCheckInToday = $todayAttendanceLogs->first();
         $myCheckOutToday = $todayAttendanceLogs->count() > 1 ? $todayAttendanceLogs->last() : null;
 
-        // Jadwal Mengajar Guru Khusus Hari Ini
+        // Jadwal Mengajar Guru Khusus Hari Ini (Operasional Aktif)
         $todayTeachingSchedules = LessonSchedule::with(['classroom', 'subject'])
             ->where('teacher_id', $user->id)
             ->where('day', $todayDay)
-            ->when($setting->academic_year, fn ($q) => $q->where('academic_year', $setting->academic_year))
-            ->when($setting->semester, fn ($q) => $q->where('semester', $setting->semester))
+            ->where('academic_year', $operationalAcademicYear)
+            ->where('semester', $operationalSemester)
             ->orderBy('start_period')
             ->get();
 
-        // Agenda Sekolah / Kegiatan Hari Ini dari Kalender Kurikulum
+        // Agenda Sekolah / Kegiatan Hari Ini dari Kalender Kurikulum (Operasional Aktif)
         $allTodayEvents = CurriculumEvent::with('users')
             ->whereDate('start_date', '<=', $todayStr)
             ->whereDate('end_date', '>=', $todayStr)
-            ->when($setting->academic_year, function ($q) use ($setting) {
-                $q->where(function ($sub) use ($setting) {
-                    $sub->where('academic_year', $setting->academic_year)
-                        ->orWhereNull('academic_year');
-                });
+            ->where(function ($sub) use ($operationalAcademicYear) {
+                $sub->where('academic_year', $operationalAcademicYear)
+                    ->orWhereNull('academic_year');
             })
             ->orderBy('is_holiday', 'desc')
             ->orderBy('start_date')
@@ -93,24 +99,27 @@ class DashboardController extends Controller
 
         $todaySchoolAgenda = $todaySchoolAgendas->first();
 
-        // Status Petugas Piket Hari Ini & Jadwal Piket Mingguan
+        // Status Petugas Piket Hari Ini & Jadwal Piket Mingguan (Operasional Aktif)
         $isPiketToday = $user->isPiketOfficerToday();
         $todayPiketSchedule = PiketSchedule::where('teacher_id', $user->id)
             ->where('day', $todayDay)
+            ->where('academic_year', $operationalAcademicYear)
             ->where('is_active', true)
             ->first();
 
         $myWeeklyPiketSchedules = PiketSchedule::where('teacher_id', $user->id)
+            ->where('academic_year', $operationalAcademicYear)
             ->where('is_active', true)
             ->get();
 
-        // Status Wali Kelas & Rombel
+        // Status Wali Kelas & Rombel (Operasional Aktif)
         $myHomeroomClassroom = $user->homeroomClassrooms()
-            ->when($setting->academic_year, function ($q) use ($setting) {
-                $q->where(function ($sub) use ($setting) {
-                    $sub->where('academic_year', $setting->academic_year)
-                        ->orWhereNull('academic_year');
-                });
+            ->where(function ($sub) use ($operationalAcademicYear, $operationalAyModel) {
+                if ($operationalAyModel) {
+                    $sub->where('classrooms.academic_year_id', $operationalAyModel->id);
+                }
+                $sub->orWhere('classrooms.academic_year', $operationalAcademicYear)
+                    ->orWhereNull('classrooms.academic_year');
             })
             ->first();
 
@@ -269,7 +278,12 @@ class DashboardController extends Controller
         $gtkUnscannedCount = max(0, $totalGtkCount - $gtkPresentCount - $gtkPermitsTodayCount);
 
         // 2. KBM Rombel & Jadwal Mengajar Hari Ini
-        $activeClassrooms = Classroom::where('academic_year', $setting->academic_year ?? '2026/2027')
+        $activeClassrooms = Classroom::where(function ($query) use ($operationalAcademicYear, $operationalAyModel) {
+            if ($operationalAyModel) {
+                $query->where('academic_year_id', $operationalAyModel->id);
+            }
+            $query->orWhere('academic_year', $operationalAcademicYear);
+        })
             ->orderBy('name')
             ->get();
         $totalClassroomsCount = $activeClassrooms->count();
@@ -297,8 +311,8 @@ class DashboardController extends Controller
 
         $todayAllSchedules = LessonSchedule::with(['classroom', 'subject', 'teacher'])
             ->where('day', $todayDay)
-            ->when($setting->academic_year, fn ($q) => $q->where('academic_year', $setting->academic_year))
-            ->when($setting->semester, fn ($q) => $q->where('semester', $setting->semester))
+            ->where('academic_year', $operationalAcademicYear)
+            ->where('semester', $operationalSemester)
             ->orderBy('start_period')
             ->get();
         $todayTotalSchedulesCount = $todayAllSchedules->count();
@@ -332,6 +346,7 @@ class DashboardController extends Controller
         // 4. Piket & Ketertiban Hari Ini
         $todayPiketOfficers = PiketSchedule::with('teacher')
             ->where('day', $todayDay)
+            ->where('academic_year', $operationalAcademicYear)
             ->where('is_active', true)
             ->get();
         $todayStudentPermits = PiketStudentPermit::with(['student.classroom'])
@@ -347,11 +362,9 @@ class DashboardController extends Controller
 
         // 5. Agenda & Kalender Kegiatan Sekolah Terdekat
         $upcomingSchoolEvents = CurriculumEvent::whereDate('end_date', '>=', $todayDateStr)
-            ->when($setting->academic_year, function ($q) use ($setting) {
-                $q->where(function ($sub) use ($setting) {
-                    $sub->where('academic_year', $setting->academic_year)
-                        ->orWhereNull('academic_year');
-                });
+            ->where(function ($sub) use ($operationalAcademicYear) {
+                $sub->where('academic_year', $operationalAcademicYear)
+                    ->orWhereNull('academic_year');
             })
             ->orderBy('start_date', 'asc')
             ->take(5)
@@ -440,6 +453,11 @@ class DashboardController extends Controller
         $user = Auth::user();
         $setting = SchoolSetting::getSetting();
 
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalYear = $academicYearContext->getOperationalYear();
+        $operationalAcademicYear = $operationalYear->name;
+        $operationalAyModel = AcademicYear::where('name', $operationalAcademicYear)->first();
+
         $dateParam = $request->query('date');
         $date = $dateParam ? Carbon::parse($dateParam) : Carbon::today();
         $targetDateStr = $date->toDateString();
@@ -457,24 +475,27 @@ class DashboardController extends Controller
         $prevDate = $date->copy()->subDay()->toDateString();
         $nextDate = $date->copy()->addDay()->toDateString();
 
-        // 1. Data Piket Sekolah
+        // 1. Data Piket Sekolah (Operasional Aktif)
         $isPiketToday = $user->isPiketOfficerToday();
         $todayPiketSchedule = PiketSchedule::where('teacher_id', $user->id)
             ->where('day', $dayName)
+            ->where('academic_year', $operationalAcademicYear)
             ->where('is_active', true)
             ->first();
 
         $myWeeklyPiketSchedules = PiketSchedule::where('teacher_id', $user->id)
+            ->where('academic_year', $operationalAcademicYear)
             ->where('is_active', true)
             ->get();
 
-        // 2. Data Tugas Perwalian / Wali Kelas
+        // 2. Data Tugas Perwalian / Wali Kelas (Operasional Aktif)
         $myHomeroomClassroom = $user->homeroomClassrooms()
-            ->when($setting->academic_year, function ($q) use ($setting) {
-                $q->where(function ($sub) use ($setting) {
-                    $sub->where('academic_year', $setting->academic_year)
-                        ->orWhereNull('academic_year');
-                });
+            ->where(function ($sub) use ($operationalAcademicYear, $operationalAyModel) {
+                if ($operationalAyModel) {
+                    $sub->where('classrooms.academic_year_id', $operationalAyModel->id);
+                }
+                $sub->orWhere('classrooms.academic_year', $operationalAcademicYear)
+                    ->orWhereNull('classrooms.academic_year');
             })
             ->first();
 

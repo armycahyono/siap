@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\Classroom;
 use App\Models\PiketIncident;
 use App\Models\PiketJournal;
-use App\Models\SchoolSetting;
+use App\Models\Student;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use App\Services\TelegramService;
 use Carbon\Carbon;
@@ -14,7 +16,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PiketIncidentController extends Controller
 {
@@ -22,8 +26,16 @@ class PiketIncidentController extends Controller
 
     public function index(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         $category = $request->query('category');
         $status = $request->query('status');
@@ -110,7 +122,12 @@ class PiketIncidentController extends Controller
             'selesai' => (clone $statsQuery)->where('status', 'selesai')->count(),
         ];
 
-        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+        $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
 
         if (DeviceDetector::isMobile($request)) {
             return view('mobile.piket.incidents_index', compact(
@@ -127,10 +144,16 @@ class PiketIncidentController extends Controller
 
     public function create(Request $request): View
     {
-        $setting = SchoolSetting::getSetting();
-        $academicYear = session('active_academic_year', $setting->academic_year ?? '2026/2027');
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $academicYear = $operationalYear->name;
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
 
-        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get();
+        $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
+            if ($ayModel) {
+                $query->where('academic_year_id', $ayModel->id);
+            }
+            $query->orWhere('academic_year', $academicYear);
+        })->orderBy('name')->get();
 
         if (DeviceDetector::isMobile($request)) {
             return view('mobile.piket.incidents_create', compact('classrooms', 'academicYear'));
@@ -155,16 +178,25 @@ class PiketIncidentController extends Controller
             'evidence_photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
+        if (empty($validated['classroom_id']) && ! empty($validated['student_id'])) {
+            $student = Student::find($validated['student_id']);
+            if ($student) {
+                $validated['classroom_id'] = $student->classroom_id;
+            }
+        }
+
         $photoPath = null;
         if ($request->hasFile('evidence_photo')) {
-            $photoPath = $request->file('evidence_photo')->store('piket/incidents', 'public');
+            $photoPath = $request->file('evidence_photo')->store('piket/incidents', 'local');
         }
+
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
 
         $journal = PiketJournal::firstOrCreate(
             ['date' => $validated['incident_date']],
             [
-                'academic_year' => session('active_academic_year', '2026/2027'),
-                'semester' => 'Ganjil',
+                'academic_year' => $operationalYear->name,
+                'semester' => $operationalYear->semester ?? 'Ganjil',
                 'status' => 'berlangsung',
                 'coordinator_id' => Auth::id(),
             ]
@@ -209,12 +241,61 @@ class PiketIncidentController extends Controller
 
     public function destroy(PiketIncident $incident): RedirectResponse
     {
-        if ($incident->evidence_photo && Storage::disk('public')->exists($incident->evidence_photo)) {
-            Storage::disk('public')->delete($incident->evidence_photo);
+        if ($incident->evidence_photo) {
+            if (Storage::disk('local')->exists($incident->evidence_photo)) {
+                Storage::disk('local')->delete($incident->evidence_photo);
+            } elseif (Storage::disk('public')->exists($incident->evidence_photo)) {
+                Storage::disk('public')->delete($incident->evidence_photo);
+            }
         }
 
         $incident->delete();
 
         return back()->with('success', 'Data catatan kejadian berhasil dihapus.');
+    }
+
+    /**
+     * View private incident evidence photo with strict authorization.
+     */
+    public function viewPhoto(PiketIncident $incident)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $user->isSuperAdmin()
+            || $user->isPrincipal()
+            || (method_exists($user, 'isWakaKesiswaan') && $user->isWakaKesiswaan())
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
+            || (method_exists($user, 'isDisciplineTeam') && $user->isDisciplineTeam())
+            || ($incident->follow_up_target === 'rujuk_bk' && method_exists($user, 'isCounselingBK') && $user->isCounselingBK())
+            || $user->hasPermission('manage_piket_cases')
+            || $user->hasPermission('operate_piket')
+            || (method_exists($user, 'isPiketOfficerToday') && $user->isPiketOfficerToday())
+            || ($incident->recorded_by === $user->id)
+            || ($incident->classroom_id && $incident->classroom && $incident->classroom->homeroom_teacher_id === $user->id);
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat foto bukti kejadian ini.');
+        }
+
+        $path = $incident->evidence_photo;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Foto bukti tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File foto bukti tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->response($path);
     }
 }

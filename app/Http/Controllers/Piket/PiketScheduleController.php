@@ -3,21 +3,34 @@
 namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\PiketSchedule;
 use App\Models\SchoolSetting;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class PiketScheduleController extends Controller
 {
     public function index(Request $request): View
     {
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'academic_year' => $e->getMessage(),
+            ]);
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
         $setting = SchoolSetting::getSetting();
-        $academicYear = $request->query('academic_year', session('active_academic_year', $setting->academic_year ?? '2026/2027'));
-        $semester = $request->query('semester', $setting->semester ?? 'Ganjil');
+        $semester = $request->query('semester', $ayModel?->semester ?? $setting->semester ?? 'Ganjil');
 
         $dayOrder = "CASE day WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END";
 
