@@ -520,43 +520,22 @@
     // 6. INITIAL APP BOOTSTRAPPER
     // ==========================================
     async function initApp() {
-        SIAP_ROUTER.init();
-
-        // Cek cache user untuk render instan
-        const storedUser = localStorage.getItem('siap_user_data');
-        if (storedUser) {
-            try {
-                const parsed = JSON.parse(storedUser);
-                if (parsed && parsed.id) {
-                    SIAP_ROUTER.setCurrentUser(parsed);
-                }
-            } catch (e) {}
-        }
-
+        // 1. Cek sesi user terlebih dahulu
         try {
             const res = await SIAP_API.me();
-            if (res.authenticated && res.data?.user) {
+            if (res && res.authenticated && res.data?.user) {
                 SIAP_ROUTER.setCurrentUser(res.data.user);
                 localStorage.setItem('siap_user_data', JSON.stringify(res.data.user));
-
-                const hash = window.location.hash.replace(/^#/, '');
-                if (hash && hash !== '/auth/login') {
-                    SIAP_ROUTER.navigate(hash);
-                } else {
-                    SIAP_ROUTER.navigate('/dashboard');
-                }
             } else {
                 SIAP_ROUTER.setCurrentUser(null);
                 localStorage.removeItem('siap_user_data');
-                SIAP_ROUTER.navigate('/auth/login');
             }
         } catch (err) {
-            console.error('InitApp check error:', err);
-            if (!SIAP_ROUTER.getCurrentUser()) {
-                SIAP_ROUTER.setCurrentUser(null);
-                SIAP_ROUTER.navigate('/auth/login');
-            }
+            SIAP_ROUTER.setCurrentUser(null);
         }
+
+        // 2. Jalankan Router setelah sesi pengguna terkonfirmasi
+        SIAP_ROUTER.init();
     }
 
     // Start App on DOM Ready

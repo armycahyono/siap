@@ -11,14 +11,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="SIAP Mobile">
 
-    <!-- Smart Base HREF -->
-    <script>
-        if (window.location.pathname.startsWith('/mobile')) {
-            document.write('<base href="' + window.location.origin + '/mobile/">');
-        } else {
-            document.write('<base href="./">');
-        }
-    </script>
+    <!-- Base HREF for SPA Navigation -->
+    <base href="/mobile/">
 
     <link rel="apple-touch-icon" href="assets/logo.png">
     <link rel="manifest" href="manifest.json">
@@ -101,13 +95,13 @@
     <script src="js/router.js"></script>
     <script src="js/app.js"></script>
 
-    <!-- PWA Service Worker Registration -->
+    <!-- Clean up any active service workers -->
     <script>
-        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname.endsWith('.test'))) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js', { scope: './' })
-                    .then((reg) => console.log('SIAP PWA ServiceWorker registered with scope:', reg.scope))
-                    .catch((err) => console.log('SIAP PWA ServiceWorker registration failed:', err));
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) {
+                    registration.unregister();
+                }
             });
         }
     </script>

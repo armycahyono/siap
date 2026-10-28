@@ -114,9 +114,11 @@ const SIAP_ROUTER = (function() {
             initialLoader.remove();
         }
 
-        // Sembunyikan view aktif saat ini (View Stacking)
-        if (currentPath && mountedViews[currentPath]) {
-            mountedViews[currentPath].classList.add('hidden');
+        // Sembunyikan seluruh view yang ada di DOM (0ms)
+        for (const p in mountedViews) {
+            if (mountedViews[p]) {
+                mountedViews[p].classList.add('hidden');
+            }
         }
 
         // Tampilkan atau Pasang View Baru
@@ -208,6 +210,11 @@ const SIAP_ROUTER = (function() {
                 navigate(rawHash);
             }
         });
+
+        // Jalankan rute awal seketika
+        const rawHash = window.location.hash.replace(/^#/, '');
+        const targetPath = rawHash || (currentUser ? '/dashboard' : '/auth/login');
+        navigate(targetPath);
     }
 
     return {
