@@ -1,0 +1,21 @@
+{
+  "name": "SIAP Mobile - SMK PGRI 1 NGAWI",
+  "short_name": "SIAP Mobile",
+  "description": "Sistem Informasi & Administrasi Presensi GTK Mandiri",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

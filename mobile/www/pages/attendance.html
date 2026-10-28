@@ -1,0 +1,50 @@
+<div class="space-y-4">
+    <!-- Header Card -->
+    <div class="card-elevated p-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+            <div>
+                <h3 class="text-xs font-black text-slate-800 uppercase tracking-tight">Presensi Geotagging GPS</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Validasi Koordinat Radius Sekolah</p>
+            </div>
+            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>GPS Ready</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-center">
+                <span class="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Jam Masuk</span>
+                <p id="att-today-in" class="text-base font-black text-slate-800 font-mono mt-0.5">--:--</p>
+            </div>
+            <div class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-center">
+                <span class="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Jam Pulang</span>
+                <p id="att-today-out" class="text-base font-black text-slate-800 font-mono mt-0.5">--:--</p>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi GPS -->
+        <div class="space-y-2.5">
+            <button type="button" id="btn-att-checkin" class="w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                Presensi Masuk (Check-In)
+            </button>
+            <button type="button" id="btn-att-checkout" class="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                Presensi Pulang (Check-Out)
+            </button>
+        </div>
+
+        <p class="text-[10px] text-slate-400 text-center mt-3">
+            *Pastikan izin akses lokasi (GPS) diaktifkan dengan akurasi tinggi.
+        </p>
+    </div>
+
+    <!-- Riwayat Presensi 7 Hari Terakhir -->
+    <div class="card-elevated p-4">
+        <h4 class="text-xs font-black text-slate-800 uppercase tracking-wider mb-3">Riwayat Presensi Terakhir</h4>
+        <div id="att-recent-logs" class="divide-y divide-slate-100">
+            <div class="text-center py-6 text-xs text-slate-400">Memuat riwayat...</div>
+        </div>
+    </div>
+</div>

@@ -31,6 +31,7 @@ use App\Http\Controllers\HomeroomStudentPermitController;
 use App\Http\Controllers\LessonScheduleController;
 use App\Http\Controllers\Master\StudentController;
 use App\Http\Controllers\Master\StudentPromotionController;
+use App\Http\Controllers\MobileController;
 use App\Http\Controllers\NotepadController;
 use App\Http\Controllers\Piket\DisciplineDashboardController;
 use App\Http\Controllers\Piket\PiketCalendarController;
@@ -72,6 +73,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Standalone Mobile Client (SPA Client, PWA & APK Shell)
+Route::get('/mobile', [MobileController::class, 'index'])->name('mobile.index');
+Route::get('/mobile/{path}', [MobileController::class, 'asset'])->where('path', '.*')->name('mobile.asset');
 Route::get('/verifikasi/{token}', [VerificationController::class, 'verify'])->name('verify.supervision');
 Route::get('/piket/perizinan/{permit}/slip-cetak', [PiketPermitController::class, 'printSlip'])
     ->name('piket.permits.signed-slip')

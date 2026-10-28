@@ -1,0 +1,140 @@
+/**
+ * SIAP Mobile API Client
+ * Penghubung client mobile SPA/APK ke REST API Laravel SIAP (/api/v1/mobile/*)
+ */
+const SIAP_API = (function() {
+    const isNativeAppProtocol = window.location.protocol === 'file:' ||
+                                window.location.protocol === 'capacitor:' ||
+                                window.location.protocol === 'ionic:';
+
+    const defaultOnlineServer = 'https://siap.smkpgri1ngawi.sch.id';
+    let initialBaseUrl = '';
+
+    if (!isNativeAppProtocol && window.location.origin && window.location.origin !== 'null') {
+        initialBaseUrl = window.location.origin;
+    } else {
+        const stored = localStorage.getItem('siap_server_url');
+        if (stored && !stored.startsWith('file:') && !stored.startsWith('capacitor:')) {
+            initialBaseUrl = stored;
+        } else {
+            initialBaseUrl = defaultOnlineServer;
+        }
+    }
+
+    const API_CONFIG = {
+        baseUrl: initialBaseUrl.replace(/\/+$/, ''),
+        token: localStorage.getItem('siap_mobile_token') || '',
+    };
+
+    function setServerUrl(url) {
+        if (!url) return;
+        API_CONFIG.baseUrl = url.replace(/\/+$/, '');
+        localStorage.setItem('siap_server_url', API_CONFIG.baseUrl);
+    }
+
+    function getServerUrl() {
+        return API_CONFIG.baseUrl;
+    }
+
+    function setToken(token) {
+        API_CONFIG.token = token || '';
+        if (token) {
+            localStorage.setItem('siap_mobile_token', token);
+        } else {
+            localStorage.removeItem('siap_mobile_token');
+        }
+    }
+
+    function getToken() {
+        return API_CONFIG.token || localStorage.getItem('siap_mobile_token');
+    }
+
+    async function request(endpoint, options = {}) {
+        const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+        const url = `${API_CONFIG.baseUrl}/api/v1/mobile/${cleanEndpoint}`;
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...(options.headers || {}),
+        };
+
+        const token = getToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers,
+                credentials: 'include', // Dukung HTTP-only session cookies
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                if (response.status === 401 && !endpoint.includes('auth/login')) {
+                    // Sesi kedaluwarsa, bersihkan token & lempar error
+                    setToken(null);
+                    localStorage.removeItem('siap_user_data');
+                    if (window.SIAP_ROUTER) {
+                        window.SIAP_ROUTER.navigate('/auth/login');
+                    }
+                }
+                const errorMsg = data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Terjadi kesalahan pada sistem.');
+                const err = new Error(errorMsg);
+                err.status = response.status;
+                err.data = data;
+                throw err;
+            }
+
+            return data;
+        } catch (err) {
+            console.error(`API Error [${endpoint}]:`, err);
+            throw err;
+        }
+    }
+
+    return {
+        setServerUrl,
+        getServerUrl,
+        setToken,
+        getToken,
+        request,
+
+        // Auth
+        login: (login, password, remember = true) => request('auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ login, password, remember }),
+        }),
+        me: () => request('auth/me', { method: 'GET' }),
+        logout: () => request('auth/logout', { method: 'POST' }),
+
+        // Core Data
+        getDashboard: () => request('dashboard', { method: 'GET' }),
+        getTasks: (date = null) => request(date ? `tasks?date=${date}` : 'tasks', { method: 'GET' }),
+        getProfile: () => request('profile', { method: 'GET' }),
+        updateProfile: (data) => request('profile/update', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+        updatePassword: (currentPassword, newPassword, confirmPassword) => request('profile/password', {
+            method: 'POST',
+            body: JSON.stringify({
+                current_password: currentPassword,
+                password: newPassword,
+                password_confirmation: confirmPassword,
+            }),
+        }),
+
+        // Attendance Geotagging
+        getAttendanceStatus: () => request('attendance/status', { method: 'GET' }),
+        submitAttendance: (payload) => request('attendance/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+    };
+})();
+
+window.SIAP_API = SIAP_API;

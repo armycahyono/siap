@@ -1,0 +1,17 @@
+{
+  "appId": "id.my.siap.mobile",
+  "appName": "SIAP Mobile",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true,
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0f172a",
+      "showSpinner": false
+    }
+  }
+}

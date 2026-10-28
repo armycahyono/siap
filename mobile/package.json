@@ -1,0 +1,20 @@
+{
+  "name": "siap-mobile",
+  "version": "1.0.0",
+  "description": "Aplikasi SIAP Mobile SMK PGRI 1 NGAWI (Decoupled SPA, PWA & APK Ready)",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Static mobile client ready in www/'",
+    "cap:add:android": "npx @capacitor/cli add android",
+    "cap:copy": "npx @capacitor/cli copy",
+    "cap:sync": "npx @capacitor/cli sync",
+    "cap:open:android": "npx @capacitor/cli open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}
