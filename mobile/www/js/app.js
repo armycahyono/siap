@@ -697,6 +697,42 @@
     // ==========================================
     // 5. PROFILE VIEW CONTROLLER
     // ==========================================
+    function resizeImageToBase64(file, maxWidth = 800, maxHeight = 800, quality = 0.85) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = reject;
+                img.src = e.target.result;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
     window.initProfile = async function(container) {
         async function fetchProfile() {
             try {
@@ -709,6 +745,59 @@
                 console.error('Error fetching profile:', err);
                 showToast('Gagal memuat profil GTK.', 'error');
             }
+        }
+
+        // Bind Avatar Upload Handler
+        const avatarInput = container.querySelector('#prof-avatar-input');
+        if (avatarInput) {
+            avatarInput.onchange = async function(e) {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                if (!file.type.startsWith('image/')) {
+                    showToast('Harap pilih file gambar (JPG, PNG, atau WebP).', 'warning');
+                    return;
+                }
+
+                showToast('Mengunggah foto profil...', 'info');
+
+                try {
+                    const base64Data = await resizeImageToBase64(file, 800, 800, 0.85);
+                    const res = await SIAP_API.updateProfile({
+                        avatar_cropped_base64: base64Data,
+                    });
+
+                    if (res.success && res.data?.user) {
+                        const updatedUser = res.data.user;
+                        SIAP_ROUTER.setCurrentUser(updatedUser);
+                        localStorage.setItem('siap_user_data', JSON.stringify(updatedUser));
+
+                        const avatarEl = container.querySelector('#prof-avatar');
+                        if (avatarEl && updatedUser.avatar_url) {
+                            avatarEl.src = updatedUser.avatar_url + '?t=' + Date.now();
+                        }
+
+                        // Perbarui avatar di dashboard jika ada di DOM
+                        const dashAvatar = document.querySelector('#dash-user-avatar');
+                        if (dashAvatar && updatedUser.avatar_url) {
+                            dashAvatar.src = updatedUser.avatar_url + '?t=' + Date.now();
+                        }
+
+                        if (profileDataCache && profileDataCache.user) {
+                            profileDataCache.user.avatar_url = updatedUser.avatar_url;
+                        }
+
+                        showToast('Foto profil berhasil diperbarui!', 'success');
+                    } else {
+                        showToast(res.message || 'Gagal memperbarui foto profil.', 'error');
+                    }
+                } catch (err) {
+                    console.error('Avatar upload error:', err);
+                    showToast('Gagal mengunggah foto profil.', 'error');
+                } finally {
+                    avatarInput.value = '';
+                }
+            };
         }
 
         if (profileDataCache) {

@@ -1,7 +1,13 @@
 <div class="space-y-4">
     <!-- Profile Biodata Card -->
     <div class="card-elevated p-5 text-center">
-        <img id="prof-avatar" src="assets/logo.png" alt="Avatar" class="w-20 h-20 rounded-full mx-auto object-cover border-4 border-blue-50 bg-slate-100 shadow-sm mb-3">
+        <div class="relative w-20 h-20 mx-auto mb-3">
+            <img id="prof-avatar" src="assets/logo.png" alt="Avatar" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md bg-slate-100">
+            <label for="prof-avatar-input" class="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center cursor-pointer shadow-md transition active:scale-95 border-2 border-white" title="Ganti Foto Profil">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </label>
+            <input type="file" id="prof-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden">
+        </div>
         <h3 id="prof-name" class="text-sm font-black text-slate-800 tracking-tight">Memuat nama...</h3>
         <p class="text-[11px] font-mono text-slate-400 mt-0.5">NIP: <span id="prof-nip">-</span></p>
 
@@ -37,12 +43,8 @@
         </div>
     </div>
 
-    <!-- Pilihan Tampilan & Keluar Sesi -->
-    <div class="pt-2 space-y-2">
-        <a href="/dashboard?view_mode=web" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            Buka Versi Desktop Lengkap
-        </a>
+    <!-- Keluar Sesi -->
+    <div class="pt-2">
         <button type="button" onclick="handleLogout()" class="w-full py-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             Keluar dari SIAP Mobile
