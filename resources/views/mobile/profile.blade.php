@@ -246,6 +246,19 @@
     </div>
 </div>
 
+<!-- Banner Akses Versi Baru SIAP Mobile SPA -->
+<div class="card border-0 shadow-sm rounded-3 mb-3 text-white" style="background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;">
+    <div class="card-body p-2.5 px-3 d-flex align-items-center justify-content-between">
+        <div>
+            <div class="fw-bold text-white small">🚀 SIAP Mobile Versi Baru (SPA)</div>
+            <div class="text-white-50" style="font-size: 0.72rem;">Navigasi instan 0ms & hemat kuota</div>
+        </div>
+        <a href="{{ route('mobile.index') }}" class="btn btn-light btn-sm rounded-pill fw-bold text-primary shadow-sm px-3 py-1" style="font-size: 0.75rem;">
+            Buka SPA
+        </a>
+    </div>
+</div>
+
 <!-- =========================================================================
      3. TIGA TOMBOL AKSI SEJAJAR SATU BARIS: [Edit Data] [Ganti Sandi] [Keluar Akun]
      ========================================================================= -->

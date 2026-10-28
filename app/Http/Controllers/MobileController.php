@@ -70,9 +70,15 @@ class MobileController extends Controller
             ? 'no-cache, must-revalidate'
             : 'public, max-age=3600';
 
-        return response($content, 200, [
+        $headers = [
             'Content-Type' => $contentType,
             'Cache-Control' => $cacheControl,
-        ]);
+        ];
+
+        if (basename($fullPath) === 'sw.js') {
+            $headers['Service-Worker-Allowed'] = '/mobile/';
+        }
+
+        return response($content, 200, $headers);
     }
 }

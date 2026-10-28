@@ -34,6 +34,11 @@ class MobileSpaClientTest extends TestCase
         $appJs->assertOk()
             ->assertHeader('Content-Type', 'application/javascript; charset=UTF-8');
 
+        $swJs = $this->get('/mobile/sw.js');
+        $swJs->assertOk()
+            ->assertHeader('Content-Type', 'application/javascript; charset=UTF-8')
+            ->assertHeader('Service-Worker-Allowed', '/mobile/');
+
         // 2. CSS
         $css = $this->get('/mobile/css/mobile.css');
         $css->assertOk()

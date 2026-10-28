@@ -1081,6 +1081,9 @@
                                 <a href="{{ route('profile') }}" class="dropdown-item py-2">
                                     <i class="ti ti-user me-2 text-primary"></i> Profil Saya
                                 </a>
+                                <a href="{{ route('mobile.index') }}" target="_blank" class="dropdown-item py-2">
+                                    <i class="ti ti-device-mobile me-2 text-cyan"></i> Buka SIAP Mobile (PWA)
+                                </a>
                                 @if(auth()->user()->hasRole('super_admin') || auth()->user()->hasRole('waka_kurikulum'))
                                 <a href="{{ route('settings.index') }}" class="dropdown-item py-2">
                                     <i class="ti ti-building me-2 text-indigo"></i> Data Sekolah

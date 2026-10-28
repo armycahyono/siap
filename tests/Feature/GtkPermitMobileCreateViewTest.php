@@ -92,7 +92,27 @@ class GtkPermitMobileCreateViewTest extends TestCase
         $ks = User::whereHas('role', fn ($q) => $q->where('slug', 'kepala_sekolah'))->first()
             ?? User::where('position', 'like', '%Kepala Sekolah%')->first();
 
-        $teacher = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))->first();
+        if (! $ks) {
+            $ksRole = Role::firstOrCreate(['slug' => 'kepala_sekolah'], ['name' => 'Kepala Sekolah']);
+            $ks = User::create([
+                'name' => 'Kepala Sekolah Test',
+                'username' => 'kepsek_test',
+                'email' => 'kepsek@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $ksRole->id,
+                'is_active' => true,
+            ]);
+        }
+
+        $teacher = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))->first()
+            ?? User::create([
+                'name' => 'Guru Test',
+                'username' => 'guru_test',
+                'email' => 'guru@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => Role::firstOrCreate(['slug' => 'guru'], ['name' => 'Guru'])->id,
+                'is_active' => true,
+            ]);
 
         Supervision::create([
             'teacher_id' => $teacher->id,

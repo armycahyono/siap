@@ -40,6 +40,22 @@
     </div>
 </div>
 
+<!-- Banner Transisi ke SIAP Mobile SPA -->
+<div class="card border-0 shadow-sm rounded-3 mb-2 text-white" style="background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;">
+    <div class="card-body p-2 px-3 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fs-3">⚡</span>
+            <div>
+                <div class="fw-bold text-white lh-1" style="font-size: 0.78rem;">SIAP Mobile Mode Instan</div>
+                <div class="text-white-50" style="font-size: 0.68rem;">Pindah menu tanpa jeda reload 0ms</div>
+            </div>
+        </div>
+        <a href="{{ route('mobile.index') }}" class="btn btn-light btn-sm rounded-pill fw-bold text-primary shadow-sm px-2.5 py-0.5" style="font-size: 0.72rem;">
+            Coba Sekarang
+        </a>
+    </div>
+</div>
+
 <!-- Status Cards: Hadir Hari Ini & Pengajuan Izin GTK (Grid 2 Kolom Berdampingan) -->
 @php
     $hasCheckedIn = !empty($myCheckInToday);
