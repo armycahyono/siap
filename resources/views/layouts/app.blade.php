@@ -692,16 +692,34 @@
                             </a>
                         </li>
 
+                        <!-- Menu Visitasi & Pemantauan (Mandiri di atas Piket Sekolah) -->
+                        @if(auth()->user()->canAccessVisitations())
+                        <li class="nav-item {{ request()->routeIs('visitations.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('visitations.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-home-heart fs-2 text-teal"></i>
+                                </span>
+                                <span class="nav-link-title">Visitasi &amp; Pemantauan</span>
+                            </a>
+                        </li>
+                        @endif
+
                         <!-- Menu Piket Sekolah -->
                         @if(auth()->user()->canAccessPiket())
-                        <li class="nav-item dropdown {{ request()->routeIs('piket.*') ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-piket" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('piket.*') ? 'true' : 'false' }}">
+                        @php
+                            $isUserDisciplineTeam = auth()->user()->canManageDiscipline();
+                            $isPiketIncidentsRoute = request()->routeIs('piket.incidents.*');
+                            $isDisciplineReportTab = request()->routeIs('piket.reports.*') && request('tab') === 'incidents';
+                            $isPiketMenuActive = request()->routeIs('piket.*') && (! $isUserDisciplineTeam || (! $isPiketIncidentsRoute && ! $isDisciplineReportTab));
+                        @endphp
+                        <li class="nav-item dropdown {{ $isPiketMenuActive ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-piket" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $isPiketMenuActive ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-shield-check fs-2 text-warning"></i>
                                 </span>
                                 <span class="nav-link-title">Piket Sekolah</span>
                             </a>
-                            <div class="dropdown-menu {{ request()->routeIs('piket.*') ? 'show' : '' }}">
+                            <div class="dropdown-menu {{ $isPiketMenuActive ? 'show' : '' }}">
                                 <a class="dropdown-item {{ request()->routeIs('piket.dashboard') ? 'active' : '' }}" href="{{ route('piket.dashboard') }}">
                                     <i class="ti ti-layout-dashboard me-2"></i> Dashboard Piket
                                 </a>
@@ -734,7 +752,7 @@
                                 </a>
                                 @endif
 
-                                @if(auth()->user()->canManagePiketCases())
+                                @if(auth()->user()->canViewPiketCases() && ! $isUserDisciplineTeam)
                                 <a class="dropdown-item {{ request()->routeIs('piket.incidents.*') ? 'active' : '' }}" href="{{ route('piket.incidents.index') }}">
                                     <i class="ti ti-alert-triangle me-2"></i> Catatan Kasus / Kejadian
                                 </a>
@@ -742,7 +760,7 @@
 
                                 @if(auth()->user()->canViewPiketReports())
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item {{ request()->routeIs('piket.reports.*') ? 'active' : '' }}" href="{{ route('piket.reports.index') }}">
+                                <a class="dropdown-item {{ (request()->routeIs('piket.reports.*') && request('tab') !== 'incidents') ? 'active' : '' }}" href="{{ route('piket.reports.index') }}">
                                     <i class="ti ti-report-analytics me-2"></i> Rekapitulasi &amp; Laporan
                                 </a>
                                 @endif
@@ -756,7 +774,63 @@
                         </li>
                         @endif
 
-                        <!-- Rekapitulasi Presensi (Pimpinan / Waka / Admin) -->
+                        @if(auth()->user()->canManageDiscipline())
+                        <!-- Menu Tim Kedisiplinan -->
+                        @php
+                            $isDisciplineMenuActive = request()->routeIs('discipline.dashboard', 'discipline.index', 'piket.incidents.*')
+                                || (request()->routeIs('piket.reports.*') && request('tab') === 'incidents');
+                        @endphp
+                        <li class="nav-item dropdown {{ $isDisciplineMenuActive ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-tatib" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $isDisciplineMenuActive ? 'true' : 'false' }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-shield-alert fs-2 text-danger"></i>
+                                </span>
+                                <span class="nav-link-title">Tim Kedisiplinan</span>
+                            </a>
+                            <div class="dropdown-menu {{ $isDisciplineMenuActive ? 'show' : '' }}">
+                                <a class="dropdown-item {{ request()->routeIs('discipline.dashboard', 'discipline.index', 'piket.discipline.*') ? 'active' : '' }}" href="{{ Route::has('discipline.dashboard') ? route('discipline.dashboard') : (Route::has('piket.discipline.dashboard') ? route('piket.discipline.dashboard') : url('/kedisiplinan')) }}">
+                                    <i class="ti ti-layout-dashboard me-2 text-danger"></i> Dashboard Kedisiplinan
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('piket.incidents.index') ? 'active' : '' }}" href="{{ route('piket.incidents.index') }}">
+                                    <i class="ti ti-alert-triangle me-2 text-danger"></i> Kasus &amp; Pelanggaran
+                                </a>
+                                @if(auth()->user()->canViewPiketReports())
+                                <a class="dropdown-item {{ (request()->routeIs('piket.reports.*') && request('tab') === 'incidents') ? 'active' : '' }}" href="{{ route('piket.reports.index', ['tab' => 'incidents']) }}">
+                                    <i class="ti ti-report-analytics me-2 text-secondary"></i> Rekap Pelanggaran
+                                </a>
+                                @endif
+                            </div>
+                        </li>
+                        @endif
+
+                        <!-- Menu Bimbingan & Konseling (BK) -->
+                        @if(auth()->user()->canOperateBk())
+                        @php
+                            $isBkMenuActive = request()->routeIs('bk.*');
+                        @endphp
+                        <li class="nav-item dropdown {{ $isBkMenuActive ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-bk" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $isBkMenuActive ? 'true' : 'false' }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-heart-handshake fs-2 text-primary"></i>
+                                </span>
+                                <span class="nav-link-title">Bimbingan &amp; Konseling</span>
+                            </a>
+                            <div class="dropdown-menu {{ $isBkMenuActive ? 'show' : '' }}">
+                                <a class="dropdown-item {{ request()->routeIs('bk.dashboard') ? 'active' : '' }}" href="{{ Route::has('bk.dashboard') ? route('bk.dashboard') : url('/bk/dashboard') }}">
+                                    <i class="ti ti-layout-dashboard me-2 text-primary"></i> Dashboard BK
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('bk.referrals.*') ? 'active' : '' }}" href="{{ route('bk.referrals.index') }}">
+                                    <i class="ti ti-bell-ringing me-2"></i> Rujukan Piket
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('bk.services.*') ? 'active' : '' }}" href="{{ route('bk.services.index') }}">
+                                    <i class="ti ti-notes me-2"></i> Sesi Layanan BK
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('bk.students.*') ? 'active' : '' }}" href="{{ route('bk.students.index') }}">
+                                    <i class="ti ti-address-book me-2"></i> Buku Pribadi Siswa
+                                </a>
+                            </div>
+                        </li>
+                        @endif
                         @php
                             $canAccessAttendanceRecap = auth()->user()->canAccessTeacherAttendanceReport() 
                                 || auth()->user()->canAccessStudentAttendanceReport() 
@@ -922,14 +996,14 @@
 
                         <!-- Master Akademik (Dropdown) -->
                         @if(auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
-                        <li class="nav-item dropdown {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'true' : 'false' }}">
+                        <li class="nav-item dropdown {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'employee-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-master" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'employee-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-folders fs-2"></i>
                                 </span>
                                 <span class="nav-link-title">Master Akademik</span>
                             </a>
-                            <div class="dropdown-menu {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'show' : '' }}">
+                            <div class="dropdown-menu {{ request()->routeIs('academic-years.*', 'departments.*', 'classrooms.*', 'subjects.*', 'structural-positions.*', 'teacher-assignments.*', 'employee-assignments.*', 'stakeholders.*', 'activity-categories.*') ? 'show' : '' }}">
                                 <a class="dropdown-item {{ request()->routeIs('academic-years.*') ? 'active' : '' }}" href="{{ route('academic-years.index') }}">
                                     <i class="ti ti-calendar-stats me-2"></i> Tahun Ajaran
                                 </a>
@@ -944,6 +1018,9 @@
                                 </a>
                                 <a class="dropdown-item {{ request()->routeIs('teacher-assignments.*', 'structural-positions.*') ? 'active' : '' }}" href="{{ route('teacher-assignments.index') }}">
                                     <i class="ti ti-user-check me-2"></i> Penugasan Guru
+                                </a>
+                                <a class="dropdown-item {{ request()->routeIs('employee-assignments.*') ? 'active' : '' }}" href="{{ route('employee-assignments.index') }}">
+                                    <i class="ti ti-id-badge-2 me-2"></i> Penugasan Pegawai
                                 </a>
                                 <a class="dropdown-item {{ request()->routeIs('stakeholders.*') ? 'active' : '' }}" href="{{ route('stakeholders.index') }}">
                                     <i class="ti ti-users-group me-2"></i> Pejabat &amp; Pihak Terkait

@@ -11,6 +11,7 @@ use App\Models\PiketStudentPermit;
 use App\Models\PiketTelegramLog;
 use App\Models\SchoolActivity;
 use App\Models\SchoolSetting;
+use App\Models\StudentVisitation;
 use App\Models\Supervision;
 use App\Models\User;
 use Carbon\Carbon;
@@ -854,6 +855,133 @@ class TelegramService
         if ($wakaKesiswaan && (! $principal || $wakaKesiswaan->id !== $principal->id)) {
             $msgWaka = "<b>[Laporan Meja Piket untuk Waka Kesiswaan]</b>\n\n".$text;
             $dispatch($wakaKesiswaan->telegram_chat_id, $msgWaka, 'waka_kesiswaan', $wakaKesiswaan->name);
+        }
+    }
+
+    /**
+     * Notifikasi penetapan verifikasi pelanggaran dan sanksi kedisiplinan.
+     * Dikirimkan ke:
+     * 1. Wali Kelas siswa
+     * 2. Grup Kedisiplinan & BK
+     * 3. Petugas pencatat kejadian awal
+     */
+    public function notifyIncidentVerification(PiketIncident $incident): void
+    {
+        $studentName = $incident->student_name;
+        $classroom = $incident->classroom;
+        $classroomName = $classroom?->name ?? '-';
+        $category = $incident->category_label;
+        $statusVerifikasi = $incident->verification_status_label;
+        $verifierName = $incident->verifier?->name ?? 'Tim Kedisiplinan';
+        $date = $incident->incident_date?->format('d/m/Y') ?? date('d/m/Y');
+        $sanction = $incident->disciplinary_sanction ?: 'Tidak ada sanksi formal';
+        $parentInvolvement = $incident->parental_involvement ? 'Ya (Orang Tua Dilibatkan)' : 'Tidak';
+        $followUp = $incident->follow_up_label;
+
+        $text = "⚖️ <b>VERIFIKASI & PENETAPAN SANKSI PELANGGARAN</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."👤 <b>Nama Siswa:</b> {$studentName}\n"
+            ."🏫 <b>Kelas:</b> {$classroomName}\n"
+            ."🏷️ <b>Kategori:</b> {$category}\n"
+            ."📅 <b>Tanggal Kejadian:</b> {$date}\n"
+            ."🔍 <b>Status Verifikasi:</b> {$statusVerifikasi}\n"
+            ."🛡️ <b>Sanksi/Tindakan:</b> {$sanction}\n"
+            ."👨‍👩‍👧 <b>Keterlibatan Ortu:</b> {$parentInvolvement}\n"
+            .($incident->parental_involvement_notes ? "📝 <b>Catatan Ortu:</b> {$incident->parental_involvement_notes}\n" : '')
+            ."➡️ <b>Tindak Lanjut:</b> {$followUp}\n"
+            ."👮 <b>Verifikator:</b> {$verifierName}\n"
+            .'━━━━━━━━━━━━━━━━━━━━';
+
+        // 1. Notif ke Wali Kelas
+        $homeroom = $classroom?->homeroomTeacher;
+        if ($homeroom && ! empty($homeroom->telegram_chat_id)) {
+            $msgWali = "<b>Kepada Yth. Wali Kelas ({$homeroom->name})</b>\n\n".$text;
+            $this->sendMessage($homeroom->telegram_chat_id, $msgWali, 'homeroom_teacher', $homeroom->name);
+        }
+
+        // 2. Notif ke Grup Kedisiplinan & BK
+        if ($this->disciplineChatId) {
+            $this->sendMessage($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
+        }
+
+        // 3. Notif ke Petugas Pencatat Awal (apabila beda orang dengan verifikator)
+        if ($incident->recordedBy && ! empty($incident->recordedBy->telegram_chat_id) && $incident->recorded_by !== $incident->verified_by) {
+            $msgRecorder = "<b>[Update Tindak Lanjut Kejadian yang Anda Catat]</b>\n\n".$text;
+            $this->sendMessage($incident->recordedBy->telegram_chat_id, $msgRecorder, 'recorder', $incident->recordedBy->name);
+        }
+    }
+
+    /**
+     * Notifikasi penugasan atau pembaruan hasil visitasi & pemantauan siswa.
+     * Dikirimkan ke:
+     * 1. Petugas Utama pelaksana
+     * 2. Petugas Pendamping (jika ada)
+     * 3. Wali Kelas siswa
+     * 4. Grup Kedisiplinan & BK
+     */
+    public function notifyVisitation(StudentVisitation $visitation, string $actionType = 'created'): void
+    {
+        $student = $visitation->student;
+        $studentName = $student?->name ?? 'Siswa';
+        $classroom = $student?->classroom;
+        $classroomName = $classroom?->name ?? '-';
+        $visitType = $visitation->visit_type_label;
+        $status = $visitation->status_label;
+        $plannedDate = $visitation->planned_date?->format('d/m/Y') ?? '-';
+        $primaryOfficer = $visitation->primaryOfficer;
+        $secondaryOfficer = $visitation->secondaryOfficer;
+        $requester = $visitation->requester;
+
+        $isCompleted = ($actionType === 'updated' && in_array($visitation->status, ['terlaksana', 'selesai']));
+
+        if ($isCompleted) {
+            $title = '🏠 <b>LAPORAN HASIL VISITASI / PEMANTAUAN SISWA</b>';
+        } elseif ($actionType === 'updated') {
+            $title = '🔄 <b>PEMBARUAN STATUS VISITASI SISWA</b>';
+        } else {
+            $title = '📋 <b>PENUGASAN VISITASI & PEMANTAUAN SISWA</b>';
+        }
+
+        $text = "{$title}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."👤 <b>Nama Siswa:</b> {$studentName}\n"
+            ."🏫 <b>Kelas:</b> {$classroomName}\n"
+            ."🏷️ <b>Jenis Kegiatan:</b> {$visitType}\n"
+            ."📅 <b>Tanggal Rencana:</b> {$plannedDate}\n"
+            .($visitation->executed_date ? "✅ <b>Tanggal Aktual:</b> {$visitation->executed_date->format('d/m/Y')}\n" : '')
+            ."📌 <b>Status:</b> {$status}\n"
+            .'👮 <b>Petugas Utama:</b> '.($primaryOfficer?->name ?? '-')."\n"
+            .($secondaryOfficer ? "👥 <b>Pendamping:</b> {$secondaryOfficer->name}\n" : '')
+            ."🎯 <b>Alasan/Tujuan:</b> {$visitation->reason}\n"
+            .($visitation->result_summary ? "📝 <b>Hasil:</b> {$visitation->result_summary}\n" : '')
+            .($visitation->follow_up_plan ? "➡️ <b>RTL:</b> {$visitation->follow_up_plan}\n" : '')
+            .'📋 <b>Pengusul:</b> '.($requester?->name ?? 'Sistem')."\n"
+            .'━━━━━━━━━━━━━━━━━━━━';
+
+        // 1. Notif Japri ke Petugas Utama
+        if ($primaryOfficer && ! empty($primaryOfficer->telegram_chat_id)) {
+            $msgPrimary = "<b>Kepada Yth. Petugas Pelaksana ({$primaryOfficer->name})</b>\n\n".$text;
+            $this->sendMessage($primaryOfficer->telegram_chat_id, $msgPrimary, 'primary_officer', $primaryOfficer->name);
+        }
+
+        // 2. Notif Japri ke Petugas Pendamping
+        if ($secondaryOfficer && ! empty($secondaryOfficer->telegram_chat_id)) {
+            $msgSecondary = "<b>Kepada Yth. Petugas Pendamping ({$secondaryOfficer->name})</b>\n\n".$text;
+            $this->sendMessage($secondaryOfficer->telegram_chat_id, $msgSecondary, 'secondary_officer', $secondaryOfficer->name);
+        }
+
+        // 3. Notif ke Wali Kelas (jika bukan petugas utama/pendamping)
+        $homeroom = $classroom?->homeroomTeacher;
+        if ($homeroom && ! empty($homeroom->telegram_chat_id)
+            && (! $primaryOfficer || $homeroom->id !== $primaryOfficer->id)
+            && (! $secondaryOfficer || $homeroom->id !== $secondaryOfficer->id)) {
+            $msgWali = "<b>Kepada Yth. Wali Kelas ({$homeroom->name})</b>\n\n".$text;
+            $this->sendMessage($homeroom->telegram_chat_id, $msgWali, 'homeroom_teacher', $homeroom->name);
+        }
+
+        // 4. Notif ke Grup Kedisiplinan & BK
+        if ($this->disciplineChatId) {
+            $this->sendMessage($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
         }
     }
 

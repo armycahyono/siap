@@ -15,10 +15,12 @@
                 {{ \Carbon\Carbon::parse($date)->translatedFormat('l, d F Y') }}
             </div>
         </div>
+        @if(($canManageAllCases ?? false) || auth()->user()->canRecordPiketIncident())
         <a href="{{ route('piket.incidents.create') }}" class="btn btn-sm btn-white fw-bold rounded-pill px-3 shadow-sm d-flex align-items-center gap-1 border-0" style="font-size: 0.75rem; background-color: #ffffff; color: #ea580c !important;">
             <i class="ti ti-plus fs-3" style="color: #ea580c !important;"></i>
             <span style="color: #ea580c !important;">Catat Kasus</span>
         </a>
+        @endif
     </div>
 </div>
 
@@ -80,7 +82,7 @@
                 </select>
             </div>
 
-            <!-- Baris 3: Dropdown Kategori & Status Kasus (50% - 50%) -->
+            <!-- Baris 3: Dropdown Kategori, Verifikasi & Status Kasus -->
             <div class="d-flex gap-2">
                 <select name="category" 
                         class="form-select form-select-sm flex-fill" 
@@ -94,6 +96,17 @@
                     <option value="rokok" {{ $category === 'rokok' ? 'selected' : '' }}>Rokok / Vape</option>
                     <option value="kesehatan_pingsan" {{ $category === 'kesehatan_pingsan' ? 'selected' : '' }}>Kesehatan / Pingsan</option>
                     <option value="lainnya" {{ $category === 'lainnya' ? 'selected' : '' }}>Lain-lain</option>
+                </select>
+
+                <select name="verification_status" 
+                        class="form-select form-select-sm flex-fill" 
+                        style="font-size: 0.78rem; height: 36px; border-radius: 8px;" 
+                        onchange="this.form.submit()">
+                    <option value="">Semua Verifikasi</option>
+                    <option value="menunggu_verifikasi" {{ ($verificationStatus ?? '') === 'menunggu_verifikasi' ? 'selected' : '' }}>Menunggu Verifikasi</option>
+                    <option value="terverifikasi" {{ ($verificationStatus ?? '') === 'terverifikasi' ? 'selected' : '' }}>Terverifikasi (Sanksi)</option>
+                    <option value="bukan_pelanggaran" {{ ($verificationStatus ?? '') === 'bukan_pelanggaran' ? 'selected' : '' }}>Bukan Pelanggaran</option>
+                    <option value="dibatalkan" {{ ($verificationStatus ?? '') === 'dibatalkan' ? 'selected' : '' }}>Dibatalkan</option>
                 </select>
 
                 <select name="status" 
@@ -113,7 +126,7 @@
                 :value="$search" 
                 placeholder="Cari nama siswa / uraian kasus..." 
                 :reset-url="route('piket.incidents.index')" 
-                :has-active-filter="(bool) ($category || $status || $classroomId || $period !== 'today' || ($date && $date !== now()->toDateString()))" 
+                :has-active-filter="(bool) ($category || $status || !empty($verificationStatus) || $classroomId || $period !== 'today' || ($date && $date !== now()->toDateString()))" 
             />
         </form>
     </div>
@@ -126,7 +139,7 @@
             <div class="d-flex align-items-center justify-content-between gap-1 text-center" style="font-size: 0.7rem;">
                 <div class="flex-fill">
                     <div class="fw-bold fs-3 text-dark lh-1">{{ $stats['total'] }}</div>
-                    <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Semua Kasus</div>
+                    <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Total</div>
                 </div>
                 <div class="border-start" style="height: 20px;"></div>
                 <div class="flex-fill">
@@ -136,12 +149,17 @@
                 <div class="border-start" style="height: 20px;"></div>
                 <div class="flex-fill">
                     <div class="fw-bold fs-3 text-info lh-1">{{ $stats['ditindaklanjuti'] }}</div>
-                    <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Ditindaklanjuti</div>
+                    <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Diproses</div>
                 </div>
                 <div class="border-start" style="height: 20px;"></div>
                 <div class="flex-fill">
                     <div class="fw-bold fs-3 text-success lh-1">{{ $stats['selesai'] }}</div>
                     <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Selesai</div>
+                </div>
+                <div class="border-start" style="height: 20px;"></div>
+                <div class="flex-fill">
+                    <div class="fw-bold fs-3 text-danger lh-1">{{ $stats['terverifikasi'] ?? 0 }}</div>
+                    <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Terverifikasi</div>
                 </div>
             </div>
         </div>
@@ -164,9 +182,12 @@
         <div class="card border-0 shadow-sm rounded-3 mb-1.5 border-start border-danger border-3">
             <div class="card-body p-2 px-3">
                 <div class="d-flex align-items-center justify-content-between mb-1">
-                    <div class="d-flex align-items-center gap-1">
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
                         <span class="badge {{ $catBadge }}" style="font-size: 0.65rem; padding: 2px 6px;">
                             {{ $inc->category_label ?? ucfirst(str_replace('_', ' ', $inc->category)) }}
+                        </span>
+                        <span class="badge {{ $inc->verification_badge_class }}" style="font-size: 0.62rem; padding: 2px 5px;">
+                            {{ $inc->verification_status_label }}
                         </span>
                         @if($inc->status === 'selesai')
                             <span class="badge bg-success text-white" style="font-size: 0.62rem; padding: 2px 5px;"><i class="ti ti-check me-0.5"></i>Selesai</span>
@@ -193,6 +214,11 @@
                     @if($inc->action_taken)
                         <div class="text-danger"><strong>Penanganan:</strong> {{ $inc->action_taken }}</div>
                     @endif
+                    @if($inc->disciplinary_sanction)
+                        <div class="text-danger fw-bold mt-0.5" style="font-size: 0.7rem;">
+                            <i class="ti ti-gavel me-0.5"></i> <strong>Sanksi:</strong> {{ $inc->disciplinary_sanction }}
+                        </div>
+                    @endif
                     <div class="text-muted mt-0.5" style="font-size: 0.68rem;">
                         Tindak Lanjut: <strong>{{ $inc->follow_up_label ?? ucfirst(str_replace('_', ' ', $inc->follow_up_target)) }}</strong>
                         @if($inc->confiscated_items) &bull; Disita: {{ $inc->confiscated_items }} @endif
@@ -203,16 +229,28 @@
                     <span class="text-muted">
                         Piket: {{ $inc->recordedBy?->formatted_short_name ?? $inc->recordedBy?->name ?? 'Petugas' }}
                     </span>
-                    <div class="d-flex align-items-center gap-1.5">
+                    <div class="d-flex align-items-center gap-1 flex-wrap justify-content-end">
                         @if($inc->evidence_photo)
                             <a href="{{ $inc->evidence_photo_url }}" target="_blank" class="badge bg-blue-lt text-decoration-none py-1 px-1.5" style="font-size: 0.65rem;">
                                 <i class="ti ti-photo me-0.5"></i> Foto
                             </a>
                         @endif
-                        @if(auth()->user()->canManagePiketCases())
-                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5" style="font-size: 0.68rem;" onclick="openUpdateStatusSheet('{{ $inc->id }}', '{{ $inc->status }}', '{{ addslashes($inc->student_name) }}')">
+                        @if(auth()->user()->canVerifyDiscipline($academicYear))
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0.5" style="font-size: 0.68rem;" onclick="openVerifyIncidentSheet('{{ $inc->id }}', '{{ $inc->verification_status }}', '{{ addslashes($inc->student_name) }}', '{{ addslashes($inc->disciplinary_sanction ?? '') }}', '{{ addslashes($inc->verification_notes ?? '') }}', '{{ $inc->follow_up_target }}')">
+                                <i class="ti ti-shield-check me-0.5"></i> Verifikasi
+                            </button>
+                        @endif
+                        @if(auth()->user()->canManageDiscipline($academicYear) || auth()->user()->isSuperAdmin())
+                            <a href="{{ route('piket.incidents.surat_panggilan', $inc) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0.5 text-decoration-none" style="font-size: 0.68rem;">
+                                <i class="ti ti-mail me-0.5"></i> Surat
+                            </a>
+                        @endif
+                        @if($canManageAllCases ?? false)
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0.5" style="font-size: 0.68rem;" onclick="openUpdateStatusSheet('{{ $inc->id }}', '{{ $inc->status }}', '{{ addslashes($inc->student_name) }}')">
                                 <i class="ti ti-edit me-0.5"></i> Status
                             </button>
+                        @endif
+                        @if(auth()->user()->canDeletePiketIncident($inc, $academicYear))
                             <form action="{{ route('piket.incidents.destroy', $inc) }}" method="POST" onsubmit="return confirm('Hapus catatan kasus ini?')" class="d-inline">
                                 @csrf
                                 @method('DELETE')
@@ -274,6 +312,63 @@
         </form>
     </div>
 </div>
+
+<!-- Framework7 Bottom Sheet: Verifikasi & Sanksi Tim Kedisiplinan -->
+<div class="sheet-modal sheet-modal-bottom" id="sheet-verify-incident" style="height: auto; max-height: 85vh;">
+    <div class="sheet-modal-swipe-step"></div>
+    <div class="toolbar bg-light">
+        <div class="toolbar-inner px-3">
+            <div class="left fw-bold text-dark fs-3 d-flex align-items-center gap-1.5">
+                <i class="ti ti-shield-check text-danger"></i> Verifikasi &amp; Sanksi
+            </div>
+            <div class="right">
+                <a class="link sheet-close text-muted" href="#"><i class="ti ti-x fs-2"></i></a>
+            </div>
+        </div>
+    </div>
+    <div class="sheet-modal-inner p-3" style="overflow-y: auto;">
+        <div class="p-2 rounded-2 bg-light text-dark small mb-2 fw-semibold" style="font-size: 0.78rem;">
+            Siswa: <span id="verify-student-name" class="text-danger">-</span>
+        </div>
+        <form id="form-verify-incident" action="" method="POST">
+            @csrf
+            <div class="mb-2">
+                <label class="form-label small fw-bold mb-1">Status Verifikasi <span class="text-danger">*</span></label>
+                <select name="verification_status" id="verify-status-select" class="form-select form-select-sm" required style="font-size: 0.82rem;">
+                    <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+                    <option value="terverifikasi">Pelanggaran Terverifikasi (Terbukti)</option>
+                    <option value="bukan_pelanggaran">Bukan Pelanggaran / Selesai Tanpa Sanksi</option>
+                    <option value="dibatalkan">Dibatalkan</option>
+                </select>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small fw-bold mb-1">Sanksi / Tindakan Kedisiplinan</label>
+                <textarea name="disciplinary_sanction" id="verify-sanction-input" rows="2" class="form-control form-control-sm" placeholder="Sanksi pembinaan / edukatif..." style="font-size: 0.82rem;"></textarea>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label small fw-bold mb-1">Tindak Lanjut</label>
+                <select name="follow_up_target" id="verify-followup-select" class="form-select form-select-sm" style="font-size: 0.82rem;">
+                    <option value="selesai_di_piket">Selesai di Meja Piket / Tim Kedisiplinan</option>
+                    <option value="rujuk_bk">Rujuk ke Guru BK</option>
+                    <option value="rujuk_wali_kelas">Rujuk ke Wali Kelas</option>
+                    <option value="rujuk_kesiswaan">Rujuk ke Waka Kesiswaan</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold mb-1">Catatan Pemeriksaan</label>
+                <textarea name="verification_notes" id="verify-notes-input" rows="2" class="form-control form-control-sm" placeholder="Catatan klarifikasi siswa..." style="font-size: 0.82rem;"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-danger w-100 py-2.5 fw-bold rounded-pill shadow-sm d-flex align-items-center justify-content-center gap-2" style="font-size: 0.92rem;">
+                <i class="ti ti-device-floppy fs-2"></i>
+                <span>Simpan Verifikasi &amp; Sanksi</span>
+            </button>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -291,6 +386,22 @@ function openUpdateStatusSheet(id, currentStatus, studentName) {
 
     if (typeof app !== 'undefined' && app.sheet) {
         app.sheet.open('#sheet-update-status-incident');
+    }
+}
+
+function openVerifyIncidentSheet(id, currentStatus, studentName, sanction, notes, followup) {
+    const form = document.getElementById('form-verify-incident');
+    form.action = "{{ url('piket/kasus') }}/" + id + "/verifikasi";
+    document.getElementById('verify-student-name').textContent = studentName;
+    document.getElementById('verify-status-select').value = currentStatus || 'menunggu_verifikasi';
+    document.getElementById('verify-sanction-input').value = sanction || '';
+    document.getElementById('verify-notes-input').value = notes || '';
+    if (followup) {
+        document.getElementById('verify-followup-select').value = followup;
+    }
+
+    if (typeof app !== 'undefined' && app.sheet) {
+        app.sheet.open('#sheet-verify-incident');
     }
 }
 </script>

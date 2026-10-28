@@ -107,18 +107,22 @@ class User extends Authenticatable
             return true;
         }
 
-        // 2. Check primary role if no specific context is requested
-        if ($context === null && in_array($this->role?->slug, $targetSlugs, true)) {
+        // 2. Check primary role if no specific context is requested or if context is an academic year
+        $isAcademicYearContext = is_string($context) && (str_contains($context, '/') || preg_match('/^\d{4}$/', $context));
+        if (($context === null || $isAcademicYearContext) && in_array($this->role?->slug, $targetSlugs, true)) {
             return true;
         }
 
         // 3. Check contextual role assignments
         if ($this->relationLoaded('activeRoleAssignments')) {
-            return $this->activeRoleAssignments->contains(function ($assignment) use ($targetSlugs, $context) {
+            return $this->activeRoleAssignments->contains(function ($assignment) use ($targetSlugs, $context, $isAcademicYearContext) {
                 if (! $assignment->role || ! in_array($assignment->role->slug, $targetSlugs, true)) {
                     return false;
                 }
                 if ($context !== null) {
+                    if ($isAcademicYearContext) {
+                        return $assignment->academic_year === null || $assignment->academic_year === $context;
+                    }
                     if ($assignment->context_type === null && $assignment->context_id === null) {
                         return true; // Global assignment applies everywhere
                     }
@@ -134,16 +138,20 @@ class User extends Authenticatable
 
         return $this->activeRoleAssignments()
             ->whereHas('role', fn ($q) => $q->whereIn('slug', $targetSlugs))
-            ->when($context !== null, function ($q) use ($context) {
-                $ctxType = is_object($context) ? get_class($context) : null;
-                $ctxId = is_object($context) ? ($context->id ?? null) : $context;
-                $q->where(function ($sub) use ($ctxType, $ctxId) {
-                    $sub->where(function ($c) use ($ctxType, $ctxId) {
-                        $c->where('context_type', $ctxType)->where('context_id', $ctxId);
-                    })->orWhere(function ($c) {
-                        $c->whereNull('context_type')->whereNull('context_id');
+            ->when($context !== null, function ($q) use ($context, $isAcademicYearContext) {
+                if ($isAcademicYearContext) {
+                    $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $context));
+                } else {
+                    $ctxType = is_object($context) ? get_class($context) : null;
+                    $ctxId = is_object($context) ? ($context->id ?? null) : $context;
+                    $q->where(function ($sub) use ($ctxType, $ctxId) {
+                        $sub->where(function ($c) use ($ctxType, $ctxId) {
+                            $c->where('context_type', $ctxType)->where('context_id', $ctxId);
+                        })->orWhere(function ($c) {
+                            $c->whereNull('context_type')->whereNull('context_id');
+                        });
                     });
-                });
+                }
             })
             ->exists();
     }
@@ -154,18 +162,23 @@ class User extends Authenticatable
             return true;
         }
 
-        // Check primary role if no context is requested
-        if ($context === null && ($this->role?->hasPermission($permissionSlug) ?? false)) {
+        $isAcademicYearContext = is_string($context) && (str_contains($context, '/') || preg_match('/^\d{4}$/', $context));
+
+        // Check primary role if no context is requested or context is academic year
+        if (($context === null || $isAcademicYearContext) && ($this->role?->hasPermission($permissionSlug) ?? false)) {
             return true;
         }
 
         // Check active contextual role assignments
         if ($this->relationLoaded('activeRoleAssignments')) {
-            return $this->activeRoleAssignments->contains(function ($assignment) use ($permissionSlug, $context) {
+            return $this->activeRoleAssignments->contains(function ($assignment) use ($permissionSlug, $context, $isAcademicYearContext) {
                 if (! $assignment->role?->hasPermission($permissionSlug)) {
                     return false;
                 }
                 if ($context !== null) {
+                    if ($isAcademicYearContext) {
+                        return $assignment->academic_year === null || $assignment->academic_year === $context;
+                    }
                     if ($assignment->context_type === null && $assignment->context_id === null) {
                         return true;
                     }
@@ -181,16 +194,20 @@ class User extends Authenticatable
 
         return $this->activeRoleAssignments()
             ->whereHas('role.permissions', fn ($q) => $q->where('slug', $permissionSlug))
-            ->when($context !== null, function ($q) use ($context) {
-                $ctxType = is_object($context) ? get_class($context) : null;
-                $ctxId = is_object($context) ? ($context->id ?? null) : $context;
-                $q->where(function ($sub) use ($ctxType, $ctxId) {
-                    $sub->where(function ($c) use ($ctxType, $ctxId) {
-                        $c->where('context_type', $ctxType)->where('context_id', $ctxId);
-                    })->orWhere(function ($c) {
-                        $c->whereNull('context_type')->whereNull('context_id');
+            ->when($context !== null, function ($q) use ($context, $isAcademicYearContext) {
+                if ($isAcademicYearContext) {
+                    $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $context));
+                } else {
+                    $ctxType = is_object($context) ? get_class($context) : null;
+                    $ctxId = is_object($context) ? ($context->id ?? null) : $context;
+                    $q->where(function ($sub) use ($ctxType, $ctxId) {
+                        $sub->where(function ($c) use ($ctxType, $ctxId) {
+                            $c->where('context_type', $ctxType)->where('context_id', $ctxId);
+                        })->orWhere(function ($c) {
+                            $c->whereNull('context_type')->whereNull('context_id');
+                        });
                     });
-                });
+                }
             })
             ->exists();
     }
@@ -255,9 +272,9 @@ class User extends Authenticatable
         return $this->hasRole('super_admin');
     }
 
-    public function isWakaKurikulum(): bool
+    public function isWakaKurikulum(?string $academicYear = null): bool
     {
-        if ($this->hasRole(['super_admin', 'waka_kurikulum'])) {
+        if ($this->hasRole(['super_admin', 'waka_kurikulum'], $academicYear)) {
             return true;
         }
 
@@ -267,7 +284,13 @@ class User extends Authenticatable
         }
 
         if ($this->relationLoaded('structuralPositions')) {
-            return $this->structuralPositions->contains(function ($p) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
+                    return false;
+                }
+                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                    return false;
+                }
                 $name = strtolower($p->name ?? '');
                 $code = strtoupper($p->code ?? '');
 
@@ -276,10 +299,13 @@ class User extends Authenticatable
         }
 
         return $this->structuralPositions()
+            ->wherePivot('is_active', true)
             ->where(function ($q) {
                 $q->where('name', 'like', '%kurikulum%')
                     ->orWhere('code', 'like', '%KURIKULUM%');
-            })->exists();
+            })
+            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
+            ->exists();
     }
 
     public function isSupervisor(?string $academicYear = null): bool
@@ -356,9 +382,188 @@ class User extends Authenticatable
         return $this->hasRole('supervisor');
     }
 
-    public function isPrincipal(): bool
+    public function isPrincipal(?string $academicYear = null): bool
     {
-        return $this->hasRole('kepala_sekolah');
+        if ($this->hasRole('super_admin')) {
+            return true;
+        }
+
+        if ($this->hasRole('kepala_sekolah', $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'kepala sekolah') || str_contains($pos, 'principal')) {
+            return true;
+        }
+
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
+                    return false;
+                }
+                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return $code === 'KEPSEK' || str_contains($name, 'kepala sekolah');
+            });
+        }
+
+        return $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->where('code', 'KEPSEK')->orWhere('name', 'like', '%kepala sekolah%');
+            })
+            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
+            ->exists();
+    }
+
+    public function isHeadmaster(?string $academicYear = null): bool
+    {
+        return $this->isPrincipal($academicYear);
+    }
+
+    public function isWakaSarpras(?string $academicYear = null): bool
+    {
+        if ($this->hasRole(['super_admin', 'waka_sarpras'], $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'waka') && str_contains($pos, 'sarpras')) {
+            return true;
+        }
+
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
+                    return false;
+                }
+                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return $code === 'WAKA_SARPRAS' || (str_contains($name, 'waka') && str_contains($name, 'sarpras'));
+            });
+        }
+
+        return $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->where('code', 'WAKA_SARPRAS')
+                    ->orWhere(function ($sq) {
+                        $sq->where('name', 'like', '%waka%')->where('name', 'like', '%sarpras%');
+                    });
+            })
+            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
+            ->exists();
+    }
+
+    public function isWakaHumas(?string $academicYear = null): bool
+    {
+        if ($this->hasRole(['super_admin', 'waka_humas'], $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'waka') && (str_contains($pos, 'humas') || str_contains($pos, 'hubin'))) {
+            return true;
+        }
+
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
+                    return false;
+                }
+                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return $code === 'WAKA_HUMAS' || (str_contains($name, 'waka') && (str_contains($name, 'humas') || str_contains($name, 'hubin')));
+            });
+        }
+
+        return $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->where('code', 'WAKA_HUMAS')
+                    ->orWhere(function ($sq) {
+                        $sq->where('name', 'like', '%waka%')
+                            ->where(fn ($s) => $s->where('name', 'like', '%humas%')->orWhere('name', 'like', '%hubin%'));
+                    });
+            })
+            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
+            ->exists();
+    }
+
+    public function isLibrarian(?string $academicYear = null): bool
+    {
+        if ($this->hasRole(['super_admin', 'petugas_perpustakaan', 'pustakawan', 'perpustakaan'], $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+
+        return str_contains($pos, 'perpustakaan') || str_contains($pos, 'pustakawan');
+    }
+
+    public function isLaboranOrToolman(?string $academicYear = null): bool
+    {
+        if ($this->hasRole(['super_admin', 'laboran_toolman', 'toolman', 'laboran'], $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+
+        return str_contains($pos, 'toolman') || str_contains($pos, 'laboran') || str_contains($pos, 'teknisi bengkel');
+    }
+
+    public function isTreasurer(?string $academicYear = null): bool
+    {
+        if ($this->hasRole(['super_admin', 'bendahara', 'bendahara_sekolah'], $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+
+        return str_contains($pos, 'bendahara');
+    }
+
+    public function isHeadOfTu(?string $academicYear = null): bool
+    {
+        if ($this->hasRole(['super_admin', 'kepala_tu', 'ka_tu'], $academicYear)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+
+        return str_contains($pos, 'kepala tata usaha') || str_contains($pos, 'kepala tu') || str_contains($pos, 'ka tu') || str_contains($pos, 'ka. tu');
+    }
+
+    public function hasMultipleAssignments(?string $academicYear = null): bool
+    {
+        $assignmentsCount = $this->activeRoleAssignments()
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $academicYear)))
+            ->count();
+
+        if ($assignmentsCount > 1) {
+            return true;
+        }
+
+        if ($assignmentsCount === 1) {
+            if ($this->isHomeroomTeacher(academicYear: $academicYear) || $this->hasTeachingDuty()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isVicePrincipal(): bool
@@ -520,88 +725,126 @@ class User extends Authenticatable
 
     public function isCounselingBK(?string $academicYear = null): bool
     {
-        if ($this->hasRole(['bk', 'guru_bk', 'bimbingan_konseling'])) {
-            return true;
+        if ($academicYear === null) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getViewingYear();
+            } catch (\Throwable) {
+                $academicYear = AcademicYear::getActive()?->name ?? SchoolSetting::getMasterYear();
+            }
         }
 
-        if ($this->relationLoaded('structuralPositions')) {
-            $hasPos = $this->structuralPositions->contains(function ($pos) use ($academicYear) {
-                if (isset($pos->pivot->is_active) && ! $pos->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($pos->pivot->academic_year) && $pos->pivot->academic_year !== $academicYear) {
-                    return false;
-                }
-                $name = strtolower($pos->name ?? '');
-                $code = strtoupper($pos->code ?? '');
+        if ($this->relationLoaded('activeRoleAssignments')) {
+            $today = now()->toDateString();
 
-                return $code === 'BK' || str_contains($name, 'bk') || str_contains($name, 'konseling') || str_contains($name, 'bimbingan');
+            return $this->activeRoleAssignments->contains(function ($ra) use ($academicYear, $today) {
+                if (! in_array($ra->role?->slug, ['guru_bk', 'bk'], true)) {
+                    return false;
+                }
+                if (! (bool) $ra->status) {
+                    return false;
+                }
+                $validFrom = $ra->valid_from instanceof \DateTimeInterface ? $ra->valid_from->format('Y-m-d') : $ra->valid_from;
+                if ($validFrom && $validFrom > $today) {
+                    return false;
+                }
+                $validUntil = $ra->valid_until instanceof \DateTimeInterface ? $ra->valid_until->format('Y-m-d') : $ra->valid_until;
+                if ($validUntil && $validUntil < $today) {
+                    return false;
+                }
+                if ($academicYear !== null) {
+                    if ($ra->academic_year === $academicYear) {
+                        return true;
+                    }
+                    if ($ra->academicYear?->name === $academicYear) {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                return true;
             });
-            if ($hasPos) {
-                return true;
-            }
-        } else {
-            $query = $this->structuralPositions()
-                ->wherePivot('is_active', true)
-                ->where(function ($q) {
-                    $q->where('code', 'BK')
-                        ->orWhere('name', 'like', '%bk%')
-                        ->orWhere('name', 'like', '%konseling%')
-                        ->orWhere('name', 'like', '%bimbingan%');
-                });
-
-            if ($academicYear) {
-                $query->wherePivot('academic_year', $academicYear);
-            }
-
-            if ($query->exists()) {
-                return true;
-            }
         }
 
-        if ($this->relationLoaded('subjectAssignments')) {
-            $hasBkSubject = $this->subjectAssignments->contains(function ($assign) use ($academicYear) {
-                if ($academicYear && isset($assign->academic_year) && $assign->academic_year !== $academicYear) {
-                    return false;
-                }
-                $code = strtoupper($assign->subject?->code ?? '');
-                $name = strtolower($assign->subject?->name ?? '');
-
-                return $code === 'BK' || str_contains($name, 'bimbingan') || str_contains($name, 'konseling');
-            });
-            if ($hasBkSubject) {
-                return true;
-            }
-        } else {
-            $query = $this->subjectAssignments()
-                ->whereHas('subject', function ($q) {
-                    $q->where('code', 'BK')
-                        ->orWhere('name', 'like', '%bimbingan%')
-                        ->orWhere('name', 'like', '%konseling%');
+        return $this->activeRoleAssignments()
+            ->whereHas('role', fn ($q) => $q->whereIn('slug', ['guru_bk', 'bk']))
+            ->when($academicYear !== null, function ($q) use ($academicYear) {
+                $q->where(function ($sub) use ($academicYear) {
+                    $sub->where('academic_year', $academicYear)
+                        ->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $academicYear));
                 });
-
-            if ($academicYear) {
-                $query->where('academic_year', $academicYear);
-            }
-
-            if ($query->exists()) {
-                return true;
-            }
-        }
-
-        $pos = strtolower($this->position ?? '');
-
-        return str_contains($pos, 'bk') || str_contains($pos, 'konseling') || str_contains($pos, 'bimbingan');
+            })
+            ->exists();
     }
 
     public function isDisciplineTeam(?string $academicYear = null): bool
     {
-        // 1. Explicit roles / contextual assignments (NEVER automatically includes BK or general kesiswaan)
-        if ($this->hasRole(['tim_kedisiplinan', 'kedisiplinan', 'tatib'])) {
+        if ($academicYear === null) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getViewingYear();
+            } catch (\Throwable) {
+                $academicYear = AcademicYear::getActive()?->name ?? SchoolSetting::getMasterYear();
+            }
+        }
+
+        // 1. Contextual role assignments scoped to academic year and active validity dates
+        if ($this->relationLoaded('activeRoleAssignments')) {
+            $today = now()->toDateString();
+
+            $hasRoleAssignment = $this->activeRoleAssignments->contains(function ($ra) use ($academicYear, $today) {
+                if (! in_array($ra->role?->slug, ['tim_kedisiplinan', 'kedisiplinan', 'tatib'], true)) {
+                    return false;
+                }
+                if (! (bool) $ra->status) {
+                    return false;
+                }
+                $validFrom = $ra->valid_from instanceof \DateTimeInterface ? $ra->valid_from->format('Y-m-d') : $ra->valid_from;
+                if ($validFrom && $validFrom > $today) {
+                    return false;
+                }
+                $validUntil = $ra->valid_until instanceof \DateTimeInterface ? $ra->valid_until->format('Y-m-d') : $ra->valid_until;
+                if ($validUntil && $validUntil < $today) {
+                    return false;
+                }
+                if ($academicYear !== null) {
+                    if ($ra->academic_year === $academicYear) {
+                        return true;
+                    }
+                    if ($ra->academicYear?->name === $academicYear) {
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                return true;
+            });
+
+            if ($hasRoleAssignment) {
+                return true;
+            }
+        } else {
+            $hasActiveAssignment = $this->activeRoleAssignments()
+                ->whereHas('role', fn ($q) => $q->whereIn('slug', ['tim_kedisiplinan', 'kedisiplinan', 'tatib']))
+                ->when($academicYear !== null, function ($q) use ($academicYear) {
+                    $q->where(function ($sub) use ($academicYear) {
+                        $sub->where('academic_year', $academicYear)
+                            ->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $academicYear));
+                    });
+                })
+                ->exists();
+
+            if ($hasActiveAssignment) {
+                return true;
+            }
+        }
+
+        // 2. Direct primary role (NEVER automatically includes BK or general kesiswaan)
+        if (in_array($this->role?->slug, ['tim_kedisiplinan', 'kedisiplinan', 'tatib'], true)) {
             return true;
         }
 
-        // 2. Explicit active structural position for Discipline / Tatib (NEVER includes BK)
+        // 3. Explicit active structural position for Discipline / Tatib (NEVER includes BK)
         if ($this->relationLoaded('structuralPositions')) {
             $hasPos = $this->structuralPositions->contains(function ($pos) use ($academicYear) {
                 if (isset($pos->pivot->is_active) && ! $pos->pivot->is_active) {
@@ -640,10 +883,64 @@ class User extends Authenticatable
             }
         }
 
-        // 3. Explicit position string (ONLY discipline / tatib keywords, NEVER bk / konseling / bimbingan)
+        // 4. Explicit position string (ONLY discipline / tatib keywords, NEVER bk / konseling / bimbingan)
         $pos = strtolower($this->position ?? '');
 
         return str_contains($pos, 'kedisiplinan') || str_contains($pos, 'tatib') || str_contains($pos, 'tata tertib') || str_contains($pos, 'tim disiplin');
+    }
+
+    /**
+     * Determine if user is a Discipline Coordinator (or Waka Kesiswaan).
+     */
+    public function isDisciplineCoordinator(?string $academicYear = null): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($this->isWakaKesiswaan($academicYear)) {
+            return true;
+        }
+
+        if ($this->hasRole(['koordinator_kedisiplinan', 'koordinator_tatib'])) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'koordinator') && (str_contains($pos, 'disiplin') || str_contains($pos, 'kedisiplinan') || str_contains($pos, 'tatib'))) {
+            return true;
+        }
+
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
+                    return false;
+                }
+                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return in_array($code, ['KOORD_TATIB', 'KOORD_DISIPLIN'], true)
+                    || (str_contains($name, 'koordinator') && (str_contains($name, 'kedisiplinan') || str_contains($name, 'tatib')));
+            });
+        }
+
+        return $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->whereIn('code', ['KOORD_TATIB', 'KOORD_DISIPLIN'])
+                    ->orWhere(function ($sub) {
+                        $sub->where('name', 'like', '%koordinator%')
+                            ->where(function ($s) {
+                                $s->where('name', 'like', '%kedisiplinan%')
+                                    ->orWhere('name', 'like', '%tatib%');
+                            });
+                    });
+            })
+            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
+            ->exists();
     }
 
     /**
@@ -661,19 +958,71 @@ class User extends Authenticatable
     }
 
     /**
+     * Determine if user can operate BK module (dashboard, referrals, services).
+     */
+    public function canOperateBk(?string $academicYear = null): bool
+    {
+        return $this->isSuperAdmin() || $this->isCounselingBK($academicYear);
+    }
+
+    /**
      * Determine if user has authority to manage student discipline matters.
      * Waka Kesiswaan (coordination), explicit Discipline Team members, and student affairs operators.
      * Guru BK do NOT automatically have discipline management access unless explicitly assigned.
      */
     public function canManageDiscipline(?string $academicYear = null): bool
     {
-        if ($this->isSuperAdmin()) {
+        if ($this->isSuperAdmin() || $this->isPrincipal()) {
             return true;
         }
 
         return $this->isWakaKesiswaan($academicYear)
+            || $this->isDisciplineCoordinator($academicYear)
             || $this->isDisciplineTeam($academicYear)
-            || $this->hasPermission('operate_student_affairs');
+            || $this->hasPermission('manage_discipline', $academicYear)
+            || $this->hasPermission('operate_student_affairs', $academicYear);
+    }
+
+    /**
+     * Determine if user has authority to access the visitation and student monitoring module.
+     * Accessible by SuperAdmin, Principal, BK, Homeroom Teachers, Discipline Team / Waka Kesiswaan,
+     * or staff with direct visitation assignments.
+     */
+    public function canAccessVisitations(?string $academicYear = null): bool
+    {
+        if ($this->isSuperAdmin() || $this->isPrincipal()) {
+            return true;
+        }
+
+        return $this->canOperateBk($academicYear)
+            || $this->canManageDiscipline($academicYear)
+            || $this->isHomeroomTeacher()
+            || StudentVisitation::where('requested_by', $this->id)
+                ->orWhere('primary_officer_id', $this->id)
+                ->orWhere('secondary_officer_id', $this->id)
+                ->exists();
+    }
+
+    /**
+     * Determine if user can propose or create a visitation for a given student.
+     */
+    public function canCreateVisitation(?Student $student = null, ?string $academicYear = null): bool
+    {
+        if ($this->isSuperAdmin() || $this->isPrincipal()) {
+            return true;
+        }
+
+        if ($this->canOperateBk($academicYear) || $this->canManageDiscipline($academicYear)) {
+            return true;
+        }
+
+        if ($student) {
+            $classroom = $student->classroomForAcademicYear($academicYear) ?? $student->classroom;
+
+            return $this->isHomeroomTeacher($classroom);
+        }
+
+        return $this->isHomeroomTeacher();
     }
 
     public function canViewAllSchedules(): bool
@@ -709,7 +1058,9 @@ class User extends Authenticatable
             return false;
         }
 
-        return strtolower($this->position ?? '') === 'staf';
+        return $this->role?->slug === 'staf'
+            || strtolower($this->position ?? '') === 'staf'
+            || self::isStaffPosition($this->position);
     }
 
     /**
@@ -829,9 +1180,13 @@ class User extends Authenticatable
             ->exists();
     }
 
-    public function canAccessPiket(): bool
+    public function canAccessPiket(?string $academicYear = null): bool
     {
-        return $this->isSuperAdmin() || $this->hasPermission('access_piket');
+        return $this->isSuperAdmin()
+            || $this->hasPermission('access_piket', $academicYear)
+            || $this->canManagePiketCases($academicYear)
+            || $this->canOperatePiket()
+            || $this->isDisciplineTeam($academicYear);
     }
 
     public function canOperatePiket(): bool
@@ -841,14 +1196,89 @@ class User extends Authenticatable
             || $this->isPiketOfficerToday();
     }
 
-    public function canManagePiketCases(): bool
+    public function canManagePiketCases(?string $academicYear = null): bool
     {
         return $this->isSuperAdmin()
-            || $this->hasPermission('manage_piket_cases')
+            || $this->isPrincipal()
+            || $this->hasPermission('manage_piket_cases', $academicYear)
             || $this->isPiketOfficerToday()
-            || $this->isWakaKesiswaan()
-            || $this->isDisciplineTeam()
-            || $this->isCounselingBK();
+            || $this->isWakaKesiswaan($academicYear)
+            || $this->isDisciplineCoordinator($academicYear)
+            || $this->isDisciplineTeam($academicYear);
+    }
+
+    public function canViewPiketCases(?string $academicYear = null): bool
+    {
+        return $this->canManagePiketCases($academicYear)
+            || $this->isCounselingBK($academicYear)
+            || $this->isHomeroomTeacher(academicYear: $academicYear);
+    }
+
+    public function canRecordPiketIncident(?string $academicYear = null): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->isPrincipal()
+            || $this->isWakaKesiswaan($academicYear)
+            || $this->isDisciplineCoordinator($academicYear)
+            || $this->isDisciplineTeam($academicYear)
+            || $this->isPiketOfficerToday()
+            || $this->hasPermission('operate_piket', $academicYear)
+            || $this->hasPermission('manage_piket_cases', $academicYear);
+    }
+
+    public function canVerifyDiscipline(?string $academicYear = null): bool
+    {
+        if ($this->isSuperAdmin() || $this->isPrincipal()) {
+            return true;
+        }
+
+        return $this->isWakaKesiswaan($academicYear)
+            || $this->isDisciplineCoordinator($academicYear)
+            || $this->isDisciplineTeam($academicYear)
+            || $this->hasPermission('manage_discipline', $academicYear);
+    }
+
+    public function canDeletePiketIncident(PiketIncident $incident, ?string $academicYear = null): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        // If the incident has already been verified as a discipline violation, only Waka Kesiswaan or Principal can delete it
+        if ($incident->isVerified()) {
+            return $this->isPrincipal() || $this->isWakaKesiswaan($academicYear);
+        }
+
+        // If it was referred to BK and has counseling sessions underway, prevent unauthorized deletion
+        if ($incident->bkServices()->exists()) {
+            return $this->isPrincipal() || $this->isWakaKesiswaan($academicYear);
+        }
+
+        // General piket deletion: Waka Kesiswaan, Principal, Discipline Coordinator, Piket Coordinator, or recorder while status is still 'tercatat'
+        return $this->isPrincipal()
+            || $this->isWakaKesiswaan($academicYear)
+            || $this->isDisciplineCoordinator($academicYear)
+            || $this->isPiketCoordinator()
+            || ($incident->recorded_by === $this->id && $incident->status === 'tercatat');
+    }
+
+    public function canTransitionIncidentStatus(PiketIncident $incident, string $newStatus, ?string $academicYear = null): bool
+    {
+        if ($this->isSuperAdmin() || $this->isPrincipal()) {
+            return true;
+        }
+
+        $validStatuses = ['tercatat', 'ditindaklanjuti', 'selesai'];
+        if (! in_array($newStatus, $validStatuses, true)) {
+            return false;
+        }
+
+        // Once completed ('selesai'), reopening to 'ditindaklanjuti' requires Discipline Team / Coordinator / Waka Kesiswaan
+        if ($incident->status === 'selesai' && $newStatus !== 'selesai') {
+            return $this->canManageDiscipline($academicYear);
+        }
+
+        return $this->canManagePiketCases($academicYear);
     }
 
     public function isPiketCoordinator(): bool
@@ -987,23 +1417,49 @@ class User extends Authenticatable
         return $this->hasMany(Classroom::class, 'homeroom_teacher_id');
     }
 
-    public function isHomeroomTeacher(?Classroom $classroom = null): bool
+    public function isHomeroomTeacher(?Classroom $classroom = null, ?string $academicYear = null): bool
     {
         if ($classroom !== null) {
             if (! (bool) $classroom->is_active) {
                 return false;
             }
 
-            return (int) $classroom->homeroom_teacher_id === (int) $this->id;
+            if ($academicYear !== null && ! empty($classroom->academic_year) && $classroom->academic_year !== $academicYear) {
+                return false;
+            }
+
+            if ((int) $classroom->homeroom_teacher_id === (int) $this->id) {
+                return true;
+            }
+
+            return $this->hasRole('wali_kelas', $classroom);
         }
 
         if ($this->relationLoaded('homeroomClassrooms')) {
-            $hasActiveHomeroom = $this->homeroomClassrooms->contains(fn ($c) => (bool) $c->is_active);
+            $hasActiveHomeroom = $this->homeroomClassrooms->contains(function ($c) use ($academicYear) {
+                if (! (bool) $c->is_active) {
+                    return false;
+                }
+                if ($academicYear !== null && ! empty($c->academic_year) && $c->academic_year !== $academicYear) {
+                    return false;
+                }
+
+                return true;
+            });
         } else {
-            $hasActiveHomeroom = $this->homeroomClassrooms()->where('is_active', true)->exists();
+            $hasActiveHomeroom = $this->homeroomClassrooms()
+                ->where('is_active', true)
+                ->when($academicYear !== null, function ($q) use ($academicYear) {
+                    $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $academicYear));
+                })
+                ->exists();
         }
 
-        return $hasActiveHomeroom;
+        if ($hasActiveHomeroom) {
+            return true;
+        }
+
+        return $this->hasRole('wali_kelas', $academicYear);
     }
 
     public function lessonSchedules(): HasMany

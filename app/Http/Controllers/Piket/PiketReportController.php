@@ -62,7 +62,7 @@ class PiketReportController extends Controller
         $invals = $invalQuery->latest()->get();
 
         // 3. Data Kasus
-        $incidentQuery = PiketIncident::with(['classroom', 'recordedBy'])
+        $incidentQuery = PiketIncident::with(['classroom', 'recordedBy', 'verifiedBy'])
             ->whereBetween('incident_date', [$startDate, $endDate]);
         if ($classroomId) {
             $incidentQuery->where('classroom_id', $classroomId);
@@ -173,8 +173,8 @@ class PiketReportController extends Controller
                     ]);
                 }
             } elseif ($tab === 'incidents') {
-                fputcsv($handle, ['No', 'Tanggal', 'Waktu', 'Nama Siswa', 'Kelas', 'Kategori', 'Uraian Kejadian', 'Tindakan Piket', 'Barang Sitaan', 'Tindak Lanjut', 'Status']);
-                $query = PiketIncident::with(['classroom', 'recordedBy'])
+                fputcsv($handle, ['No', 'Tanggal', 'Waktu', 'Nama Siswa', 'Kelas', 'Kategori', 'Uraian Kejadian', 'Tindakan Piket', 'Barang Sitaan', 'Sanksi Kedisiplinan', 'Tindak Lanjut', 'Status Kasus', 'Status Verifikasi', 'Diverifikasi Oleh', 'Petugas Pencatat']);
+                $query = PiketIncident::with(['classroom', 'recordedBy', 'verifiedBy'])
                     ->whereBetween('incident_date', [$startDate, $endDate]);
                 if ($classroomId) {
                     $query->where('classroom_id', $classroomId);
@@ -191,8 +191,12 @@ class PiketReportController extends Controller
                         $r->description,
                         $r->action_taken,
                         $r->confiscated_items ?: '-',
+                        $r->discipline_action ?: '-',
                         $r->follow_up_label,
                         ucfirst($r->status),
+                        $r->is_verified ? 'Terverifikasi' : 'Belum Diverifikasi',
+                        $r->verifiedBy?->name ?? '-',
+                        $r->recordedBy?->name ?? '-',
                     ]);
                 }
             } else {
@@ -248,7 +252,7 @@ class PiketReportController extends Controller
             ->when($classroomId, fn ($q) => $q->where('classroom_id', $classroomId))
             ->get();
 
-        $incidents = PiketIncident::with(['classroom', 'recordedBy'])
+        $incidents = PiketIncident::with(['classroom', 'recordedBy', 'verifiedBy'])
             ->whereBetween('incident_date', [$startDate, $endDate])
             ->when($classroomId, fn ($q) => $q->where('classroom_id', $classroomId))
             ->orderBy('incident_date')

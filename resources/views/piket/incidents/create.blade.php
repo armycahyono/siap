@@ -26,6 +26,23 @@
 
     <div class="row justify-content-center">
         <div class="col-lg-8">
+            @if($errors->any())
+                <div class="alert alert-danger alert-dismissible shadow-sm fade show mb-3" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="ti ti-alert-triangle fs-2 me-2"></i>
+                        <div>
+                            <strong>Terdapat data yang belum valid:</strong>
+                            <ul class="mb-0 ps-3 mt-1 small">
+                                @foreach($errors->all() as $err)
+                                    <li>{{ $err }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <div class="card shadow-sm border-0">
                 <form action="{{ route('piket.incidents.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf

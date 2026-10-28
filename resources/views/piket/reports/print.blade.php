@@ -146,13 +146,14 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 5%;">No</th>
-                    <th style="width: 12%;">Tanggal</th>
-                    <th style="width: 20%;">Nama Siswa</th>
-                    <th style="width: 10%;">Kelas</th>
-                    <th style="width: 15%;">Kategori</th>
-                    <th style="width: 23%;">Uraian Kasus</th>
-                    <th style="width: 15%;">Tindak Lanjut</th>
+                    <th style="width: 4%;">No</th>
+                    <th style="width: 10%;">Tanggal</th>
+                    <th style="width: 16%;">Nama Siswa</th>
+                    <th style="width: 8%;">Kelas</th>
+                    <th style="width: 12%;">Kategori</th>
+                    <th style="width: 20%;">Uraian Kasus</th>
+                    <th style="width: 15%;">Sanksi / Tindakan</th>
+                    <th style="width: 15%;">Tindak Lanjut &amp; Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -163,12 +164,23 @@
                         <td>{{ $inc->student_name }}</td>
                         <td class="text-center">{{ $inc->classroom?->name ?? '-' }}</td>
                         <td>{{ $inc->category_label }}</td>
-                        <td>{{ $inc->description }}</td>
-                        <td>{{ $inc->follow_up_label }}</td>
+                        <td>
+                            {{ $inc->description }}
+                            @if($inc->confiscated_items)
+                                <br><small><strong>Sitaan:</strong> {{ $inc->confiscated_items }}</small>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $inc->discipline_action ?: ($inc->action_taken ?: '-') }}
+                        </td>
+                        <td>
+                            {{ $inc->follow_up_label }}
+                            <br><small>({{ ucfirst($inc->status) }} / {{ $inc->is_verified ? 'Terverifikasi' : 'Belum Verif' }})</small>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center">Nihil.</td>
+                        <td colspan="8" class="text-center">Nihil.</td>
                     </tr>
                 @endforelse
             </tbody>

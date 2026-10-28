@@ -43,8 +43,13 @@ class RoleAndPermissionSeeder extends Seeder
             ['slug' => 'operate_curriculum', 'name' => 'Operasional Kurikulum & Jadwal', 'group' => 'Kurikulum'],
             ['slug' => 'operate_cbt', 'name' => 'Sinkronisasi & Operasional CBT', 'group' => 'Kurikulum'],
             ['slug' => 'operate_student_affairs', 'name' => 'Operasional Kesiswaan & Kedisiplinan', 'group' => 'Kesiswaan'],
+            ['slug' => 'manage_discipline', 'name' => 'Kelola Disiplin & Penanganan Pelanggaran', 'group' => 'Kesiswaan'],
+            ['slug' => 'access_bk', 'name' => 'Akses Operasional Bimbingan Konseling', 'group' => 'BK'],
             ['slug' => 'operate_sarpras', 'name' => 'Operasional Sarana & Prasarana', 'group' => 'Sarpras'],
             ['slug' => 'operate_humas', 'name' => 'Operasional Humas & Kemitraan DUDI', 'group' => 'Humas'],
+            ['slug' => 'operate_library', 'name' => 'Operasional Perpustakaan Sekolah', 'group' => 'Perpustakaan'],
+            ['slug' => 'operate_finance', 'name' => 'Operasional Keuangan & Bendahara', 'group' => 'Keuangan'],
+            ['slug' => 'operate_tu', 'name' => 'Operasional Tata Usaha & Kepegawaian', 'group' => 'Tata Usaha'],
         ];
 
         foreach ($permissions as $p) {
@@ -104,6 +109,15 @@ class RoleAndPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'name' => 'Guru BK',
+                'slug' => 'guru_bk',
+                'description' => 'Guru Bimbingan dan Konseling siswa',
+                'permissions' => [
+                    'access_piket',
+                    'access_bk',
+                ],
+            ],
+            [
                 'name' => 'Kepala Sekolah',
                 'slug' => 'kepala_sekolah',
                 'description' => 'Monitoring rekapitulasi sekolah dan persetujuan pengesahan supervisi',
@@ -133,6 +147,31 @@ class RoleAndPermissionSeeder extends Seeder
                 ],
             ],
             [
+                'name' => 'Tim Kedisiplinan',
+                'slug' => 'tim_kedisiplinan',
+                'description' => 'Tim Penegak Disiplin, Tata Tertib, dan Verifikasi Pelanggaran Siswa',
+                'permissions' => [
+                    'access_piket',
+                    'manage_piket_cases',
+                    'view_piket_reports',
+                    'operate_student_affairs',
+                    'manage_discipline',
+                ],
+            ],
+            [
+                'name' => 'Koordinator Kedisiplinan',
+                'slug' => 'koordinator_kedisiplinan',
+                'description' => 'Koordinator Tim Penegak Disiplin dan Tata Tertib Siswa',
+                'permissions' => [
+                    'access_piket',
+                    'operate_piket',
+                    'manage_piket_cases',
+                    'view_piket_reports',
+                    'operate_student_affairs',
+                    'manage_discipline',
+                ],
+            ],
+            [
                 'name' => 'Operator Kesiswaan',
                 'slug' => 'operator_kesiswaan',
                 'description' => 'Membantu operasional kesiswaan, catatan kasus & kejadian siswa, dan kedisiplinan',
@@ -142,6 +181,7 @@ class RoleAndPermissionSeeder extends Seeder
                     'manage_piket_cases',
                     'view_piket_reports',
                     'operate_student_affairs',
+                    'manage_discipline',
                 ],
             ],
             [
@@ -161,6 +201,103 @@ class RoleAndPermissionSeeder extends Seeder
                     'export_reports',
                     'operate_humas',
                 ],
+            ],
+            [
+                'name' => 'Waka Kesiswaan',
+                'slug' => 'waka_kesiswaan',
+                'description' => 'Pengelola bidang kesiswaan, pembinaan karakter, kedisiplinan, dan tata tertib siswa',
+                'permissions' => [
+                    'access_piket',
+                    'operate_piket',
+                    'manage_piket_cases',
+                    'manage_piket_schedules',
+                    'view_piket_reports',
+                    'operate_student_affairs',
+                    'manage_discipline',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Waka Sarpras',
+                'slug' => 'waka_sarpras',
+                'description' => 'Pengelola sarana dan prasarana sekolah, pemeliharaan aset dan fasilitas',
+                'permissions' => [
+                    'manage_master_data',
+                    'operate_sarpras',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Waka Humas',
+                'slug' => 'waka_humas',
+                'description' => 'Pengelola hubungan masyarakat, kemitraan dunia usaha/industri, dan bursa kerja',
+                'permissions' => [
+                    'operate_humas',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Wali Kelas',
+                'slug' => 'wali_kelas',
+                'description' => 'Wali kelas pembina rombongan belajar dan pemantau perkembangan siswa',
+                'permissions' => [
+                    'access_piket',
+                    'view_piket_reports',
+                ],
+            ],
+            [
+                'name' => 'Petugas Piket',
+                'slug' => 'guru_piket',
+                'description' => 'Petugas operasional meja piket harian sekolah',
+                'permissions' => [
+                    'access_piket',
+                    'operate_piket',
+                    'manage_piket_cases',
+                    'view_piket_reports',
+                ],
+            ],
+            [
+                'name' => 'Kepala Tata Usaha',
+                'slug' => 'kepala_tu',
+                'description' => 'Koordinator ketatausahaan, administrasi kepegawaian, dan persuratan sekolah',
+                'permissions' => [
+                    'manage_master_data',
+                    'operate_tu',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Petugas Perpustakaan',
+                'slug' => 'petugas_perpustakaan',
+                'description' => 'Pengelola layanan dan sirkulasi perpustakaan sekolah',
+                'permissions' => [
+                    'operate_library',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Laboran / Toolman',
+                'slug' => 'laboran_toolman',
+                'description' => 'Teknisi laboratorium dan toolman bengkel kejuruan',
+                'permissions' => [
+                    'operate_sarpras',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Bendahara',
+                'slug' => 'bendahara',
+                'description' => 'Pengelola administrasi keuangan sekolah',
+                'permissions' => [
+                    'operate_finance',
+                    'export_reports',
+                ],
+            ],
+            [
+                'name' => 'Staf / Tendik',
+                'slug' => 'staf',
+                'description' => 'Tenaga kependidikan umum / staf pendukung sekolah',
+                'permissions' => [],
             ],
             [
                 'name' => 'Operator Dapodik / TU',

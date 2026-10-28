@@ -54,8 +54,8 @@ class NotificationService
         $isPrincipal = $user->isPrincipal() || $user->isSuperAdmin();
         $isWakaKurikulum = $user->isWakaKurikulum() || $user->isSuperAdmin();
         $isWakaKesiswaan = $user->isWakaKesiswaan() || $user->isSuperAdmin();
-        $isDisciplineTeam = $user->isDisciplineTeam() || $user->isSuperAdmin();
-        $isCounselingBK = $user->isCounselingBK() || $user->isSuperAdmin();
+        $isDisciplineTeam = $user->isDisciplineTeam($academicYear) || $user->isSuperAdmin();
+        $isCounselingBK = $user->isCounselingBK($academicYear) || $user->isSuperAdmin();
 
         // Cek apakah user adalah Petugas Piket atau Koordinator Piket hari ini
         $piketScheduleToday = PiketSchedule::where('academic_year', $academicYear)
@@ -98,7 +98,7 @@ class NotificationService
             // =================================================================
 
             // A1. Kasus Siswa Hari Ini
-            $canSeeAllIncidents = $isPrincipal || $isWakaKesiswaan || $isDisciplineTeam || $isCounselingBK || $isPiketOfficerToday;
+            $canSeeAllIncidents = $isPrincipal || $isWakaKesiswaan || $isDisciplineTeam || $isPiketOfficerToday;
 
             if ($canSeeAllIncidents) {
                 $incidentsTodayCount = PiketIncident::whereDate('incident_date', $todayStr)->count();
@@ -113,21 +113,41 @@ class NotificationService
                         'url' => route('piket.incidents.index'),
                     ]);
                 }
-            } elseif ($isHomeroomTeacher) {
+            } else {
+                // Untuk Guru BK: Hanya kasus yang secara eksplisit dirujuk ke BK
+                if ($isCounselingBK) {
+                    $bkIncidentsCount = PiketIncident::whereDate('incident_date', $todayStr)
+                        ->where('follow_up_target', 'rujuk_bk')
+                        ->count();
+                    if ($bkIncidentsCount > 0) {
+                        $notifications->push([
+                            'id' => 'incidents_today_bk',
+                            'title' => 'Rujukan Kasus Siswa ke BK',
+                            'message' => "Ada {$bkIncidentsCount} rujukan kasus siswa dari meja piket hari ini yang perlu ditindaklanjuti.",
+                            'badge' => 'Rujukan BK',
+                            'badge_class' => 'bg-warning-lt text-warning',
+                            'icon' => 'ti ti-heart-handshake text-warning',
+                            'url' => route('piket.incidents.index'),
+                        ]);
+                    }
+                }
+
                 // Untuk Wali Kelas: Kasus siswa yang terjadi di kelas bimbingannya
-                $homeroomIncidentsCount = PiketIncident::whereDate('incident_date', $todayStr)
-                    ->whereIn('classroom_id', $myHomeroomClassroomIds)
-                    ->count();
-                if ($homeroomIncidentsCount > 0) {
-                    $notifications->push([
-                        'id' => 'incidents_today_homeroom',
-                        'title' => 'Kejadian Siswa Kelas Anda',
-                        'message' => "Ada {$homeroomIncidentsCount} catatan kasus siswa kelas Anda di meja piket hari ini.",
-                        'badge' => 'Wali Kelas',
-                        'badge_class' => 'bg-danger-lt text-danger',
-                        'icon' => 'ti ti-alert-triangle text-danger',
-                        'url' => route('piket.incidents.index'),
-                    ]);
+                if ($isHomeroomTeacher) {
+                    $homeroomIncidentsCount = PiketIncident::whereDate('incident_date', $todayStr)
+                        ->whereIn('classroom_id', $myHomeroomClassroomIds)
+                        ->count();
+                    if ($homeroomIncidentsCount > 0) {
+                        $notifications->push([
+                            'id' => 'incidents_today_homeroom',
+                            'title' => 'Kejadian Siswa Kelas Anda',
+                            'message' => "Ada {$homeroomIncidentsCount} catatan kasus siswa kelas Anda di meja piket hari ini.",
+                            'badge' => 'Wali Kelas',
+                            'badge_class' => 'bg-danger-lt text-danger',
+                            'icon' => 'ti ti-alert-triangle text-danger',
+                            'url' => route('piket.incidents.index'),
+                        ]);
+                    }
                 }
             }
 

@@ -4,18 +4,23 @@ namespace App\Http\Controllers\Piket;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\BkReferral;
 use App\Models\Classroom;
 use App\Models\PiketIncident;
 use App\Models\PiketJournal;
+use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
 use App\Services\TelegramService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -26,6 +31,23 @@ class PiketIncidentController extends Controller
 
     public function index(Request $request): View
     {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        if (! method_exists($user, 'canViewPiketCases') || ! $user->canViewPiketCases()) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat data kejadian siswa.');
+        }
+
+        $canManageAllCases = $user->canManagePiketCases()
+            || $user->isPrincipal()
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
+            || $user->hasPermission('operate_piket');
+
+        $isCounselingBK = method_exists($user, 'isCounselingBK') && $user->isCounselingBK();
+        $isHomeroomTeacher = method_exists($user, 'isHomeroomTeacher') && $user->isHomeroomTeacher();
+
         $academicYearContext = app(AcademicYearContext::class);
         try {
             $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
@@ -39,6 +61,7 @@ class PiketIncidentController extends Controller
 
         $category = $request->query('category');
         $status = $request->query('status');
+        $verificationStatus = $request->query('verification_status');
         $classroomId = $request->query('classroom_id');
         $search = $request->query('search');
 
@@ -65,9 +88,36 @@ class PiketIncidentController extends Controller
 
         $date = $startDate;
 
-        $query = PiketIncident::with(['classroom.homeroomTeacher', 'student', 'recordedBy'])
+        $query = PiketIncident::with(['classroom.homeroomTeacher', 'student', 'recordedBy', 'verifier'])
             ->latest('incident_date')
             ->latest('incident_time');
+
+        if (! $canManageAllCases) {
+            $query->where(function ($q) use ($user, $isCounselingBK, $isHomeroomTeacher) {
+                $hasPrior = false;
+                if ($isCounselingBK) {
+                    $q->where('follow_up_target', 'rujuk_bk');
+                    $hasPrior = true;
+                }
+                if ($isHomeroomTeacher) {
+                    $homeroomClause = function ($sub) use ($user) {
+                        $sub->where('follow_up_target', 'rujuk_wali_kelas')
+                            ->whereHas('classroom', fn ($c) => $c->where('homeroom_teacher_id', $user->id));
+                    };
+                    if ($hasPrior) {
+                        $q->orWhere($homeroomClause);
+                    } else {
+                        $q->where($homeroomClause);
+                        $hasPrior = true;
+                    }
+                }
+                if ($hasPrior) {
+                    $q->orWhere('recorded_by', $user->id);
+                } else {
+                    $q->where('recorded_by', $user->id);
+                }
+            });
+        }
 
         if ($category) {
             $query->where('category', $category);
@@ -75,6 +125,10 @@ class PiketIncidentController extends Controller
 
         if ($status) {
             $query->where('status', $status);
+        }
+
+        if ($verificationStatus) {
+            $query->where('verification_status', $verificationStatus);
         }
 
         if ($classroomId) {
@@ -99,6 +153,34 @@ class PiketIncidentController extends Controller
 
         // Rekap angka statistik kejadian/kasus sesuai filter aktif
         $statsQuery = PiketIncident::query();
+
+        if (! $canManageAllCases) {
+            $statsQuery->where(function ($q) use ($user, $isCounselingBK, $isHomeroomTeacher) {
+                $hasPrior = false;
+                if ($isCounselingBK) {
+                    $q->where('follow_up_target', 'rujuk_bk');
+                    $hasPrior = true;
+                }
+                if ($isHomeroomTeacher) {
+                    $homeroomClause = function ($sub) use ($user) {
+                        $sub->where('follow_up_target', 'rujuk_wali_kelas')
+                            ->whereHas('classroom', fn ($c) => $c->where('homeroom_teacher_id', $user->id));
+                    };
+                    if ($hasPrior) {
+                        $q->orWhere($homeroomClause);
+                    } else {
+                        $q->where($homeroomClause);
+                        $hasPrior = true;
+                    }
+                }
+                if ($hasPrior) {
+                    $q->orWhere('recorded_by', $user->id);
+                } else {
+                    $q->where('recorded_by', $user->id);
+                }
+            });
+        }
+
         if ($startDate === $endDate) {
             $statsQuery->whereDate('incident_date', $startDate);
         } else {
@@ -120,6 +202,8 @@ class PiketIncidentController extends Controller
             'tercatat' => (clone $statsQuery)->where('status', 'tercatat')->count(),
             'ditindaklanjuti' => (clone $statsQuery)->where('status', 'ditindaklanjuti')->count(),
             'selesai' => (clone $statsQuery)->where('status', 'selesai')->count(),
+            'menunggu_verifikasi' => (clone $statsQuery)->where('verification_status', 'menunggu_verifikasi')->count(),
+            'terverifikasi' => (clone $statsQuery)->where('verification_status', 'terverifikasi')->count(),
         ];
 
         $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
@@ -131,21 +215,31 @@ class PiketIncidentController extends Controller
 
         if (DeviceDetector::isMobile($request)) {
             return view('mobile.piket.incidents_index', compact(
-                'incidents', 'classrooms', 'category', 'status', 'classroomId', 'date',
-                'startDate', 'endDate', 'period', 'search', 'stats', 'academicYear'
+                'incidents', 'classrooms', 'category', 'status', 'verificationStatus', 'classroomId', 'date',
+                'startDate', 'endDate', 'period', 'search', 'stats', 'academicYear', 'canManageAllCases'
             ));
         }
 
         return view('piket.incidents.index', compact(
-            'incidents', 'classrooms', 'category', 'status', 'classroomId', 'date',
-            'startDate', 'endDate', 'period', 'search', 'academicYear'
+            'incidents', 'classrooms', 'category', 'status', 'verificationStatus', 'classroomId', 'date',
+            'startDate', 'endDate', 'period', 'search', 'stats', 'academicYear', 'canManageAllCases'
         ));
     }
 
     public function create(Request $request): View
     {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
         $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
         $academicYear = $operationalYear->name;
+
+        if (! $user->canRecordPiketIncident($academicYear)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mencatat kejadian piket/pelanggaran.');
+        }
+
         $ayModel = AcademicYear::where('name', $academicYear)->first();
 
         $classrooms = Classroom::where(function ($query) use ($academicYear, $ayModel) {
@@ -164,12 +258,25 @@ class PiketIncidentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $academicYear = $operationalYear->name;
+
+        if (! $user->canRecordPiketIncident($academicYear)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mencatat kejadian piket/pelanggaran.');
+        }
+
         $validated = $request->validate([
             'incident_date' => 'required|date',
             'incident_time' => 'required|string',
             'student_id' => 'nullable|exists:students,id',
             'student_name' => 'required|string|max:255',
             'classroom_id' => 'nullable|exists:classrooms,id',
+            'location' => 'nullable|string|max:255',
             'category' => 'required|in:kedisiplinan,seragam,gadget_terlarang,perkelahian,rokok,kesehatan_pingsan,lainnya',
             'description' => 'required|string',
             'action_taken' => 'required|string',
@@ -190,8 +297,6 @@ class PiketIncidentController extends Controller
             $photoPath = $request->file('evidence_photo')->store('piket/incidents', 'local');
         }
 
-        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
-
         $journal = PiketJournal::firstOrCreate(
             ['date' => $validated['incident_date']],
             [
@@ -204,11 +309,13 @@ class PiketIncidentController extends Controller
 
         $incident = PiketIncident::create([
             'piket_journal_id' => $journal->id,
+            'academic_year' => $operationalYear->name ?? $journal->academic_year,
             'incident_date' => $validated['incident_date'],
             'incident_time' => $validated['incident_time'],
             'student_id' => $validated['student_id'] ?? null,
             'student_name' => $validated['student_name'],
             'classroom_id' => $validated['classroom_id'] ?? null,
+            'location' => $validated['location'] ?? null,
             'category' => $validated['category'],
             'description' => $validated['description'],
             'action_taken' => $validated['action_taken'],
@@ -230,17 +337,103 @@ class PiketIncidentController extends Controller
 
     public function updateStatus(Request $request, PiketIncident $incident): RedirectResponse
     {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $academicYear = $incident->academic_year ?? app(AcademicYearContext::class)->getViewingYear();
+
         $validated = $request->validate([
             'status' => 'required|in:tercatat,ditindaklanjuti,selesai',
         ]);
+
+        if (! $user->canTransitionIncidentStatus($incident, $validated['status'], $academicYear)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah status kejadian ini ke '.$validated['status'].'.');
+        }
 
         $incident->update($validated);
 
         return back()->with('success', 'Status penanganan kejadian berhasil diperbarui.');
     }
 
+    /**
+     * Verifikasi kejadian piket sebagai pelanggaran kedisiplinan dan tetapkan sanksi/tindak lanjut.
+     * Hanya dapat dilakukan oleh Tim Kedisiplinan, Waka Kesiswaan, atau Pimpinan Sekolah.
+     */
+    public function verify(Request $request, PiketIncident $incident): RedirectResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $academicYear = $incident->academic_year ?? $incident->journal?->academic_year ?? app(AcademicYearContext::class)->getViewingYear();
+
+        if (! $user->canVerifyDiscipline($academicYear)) {
+            abort(403, 'Anda tidak memiliki hak akses verifikasi kedisiplinan untuk kasus ini.');
+        }
+
+        $validated = $request->validate([
+            'verification_status' => 'required|in:menunggu_verifikasi,terverifikasi,bukan_pelanggaran,dibatalkan',
+            'verification_notes' => 'nullable|string',
+            'disciplinary_sanction' => 'nullable|string',
+            'parental_involvement' => 'nullable|boolean',
+            'parental_involvement_notes' => 'nullable|string',
+            'follow_up_target' => 'nullable|in:selesai_di_piket,rujuk_wali_kelas,rujuk_bk,rujuk_kesiswaan',
+            'status' => 'nullable|in:tercatat,ditindaklanjuti,selesai',
+        ]);
+
+        $updateData = [
+            'verification_status' => $validated['verification_status'],
+            'verified_by' => $user->id,
+            'verified_at' => now(),
+            'verification_notes' => $validated['verification_notes'] ?? null,
+            'disciplinary_sanction' => $validated['disciplinary_sanction'] ?? null,
+            'parental_involvement' => (bool) ($validated['parental_involvement'] ?? false),
+            'parental_involvement_notes' => $validated['parental_involvement_notes'] ?? null,
+        ];
+
+        if (! empty($validated['follow_up_target'])) {
+            $updateData['follow_up_target'] = $validated['follow_up_target'];
+        }
+
+        if (! empty($validated['status'])) {
+            $updateData['status'] = $validated['status'];
+        } elseif ($validated['verification_status'] === 'terverifikasi') {
+            $updateData['status'] = 'ditindaklanjuti';
+        } elseif (in_array($validated['verification_status'], ['bukan_pelanggaran', 'dibatalkan'])) {
+            $updateData['status'] = 'selesai';
+        }
+
+        $incident->update($updateData);
+
+        if ($incident->follow_up_target === 'rujuk_bk' && $incident->student_id) {
+            BkReferral::firstOrCreate(
+                ['piket_incident_id' => $incident->id],
+                ['status' => 'menunggu']
+            );
+        }
+
+        // Kirim notifikasi Telegram verifikasi kedisiplinan
+        $this->telegramService->notifyIncidentVerification($incident->fresh(['classroom.homeroomTeacher', 'verifier', 'recordedBy']));
+
+        return back()->with('success', 'Verifikasi kejadian dan penetapan sanksi kedisiplinan berhasil disimpan.');
+    }
+
     public function destroy(PiketIncident $incident): RedirectResponse
     {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $academicYear = $incident->academic_year ?? app(AcademicYearContext::class)->getViewingYear();
+
+        if (! $user->canDeletePiketIncident($incident, $academicYear)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus data catatan kejadian ini.');
+        }
+
         if ($incident->evidence_photo) {
             if (Storage::disk('local')->exists($incident->evidence_photo)) {
                 Storage::disk('local')->delete($incident->evidence_photo);
@@ -264,19 +457,7 @@ class PiketIncidentController extends Controller
             abort(401);
         }
 
-        $isAuthorized = $user->isSuperAdmin()
-            || $user->isPrincipal()
-            || (method_exists($user, 'isWakaKesiswaan') && $user->isWakaKesiswaan())
-            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
-            || (method_exists($user, 'isDisciplineTeam') && $user->isDisciplineTeam())
-            || ($incident->follow_up_target === 'rujuk_bk' && method_exists($user, 'isCounselingBK') && $user->isCounselingBK())
-            || $user->hasPermission('manage_piket_cases')
-            || $user->hasPermission('operate_piket')
-            || (method_exists($user, 'isPiketOfficerToday') && $user->isPiketOfficerToday())
-            || ($incident->recorded_by === $user->id)
-            || ($incident->classroom_id && $incident->classroom && $incident->classroom->homeroom_teacher_id === $user->id);
-
-        if (! $isAuthorized) {
+        if (! Gate::allows('viewPhoto', $incident)) {
             abort(403, 'Anda tidak memiliki hak akses untuk melihat foto bukti kejadian ini.');
         }
 
@@ -297,5 +478,31 @@ class PiketIncidentController extends Controller
         }
 
         return Storage::disk($disk)->response($path);
+    }
+
+    /**
+     * Ekspor Surat Panggilan Orang Tua / Surat Peringatan Kedisiplinan dalam format PDF.
+     */
+    public function exportSuratPanggilan(PiketIncident $incident)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        if (! Gate::allows('exportSuratPanggilan', $incident)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mencetak surat panggilan orang tua.');
+        }
+
+        $incident->load(['student.classroom.homeroomTeacher', 'classroom.homeroomTeacher', 'verifier', 'recordedBy']);
+        $setting = SchoolSetting::getSetting();
+
+        $pdf = Pdf::loadView('piket.incidents.surat_panggilan_pdf', compact('incident', 'setting'))
+            ->setPaper('a4', 'portrait')
+            ->setOption('isRemoteEnabled', true);
+
+        $filename = 'Surat_Panggilan_Ortu_'.Str::slug($incident->student_name).'_'.$incident->incident_date->format('Ymd').'.pdf';
+
+        return $pdf->download($filename);
     }
 }

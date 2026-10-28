@@ -96,6 +96,80 @@ class UserRoleAssignment extends Model
     }
 
     /**
+     * Determine if this assignment is currently active.
+     */
+    public function isActive(?string $academicYear = null): bool
+    {
+        if (! $this->status) {
+            return false;
+        }
+
+        $today = now()->toDateString();
+        if ($this->valid_from && $this->valid_from->toDateString() > $today) {
+            return false;
+        }
+        if ($this->valid_until && $this->valid_until->toDateString() < $today) {
+            return false;
+        }
+
+        if (! empty($academicYear)) {
+            if (! empty($this->academic_year) && $this->academic_year !== $academicYear) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Get effective status string: active, expired, upcoming, inactive.
+     */
+    public function getEffectiveStatusAttribute(): string
+    {
+        if (! $this->status) {
+            return 'inactive';
+        }
+
+        $today = now()->toDateString();
+        if ($this->valid_from && $this->valid_from->toDateString() > $today) {
+            return 'upcoming';
+        }
+        if ($this->valid_until && $this->valid_until->toDateString() < $today) {
+            return 'expired';
+        }
+
+        return 'active';
+    }
+
+    /**
+     * Human-readable label for status.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->effective_status) {
+            'active' => 'Aktif',
+            'expired' => 'Kedaluwarsa',
+            'upcoming' => 'Belum Berlaku',
+            'inactive' => 'Nonaktif / Selesai',
+            default => 'Nonaktif',
+        };
+    }
+
+    /**
+     * Tabler badge CSS class for status.
+     */
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->effective_status) {
+            'active' => 'bg-success-lt text-success',
+            'expired' => 'bg-warning-lt text-warning',
+            'upcoming' => 'bg-info-lt text-info',
+            'inactive' => 'bg-secondary-lt text-secondary',
+            default => 'bg-secondary-lt text-secondary',
+        };
+    }
+
+    /**
      * Scope for a specific role slug or list of slugs.
      */
     public function scopeForRole(Builder $query, string|array $roleSlugs): Builder

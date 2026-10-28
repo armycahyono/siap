@@ -13,17 +13,25 @@ use App\Http\Controllers\Attendance\GeotagAttendanceController;
 use App\Http\Controllers\Attendance\GtkPermitController;
 use App\Http\Controllers\Attendance\ManualGtkAttendanceController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Bk\BkCareerProfileController;
+use App\Http\Controllers\Bk\BkDashboardController;
+use App\Http\Controllers\Bk\BkReferralController;
+use App\Http\Controllers\Bk\BkServiceController;
+use App\Http\Controllers\Bk\BkStudentHistoryController;
+use App\Http\Controllers\Bk\BkStudentRecordController;
 use App\Http\Controllers\CbtIntegrationController;
 use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\CurriculumCalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\EmployeeAssignmentController;
 use App\Http\Controllers\HomeroomAttendanceRecapController;
 use App\Http\Controllers\HomeroomStudentPermitController;
 use App\Http\Controllers\LessonScheduleController;
 use App\Http\Controllers\Master\StudentController;
 use App\Http\Controllers\Master\StudentPromotionController;
 use App\Http\Controllers\NotepadController;
+use App\Http\Controllers\Piket\DisciplineDashboardController;
 use App\Http\Controllers\Piket\PiketCalendarController;
 use App\Http\Controllers\Piket\PiketDashboardController;
 use App\Http\Controllers\Piket\PiketDutySwapController;
@@ -45,6 +53,7 @@ use App\Http\Controllers\SchoolStakeholderController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SmartSearchController;
 use App\Http\Controllers\StructuralPositionController;
+use App\Http\Controllers\StudentVisitationController;
 use App\Http\Controllers\SubjectAttendanceController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SupervisionConductController;
@@ -157,6 +166,16 @@ Route::middleware('auth')->group(function () {
         Route::post('penugasan-guru/struktural/import', [TeacherAssignmentController::class, 'importStructural'])->name('teacher-assignments.import-structural');
         Route::post('penugasan-guru/struktural', [TeacherAssignmentController::class, 'storeStructuralAssignment'])->name('teacher-assignments.store-structural');
         Route::delete('penugasan-guru/struktural/{assignment}', [TeacherAssignmentController::class, 'destroyStructuralAssignment'])->name('teacher-assignments.destroy-structural');
+
+        // Penugasan Pegawai Terpusat (Lintas Modul & Seluruh Sekolah)
+        Route::get('penugasan-pegawai', [EmployeeAssignmentController::class, 'index'])->name('employee-assignments.index');
+        Route::post('penugasan-pegawai', [EmployeeAssignmentController::class, 'store'])->name('employee-assignments.store');
+        Route::post('penugasan-pegawai/bulk-close', [EmployeeAssignmentController::class, 'bulkClose'])->name('employee-assignments.bulk-close');
+        Route::post('penugasan-pegawai/rollover', [EmployeeAssignmentController::class, 'rollover'])->name('employee-assignments.rollover');
+        Route::put('penugasan-pegawai/{assignment}', [EmployeeAssignmentController::class, 'update'])->name('employee-assignments.update');
+        Route::post('penugasan-pegawai/{assignment}/close', [EmployeeAssignmentController::class, 'close'])->name('employee-assignments.close');
+        Route::post('penugasan-pegawai/{assignment}/toggle', [EmployeeAssignmentController::class, 'toggle'])->name('employee-assignments.toggle');
+        Route::delete('penugasan-pegawai/{assignment}', [EmployeeAssignmentController::class, 'destroy'])->name('employee-assignments.destroy');
 
         // Pengelolaan Data Siswa (Create, Import, Dapodik, Update, Delete)
         Route::post('siswa', [StudentController::class, 'store'])->name('students.store');
@@ -408,10 +427,14 @@ Route::middleware('auth')->group(function () {
             Route::delete('inval/{inval}', [PiketInvalController::class, 'destroy'])->name('inval.destroy');
         });
 
-        // 8. Catatan Kejadian / Kasus
+        // 8. Catatan Kejadian / Kasus & Dashboard Kedisiplinan
+        Route::get('kedisiplinan/dashboard', [DisciplineDashboardController::class, 'index'])->name('discipline.dashboard');
+        Route::get('kedisiplinan', [DisciplineDashboardController::class, 'index'])->name('discipline.index');
+        Route::get('kasus', [PiketIncidentController::class, 'index'])->name('incidents.index');
         Route::get('kasus/{incident}/foto', [PiketIncidentController::class, 'viewPhoto'])->name('incidents.photo');
+        Route::post('kasus/{incident}/verifikasi', [PiketIncidentController::class, 'verify'])->name('incidents.verify');
+        Route::get('kasus/{incident}/surat-panggilan', [PiketIncidentController::class, 'exportSuratPanggilan'])->name('incidents.surat_panggilan');
         Route::middleware('permission:manage_piket_cases')->group(function () {
-            Route::get('kasus', [PiketIncidentController::class, 'index'])->name('incidents.index');
             Route::get('kasus/catat', [PiketIncidentController::class, 'create'])->name('incidents.create');
             Route::post('kasus', [PiketIncidentController::class, 'store'])->name('incidents.store');
             Route::post('kasus/{incident}/status', [PiketIncidentController::class, 'updateStatus'])->name('incidents.status');
@@ -452,6 +475,75 @@ Route::middleware('auth')->group(function () {
             Route::post('telegram/test', [PiketTelegramController::class, 'testSend'])->name('telegram.test');
             Route::post('telegram/kirim-pengingat', [PiketTelegramController::class, 'sendReminder'])->name('telegram.reminder');
         });
+    });
+
+    // ==========================================
+    // Modul Operasional Bimbingan & Konseling (BK)
+    // ==========================================
+    Route::prefix('bk')->name('bk.')->group(function () {
+        // 1. Dashboard BK & Rujukan Kasus Meja Piket
+        Route::get('/', [BkDashboardController::class, 'index'])->name('index');
+        Route::get('dashboard', [BkDashboardController::class, 'index'])->name('dashboard');
+        Route::get('rujukan', [BkReferralController::class, 'index'])->name('referrals.index');
+        Route::get('rujukan/{incident}', [BkReferralController::class, 'show'])->name('referrals.show');
+        Route::post('rujukan/{incident}/status', [BkReferralController::class, 'updateStatus'])->name('referrals.status');
+
+        // 2. Pencatatan & Pengelolaan Layanan BK
+        Route::get('layanan', [BkServiceController::class, 'index'])->name('services.index');
+        Route::get('layanan/buat', [BkServiceController::class, 'create'])->name('services.create');
+        Route::post('layanan', [BkServiceController::class, 'store'])->name('services.store');
+        Route::get('layanan/{service}', [BkServiceController::class, 'show'])->name('services.show');
+        Route::get('layanan/{service}/edit', [BkServiceController::class, 'edit'])->name('services.edit');
+        Route::put('layanan/{service}', [BkServiceController::class, 'update'])->name('services.update');
+        Route::post('layanan/{service}/rtl', [BkServiceController::class, 'updateRtl'])->name('services.rtl');
+        Route::delete('layanan/{service}', [BkServiceController::class, 'destroy'])->name('services.destroy');
+
+        // 3. Buku Pribadi Siswa Digital
+        Route::get('buku-pribadi', [BkStudentHistoryController::class, 'index'])->name('students.index');
+        Route::get('siswa/{student}/riwayat', [BkStudentHistoryController::class, 'show'])->name('students.history');
+        Route::get('siswa/{student}/riwayat/pdf', [BkStudentHistoryController::class, 'exportPdf'])->name('students.history.pdf');
+
+        // 4. Tab 3: Minat, Bakat, dan Rencana Karier Siswa
+        Route::post('siswa/{student}/minat-karier', [BkCareerProfileController::class, 'storeOrUpdate'])->name('students.career.store');
+        Route::post('siswa/{student}/asesmen', [BkCareerProfileController::class, 'storeAssessment'])->name('students.assessments.store');
+        Route::delete('siswa/{student}/asesmen/{assessment}', [BkCareerProfileController::class, 'destroyAssessment'])->name('students.assessments.destroy');
+
+        // 5. Tab 4: Prestasi, Penghargaan & Organisasi Siswa
+        Route::post('siswa/{student}/prestasi', [BkStudentRecordController::class, 'storeAchievement'])->name('students.achievements.store');
+        Route::delete('siswa/{student}/prestasi/{achievement}', [BkStudentRecordController::class, 'destroyAchievement'])->name('students.achievements.destroy');
+
+        // 6. Tab 5: Catatan Observasi Perkembangan Siswa Non-Kasus
+        Route::post('siswa/{student}/catatan-perkembangan', [BkStudentRecordController::class, 'storeDevelopmentNote'])->name('students.development-notes.store');
+        Route::delete('siswa/{student}/catatan-perkembangan/{note}', [BkStudentRecordController::class, 'destroyDevelopmentNote'])->name('students.development-notes.destroy');
+
+        // 7. Tab 8: Dokumen Pendukung & Arsip Digital BK
+        Route::post('siswa/{student}/dokumen', [BkStudentRecordController::class, 'storeDocument'])->name('students.documents.store');
+        Route::get('siswa/{student}/dokumen/{document}/download', [BkStudentRecordController::class, 'downloadDocument'])->name('students.documents.download');
+        Route::delete('siswa/{student}/dokumen/{document}', [BkStudentRecordController::class, 'destroyDocument'])->name('students.documents.destroy');
+    });
+
+    // ==========================================
+    // MODUL VISITASI & PEMANTAUAN SISWA
+    // Multi-Petugas: Guru BK, Wali Kelas, Tim Kedisiplinan / Kesiswaan
+    // ==========================================
+    Route::prefix('visitasi')->name('visitations.')->group(function () {
+        Route::get('/', [StudentVisitationController::class, 'index'])->name('index');
+        Route::get('/tambah', [StudentVisitationController::class, 'create'])->name('create');
+        Route::post('/', [StudentVisitationController::class, 'store'])->name('store');
+        Route::get('/{visitation}', [StudentVisitationController::class, 'show'])->name('show');
+        Route::get('/{visitation}/edit', [StudentVisitationController::class, 'edit'])->name('edit');
+        Route::put('/{visitation}', [StudentVisitationController::class, 'update'])->name('update');
+        Route::get('/{visitation}/lampiran', [StudentVisitationController::class, 'downloadAttachment'])->name('attachment');
+        Route::get('/{visitation}/pdf', [StudentVisitationController::class, 'exportPdf'])->name('pdf');
+        Route::delete('/{visitation}', [StudentVisitationController::class, 'destroy'])->name('destroy');
+    });
+
+    // ==========================================
+    // MODUL TIM KEDISIPLINAN
+    // ==========================================
+    Route::prefix('kedisiplinan')->name('discipline.')->group(function () {
+        Route::get('/', [DisciplineDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [DisciplineDashboardController::class, 'index']);
     });
 
     // Menu Khusus Super Admin: Manajemen Pengguna, User Aktif & Log Aktivitas User

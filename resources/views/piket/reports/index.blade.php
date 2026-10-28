@@ -253,13 +253,14 @@
             <table class="table table-vcenter table-hover table-striped mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Waktu & Tanggal</th>
-                        <th>Nama Siswa & Kelas</th>
+                        <th>Waktu &amp; Tanggal</th>
+                        <th>Nama Siswa &amp; Kelas</th>
                         <th>Kategori</th>
                         <th>Uraian Kejadian</th>
                         <th>Tindakan Piket</th>
+                        <th>Sanksi Kedisiplinan</th>
                         <th>Tindak Lanjut</th>
-                        <th>Status</th>
+                        <th>Status &amp; Verifikasi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -274,18 +275,43 @@
                                 <span class="badge bg-blue-lt">{{ $inc->classroom?->name ?? '-' }}</span>
                             </td>
                             <td><span class="badge bg-danger-lt">{{ $inc->category_label }}</span></td>
-                            <td><span class="small text-secondary">{{ $inc->description }}</span></td>
+                            <td>
+                                <span class="small text-secondary">{{ $inc->description }}</span>
+                                @if($inc->confiscated_items)
+                                    <div class="small text-muted mt-1">
+                                        <i class="ti ti-package fs-5 me-1 text-danger"></i>Sitaan: <span class="text-danger fw-semibold">{{ $inc->confiscated_items }}</span>
+                                    </div>
+                                @endif
+                            </td>
                             <td><span class="small text-dark">{{ $inc->action_taken }}</span></td>
+                            <td>
+                                @if($inc->discipline_action)
+                                    <span class="small text-dark fw-medium">{{ $inc->discipline_action }}</span>
+                                @else
+                                    <span class="text-muted small fst-italic">-</span>
+                                @endif
+                            </td>
                             <td><span class="badge bg-purple-lt">{{ $inc->follow_up_label }}</span></td>
                             <td>
-                                <span class="badge {{ $inc->status === 'selesai' ? 'bg-success text-white' : 'bg-warning text-dark' }}">
-                                    {{ ucfirst($inc->status) }}
-                                </span>
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="badge {{ $inc->status === 'selesai' ? 'bg-success text-white' : 'bg-warning text-dark' }}">
+                                        {{ ucfirst($inc->status) }}
+                                    </span>
+                                    @if($inc->is_verified)
+                                        <span class="badge bg-green-lt" title="Diverifikasi oleh {{ $inc->verifiedBy?->name ?? 'Tim Kedisiplinan' }}">
+                                            <i class="ti ti-check me-1"></i> Terverifikasi
+                                        </span>
+                                    @else
+                                        <span class="badge bg-secondary-lt">
+                                            <i class="ti ti-clock me-1"></i> Belum Verif
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
+                            <td colspan="8" class="text-center py-5 text-muted">
                                 <i class="ti ti-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
                                 Tidak ada catatan kasus pada periode ini.
                             </td>

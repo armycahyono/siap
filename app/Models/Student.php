@@ -194,18 +194,40 @@ class Student extends Model
     public function classroomForAcademicYear(int|string $academicYearIdOrName): ?Classroom
     {
         $relation = $this->studentClassrooms()
-            ->with('classroom.homeroomTeacher')
+            ->with(['classroom.homeroomTeacher', 'classroom.department'])
             ->where(function ($q) use ($academicYearIdOrName) {
                 if (is_numeric($academicYearIdOrName)) {
-                    $q->where('academic_year_id', $academicYearIdOrName);
+                    $q->where('academic_year_id', $academicYearIdOrName)
+                        ->orWhereHas('classroom', fn ($c) => $c->where('academic_year_id', $academicYearIdOrName));
                 } else {
                     $q->where('academic_year_name', $academicYearIdOrName)
-                        ->orWhereHas('academicYear', fn ($sub) => $sub->where('name', $academicYearIdOrName));
+                        ->orWhereHas('academicYear', fn ($sub) => $sub->where('name', $academicYearIdOrName))
+                        ->orWhereHas('classroom', fn ($c) => $c->where('academic_year', $academicYearIdOrName)
+                            ->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $academicYearIdOrName)));
                 }
             })
+            ->latest('id')
             ->first();
 
-        return $relation?->classroom;
+        if ($relation?->classroom) {
+            return $relation->classroom;
+        }
+
+        // Fallback: periksa relasi langsung classroom siswa jika sesuai tahun ajaran
+        if ($this->classroom) {
+            $c = $this->classroom;
+            if (is_numeric($academicYearIdOrName)) {
+                if ($c->academic_year_id == $academicYearIdOrName) {
+                    return $c;
+                }
+            } else {
+                if ($c->academic_year === $academicYearIdOrName || $c->academicYear?->name === $academicYearIdOrName) {
+                    return $c;
+                }
+            }
+        }
+
+        return null;
     }
 
     public function permits(): HasMany
@@ -216,6 +238,63 @@ class Student extends Model
     public function incidents(): HasMany
     {
         return $this->hasMany(PiketIncident::class);
+    }
+
+    public function piketIncidents(): HasMany
+    {
+        return $this->hasMany(PiketIncident::class);
+    }
+
+    public function bkServices(): HasMany
+    {
+        return $this->hasMany(BkService::class);
+    }
+
+    public function careerProfiles(): HasMany
+    {
+        return $this->hasMany(BkStudentCareerProfile::class);
+    }
+
+    public function latestCareerProfile()
+    {
+        return $this->hasOne(BkStudentCareerProfile::class)->latestOfMany();
+    }
+
+    public function careerProfileForAcademicYear(string $academicYear): ?BkStudentCareerProfile
+    {
+        return $this->careerProfiles()
+            ->where('academic_year', $academicYear)
+            ->first();
+    }
+
+    public function bkAssessments(): HasMany
+    {
+        return $this->hasMany(BkStudentAssessment::class);
+    }
+
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(BkStudentAchievement::class);
+    }
+
+    public function developmentNotes(): HasMany
+    {
+        return $this->hasMany(BkStudentDevelopmentNote::class);
+    }
+
+    public function bkDevelopmentNotes(): HasMany
+    {
+        return $this->hasMany(BkStudentDevelopmentNote::class);
+    }
+
+    public function bkDocuments(): HasMany
+    {
+        return $this->hasMany(BkStudentDocument::class);
+    }
+
+    public function visitations(): HasMany
+    {
+        return $this->hasMany(StudentVisitation::class);
     }
 
     public function getGenderLabelAttribute(): string
