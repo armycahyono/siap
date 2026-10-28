@@ -1,45 +1,91 @@
-<div class="space-y-4">
-    <!-- Header Card KBM -->
-    <div class="card-elevated p-4 bg-gradient-to-br from-indigo-700 to-blue-600 text-white shadow-md">
-        <div class="flex items-center justify-between">
-            <div>
-                <span id="kbm-date-label" class="text-[10px] font-semibold text-blue-100 uppercase tracking-wider">Memuat tanggal...</span>
-                <h3 class="text-base font-black tracking-tight mt-0.5">Jurnal & Presensi KBM</h3>
-                <p id="kbm-status-sub" class="text-[11px] text-blue-100/90 mt-0.5">Jadwal Tatap Muka Kelas</p>
+<div class="space-y-3.5">
+    <!-- Cupertino Activity Stat Ribbon (Ringkasan Cepat) -->
+    <div class="grid grid-cols-4 gap-2">
+        <div class="card-elevated p-2.5 text-center">
+            <span class="text-[10px] font-medium text-slate-400 block">Jadwal Anda</span>
+            <span id="kbm-stat-total" class="text-base font-black text-slate-800 tracking-tight">0</span>
+            <div class="w-full bg-slate-200/80 h-1 rounded-full mt-1 overflow-hidden">
+                <div class="bg-blue-600 h-full rounded-full" style="width: 100%"></div>
             </div>
-            <div class="text-right">
-                <span class="text-[10px] text-blue-100 block">Selesai / Total</span>
-                <span id="kbm-progress-count" class="text-lg font-black font-mono">0 / 0</span>
+        </div>
+
+        <div class="card-elevated p-2.5 text-center">
+            <span class="text-[10px] font-medium text-slate-400 block">Diabsen</span>
+            <span id="kbm-stat-attended" class="text-base font-black text-emerald-600 tracking-tight">0</span>
+            <div class="w-full bg-slate-200/80 h-1 rounded-full mt-1 overflow-hidden">
+                <div id="kbm-bar-attended" class="bg-emerald-500 h-full rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="card-elevated p-2.5 text-center">
+            <span class="text-[10px] font-medium text-slate-400 block">Belum</span>
+            <span id="kbm-stat-pending" class="text-base font-black text-amber-600 tracking-tight">0</span>
+            <div class="w-full bg-slate-200/80 h-1 rounded-full mt-1 overflow-hidden">
+                <div id="kbm-bar-pending" class="bg-amber-500 h-full rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="card-elevated p-2.5 text-center">
+            <span class="text-[10px] font-medium text-slate-400 block">Tukar Jam</span>
+            <span id="kbm-stat-swap" class="text-base font-black text-indigo-600 tracking-tight">0</span>
+            <div class="w-full bg-slate-200/80 h-1 rounded-full mt-1 overflow-hidden">
+                <div class="bg-indigo-500 h-full rounded-full" style="width: 100%"></div>
             </div>
         </div>
     </div>
 
     <!-- Alert / Banner Jika Libur / Akhir Pekan -->
-    <div id="kbm-alert-holiday" class="hidden card-elevated p-3.5 bg-amber-50 border-amber-200">
+    <div id="kbm-alert-holiday" class="hidden card-elevated p-3.5 bg-amber-50/70 border-amber-200/80">
         <div class="flex items-start gap-2.5">
-            <span class="text-lg mt-0.5">🏖️</span>
+            <span class="text-xl mt-0.5">🏖️</span>
             <div>
                 <h5 id="kbm-holiday-title" class="text-xs font-bold text-amber-900">Hari Libur / Tidak Ada KBM</h5>
-                <p id="kbm-holiday-desc" class="text-[11px] text-amber-700 mt-0.5">Kegiatan belajar mengajar tatap muka ditiadakan hari ini.</p>
+                <p id="kbm-holiday-desc" class="text-[11px] text-amber-700 mt-0.5 leading-relaxed">Kegiatan belajar mengajar tatap muka ditiadakan hari ini.</p>
             </div>
         </div>
     </div>
 
-    <!-- Daftar Jadwal Mengajar Hari Ini -->
-    <div>
-        <div class="flex items-center justify-between mb-2 px-1">
-            <h4 class="text-xs font-black text-slate-800 uppercase tracking-wider">Jadwal Mengajar Anda</h4>
-            <span class="text-[10px] text-slate-400 font-semibold" id="kbm-total-info">0 Jam Pelajaran</span>
+    <!-- Search & Segmented Filter Cupertino -->
+    <div class="space-y-2">
+        <div class="relative">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input type="text" id="kbm-search-input" placeholder="Cari kelas atau mata pelajaran..." class="w-full bg-slate-200/60 border border-slate-200/50 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition">
         </div>
 
-        <div id="kbm-schedules-list" class="space-y-3">
-            <div class="p-6 text-center text-slate-400 text-xs">Memuat jadwal KBM...</div>
+        <!-- Segmented Tab Pills -->
+        <div class="flex p-0.5 bg-slate-200/70 rounded-xl text-[11px] font-medium text-slate-600">
+            <button type="button" id="kbm-tab-all" onclick="filterKbmCards('all')" class="flex-1 py-1.5 rounded-lg font-bold bg-white text-slate-900 shadow-xs transition-all">Semua</button>
+            <button type="button" id="kbm-tab-pending" onclick="filterKbmCards('pending')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all">Belum Diabsen</button>
+            <button type="button" id="kbm-tab-done" onclick="filterKbmCards('done')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all">Selesai</button>
         </div>
     </div>
 
+    <!-- Section Header Informasi Tanggal & Total -->
+    <div class="flex items-center justify-between px-1">
+        <div>
+            <span id="kbm-date-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Memuat...</span>
+            <h4 class="text-xs font-black text-slate-800 tracking-tight">Daftar Jadwal Mengajar</h4>
+        </div>
+        <span id="kbm-total-info" class="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">0 Jam Pelajaran</span>
+    </div>
+
+    <!-- Container Daftar Kartu Jadwal KBM (Cupertino Inset Grouped) -->
+    <div id="kbm-schedules-list" class="space-y-2.5">
+        <div class="card-elevated p-6 text-center text-slate-400 text-xs">
+            <svg class="animate-spin h-5 w-5 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+            Memuat jadwal KBM Anda...
+        </div>
+    </div>
+
+    <!-- Empty Filter Result -->
+    <div id="kbm-empty-result" class="hidden card-elevated p-8 text-center text-slate-400 text-xs">
+        <span class="text-2xl block mb-1">🔍</span>
+        Tidak ada jadwal yang cocok dengan filter atau pencarian.
+    </div>
+
     <!-- Sesi Tukar Jam / Guru Pengganti (Jika Ada) -->
-    <div id="kbm-swap-section" class="hidden space-y-2">
-        <div class="flex items-center justify-between mb-1 px-1">
+    <div id="kbm-swap-section" class="hidden space-y-2 pt-2 border-t border-slate-200/60">
+        <div class="flex items-center justify-between px-1">
             <h4 class="text-xs font-black text-indigo-900 uppercase tracking-wider">Sesi Pengganti (Tukar Jam)</h4>
             <span class="text-[10px] text-indigo-500 font-semibold">Tugas Mengajar</span>
         </div>

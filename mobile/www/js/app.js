@@ -203,8 +203,10 @@
     }
 
     // ==========================================
-    // 2.5 KBM (JURNAL & PRESENSI KELAS) VIEW CONTROLLER
+    // 2.5 KBM (JURNAL & PRESENSI KELAS) VIEW CONTROLLER (CUPERTINO PRO)
     // ==========================================
+    let currentKbmFilter = 'all';
+
     window.initKbm = async function(container, params) {
         async function fetchKbmData() {
             try {
@@ -219,6 +221,30 @@
             }
         }
 
+        // Live Search Input Handler
+        const searchInput = container.querySelector('#kbm-search-input');
+        if (searchInput) {
+            searchInput.oninput = () => {
+                if (kbmDataCache) applyKbmFilters(container, kbmDataCache);
+            };
+        }
+
+        // Global Tab Filter Hook for view
+        window.filterKbmCards = function(type) {
+            currentKbmFilter = type;
+            ['all', 'pending', 'done'].forEach(t => {
+                const btn = container.querySelector('#kbm-tab-' + t);
+                if (btn) {
+                    if (t === type) {
+                        btn.className = 'flex-1 py-1.5 rounded-lg font-bold bg-white text-slate-900 shadow-xs transition-all';
+                    } else {
+                        btn.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all';
+                    }
+                }
+            });
+            if (kbmDataCache) applyKbmFilters(container, kbmDataCache);
+        };
+
         if (kbmDataCache) {
             renderKbmContent(container, kbmDataCache);
             fetchKbmData(); // Background revalidation
@@ -229,28 +255,40 @@
 
     function renderKbmContent(container, data) {
         const dateInfo = data.date_info || {};
+        const total = data.total_sessions || 0;
+        const attended = data.attended_sessions_count || 0;
+        const pending = Math.max(0, total - attended);
+        const swapCount = (data.swap_sessions || []).length;
         
         // Date & Header Labels
         const dateLabelEl = container.querySelector('#kbm-date-label');
         if (dateLabelEl) dateLabelEl.textContent = dateInfo.formatted_date || 'Hari Ini';
 
-        const subLabelEl = container.querySelector('#kbm-status-sub');
-        if (subLabelEl && dateInfo.academic_year) {
-            subLabelEl.textContent = `T.A. ${dateInfo.academic_year} • Semester ${dateInfo.semester || 'Ganjil'}`;
-        }
-
-        // Progress Selesai / Total
-        const progressCountEl = container.querySelector('#kbm-progress-count');
-        if (progressCountEl) {
-            progressCountEl.textContent = `${data.attended_sessions_count || 0} / ${data.total_sessions || 0}`;
-        }
-
         const totalInfoEl = container.querySelector('#kbm-total-info');
         if (totalInfoEl) {
-            totalInfoEl.textContent = `${data.total_sessions || 0} Jam Pelajaran`;
+            totalInfoEl.textContent = `${total} Jam Pelajaran`;
         }
 
-        // Holiday / Weekend Alert
+        // 1. Cupertino Activity Stat Ribbon
+        const statTotalEl = container.querySelector('#kbm-stat-total');
+        const statAttendedEl = container.querySelector('#kbm-stat-attended');
+        const statPendingEl = container.querySelector('#kbm-stat-pending');
+        const statSwapEl = container.querySelector('#kbm-stat-swap');
+        const barAttendedEl = container.querySelector('#kbm-bar-attended');
+        const barPendingEl = container.querySelector('#kbm-bar-pending');
+
+        if (statTotalEl) statTotalEl.textContent = total;
+        if (statAttendedEl) statAttendedEl.textContent = attended;
+        if (statPendingEl) statPendingEl.textContent = pending;
+        if (statSwapEl) statSwapEl.textContent = swapCount;
+
+        const attendedPct = total > 0 ? Math.round((attended / total) * 100) : 0;
+        const pendingPct = total > 0 ? Math.round((pending / total) * 100) : 0;
+
+        if (barAttendedEl) barAttendedEl.style.width = `${attendedPct}%`;
+        if (barPendingEl) barPendingEl.style.width = `${pendingPct}%`;
+
+        // 2. Holiday / Weekend Alert
         const alertHolidayEl = container.querySelector('#kbm-alert-holiday');
         const holidayTitleEl = container.querySelector('#kbm-holiday-title');
         const holidayDescEl = container.querySelector('#kbm-holiday-desc');
@@ -271,62 +309,10 @@
             }
         }
 
-        // Teaching Schedules
-        const scheduleContainer = container.querySelector('#kbm-schedules-list');
-        if (scheduleContainer) {
-            const schedules = data.my_schedules || [];
-            if (schedules.length === 0) {
-                scheduleContainer.innerHTML = `
-                    <div class="p-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-200">
-                        <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                        Tidak ada jadwal mengajar tatap muka yang terdaftar untuk Anda pada hari ini.
-                    </div>
-                `;
-            } else {
-                scheduleContainer.innerHTML = schedules.map(s => `
-                    <div class="p-3.5 card-elevated">
-                        <div class="flex items-start justify-between gap-2 mb-2">
-                            <div>
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wider">${s.classroom_name}</span>
-                                    <span class="text-[11px] font-semibold text-slate-500">${s.period_text}</span>
-                                </div>
-                                <h4 class="text-sm font-bold text-slate-800 mt-1">${s.subject_name}</h4>
-                                ${s.time_range ? `<p class="text-[10px] text-slate-400 font-mono mt-0.5">${s.time_range}</p>` : ''}
-                            </div>
-                            <div>
-                                ${s.is_attended 
-                                    ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Sudah Diabsen</span>'
-                                    : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Belum Diabsen</span>'
-                                }
-                            </div>
-                        </div>
+        // 3. Render Schedules with Filter
+        applyKbmFilters(container, data);
 
-                        ${s.is_attended && s.attendance_summary ? `
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 mb-2.5 text-[11px] text-slate-600">
-                                <div class="flex items-center justify-between font-medium">
-                                    <span>Rekap Siswa:</span>
-                                    <span class="font-bold text-slate-700">${s.attendance_summary.present}/${s.attendance_summary.total} Hadir</span>
-                                </div>
-                                ${s.material_taught ? `
-                                    <div class="mt-1.5 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-500">
-                                        <span class="font-semibold text-slate-700">Materi:</span> ${s.material_taught}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        ` : ''}
-
-                        <div class="pt-2 border-t border-slate-100">
-                            <a href="${s.fill_url}" class="block w-full text-center py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm ${s.is_attended ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-blue-600 text-white hover:bg-blue-700'}">
-                                ${s.is_attended ? 'Lihat / Edit Presensi & Jurnal' : 'Masuk Kelas & Isi Presensi'}
-                            </a>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        // Swap Sessions (Tukar Jam)
+        // 4. Swap Sessions (Tukar Jam)
         const swapSectionEl = container.querySelector('#kbm-swap-section');
         const swapListEl = container.querySelector('#kbm-swap-list');
         const swapSessions = data.swap_sessions || [];
@@ -335,10 +321,10 @@
             if (swapSessions.length > 0) {
                 swapSectionEl.classList.remove('hidden');
                 swapListEl.innerHTML = swapSessions.map(sw => `
-                    <div class="p-3 card-subtle border-indigo-100 bg-indigo-50/50">
+                    <div class="p-3 card-elevated border-indigo-200/70 bg-indigo-50/40">
                         <div class="flex items-start justify-between">
                             <div>
-                                <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider">${sw.classroom_name} • ${sw.period_text}</span>
+                                <span class="px-2 py-0.5 rounded-md text-[9px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider">${sw.classroom_name} • ${sw.period_text}</span>
                                 <h5 class="text-xs font-bold text-slate-800 mt-1">${sw.subject_name}</h5>
                                 <p class="text-[10px] text-slate-500 mt-0.5">Menggantikan: <span class="font-medium text-slate-700">${sw.original_teacher_name}</span></p>
                             </div>
@@ -349,6 +335,122 @@
                 swapSectionEl.classList.add('hidden');
             }
         }
+    }
+
+    function applyKbmFilters(container, data) {
+        const scheduleContainer = container.querySelector('#kbm-schedules-list');
+        const emptyResultEl = container.querySelector('#kbm-empty-result');
+        if (!scheduleContainer) return;
+
+        const searchInput = container.querySelector('#kbm-search-input');
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const schedules = data.my_schedules || [];
+
+        const filtered = schedules.filter(s => {
+            // Segmented tab filter
+            if (currentKbmFilter === 'pending' && s.is_attended) return false;
+            if (currentKbmFilter === 'done' && !s.is_attended) return false;
+
+            // Search query filter
+            if (query) {
+                const matchClass = (s.classroom_name || '').toLowerCase().includes(query);
+                const matchSub = (s.subject_name || '').toLowerCase().includes(query);
+                const matchCode = (s.subject_code || '').toLowerCase().includes(query);
+                if (!matchClass && !matchSub && !matchCode) return false;
+            }
+            return true;
+        });
+
+        if (schedules.length === 0) {
+            scheduleContainer.innerHTML = `
+                <div class="p-6 text-center text-slate-400 text-xs card-elevated">
+                    <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    Tidak ada jadwal mengajar tatap muka yang terdaftar untuk Anda pada hari ini.
+                </div>
+            `;
+            if (emptyResultEl) emptyResultEl.classList.add('hidden');
+            return;
+        }
+
+        if (filtered.length === 0) {
+            scheduleContainer.innerHTML = '';
+            if (emptyResultEl) emptyResultEl.classList.remove('hidden');
+            return;
+        }
+
+        if (emptyResultEl) emptyResultEl.classList.add('hidden');
+        scheduleContainer.innerHTML = filtered.map(s => {
+            const summary = s.attendance_summary;
+            const totalStudents = summary ? summary.total : 0;
+            const present = summary ? summary.present : 0;
+            const sick = summary ? summary.sakit : 0;
+            const leave = summary ? summary.izin : 0;
+            const alpha = summary ? summary.alfa : 0;
+            const presentPct = totalStudents > 0 ? Math.round((present / totalStudents) * 100) : 0;
+
+            return `
+                <div class="p-3.5 card-elevated transition hover:scale-[1.005]">
+                    <!-- Header Kartu -->
+                    <div class="flex items-start justify-between gap-2 mb-1.5">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold bg-blue-600 text-white tracking-wide uppercase shadow-xs">${s.classroom_name}</span>
+                            <span class="text-[11px] font-semibold text-slate-500">${s.period_text}</span>
+                        </div>
+                        <div>
+                            ${s.is_attended 
+                                ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen</span>'
+                                : '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>Belum Diabsen</span>'
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Judul Mapel & Waktu -->
+                    <h4 class="text-xs font-bold text-slate-800 mt-0.5">${s.subject_name}</h4>
+                    ${s.time_range ? `<p class="text-[10px] text-slate-400 font-mono mt-0.5">${s.time_range}</p>` : ''}
+
+                    <!-- Micro Breakdown Bar Kehadiran Siswa (Cupertino Pro) -->
+                    ${s.is_attended && summary && totalStudents > 0 ? `
+                        <div class="mt-2.5 p-2 bg-slate-50/90 rounded-xl border border-slate-200/70">
+                            <div class="flex items-center justify-between text-[10px] mb-1">
+                                <span class="font-semibold text-slate-600">Kehadiran Siswa</span>
+                                <span class="font-bold text-slate-800">${present}/${totalStudents} Hadir (${presentPct}%)</span>
+                            </div>
+
+                            <!-- Segmented Color Progress Bar -->
+                            <div class="w-full bg-slate-200/80 h-1.5 rounded-full overflow-hidden flex">
+                                <div class="bg-emerald-500 h-full" style="width: ${(present / totalStudents) * 100}%" title="Hadir: ${present}"></div>
+                                <div class="bg-amber-400 h-full" style="width: ${(sick / totalStudents) * 100}%" title="Sakit: ${sick}"></div>
+                                <div class="bg-blue-400 h-full" style="width: ${(leave / totalStudents) * 100}%" title="Izin: ${leave}"></div>
+                                <div class="bg-rose-500 h-full" style="width: ${(alpha / totalStudents) * 100}%" title="Alfa: ${alpha}"></div>
+                            </div>
+
+                            <!-- Micro Tags H / S / I / A -->
+                            <div class="flex items-center gap-2 mt-1.5 text-[9px]">
+                                <span class="text-emerald-700 font-bold">H: ${present}</span>
+                                <span class="text-amber-700 font-semibold">S: ${sick}</span>
+                                <span class="text-blue-700 font-semibold">I: ${leave}</span>
+                                <span class="${alpha > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}">A: ${alpha}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Jurnal Materi Pelajaran -->
+                    ${s.material_taught ? `
+                        <div class="mt-2 text-[10px] text-slate-600 italic bg-white/70 p-2 rounded-lg border border-slate-200/60 line-clamp-2">
+                            <span class="font-bold text-slate-700 not-italic">Materi:</span> ${s.material_taught}
+                        </div>
+                    ` : ''}
+
+                    <!-- Tombol Aksi -->
+                    <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <span class="text-[10px] text-slate-400 font-mono">${s.period_text}</span>
+                        <a href="${s.fill_url}" class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-xs ${s.is_attended ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-blue-600 hover:bg-blue-700 text-white'}">
+                            ${s.is_attended ? 'Edit Presensi & Jurnal' : 'Masuk Kelas & Absen →'}
+                        </a>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     // ==========================================
