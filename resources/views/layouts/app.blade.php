@@ -1511,12 +1511,12 @@
                             </a>
                         </div>
                         <div class="col-6">
-                            <a href="{{ route('gtk-decrees.index') }}" class="card card-link text-center p-3 border rounded-3 text-decoration-none h-100 bg-light hover-shadow">
-                                <span class="avatar avatar-sm bg-indigo text-white rounded-circle mx-auto mb-2">
-                                    <i class="ti ti-certificate fs-3"></i>
+                            <a href="{{ route('piket.incidents.index') }}" class="card card-link text-center p-3 border rounded-3 text-decoration-none h-100 bg-light hover-shadow">
+                                <span class="avatar avatar-sm bg-danger text-white rounded-circle mx-auto mb-2">
+                                    <i class="ti ti-alert-triangle fs-3"></i>
                                 </span>
-                                <span class="fw-bold text-dark small d-block">SK &amp; Penugasan</span>
-                                <span class="text-muted" style="font-size: 0.7rem;">Arsip &amp; Keputusan</span>
+                                <span class="fw-bold text-dark small d-block">Kedisiplinan</span>
+                                <span class="text-muted" style="font-size: 0.7rem;">Kasus &amp; Pelanggaran</span>
                             </a>
                         </div>
                         <div class="col-6">

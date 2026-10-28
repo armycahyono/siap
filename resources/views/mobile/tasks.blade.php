@@ -669,92 +669,90 @@
 </div>
 @endif
 
-<!-- KARTU SK & PENUGASAN RESMI GTK -->
-<div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #6366f1 !important;">
+@php
+    $canManageDiscipline = $user->canManageDiscipline();
+    $isWakaKesiswaan = $user->isWakaKesiswaan();
+@endphp
+
+@if($canManageDiscipline || $isWakaKesiswaan)
+<!-- KARTU TIM KEDISIPLINAN & WAKA KESISWAAN -->
+<div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #dc2626 !important;">
     <div class="card-body p-3">
-        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style="border-color: #e0e7ff !important;">
+        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style="border-color: #fee2e2 !important;">
             <div class="d-flex align-items-center gap-2">
-                <span class="avatar avatar-sm bg-indigo text-white shadow-sm rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
-                    <i class="ti ti-certificate fs-2"></i>
+                <span class="avatar avatar-sm bg-danger text-white shadow-sm rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
+                    <i class="ti ti-shield-alert fs-2"></i>
                 </span>
                 <div>
-                    <div class="fw-bold text-dark fs-3 lh-1">SK &amp; Penugasan Resmi</div>
-                    <div class="text-muted small mt-0.5" style="font-size: 0.7rem;">Legalitas Beban Mengajar &amp; Tugas Sekolah</div>
+                    <div class="fw-bold text-dark fs-3 lh-1">Kedisiplinan Siswa</div>
+                    <div class="text-muted small mt-0.5" style="font-size: 0.7rem;">
+                        {{ $isWakaKesiswaan ? 'Penanggung Jawab Kesiswaan' : 'Tim Penegak Ketertiban Siswa' }}
+                    </div>
                 </div>
             </div>
-            <span class="badge bg-indigo-lt text-indigo fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
-                Legal
+            <span class="badge {{ $isWakaKesiswaan ? 'bg-danger text-white' : 'bg-danger-lt text-danger' }} fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
+                {{ $isWakaKesiswaan ? 'Waka Kesiswaan' : 'Tim Disiplin' }}
             </span>
         </div>
 
-        {{-- Tugas Tambahan / Struktural Aktif --}}
-        @if((!empty($myActiveStructuralPositions) && $myActiveStructuralPositions->isNotEmpty()) || !empty($myHomeroomClassroom))
-            <div class="mb-2 p-2 rounded-2" style="background: #f5f3ff; border: 1px solid #ddd6fe;">
-                <div class="fw-bold text-dark mb-1" style="font-size: 0.72rem; color: #4338ca !important;">
-                    <i class="ti ti-briefcase me-1"></i> Penugasan Tambahan / Struktural:
-                </div>
-                <div class="d-flex flex-wrap gap-1">
-                    @if(!empty($myHomeroomClassroom))
-                        <span class="badge bg-success text-white" style="font-size: 0.65rem; padding: 2px 6px;">
-                            Wali Kelas {{ $myHomeroomClassroom->name }}
-                        </span>
-                    @endif
-                    @if(!empty($myActiveStructuralPositions))
-                        @foreach($myActiveStructuralPositions as $stPos)
-                            <span class="badge bg-indigo text-white" style="font-size: 0.65rem; padding: 2px 6px;">
-                                {{ $stPos->structuralPosition?->name ?? 'Jabatan' }}
-                            </span>
-                        @endforeach
-                    @endif
-                </div>
-            </div>
-        @endif
-
-        {{-- Dokumen SK Aktif --}}
-        @if(!empty($myActiveDecrees) && $myActiveDecrees->isNotEmpty())
-            <div class="d-flex flex-column gap-2 mb-2.5">
-                @foreach($myActiveDecrees as $decree)
-                    <div class="p-2 rounded-2 border" style="background: #ffffff; border-color: #e2e8f0 !important;">
-                        <div class="d-flex align-items-start justify-content-between gap-1 mb-1">
-                            <div>
-                                <div class="fw-bold text-dark small" style="font-size: 0.78rem;">
-                                    {{ $decree->number }}
-                                </div>
-                                <div class="text-muted small text-truncate" style="font-size: 0.68rem; max-width: 200px;">
-                                    {{ $decree->title }}
-                                </div>
-                            </div>
-                            <span class="badge bg-success-lt text-success" style="font-size: 0.6rem; padding: 1px 5px;">
-                                Aktif
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-between pt-1 border-top mt-1">
-                            <span class="text-muted" style="font-size: 0.66rem;">
-                                TMT: {{ $decree->tmt_date ? $decree->tmt_date->format('d/m/Y') : '-' }}
-                            </span>
-                            @if($decree->file_path && $decree->hasPrivateDocument())
-                                <a href="{{ route('gtk-decrees.document', $decree) }}" class="btn btn-outline-primary btn-sm py-0.5 px-2 rounded-pill fw-bold text-decoration-none external d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;">
-                                    <i class="ti ti-download"></i> Unduh PDF
-                                </a>
-                            @endif
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <div class="text-center py-2 px-1 text-muted mb-2" style="font-size: 0.72rem; background: #f8fafc; border-radius: 6px;">
-                <i class="ti ti-file-text me-1"></i> Data SK resmi Anda tersinkronisasi otomatis dengan Arsip SK Sekolah.
-            </div>
-        @endif
-
-        <a href="{{ route('gtk-decrees.index') }}" 
-           class="btn btn-outline-indigo w-100 rounded-pill fw-bold text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-none py-1.5 external" 
-           style="font-size: 0.74rem; border: 1.5px solid #6366f1 !important; color: #4f46e5 !important;">
-            <i class="ti ti-archive fs-3 flex-shrink-0"></i> 
-            <span>Buka Arsip Dokumen SK</span>
-        </a>
+        <div style="display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; width: 100% !important;">
+            <a href="{{ route('piket.incidents.index') }}" 
+               class="btn rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.74rem; min-height: 38px; background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important; border: 1.5px solid #dc2626 !important;">
+                <i class="ti ti-clipboard-check fs-3 flex-shrink-0 text-white"></i> 
+                <span class="text-truncate text-white">Verifikasi Pelanggaran</span>
+            </a>
+            <a href="{{ route('discipline.dashboard') }}" 
+               class="btn rounded-pill fw-bold text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.74rem; min-height: 38px; background: #ffffff !important; border: 1.5px solid #fecaca !important; color: #dc2626 !important;">
+                <i class="ti ti-layout-dashboard fs-3 flex-shrink-0" style="color: #dc2626 !important;"></i> 
+                <span class="text-truncate" style="color: #dc2626 !important;">Dashboard Disiplin</span>
+            </a>
+        </div>
     </div>
 </div>
+@endif
+
+@php
+    $canOperateBk = $user->canOperateBk();
+@endphp
+
+@if($canOperateBk)
+<!-- KARTU LAYANAN BIMBINGAN & KONSELING (BK) -->
+<div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #0284c7 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style="border-color: #e0f2fe !important;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm bg-info text-white shadow-sm rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
+                    <i class="ti ti-heart-handshake fs-2"></i>
+                </span>
+                <div>
+                    <div class="fw-bold text-dark fs-3 lh-1">Layanan Bimbingan &amp; Konseling</div>
+                    <div class="text-muted small mt-0.5" style="font-size: 0.7rem;">Konseling Siswa, Rujukan &amp; Rekam Mediasi</div>
+                </div>
+            </div>
+            <span class="badge bg-info-lt text-info fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
+                Guru BK
+            </span>
+        </div>
+
+        <div style="display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; width: 100% !important;">
+            <a href="{{ route('bk.referrals.index') }}" 
+               class="btn rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.74rem; min-height: 38px; background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important; border: 1.5px solid #0284c7 !important;">
+                <i class="ti ti-git-pull-request fs-3 flex-shrink-0 text-white"></i> 
+                <span class="text-truncate text-white">Rujukan Piket</span>
+            </a>
+            <a href="{{ route('bk.services.index') }}" 
+               class="btn rounded-pill fw-bold text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.74rem; min-height: 38px; background: #ffffff !important; border: 1.5px solid #bae6fd !important; color: #0284c7 !important;">
+                <i class="ti ti-notes fs-3 flex-shrink-0" style="color: #0284c7 !important;"></i> 
+                <span class="text-truncate" style="color: #0284c7 !important;">Sesi Layanan BK</span>
+            </a>
+        </div>
+    </div>
+</div>
+@endif
 
 @if($user->isPrincipal() || $user->isWakaKurikulum() || $user->isSuperAdmin())
 <!-- 3. KARTU DAFTAR IZIN & CUTI GTK (KEPALA SEKOLAH & WAKA KURIKULUM) -->

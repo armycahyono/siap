@@ -6,7 +6,6 @@ use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
-use App\Models\GtkDecree;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketIncident;
@@ -792,18 +791,6 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // 7. Dokumen SK GTK & Penugasan Resmi Aktif Saya
-        $myActiveDecrees = $user->gtkDecrees()
-            ->where('status', GtkDecree::STATUS_ACTIVE)
-            ->latest('tmt_date')
-            ->take(3)
-            ->get();
-
-        $myActiveStructuralPositions = $user->structuralAssignments()
-            ->with('structuralPosition')
-            ->where('is_active', true)
-            ->get();
-
         if (DeviceDetector::isMobile()) {
             return view('mobile.tasks', compact(
                 'user',
@@ -825,9 +812,7 @@ class DashboardController extends Controller
                 'pendingSupervisions',
                 'canAccessVisitations',
                 'myPendingVisitationsCount',
-                'myRecentVisitations',
-                'myActiveDecrees',
-                'myActiveStructuralPositions'
+                'myRecentVisitations'
             ));
         }
 
