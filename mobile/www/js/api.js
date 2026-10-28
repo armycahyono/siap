@@ -74,6 +74,12 @@ const SIAP_API = (function() {
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
+                if (response.status === 401 && endpoint.includes('auth/me')) {
+                    setToken(null);
+                    localStorage.removeItem('siap_user_data');
+                    return { success: false, authenticated: false, data: null };
+                }
+
                 if (response.status === 401 && !endpoint.includes('auth/login')) {
                     // Sesi kedaluwarsa, bersihkan token & lempar error
                     setToken(null);

@@ -29,6 +29,7 @@ class MobileController extends Controller
         $content = str_replace('src="js/api.js"', 'src="js/api.js?v='.$apiJsVersion.'"', $content);
         $content = str_replace('src="js/router.js"', 'src="js/router.js?v='.$routerJsVersion.'"', $content);
         $content = str_replace('href="css/mobile.css"', 'href="css/mobile.css?v='.$cssVersion.'"', $content);
+        $content = str_replace("'sw.js'", "'sw.js?v=".$appJsVersion."'", $content);
 
         return response($content, 200, [
             'Content-Type' => 'text/html; charset=UTF-8',

@@ -522,6 +522,17 @@
     async function initApp() {
         SIAP_ROUTER.init();
 
+        // Cek cache user untuk render instan
+        const storedUser = localStorage.getItem('siap_user_data');
+        if (storedUser) {
+            try {
+                const parsed = JSON.parse(storedUser);
+                if (parsed && parsed.id) {
+                    SIAP_ROUTER.setCurrentUser(parsed);
+                }
+            } catch (e) {}
+        }
+
         try {
             const res = await SIAP_API.me();
             if (res.authenticated && res.data?.user) {
@@ -536,11 +547,15 @@
                 }
             } else {
                 SIAP_ROUTER.setCurrentUser(null);
+                localStorage.removeItem('siap_user_data');
                 SIAP_ROUTER.navigate('/auth/login');
             }
         } catch (err) {
-            SIAP_ROUTER.setCurrentUser(null);
-            SIAP_ROUTER.navigate('/auth/login');
+            console.error('InitApp check error:', err);
+            if (!SIAP_ROUTER.getCurrentUser()) {
+                SIAP_ROUTER.setCurrentUser(null);
+                SIAP_ROUTER.navigate('/auth/login');
+            }
         }
     }
 

@@ -5,6 +5,9 @@ use App\Http\Controllers\Api\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\Mobile\MobileDashboardController;
 use App\Http\Controllers\Api\Mobile\MobileProfileController;
 use App\Http\Controllers\Api\Mobile\MobileTasksController;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,7 +20,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('v1/mobile')->middleware(['web'])->group(function () {
+Route::prefix('v1/mobile')->middleware([
+    EncryptCookies::class,
+    AddQueuedCookiesToResponse::class,
+    StartSession::class,
+])->group(function () {
     // 1. Auth & Session Management
     Route::post('auth/login', [MobileAuthController::class, 'login']);
     Route::get('auth/me', [MobileAuthController::class, 'me']);

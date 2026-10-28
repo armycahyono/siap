@@ -108,6 +108,12 @@ const SIAP_ROUTER = (function() {
         const container = document.getElementById('app-view-container');
         if (!container) return;
 
+        // Bersihkan loader awal saat rute pertama kali dimuat
+        const initialLoader = document.getElementById('initial-app-loader');
+        if (initialLoader) {
+            initialLoader.remove();
+        }
+
         // Sembunyikan view aktif saat ini (View Stacking)
         if (currentPath && mountedViews[currentPath]) {
             mountedViews[currentPath].classList.add('hidden');
