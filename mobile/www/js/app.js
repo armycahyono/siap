@@ -800,6 +800,144 @@
             };
         }
 
+        // ==========================================
+        // Modal Controls & Form Handlers (Profile & Password)
+        // ==========================================
+        const modalEditProfile = container.querySelector('#modal-edit-profile');
+        const modalEditPassword = container.querySelector('#modal-edit-password');
+        const formEditProfile = container.querySelector('#form-edit-profile');
+        const formEditPassword = container.querySelector('#form-edit-password');
+
+        window.openEditProfileModal = function() {
+            if (!modalEditProfile) return;
+            const u = profileDataCache?.user || SIAP_ROUTER.getCurrentUser() || {};
+            const inputName = container.querySelector('#edit-prof-name');
+            const inputEmail = container.querySelector('#edit-prof-email');
+            const inputPhone = container.querySelector('#edit-prof-phone');
+
+            if (inputName) inputName.value = u.name || '';
+            if (inputEmail) inputEmail.value = u.email || '';
+            if (inputPhone) inputPhone.value = u.phone || '';
+
+            modalEditProfile.classList.remove('hidden');
+        };
+
+        window.closeEditProfileModal = function() {
+            if (modalEditProfile) modalEditProfile.classList.add('hidden');
+        };
+
+        window.openEditPasswordModal = function() {
+            if (!modalEditPassword) return;
+            if (formEditPassword) formEditPassword.reset();
+            modalEditPassword.classList.remove('hidden');
+        };
+
+        window.closeEditPasswordModal = function() {
+            if (modalEditPassword) modalEditPassword.classList.add('hidden');
+        };
+
+        // Form Submit: Edit Profil
+        if (formEditProfile) {
+            formEditProfile.onsubmit = async function(e) {
+                e.preventDefault();
+                const name = container.querySelector('#edit-prof-name').value.trim();
+                const email = container.querySelector('#edit-prof-email').value.trim();
+                const phone = container.querySelector('#edit-prof-phone').value.trim();
+                const btnSubmit = container.querySelector('#btn-save-profile');
+
+                if (!name || !email) {
+                    showToast('Nama dan Email wajib diisi.', 'warning');
+                    return;
+                }
+
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `
+                    <svg class="animate-spin h-4 w-4 mx-auto text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+
+                try {
+                    const res = await SIAP_API.updateProfile({ name, email, phone });
+                    if (res.success && res.data?.user) {
+                        const updatedUser = res.data.user;
+                        SIAP_ROUTER.setCurrentUser(updatedUser);
+                        localStorage.setItem('siap_user_data', JSON.stringify(updatedUser));
+
+                        if (profileDataCache && profileDataCache.user) {
+                            profileDataCache.user = { ...profileDataCache.user, ...updatedUser };
+                            renderProfileContent(container, profileDataCache);
+                        }
+
+                        // Perbarui nama di dashboard jika aktif
+                        const dashName = document.querySelector('#dash-user-name');
+                        if (dashName) dashName.textContent = updatedUser.name;
+
+                        showToast(res.message || 'Profil berhasil diperbarui!', 'success');
+                        closeEditProfileModal();
+                    } else {
+                        showToast(res.message || 'Gagal memperbarui profil.', 'error');
+                    }
+                } catch (err) {
+                    showToast(err.message || 'Terjadi kesalahan saat menyimpan profil.', 'error');
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = 'Simpan Perubahan';
+                }
+            };
+        }
+
+        // Form Submit: Ganti Password
+        if (formEditPassword) {
+            formEditPassword.onsubmit = async function(e) {
+                e.preventDefault();
+                const currentPass = container.querySelector('#edit-pwd-current').value;
+                const newPass = container.querySelector('#edit-pwd-new').value;
+                const confirmPass = container.querySelector('#edit-pwd-confirm').value;
+                const btnSubmit = container.querySelector('#btn-save-password');
+
+                if (!currentPass || !newPass || !confirmPass) {
+                    showToast('Semua kolom kata sandi wajib diisi.', 'warning');
+                    return;
+                }
+
+                if (newPass.length < 6) {
+                    showToast('Kata sandi baru minimal 6 karakter.', 'warning');
+                    return;
+                }
+
+                if (newPass !== confirmPass) {
+                    showToast('Konfirmasi kata sandi baru tidak cocok.', 'warning');
+                    return;
+                }
+
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `
+                    <svg class="animate-spin h-4 w-4 mx-auto text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                `;
+
+                try {
+                    const res = await SIAP_API.updatePassword(currentPass, newPass, confirmPass);
+                    if (res.success) {
+                        showToast(res.message || 'Kata sandi berhasil diperbarui!', 'success');
+                        formEditPassword.reset();
+                        closeEditPasswordModal();
+                    } else {
+                        showToast(res.message || 'Gagal memperbarui kata sandi.', 'error');
+                    }
+                } catch (err) {
+                    showToast(err.message || 'Kata sandi lama tidak cocok atau tidak valid.', 'error');
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = 'Perbarui Kata Sandi';
+                }
+            };
+        }
+
         if (profileDataCache) {
             renderProfileContent(container, profileDataCache);
             fetchProfile();
