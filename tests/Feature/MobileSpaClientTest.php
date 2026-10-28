@@ -14,6 +14,13 @@ class MobileSpaClientTest extends TestCase
             ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
             ->assertSee('SIAP Mobile')
             ->assertSee('app-view-container')
+            ->assertSee('data-tab-nav="dashboard"', false)
+            ->assertSee('data-tab-nav="kbm"', false)
+            ->assertSee('data-tab-nav="attendance"', false)
+            ->assertSee('data-tab-nav="tasks"', false)
+            ->assertSee('data-tab-nav="profile"', false)
+            ->assertSee('mobile-nav-action', false)
+            ->assertSee('action-circle', false)
             ->assertSee('js/api.js', false)
             ->assertSee('js/router.js', false)
             ->assertSee('js/app.js', false);
@@ -52,6 +59,10 @@ class MobileSpaClientTest extends TestCase
         $dashboardPage = $this->get('/mobile/pages/dashboard.html');
         $dashboardPage->assertOk()
             ->assertSee('dash-user-name');
+
+        $kbmPage = $this->get('/mobile/pages/kbm.html');
+        $kbmPage->assertOk()
+            ->assertSee('kbm-schedules-list');
 
         $attendancePage = $this->get('/mobile/pages/attendance.html');
         $attendancePage->assertOk()

@@ -18,6 +18,13 @@ const SIAP_ROUTER = (function() {
             init: 'initDashboard',
             tabKey: 'dashboard',
         },
+        '/kbm': {
+            page: 'pages/kbm.html',
+            requiresAuth: true,
+            title: 'Presensi KBM & Jurnal',
+            init: 'initKbm',
+            tabKey: 'kbm',
+        },
         '/attendance': {
             page: 'pages/attendance.html',
             requiresAuth: true,
@@ -189,14 +196,28 @@ const SIAP_ROUTER = (function() {
                 const icon = item.querySelector('.tab-icon');
                 const label = item.querySelector('.tab-label');
 
-                if (key === route.tabKey) {
-                    item.className = 'flex flex-col items-center justify-center flex-1 py-1.5 text-blue-600 transition-colors';
-                    if (icon) icon.classList.add('scale-110');
-                    if (label) label.className = 'tab-label text-[10px] font-bold text-blue-600';
+                if (key === 'attendance') {
+                    if (key === route.tabKey) {
+                        item.classList.add('active');
+                        if (label) {
+                            label.className = 'tab-label text-[10px] font-bold text-emerald-700 mt-[-2px]';
+                        }
+                    } else {
+                        item.classList.remove('active');
+                        if (label) {
+                            label.className = 'tab-label text-[10px] font-bold text-slate-600 mt-[-2px]';
+                        }
+                    }
                 } else {
-                    item.className = 'flex flex-col items-center justify-center flex-1 py-1.5 text-slate-400 hover:text-slate-600 transition-colors';
-                    if (icon) icon.classList.remove('scale-110');
-                    if (label) label.className = 'tab-label text-[10px] font-medium text-slate-400';
+                    if (key === route.tabKey) {
+                        item.className = 'flex flex-col items-center justify-center flex-1 py-1 text-blue-600 transition-colors';
+                        if (icon) icon.classList.add('scale-110');
+                        if (label) label.className = 'tab-label text-[10px] font-bold text-blue-600';
+                    } else {
+                        item.className = 'flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 transition-colors';
+                        if (icon) icon.classList.remove('scale-110');
+                        if (label) label.className = 'tab-label text-[10px] font-medium text-slate-400';
+                    }
                 }
             });
         }

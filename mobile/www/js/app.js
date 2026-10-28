@@ -3,6 +3,7 @@
  */
 (function() {
     let dashboardDataCache = null;
+    let kbmDataCache = null;
     let tasksDataCache = null;
     let profileDataCache = null;
     let attendanceDataCache = null;
@@ -198,6 +199,155 @@
             if (agendaDesc) agendaDesc.textContent = ag.description || 'Agenda kalender kurikulum sekolah';
         } else if (agendaCard) {
             agendaCard.classList.add('hidden');
+        }
+    }
+
+    // ==========================================
+    // 2.5 KBM (JURNAL & PRESENSI KELAS) VIEW CONTROLLER
+    // ==========================================
+    window.initKbm = async function(container, params) {
+        async function fetchKbmData() {
+            try {
+                const res = await SIAP_API.getKbm();
+                if (res.success && res.data) {
+                    kbmDataCache = res.data;
+                    renderKbmContent(container, res.data);
+                }
+            } catch (err) {
+                console.error('Error fetching KBM data:', err);
+                showToast('Gagal memuat jadwal KBM.', 'error');
+            }
+        }
+
+        if (kbmDataCache) {
+            renderKbmContent(container, kbmDataCache);
+            fetchKbmData(); // Background revalidation
+        } else {
+            await fetchKbmData();
+        }
+    };
+
+    function renderKbmContent(container, data) {
+        const dateInfo = data.date_info || {};
+        
+        // Date & Header Labels
+        const dateLabelEl = container.querySelector('#kbm-date-label');
+        if (dateLabelEl) dateLabelEl.textContent = dateInfo.formatted_date || 'Hari Ini';
+
+        const subLabelEl = container.querySelector('#kbm-status-sub');
+        if (subLabelEl && dateInfo.academic_year) {
+            subLabelEl.textContent = `T.A. ${dateInfo.academic_year} • Semester ${dateInfo.semester || 'Ganjil'}`;
+        }
+
+        // Progress Selesai / Total
+        const progressCountEl = container.querySelector('#kbm-progress-count');
+        if (progressCountEl) {
+            progressCountEl.textContent = `${data.attended_sessions_count || 0} / ${data.total_sessions || 0}`;
+        }
+
+        const totalInfoEl = container.querySelector('#kbm-total-info');
+        if (totalInfoEl) {
+            totalInfoEl.textContent = `${data.total_sessions || 0} Jam Pelajaran`;
+        }
+
+        // Holiday / Weekend Alert
+        const alertHolidayEl = container.querySelector('#kbm-alert-holiday');
+        const holidayTitleEl = container.querySelector('#kbm-holiday-title');
+        const holidayDescEl = container.querySelector('#kbm-holiday-desc');
+
+        if (alertHolidayEl) {
+            if (!dateInfo.is_kbm_day) {
+                alertHolidayEl.classList.remove('hidden');
+                if (holidayTitleEl) {
+                    holidayTitleEl.textContent = dateInfo.holiday_title || (dateInfo.is_weekend ? 'Akhir Pekan (Libur KBM)' : 'Hari Libur / Diliburkan');
+                }
+                if (holidayDescEl) {
+                    holidayDescEl.textContent = dateInfo.is_weekend 
+                        ? 'Kegiatan belajar mengajar tatap muka tidak dijadwalkan pada hari libur akhir pekan.'
+                        : 'Kegiatan belajar mengajar tatap muka ditiadakan sesuai kalender akademik.';
+                }
+            } else {
+                alertHolidayEl.classList.add('hidden');
+            }
+        }
+
+        // Teaching Schedules
+        const scheduleContainer = container.querySelector('#kbm-schedules-list');
+        if (scheduleContainer) {
+            const schedules = data.my_schedules || [];
+            if (schedules.length === 0) {
+                scheduleContainer.innerHTML = `
+                    <div class="p-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                        <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        Tidak ada jadwal mengajar tatap muka yang terdaftar untuk Anda pada hari ini.
+                    </div>
+                `;
+            } else {
+                scheduleContainer.innerHTML = schedules.map(s => `
+                    <div class="p-3.5 card-elevated">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wider">${s.classroom_name}</span>
+                                    <span class="text-[11px] font-semibold text-slate-500">${s.period_text}</span>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800 mt-1">${s.subject_name}</h4>
+                                ${s.time_range ? `<p class="text-[10px] text-slate-400 font-mono mt-0.5">${s.time_range}</p>` : ''}
+                            </div>
+                            <div>
+                                ${s.is_attended 
+                                    ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Sudah Diabsen</span>'
+                                    : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Belum Diabsen</span>'
+                                }
+                            </div>
+                        </div>
+
+                        ${s.is_attended && s.attendance_summary ? `
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 mb-2.5 text-[11px] text-slate-600">
+                                <div class="flex items-center justify-between font-medium">
+                                    <span>Rekap Siswa:</span>
+                                    <span class="font-bold text-slate-700">${s.attendance_summary.present}/${s.attendance_summary.total} Hadir</span>
+                                </div>
+                                ${s.material_taught ? `
+                                    <div class="mt-1.5 pt-1.5 border-t border-slate-200/60 text-[10px] text-slate-500">
+                                        <span class="font-semibold text-slate-700">Materi:</span> ${s.material_taught}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+
+                        <div class="pt-2 border-t border-slate-100">
+                            <a href="${s.fill_url}" class="block w-full text-center py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm ${s.is_attended ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-blue-600 text-white hover:bg-blue-700'}">
+                                ${s.is_attended ? 'Lihat / Edit Presensi & Jurnal' : 'Masuk Kelas & Isi Presensi'}
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Swap Sessions (Tukar Jam)
+        const swapSectionEl = container.querySelector('#kbm-swap-section');
+        const swapListEl = container.querySelector('#kbm-swap-list');
+        const swapSessions = data.swap_sessions || [];
+
+        if (swapSectionEl && swapListEl) {
+            if (swapSessions.length > 0) {
+                swapSectionEl.classList.remove('hidden');
+                swapListEl.innerHTML = swapSessions.map(sw => `
+                    <div class="p-3 card-subtle border-indigo-100 bg-indigo-50/50">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider">${sw.classroom_name} • ${sw.period_text}</span>
+                                <h5 class="text-xs font-bold text-slate-800 mt-1">${sw.subject_name}</h5>
+                                <p class="text-[10px] text-slate-500 mt-0.5">Menggantikan: <span class="font-medium text-slate-700">${sw.original_teacher_name}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                swapSectionEl.classList.add('hidden');
+            }
         }
     }
 

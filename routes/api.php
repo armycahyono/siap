@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Mobile\MobileAttendanceController;
 use App\Http\Controllers\Api\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\Mobile\MobileDashboardController;
+use App\Http\Controllers\Api\Mobile\MobileKbmController;
 use App\Http\Controllers\Api\Mobile\MobileProfileController;
 use App\Http\Controllers\Api\Mobile\MobileTasksController;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -32,6 +33,7 @@ Route::prefix('v1/mobile')->middleware([
 
     // 2. Core Mobile Data Endpoints
     Route::get('dashboard', [MobileDashboardController::class, 'index']);
+    Route::get('kbm', [MobileKbmController::class, 'index']);
     Route::get('tasks', [MobileTasksController::class, 'index']);
     Route::get('profile', [MobileProfileController::class, 'index']);
     Route::post('profile/update', [MobileAuthController::class, 'updateProfile']);

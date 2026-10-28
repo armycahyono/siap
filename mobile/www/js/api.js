@@ -119,6 +119,7 @@ const SIAP_API = (function() {
 
         // Core Data
         getDashboard: () => request('dashboard', { method: 'GET' }),
+        getKbm: (date = null) => request(date ? `kbm?date=${date}` : 'kbm', { method: 'GET' }),
         getTasks: (date = null) => request(date ? `tasks?date=${date}` : 'tasks', { method: 'GET' }),
         getProfile: () => request('profile', { method: 'GET' }),
         updateProfile: (data) => request('profile/update', {
