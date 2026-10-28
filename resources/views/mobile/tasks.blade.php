@@ -584,19 +584,25 @@
         <!-- Garis Pembatas Antara Monitoring Presensi & Tombol Aksi -->
         <hr class="my-2.5" style="border-top: 1px solid #e2e8f0; opacity: 1;">
 
-        <!-- Tombol Aksi Wali Kelas (Biru untuk Catat Izin & Hijau untuk Rekap Absen) -->
-        <div style="display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; width: 100% !important;">
+        <!-- Tombol Aksi Wali Kelas (Izin Siswa, Visitasi Siswa, Rekap Absen) -->
+        <div style="display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px !important; width: 100% !important;">
             <a href="{{ route('attendance.homeroom-permits.index', ['classroom_id' => $myHomeroomClassroom->id, 'date' => $date->toDateString()]) }}" 
-               class="btn btn-primary rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2" 
-               style="font-size: 0.74rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important; border: 1.5px solid #195b9e !important;">
+               class="btn btn-primary rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1 shadow-sm text-truncate py-2" 
+               style="font-size: 0.72rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important; border: 1.5px solid #195b9e !important;">
                 <i class="ti ti-file-certificate fs-3 flex-shrink-0 text-white"></i> 
                 <span class="text-truncate text-white">Izin Siswa</span>
             </a>
+            <a href="{{ route('visitations.index') }}" 
+               class="btn btn-cyan rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.72rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%) !important; border: 1.5px solid #0891b2 !important;">
+                <i class="ti ti-home-heart fs-3 flex-shrink-0 text-white"></i> 
+                <span class="text-truncate text-white">Visitasi</span>
+            </a>
             <a href="{{ route('attendance.homeroom-recap.index', ['classroom_id' => $myHomeroomClassroom->id, 'date' => $date->toDateString()]) }}" 
-               class="btn btn-success rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2" 
-               style="font-size: 0.74rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important; border: 1.5px solid #10b981 !important;">
+               class="btn btn-success rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1 shadow-sm text-truncate py-2" 
+               style="font-size: 0.72rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important; border: 1.5px solid #10b981 !important;">
                 <i class="ti ti-clipboard-list fs-3 flex-shrink-0 text-white"></i> 
-                <span class="text-truncate text-white">Rekap Absen Kelas</span>
+                <span class="text-truncate text-white">Rekap Absen</span>
             </a>
         </div>
     </div>

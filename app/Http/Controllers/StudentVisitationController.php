@@ -137,9 +137,15 @@ class StudentVisitationController extends Controller
         $sourceId = $request->query('source_id');
         $visitType = $request->query('visit_type', 'kunjungan_rumah');
 
-        // Daftar siswa aktif
-        $students = Student::where('status', 'aktif')
-            ->orderBy('name')
+        // Daftar siswa aktif (Jika Wali Kelas murni, batasi hanya murid rombelnya)
+        $studentsQuery = Student::where('status', 'aktif');
+
+        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->canOperateBk($academicYear) && ! $user->canManageDiscipline($academicYear)) {
+            $myClassroomIds = $user->homeroomClassrooms()->pluck('id');
+            $studentsQuery->whereIn('classroom_id', $myClassroomIds);
+        }
+
+        $students = $studentsQuery->orderBy('name')
             ->get(['id', 'name', 'nisn', 'classroom_id']);
 
         // Daftar calon petugas (Guru BK, Wali Kelas, Tim Kedisiplinan, Guru/Staf)
