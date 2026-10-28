@@ -21,7 +21,7 @@ class MobileApiFoundationTest extends TestCase
 
         $setting = SchoolSetting::getSetting();
         $setting->update([
-            'school_name' => 'SMK PGRI 1 NGAWI',
+            'school_name' => 'SMK PGRI KRAS',
             'school_latitude' => -7.95590200,
             'school_longitude' => 111.97259400,
             'school_radius_meters' => 100,

@@ -7,7 +7,7 @@ const SIAP_API = (function() {
                                 window.location.protocol === 'capacitor:' ||
                                 window.location.protocol === 'ionic:';
 
-    const defaultOnlineServer = 'https://siap.smkpgri1ngawi.sch.id';
+    const defaultOnlineServer = 'https://siap.smkpgrikras.sch.id';
     let initialBaseUrl = '';
 
     if (!isNativeAppProtocol && window.location.origin && window.location.origin !== 'null') {

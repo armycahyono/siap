@@ -1,7 +1,7 @@
 {
   "name": "siap-mobile",
   "version": "1.0.0",
-  "description": "Aplikasi SIAP Mobile SMK PGRI 1 NGAWI (Decoupled SPA, PWA & APK Ready)",
+  "description": "Aplikasi SIAP Mobile SMK PGRI KRAS (Decoupled SPA, PWA & APK Ready)",
   "private": true,
   "scripts": {
     "build": "echo 'Static mobile client ready in www/'",
