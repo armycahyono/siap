@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
+use App\Models\GtkDecree;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketIncident;
@@ -13,6 +14,7 @@ use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\StudentVisitation;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\Supervision;
@@ -768,6 +770,40 @@ class DashboardController extends Controller
                 ->get();
         }
 
+        // 6. Data Visitasi Siswa & Pemantauan Khusus (BK & Wali Kelas)
+        $canAccessVisitations = $user->canAccessVisitations($operationalAcademicYear);
+        $myPendingVisitationsCount = 0;
+        $myRecentVisitations = collect();
+        if ($canAccessVisitations) {
+            $visitationQuery = StudentVisitation::with(['student.classroom', 'primaryOfficer'])
+                ->where(function ($q) use ($user) {
+                    $q->where('primary_officer_id', $user->id)
+                        ->orWhere('secondary_officer_id', $user->id)
+                        ->orWhere('requested_by', $user->id);
+                });
+
+            $myPendingVisitationsCount = (clone $visitationQuery)
+                ->whereIn('status', ['diajukan', 'dijadwalkan'])
+                ->count();
+
+            $myRecentVisitations = (clone $visitationQuery)
+                ->latest('planned_date')
+                ->take(3)
+                ->get();
+        }
+
+        // 7. Dokumen SK GTK & Penugasan Resmi Aktif Saya
+        $myActiveDecrees = $user->gtkDecrees()
+            ->where('status', GtkDecree::STATUS_ACTIVE)
+            ->latest('tmt_date')
+            ->take(3)
+            ->get();
+
+        $myActiveStructuralPositions = $user->structuralAssignments()
+            ->with('structuralPosition')
+            ->where('is_active', true)
+            ->get();
+
         if (DeviceDetector::isMobile()) {
             return view('mobile.tasks', compact(
                 'user',
@@ -786,7 +822,12 @@ class DashboardController extends Controller
                 'myGtkPermitToday',
                 'pendingGtkPermits',
                 'todayApprovedGtkPermits',
-                'pendingSupervisions'
+                'pendingSupervisions',
+                'canAccessVisitations',
+                'myPendingVisitationsCount',
+                'myRecentVisitations',
+                'myActiveDecrees',
+                'myActiveStructuralPositions'
             ));
         }
 

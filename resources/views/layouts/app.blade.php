@@ -1493,12 +1493,30 @@
                             </a>
                         </div>
                         <div class="col-6">
+                            <a href="{{ route('visitations.index') }}" class="card card-link text-center p-3 border rounded-3 text-decoration-none h-100 bg-light hover-shadow">
+                                <span class="avatar avatar-sm bg-cyan text-white rounded-circle mx-auto mb-2">
+                                    <i class="ti ti-home-heart fs-3"></i>
+                                </span>
+                                <span class="fw-bold text-dark small d-block">Visitasi Siswa</span>
+                                <span class="text-muted" style="font-size: 0.7rem;">Home Visit &amp; BK</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
                             <a href="{{ route('attendance.gtk-permits.index') }}" class="card card-link text-center p-3 border rounded-3 text-decoration-none h-100 bg-light hover-shadow">
                                 <span class="avatar avatar-sm bg-purple text-white rounded-circle mx-auto mb-2">
                                     <i class="ti ti-calendar-time fs-3"></i>
                                 </span>
                                 <span class="fw-bold text-dark small d-block">Izin / Cuti GTK</span>
                                 <span class="text-muted" style="font-size: 0.7rem;">Pengajuan Cuti</span>
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ route('gtk-decrees.index') }}" class="card card-link text-center p-3 border rounded-3 text-decoration-none h-100 bg-light hover-shadow">
+                                <span class="avatar avatar-sm bg-indigo text-white rounded-circle mx-auto mb-2">
+                                    <i class="ti ti-certificate fs-3"></i>
+                                </span>
+                                <span class="fw-bold text-dark small d-block">SK &amp; Penugasan</span>
+                                <span class="text-muted" style="font-size: 0.7rem;">Arsip &amp; Keputusan</span>
                             </a>
                         </div>
                         <div class="col-6">

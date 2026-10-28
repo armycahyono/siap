@@ -603,6 +603,159 @@
 </div>
 @endif
 
+@if(!empty($canAccessVisitations))
+<!-- KARTU VISITASI SISWA & PEMANTAUAN BK -->
+<div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #06b6d4 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style="border-color: #cffafe !important;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm bg-cyan text-white shadow-sm rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
+                    <i class="ti ti-home-heart fs-2"></i>
+                </span>
+                <div>
+                    <div class="fw-bold text-dark fs-3 lh-1">Visitasi Siswa &amp; BK</div>
+                    <div class="text-muted small mt-0.5" style="font-size: 0.7rem;">Home Visit &amp; Pemantauan Khusus</div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                @if(($myPendingVisitationsCount ?? 0) > 0)
+                    <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
+                        {{ $myPendingVisitationsCount }} Agenda
+                    </span>
+                @else
+                    <span class="badge bg-cyan-lt text-cyan fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
+                        Terkendali
+                    </span>
+                @endif
+            </div>
+        </div>
+
+        @if(!empty($myRecentVisitations) && $myRecentVisitations->isNotEmpty())
+            <div class="d-flex flex-column gap-1.5 mb-2.5">
+                @foreach($myRecentVisitations as $visitation)
+                    <a href="{{ route('visitations.show', $visitation) }}" class="card p-2 rounded-2 border text-decoration-none shadow-none external" style="background: #f8fafc; border-color: #e2e8f0 !important;">
+                        <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+                            <span class="fw-bold text-dark small text-truncate" style="font-size: 0.78rem;">
+                                {{ $visitation->student?->name ?? 'Siswa' }}
+                            </span>
+                            <span class="badge {{ $visitation->status_badge_class }}" style="font-size: 0.6rem; padding: 1px 5px;">
+                                {{ $visitation->status_label }}
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between text-muted" style="font-size: 0.68rem;">
+                            <span><i class="ti ti-calendar me-0.5"></i>{{ $visitation->planned_date ? $visitation->planned_date->format('d/m/Y') : '-' }}</span>
+                            <span>{{ $visitation->student?->classroom?->name ?? '-' }}</span>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+
+        <div style="display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; width: 100% !important;">
+            <a href="{{ route('visitations.create') }}" 
+               class="btn rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.74rem; min-height: 38px; background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%) !important; border: 1.5px solid #0891b2 !important;">
+                <i class="ti ti-plus fs-3 flex-shrink-0 text-white"></i> 
+                <span class="text-truncate text-white">Jadwal Visitasi</span>
+            </a>
+            <a href="{{ route('visitations.index') }}" 
+               class="btn rounded-pill fw-bold text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-sm text-truncate py-2 external" 
+               style="font-size: 0.74rem; min-height: 38px; background: #ffffff !important; border: 1.5px solid #a5f3fc !important; color: #0891b2 !important;">
+                <i class="ti ti-list-check fs-3 flex-shrink-0" style="color: #0891b2 !important;"></i> 
+                <span class="text-truncate" style="color: #0891b2 !important;">Semua Data</span>
+            </a>
+        </div>
+    </div>
+</div>
+@endif
+
+<!-- KARTU SK & PENUGASAN RESMI GTK -->
+<div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #6366f1 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style="border-color: #e0e7ff !important;">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm bg-indigo text-white shadow-sm rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
+                    <i class="ti ti-certificate fs-2"></i>
+                </span>
+                <div>
+                    <div class="fw-bold text-dark fs-3 lh-1">SK &amp; Penugasan Resmi</div>
+                    <div class="text-muted small mt-0.5" style="font-size: 0.7rem;">Legalitas Beban Mengajar &amp; Tugas Sekolah</div>
+                </div>
+            </div>
+            <span class="badge bg-indigo-lt text-indigo fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
+                Legal
+            </span>
+        </div>
+
+        {{-- Tugas Tambahan / Struktural Aktif --}}
+        @if((!empty($myActiveStructuralPositions) && $myActiveStructuralPositions->isNotEmpty()) || !empty($myHomeroomClassroom))
+            <div class="mb-2 p-2 rounded-2" style="background: #f5f3ff; border: 1px solid #ddd6fe;">
+                <div class="fw-bold text-dark mb-1" style="font-size: 0.72rem; color: #4338ca !important;">
+                    <i class="ti ti-briefcase me-1"></i> Penugasan Tambahan / Struktural:
+                </div>
+                <div class="d-flex flex-wrap gap-1">
+                    @if(!empty($myHomeroomClassroom))
+                        <span class="badge bg-success text-white" style="font-size: 0.65rem; padding: 2px 6px;">
+                            Wali Kelas {{ $myHomeroomClassroom->name }}
+                        </span>
+                    @endif
+                    @if(!empty($myActiveStructuralPositions))
+                        @foreach($myActiveStructuralPositions as $stPos)
+                            <span class="badge bg-indigo text-white" style="font-size: 0.65rem; padding: 2px 6px;">
+                                {{ $stPos->structuralPosition?->name ?? 'Jabatan' }}
+                            </span>
+                        @endforeach
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Dokumen SK Aktif --}}
+        @if(!empty($myActiveDecrees) && $myActiveDecrees->isNotEmpty())
+            <div class="d-flex flex-column gap-2 mb-2.5">
+                @foreach($myActiveDecrees as $decree)
+                    <div class="p-2 rounded-2 border" style="background: #ffffff; border-color: #e2e8f0 !important;">
+                        <div class="d-flex align-items-start justify-content-between gap-1 mb-1">
+                            <div>
+                                <div class="fw-bold text-dark small" style="font-size: 0.78rem;">
+                                    {{ $decree->number }}
+                                </div>
+                                <div class="text-muted small text-truncate" style="font-size: 0.68rem; max-width: 200px;">
+                                    {{ $decree->title }}
+                                </div>
+                            </div>
+                            <span class="badge bg-success-lt text-success" style="font-size: 0.6rem; padding: 1px 5px;">
+                                Aktif
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between pt-1 border-top mt-1">
+                            <span class="text-muted" style="font-size: 0.66rem;">
+                                TMT: {{ $decree->tmt_date ? $decree->tmt_date->format('d/m/Y') : '-' }}
+                            </span>
+                            @if($decree->file_path && $decree->hasPrivateDocument())
+                                <a href="{{ route('gtk-decrees.document', $decree) }}" class="btn btn-outline-primary btn-sm py-0.5 px-2 rounded-pill fw-bold text-decoration-none external d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;">
+                                    <i class="ti ti-download"></i> Unduh PDF
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="text-center py-2 px-1 text-muted mb-2" style="font-size: 0.72rem; background: #f8fafc; border-radius: 6px;">
+                <i class="ti ti-file-text me-1"></i> Data SK resmi Anda tersinkronisasi otomatis dengan Arsip SK Sekolah.
+            </div>
+        @endif
+
+        <a href="{{ route('gtk-decrees.index') }}" 
+           class="btn btn-outline-indigo w-100 rounded-pill fw-bold text-decoration-none d-flex align-items-center justify-content-center gap-1.5 shadow-none py-1.5 external" 
+           style="font-size: 0.74rem; border: 1.5px solid #6366f1 !important; color: #4f46e5 !important;">
+            <i class="ti ti-archive fs-3 flex-shrink-0"></i> 
+            <span>Buka Arsip Dokumen SK</span>
+        </a>
+    </div>
+</div>
+
 @if($user->isPrincipal() || $user->isWakaKurikulum() || $user->isSuperAdmin())
 <!-- 3. KARTU DAFTAR IZIN & CUTI GTK (KEPALA SEKOLAH & WAKA KURIKULUM) -->
 <div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #195b9e !important;">

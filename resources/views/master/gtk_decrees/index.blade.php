@@ -152,7 +152,7 @@
         </form>
     </div>
 
-    <div class="table-responsive">
+    <div class="table-responsive d-none d-md-block">
         <table class="table table-vcenter table-hover card-table">
             <thead>
                 <tr class="bg-light text-muted small text-uppercase">
@@ -274,6 +274,83 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    {{-- Card-Stack View Khusus Layar Smartphone (< 768px) --}}
+    <div class="d-md-none p-2">
+        @forelse($decrees as $decree)
+            <div class="card mb-2 shadow-sm border rounded-3 overflow-hidden" style="border-color: #e2e8f0 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-1.5">
+                        <div class="min-w-0 flex-fill">
+                            <a href="{{ route('gtk-decrees.show', $decree) }}" class="fw-bold text-dark text-decoration-none d-block text-truncate" style="font-size: 0.88rem;">
+                                {{ $decree->number }}
+                            </a>
+                            <div class="text-secondary small text-truncate" style="font-size: 0.74rem;">
+                                {{ $decree->title }}
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            @if($decree->status === \App\Models\GtkDecree::STATUS_DRAFT)
+                                <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.65rem;">Draf</span>
+                            @elseif($decree->status === \App\Models\GtkDecree::STATUS_ACTIVE)
+                                <span class="badge bg-success text-white fw-bold" style="font-size: 0.65rem;">Aktif</span>
+                            @elseif($decree->status === \App\Models\GtkDecree::STATUS_EXPIRED)
+                                <span class="badge bg-secondary text-white" style="font-size: 0.65rem;">Berakhir</span>
+                            @elseif($decree->status === \App\Models\GtkDecree::STATUS_CANCELLED)
+                                <span class="badge bg-danger text-white" style="font-size: 0.65rem;">Dibatalkan</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-1.5 flex-wrap mb-2">
+                        <span class="badge bg-blue-lt" style="font-size: 0.68rem;">
+                            {{ \App\Models\GtkDecree::TYPES[$decree->type] ?? $decree->type }}
+                        </span>
+                        <span class="badge bg-light text-dark border" style="font-size: 0.68rem;">
+                            {{ $decree->academicYear?->name ?? $decree->academic_year ?? '-' }}
+                        </span>
+                        <span class="badge bg-secondary-lt" style="font-size: 0.68rem;">
+                            <i class="ti ti-users me-0.5"></i> {{ $decree->recipients_count }} GTK
+                        </span>
+                        <span class="badge bg-azure-lt" style="font-size: 0.68rem;">
+                            <i class="ti ti-list-check me-0.5"></i> {{ $decree->details_count }} Butir
+                        </span>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between text-muted small pt-2 border-top" style="font-size: 0.72rem;">
+                        <div>
+                            TMT: <strong class="text-dark">{{ $decree->tmt_date ? $decree->tmt_date->format('d/m/Y') : '-' }}</strong>
+                        </div>
+                        @if($decree->file_path && $decree->hasPrivateDocument())
+                            <a href="{{ route('gtk-decrees.document', ['gtkDecree' => $decree, 'preview' => 1]) }}" target="_blank" class="text-danger fw-bold text-decoration-none">
+                                <i class="ti ti-file-text me-0.5"></i> Lihat PDF
+                            </a>
+                        @endif
+                    </div>
+                </div>
+                <div class="card-footer bg-light p-2 d-flex gap-1.5 justify-content-end border-top">
+                    <a href="{{ route('gtk-decrees.show', $decree) }}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+                        <i class="ti ti-eye me-1"></i> Detail
+                    </a>
+                    @if($decree->file_path && $decree->hasPrivateDocument())
+                        <a href="{{ route('gtk-decrees.document', $decree) }}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5">
+                            <i class="ti ti-download me-0.5"></i> Unduh
+                        </a>
+                    @endif
+                    @if($decree->status === \App\Models\GtkDecree::STATUS_DRAFT && (auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']) || auth()->user()->hasPermission('manage_master_data') || auth()->user()->hasPermission('manage_teachers') || auth()->user()->hasPermission('operate_tu')))
+                        <a href="{{ route('gtk-decrees.edit', $decree) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-2">
+                            <i class="ti ti-edit"></i>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="text-center py-4 text-muted">
+                <i class="ti ti-file-off fs-1 d-block mb-2 text-secondary"></i>
+                <div class="fw-bold">Tidak ada dokumen SK GTK yang ditemukan.</div>
+            </div>
+        @endforelse
     </div>
 
     @if($decrees->hasPages())

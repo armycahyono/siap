@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GtkDecree;
 use App\Models\LessonSchedule;
 use App\Models\SchoolSetting;
 use App\Models\User;
@@ -86,11 +87,41 @@ class AuthController extends Controller
             $userSubjects = collect(explode(',', $user->subject))->map(fn ($s) => trim($s))->filter()->values();
         }
 
+        // Dokumen SK GTK aktif yang menaungi GTK ini
+        $activeDecrees = $user->gtkDecrees()
+            ->where('status', GtkDecree::STATUS_ACTIVE)
+            ->latest('tmt_date')
+            ->take(5)
+            ->get();
+
+        // Penugasan struktural aktif
+        $activeStructuralPositions = $user->structuralAssignments()
+            ->with('structuralPosition')
+            ->where('is_active', true)
+            ->get();
+
+        // Kelas perwalian aktif
+        $activeHomeroom = $user->homeroomClassrooms()
+            ->where('is_active', true)
+            ->get();
+
         if (DeviceDetector::isMobile()) {
-            return view('mobile.profile', compact('user', 'userSubjects'));
+            return view('mobile.profile', compact(
+                'user',
+                'userSubjects',
+                'activeDecrees',
+                'activeStructuralPositions',
+                'activeHomeroom'
+            ));
         }
 
-        return view('web.profile', compact('user', 'userSubjects'));
+        return view('web.profile', compact(
+            'user',
+            'userSubjects',
+            'activeDecrees',
+            'activeStructuralPositions',
+            'activeHomeroom'
+        ));
     }
 
     public function editProfile(): View

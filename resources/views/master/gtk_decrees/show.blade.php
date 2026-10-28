@@ -298,7 +298,7 @@
                     @endif
                 </div>
 
-                <div class="table-responsive">
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-vcenter table-hover card-table">
                         <thead>
                             <tr class="bg-light text-muted small text-uppercase">
@@ -372,6 +372,42 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{-- Card-Stack View untuk Layar Smartphone (< 768px) --}}
+                <div class="d-md-none">
+                    @forelse($gtkDecree->recipients as $recipient)
+                        <div class="card mb-2 border rounded-3 p-3 shadow-none" style="background: #ffffff; border-color: #e2e8f0 !important;">
+                            <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+                                <div>
+                                    <div class="fw-bold text-dark small" style="font-size: 0.85rem;">{{ $recipient->user?->name }}</div>
+                                    <div class="text-muted text-xs">{{ $recipient->user?->formatted_id ?: '-' }} &bull; {{ $recipient->user?->role?->name ?? 'GTK' }}</div>
+                                </div>
+                                @if($canManage && $gtkDecree->status === \App\Models\GtkDecree::STATUS_DRAFT)
+                                    <form action="{{ route('gtk-decrees.recipients.destroy', ['gtkDecree' => $gtkDecree, 'recipient' => $recipient]) }}" method="POST" onsubmit="return confirm('Hapus {{ $recipient->user?->name }} dari daftar penerima SK?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-icon btn-outline-danger" title="Hapus">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between pt-1 border-top mt-1">
+                                <span class="badge bg-azure-lt" style="font-size: 0.68rem;">
+                                    <i class="ti ti-list-check me-0.5"></i> {{ $recipient->details->count() }} Butir Tugas
+                                </span>
+                                @if($recipient->notes)
+                                    <span class="text-muted text-xs text-truncate" style="max-width: 150px;">{{ $recipient->notes }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-center py-4 text-muted">
+                            <i class="ti ti-users fs-2 d-block mb-1 text-secondary"></i>
+                            <div class="fw-bold small">Belum Ada Penerima GTK</div>
+                        </div>
+                    @endforelse
+                </div>
             </div>
         </div>
 
@@ -395,7 +431,7 @@
                     @endif
                 </div>
 
-                <div class="table-responsive">
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-vcenter table-hover card-table">
                         <thead>
                             <tr class="bg-light text-muted small text-uppercase">
@@ -502,6 +538,74 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+
+                {{-- Card-Stack View untuk Layar Smartphone (< 768px) --}}
+                <div class="d-md-none">
+                    @forelse($gtkDecree->details as $detail)
+                        <div class="card mb-2 border rounded-3 p-3 shadow-none" style="background: #ffffff; border-color: #e2e8f0 !important;">
+                            <div class="d-flex align-items-start justify-content-between gap-2 mb-1.5">
+                                <div>
+                                    <div class="fw-bold text-dark small" style="font-size: 0.85rem;">{{ $detail->user?->name }}</div>
+                                    <span class="badge bg-blue-lt" style="font-size: 0.65rem;">
+                                        {{ \App\Models\GtkDecreeDetail::CATEGORIES[$detail->assignment_category] ?? $detail->assignment_category }}
+                                    </span>
+                                </div>
+                                <div class="text-end">
+                                    @if($detail->implementation_status === \App\Models\GtkDecreeDetail::STATUS_APPLIED)
+                                        <span class="badge bg-success text-white" style="font-size: 0.62rem;">Terap</span>
+                                    @elseif($detail->implementation_status === \App\Models\GtkDecreeDetail::STATUS_CONFLICT)
+                                        <span class="badge bg-danger text-white" style="font-size: 0.62rem;">Konflik</span>
+                                    @elseif($detail->implementation_status === \App\Models\GtkDecreeDetail::STATUS_SKIPPED)
+                                        <span class="badge bg-secondary text-white" style="font-size: 0.62rem;">Arsip</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark" style="font-size: 0.62rem;">Menunggu</span>
+                                    @endif
+
+                                    @if($canManage && $gtkDecree->status === \App\Models\GtkDecree::STATUS_DRAFT)
+                                        <form action="{{ route('gtk-decrees.details.destroy', ['gtkDecree' => $gtkDecree, 'detail' => $detail]) }}" method="POST" onsubmit="return confirm('Hapus butir ini?');" class="d-inline ms-1">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-icon btn-outline-danger p-1" style="line-height: 1;" title="Hapus">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="small fw-semibold text-dark mb-1" style="font-size: 0.78rem;">
+                                @if($detail->assignment_category === \App\Models\GtkDecreeDetail::CATEGORY_MENGAJAR)
+                                    <i class="ti ti-book me-1 text-primary"></i> {{ $detail->subject?->name ?? '-' }}
+                                @elseif(in_array($detail->assignment_category, [\App\Models\GtkDecreeDetail::CATEGORY_STRUKTURAL, \App\Models\GtkDecreeDetail::CATEGORY_OPERASIONAL]))
+                                    <i class="ti ti-briefcase me-1 text-indigo"></i> {{ $detail->structuralPosition?->name ?? '-' }}
+                                @elseif($detail->assignment_category === \App\Models\GtkDecreeDetail::CATEGORY_PERAN_SISTEM)
+                                    <i class="ti ti-shield-lock me-1 text-teal"></i> {{ $detail->role?->name ?? '-' }}
+                                @else
+                                    <i class="ti ti-pin me-1 text-warning"></i> {{ $detail->notes ?: 'Arsip Resmi' }}
+                                @endif
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between text-muted text-xs pt-1.5 border-top">
+                                <div>
+                                    @if($detail->classroom)
+                                        <span class="me-2"><i class="ti ti-door me-0.5"></i>{{ $detail->classroom->name }}</span>
+                                    @endif
+                                    @if($detail->teaching_hours)
+                                        <span><i class="ti ti-clock me-0.5"></i>{{ $detail->teaching_hours }} Jam/Mg</span>
+                                    @endif
+                                </div>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.6rem;">
+                                    {{ \App\Models\GtkDecreeDetail::LINK_TYPES[$detail->link_type] ?? $detail->link_type }}
+                                </span>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-center py-4 text-muted">
+                            <i class="ti ti-list-check fs-2 d-block mb-1 text-secondary"></i>
+                            <div class="fw-bold small">Belum Ada Rincian Butir Keputusan</div>
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>

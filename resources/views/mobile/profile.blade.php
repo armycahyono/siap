@@ -177,6 +177,76 @@
 </div>
 
 <!-- =========================================================================
+     2B. KARTU PENUGASAN & SK GTK RESMI
+     ========================================================================= -->
+@php
+    $activeDecreesList = $activeDecrees ?? collect();
+    $activeStructuralList = $activeStructuralPositions ?? collect();
+    $activeHomeroomList = $activeHomeroom ?? collect();
+@endphp
+<div class="card border-0 shadow-sm rounded-3 mb-2.5 bg-white" style="border: 1.5px solid #cbd5e1 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2 pb-1.5 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm rounded-circle flex-shrink-0 text-white" style="width: 28px; height: 28px; background: #4f46e5;">
+                    <i class="ti ti-certificate fs-3"></i>
+                </span>
+                <span class="fw-bold text-dark small" style="font-size: 0.82rem;">Penugasan &amp; Dokumen SK</span>
+            </div>
+            <a href="{{ route('gtk-decrees.index') }}" class="small text-decoration-none fw-semibold external" style="font-size: 0.7rem; color: #4f46e5;">
+                Semua SK <i class="ti ti-chevron-right"></i>
+            </a>
+        </div>
+
+        {{-- Tugas Tambahan / Struktural & Wali Kelas --}}
+        @if($activeHomeroomList->isNotEmpty() || $activeStructuralList->isNotEmpty())
+            <div class="mb-2 p-2 rounded-2" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <div class="text-muted small fw-semibold mb-1" style="font-size: 0.68rem;">Tugas Tambahan / Peran:</div>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach($activeHomeroomList as $homeroom)
+                        <span class="badge bg-success-lt text-success fw-bold" style="font-size: 0.65rem; padding: 2px 6px;">
+                            <i class="ti ti-school me-0.5"></i> Wali Kelas {{ $homeroom->name }}
+                        </span>
+                    @endforeach
+                    @foreach($activeStructuralList as $stPos)
+                        <span class="badge bg-indigo-lt text-indigo fw-bold" style="font-size: 0.65rem; padding: 2px 6px;">
+                            <i class="ti ti-briefcase me-0.5"></i> {{ $stPos->structuralPosition?->name ?? 'Jabatan' }}
+                        </span>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        {{-- Daftar Berkas SK Aktif --}}
+        @if($activeDecreesList->isNotEmpty())
+            <div class="d-flex flex-column gap-1.5">
+                @foreach($activeDecreesList as $decree)
+                    <div class="p-2 rounded-2 border d-flex align-items-center justify-content-between gap-2" style="background: #ffffff; border-color: #f1f5f9 !important;">
+                        <div class="min-w-0 flex-fill">
+                            <div class="fw-bold text-dark text-truncate" style="font-size: 0.74rem;">
+                                {{ $decree->number }}
+                            </div>
+                            <div class="text-muted text-truncate" style="font-size: 0.66rem;">
+                                {{ $decree->title }} &bull; {{ $decree->tmt_date ? $decree->tmt_date->format('d/m/Y') : '' }}
+                            </div>
+                        </div>
+                        @if($decree->file_path && $decree->hasPrivateDocument())
+                            <a href="{{ route('gtk-decrees.document', $decree) }}" class="btn btn-sm btn-outline-primary rounded-pill py-1 px-2.5 fw-bold text-decoration-none external flex-shrink-0 d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;">
+                                <i class="ti ti-download fs-4"></i> PDF
+                            </a>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="text-center py-2 text-muted" style="font-size: 0.72rem;">
+                <i class="ti ti-info-circle me-1"></i> Belum ada dokumen SK tersinkronisasi.
+            </div>
+        @endif
+    </div>
+</div>
+
+<!-- =========================================================================
      3. TIGA TOMBOL AKSI SEJAJAR SATU BARIS: [Edit Data] [Ganti Sandi] [Keluar Akun]
      ========================================================================= -->
 <div style="display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; width: 100% !important; margin-bottom: 1rem !important;">
