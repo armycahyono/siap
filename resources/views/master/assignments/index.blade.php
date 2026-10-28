@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Penugasan Guru - Sistem Supervisi')
+@section('title', 'Penugasan GTK - Guru & Tenaga Kependidikan')
 
 @section('content')
 <!-- Page Header (Model 2: Hero Context Banner) -->
 @include('layouts._hero_header', [
-    'title' => 'Penugasan Guru & Jabatan Struktural',
-    'subtitle' => 'Kelola penugasan guru sebagai Wali Kelas, Pengampu Mata Pelajaran, Tim Supervisor, serta Pejabat Struktural Sekolah.',
+    'title' => 'Penugasan GTK (Guru & Tenaga Kependidikan)',
+    'subtitle' => 'Kelola penugasan GTK terpadu: Pengampu Mata Pelajaran, Wali Kelas & BK, Jabatan Struktural, serta Tugas Operasional Sekolah.',
     'icon' => 'ti ti-briefcase',
     'category' => 'DATA POKOK & SDM',
     'academicYear' => $academicYear,
@@ -14,7 +14,7 @@
 
 @include('master.nav')
 
-<!-- Sub-Tab Navigasi Penugasan -->
+<!-- Sub-Tab Navigasi Penugasan GTK -->
 <div class="row mb-3">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
@@ -24,7 +24,7 @@
                         <a href="{{ route('teacher-assignments.index', ['tab' => 'mapel', 'academic_year' => $academicYear]) }}" 
                            class="nav-link {{ $tab === 'mapel' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
                             <i class="ti ti-notebook me-2 text-primary"></i>
-                            Mapel Diampu (Guru Pengampu)
+                            1. Mata Pelajaran
                             <span class="badge bg-primary-lt ms-2">{{ $assignments->total() }}</span>
                         </a>
                     </li>
@@ -32,26 +32,36 @@
                         <a href="{{ route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $academicYear]) }}" 
                            class="nav-link {{ $tab === 'walikelas' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
                             <i class="ti ti-user-star me-2 text-success"></i>
-                            Penugasan Wali Kelas
-                            <span class="badge bg-success-lt ms-2">{{ $classrooms->whereNotNull('homeroom_teacher_id')->count() }}/{{ $classrooms->count() }}</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => $academicYear]) }}" 
-                           class="nav-link {{ $tab === 'supervisor' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
-                            <i class="ti ti-shield-check me-2 text-warning"></i>
-                            Tim Supervisor Sekolah
-                            <span class="badge bg-warning-lt ms-2">{{ $supervisors->count() }}</span>
+                            2. Wali Kelas &amp; BK
+                            <span class="badge bg-success-lt ms-2">{{ $classrooms->whereNotNull('homeroom_teacher_id')->count() }}/{{ $classrooms->count() }} Kelas &bull; {{ $bkAssignments->count() }} BK</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ route('teacher-assignments.index', ['tab' => 'struktural', 'academic_year' => $academicYear]) }}" 
                            class="nav-link {{ $tab === 'struktural' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
                             <i class="ti ti-briefcase me-2 text-indigo"></i>
-                            Penugasan Struktural
+                            3. Struktural
                             <span class="badge bg-indigo-lt ms-2">{{ $structuralAssignments->total() }}</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('teacher-assignments.index', ['tab' => 'operasional', 'academic_year' => $academicYear]) }}" 
+                           class="nav-link {{ $tab === 'operasional' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
+                            <i class="ti ti-settings-cog me-2 text-azure"></i>
+                            4. Operasional
+                            <span class="badge bg-azure-lt ms-2">{{ $operationalAssignments->total() }}</span>
+                        </a>
+                    </li>
+                    @if($tab === 'supervisor')
+                    <li class="nav-item">
+                        <a href="{{ route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => $academicYear]) }}" 
+                           class="nav-link active fw-bold border-bottom-primary">
+                            <i class="ti ti-shield-check me-2 text-warning"></i>
+                            Tim Supervisor Sekolah
+                            <span class="badge bg-warning-lt ms-2">{{ $supervisors->count() }}</span>
+                        </a>
+                    </li>
+                    @endif
                 </ul>
             </div>
         </div>
@@ -676,6 +686,170 @@
     </div>
 </div>
 
+<!-- ======================= BAGIAN 2: PENUGASAN GURU BK ======================= -->
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h4 class="card-title fw-bold text-dark m-0">
+                <i class="ti ti-heart-handshake me-2 text-primary"></i>
+                Daftar Penugasan Guru BK (Bimbingan Konseling) — TP. {{ $academicYear }}
+            </h4>
+            <div class="text-muted small mt-1">
+                Guru BK dapat mendampingi satu atau beberapa rombel kelas secara fleksibel dan terisolasi dari wewenang Tim Kedisiplinan.
+            </div>
+        </div>
+        <div class="card-actions">
+            <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAssignBk">
+                <i class="ti ti-plus me-1"></i> Tugaskan Guru BK
+            </button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-hover">
+            <thead>
+                <tr class="text-muted small">
+                    <th class="w-1 text-center">No</th>
+                    <th>Nama Guru BK</th>
+                    <th>Rombel / Kelas Asuhan</th>
+                    <th>Nomor SK &amp; TMT</th>
+                    <th>Catatan</th>
+                    <th class="text-center" style="width: 100px;">Status</th>
+                    <th class="w-1 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($bkAssignments as $idx => $bk)
+                <tr>
+                    <td class="text-center text-muted fw-bold">{{ $idx + 1 }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="avatar avatar-sm bg-primary-lt text-primary rounded-circle me-2 fw-bold">
+                                {{ strtoupper(substr($bk->user?->name ?? 'B', 0, 1)) }}
+                            </span>
+                            <div>
+                                <div class="fw-bold text-dark">{{ $bk->user?->name ?? 'Guru BK' }}</div>
+                                <small class="text-muted">NIGS: {{ $bk->user?->nigs ?? '-' }} | NIP: {{ $bk->user?->nip ?? '-' }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        @if($bk->context_type && $bk->context)
+                            <span class="badge bg-teal-lt fs-5"><i class="ti ti-school me-1"></i> {{ $bk->context->name }}</span>
+                        @else
+                            <span class="badge bg-blue-lt fs-5"><i class="ti ti-world me-1"></i> Seluruh Rombel (Umum)</span>
+                        @endif
+                    </td>
+                    <td>
+                        <div class="small">
+                            @if($bk->sk_number)
+                                <div class="fw-semibold text-dark"><i class="ti ti-file-certificate me-1 text-primary"></i>{{ $bk->sk_number }}</div>
+                            @endif
+                            @if($bk->valid_from)
+                                <div class="text-muted"><i class="ti ti-calendar me-1"></i>TMT: {{ $bk->valid_from->format('d/m/Y') }}</div>
+                            @endif
+                            @if(!$bk->sk_number && !$bk->valid_from)
+                                <span class="text-muted">-</span>
+                            @endif
+                        </div>
+                    </td>
+                    <td>
+                        <small class="text-muted">{{ $bk->notes ?? '-' }}</small>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-success-lt">Aktif</span>
+                    </td>
+                    <td class="text-center">
+                        <form action="{{ route('teacher-assignments.destroy-bk', $bk) }}" method="POST" onsubmit="return confirm('Cabut penugasan BK untuk {{ $bk->user?->name }}?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Cabut Penugasan BK">
+                                <i class="ti ti-trash me-1"></i> Cabut
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">
+                        <i class="ti ti-mood-empty fs-1 mb-2 d-block text-secondary"></i>
+                        Belum ada penetapan Guru BK untuk TP. {{ $academicYear }}.
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Tambah Penugasan Guru BK -->
+<div class="modal fade" id="modalAssignBk" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('teacher-assignments.store-bk') }}" method="POST">
+                @csrf
+                <input type="hidden" name="academic_year" value="{{ $academicYear }}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ti ti-heart-handshake me-1 text-primary"></i> Tugaskan Guru BK (Bimbingan Konseling)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 px-3 small mb-3">
+                        <i class="ti ti-info-circle me-1"></i> Satu Guru BK dapat mendampingi beberapa kelas / rombel sekaligus.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label required fw-bold">Pilih Guru BK</label>
+                        <select name="teacher_id" class="form-select" required>
+                            <option value="">-- Pilih Guru --</option>
+                            @foreach($allTeachers as $t)
+                                <option value="{{ $t->id }}">
+                                    {{ $t->name }} ({{ $t->position ?? $t->role?->name ?? 'GTK' }}){{ $t->nip ? ' • NIP: ' . $t->nip : ($t->nigs ? ' • NIGS: ' . $t->nigs : '') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Pilih Rombel / Kelas Bimbingan</label>
+                        <select name="classroom_ids[]" class="form-select" multiple size="5">
+                            @foreach($classrooms as $cls)
+                                <option value="{{ $cls->id }}">{{ $cls->name }} ({{ $cls->department?->code ?? 'Umum' }})</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted d-block mt-1">
+                            <em>Tekan Ctrl (atau Cmd di Mac) untuk memilih lebih dari satu kelas. Biarkan kosong jika bertugas untuk <strong>Seluruh Rombel (Umum)</strong>.</em>
+                        </small>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nomor SK Penugasan</label>
+                            <input type="text" name="sk_number" class="form-control" placeholder="Contoh: 421.5/012/BK/2026">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tanggal SK / TMT</label>
+                            <input type="date" name="sk_date" class="form-control" value="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Catatan / Uraian Tugas (Opsional)</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Contoh: Guru BK Tingkat X dan Konselor Karir"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-check me-1"></i> Simpan Penugasan BK
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @elseif($tab === 'supervisor')
 <!-- ======================= TAB 3: TIM SUPERVISOR ======================= -->
 
@@ -1068,6 +1242,15 @@
                                         <i class="ti ti-calendar me-1"></i>TMT: {{ $asgn->sk_date->format('d/m/Y') }}
                                     </div>
                                 @endif
+                                @if($asgn->valid_until)
+                                    <div class="text-indigo fw-medium" style="font-size: 0.70rem;">
+                                        <i class="ti ti-calendar-time me-1"></i>Masa: s.d. {{ $asgn->valid_until->format('d/m/Y') }}
+                                    </div>
+                                @else
+                                    <div class="text-warning fw-medium" style="font-size: 0.70rem;" title="Tanggal akhir SK belum diisi. Penugasan hanya aktif pada tahun ajaran asal.">
+                                        <i class="ti ti-alert-triangle me-1"></i>Perlu Verifikasi Masa
+                                    </div>
+                                @endif
                                 @if($asgn->notes)
                                     <div class="text-secondary fst-italic" style="font-size: 0.70rem;" title="{{ $asgn->notes }}">
                                         <i class="ti ti-notes me-1"></i>{{ Str::limit($asgn->notes, 30) }}
@@ -1089,6 +1272,15 @@
                         </td>
                         <td class="text-center">
                             <span class="badge bg-success-lt">Aktif</span>
+                            @if($asgn->academic_year !== $academicYear)
+                                <div class="mt-1">
+                                    <span class="badge bg-purple-lt" style="font-size: 0.65rem;" title="SK Multi-Tahun asal {{ $asgn->academic_year }}">SK {{ $asgn->academic_year }}</span>
+                                </div>
+                            @elseif(!$asgn->valid_until)
+                                <div class="mt-1">
+                                    <span class="badge bg-warning-lt text-dark" style="font-size: 0.65rem;" title="Masa akhir SK belum diverifikasi definitif."><i class="ti ti-help me-1"></i> Belum Verifikasi Akhir</span>
+                                </div>
+                            @endif
                         </td>
                         <td class="text-center text-nowrap">
                             <div class="d-inline-flex align-items-center gap-1">
@@ -1106,12 +1298,21 @@
                                         <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalEditPos{{ $pos->id }}">
                                             <i class="ti ti-adjustments me-2 text-muted"></i> Edit Master Jabatan
                                         </button>
+                                        @if($asgn->is_active)
+                                            <div class="dropdown-divider"></div>
+                                            <form action="{{ route('teacher-assignments.deactivate-structural', $asgn) }}" method="POST" onsubmit="return confirm('Hentikan masa penugasan {{ $asgn->teacher?->name }} untuk jabatan {{ $pos->name }}? Riwayat SK dan data penugasan akan tetap tersimpan.');">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item text-warning">
+                                                    <i class="ti ti-calendar-off me-2"></i> Hentikan Masa Jabatan
+                                                </button>
+                                            </form>
+                                        @endif
                                         <div class="dropdown-divider"></div>
-                                        <form action="{{ route('teacher-assignments.destroy-structural', $asgn) }}" method="POST" onsubmit="return confirm('Cabut penugasan {{ $asgn->teacher?->name }} dari jabatan {{ $pos->name }}?');">
+                                        <form action="{{ route('teacher-assignments.destroy-structural', $asgn) }}" method="POST" onsubmit="return confirm('Hapus data penugasan {{ $asgn->teacher?->name }} dari jabatan {{ $pos->name }}? Data ini akan terhapus.');">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="dropdown-item text-danger">
-                                                <i class="ti ti-user-x me-2"></i> Cabut Penugasan Ini
+                                                <i class="ti ti-trash me-2"></i> Hapus Penugasan
                                             </button>
                                         </form>
                                     </div>
@@ -1166,6 +1367,15 @@
                                             <i class="ti ti-calendar me-1"></i>TMT: {{ $currentAsgn->sk_date->format('d/m/Y') }}
                                         </div>
                                     @endif
+                                    @if($currentAsgn->valid_until)
+                                        <div class="text-indigo fw-medium" style="font-size: 0.70rem;">
+                                            <i class="ti ti-calendar-time me-1"></i>Masa: s.d. {{ $currentAsgn->valid_until->format('d/m/Y') }}
+                                        </div>
+                                    @else
+                                        <div class="text-warning fw-medium" style="font-size: 0.70rem;" title="Tanggal akhir SK belum diisi. Penugasan hanya aktif pada tahun ajaran asal.">
+                                            <i class="ti ti-alert-triangle me-1"></i>Perlu Verifikasi Masa
+                                        </div>
+                                    @endif
                                     @if($currentAsgn->notes)
                                         <div class="text-secondary fst-italic" style="font-size: 0.70rem;" title="{{ $currentAsgn->notes }}">
                                             <i class="ti ti-notes me-1"></i>{{ Str::limit($currentAsgn->notes, 30) }}
@@ -1191,6 +1401,15 @@
                         <td class="text-center">
                             @if($currentAsgn)
                                 <span class="badge bg-success-lt">Aktif</span>
+                                @if($currentAsgn->academic_year !== $academicYear)
+                                    <div class="mt-1">
+                                        <span class="badge bg-purple-lt" style="font-size: 0.65rem;" title="SK Multi-Tahun asal {{ $currentAsgn->academic_year }}">SK {{ $currentAsgn->academic_year }}</span>
+                                    </div>
+                                @elseif(!$currentAsgn->valid_until)
+                                    <div class="mt-1">
+                                        <span class="badge bg-warning-lt text-dark" style="font-size: 0.65rem;" title="Masa akhir SK belum diverifikasi definitif."><i class="ti ti-help me-1"></i> Belum Verifikasi Akhir</span>
+                                    </div>
+                                @endif
                             @else
                                 <span class="badge bg-warning-lt">Kosong</span>
                             @endif
@@ -1215,12 +1434,21 @@
                                             <i class="ti ti-adjustments me-2 text-muted"></i> Edit Master Jabatan
                                         </button>
                                         @if($currentAsgn)
+                                            @if($currentAsgn->is_active)
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('teacher-assignments.deactivate-structural', $currentAsgn) }}" method="POST" onsubmit="return confirm('Hentikan masa penugasan {{ $currentAsgn->teacher?->name }} untuk jabatan {{ $pos->name }}? Riwayat SK dan data penugasan akan tetap tersimpan.');">
+                                                    @csrf
+                                                    <button type="submit" class="dropdown-item text-warning">
+                                                        <i class="ti ti-calendar-off me-2"></i> Hentikan Masa Jabatan
+                                                    </button>
+                                                </form>
+                                            @endif
                                             <div class="dropdown-divider"></div>
-                                            <form action="{{ route('teacher-assignments.destroy-structural', $currentAsgn) }}" method="POST" onsubmit="return confirm('Cabut penugasan {{ $currentAsgn->teacher?->name }} dari jabatan {{ $pos->name }}?');">
+                                            <form action="{{ route('teacher-assignments.destroy-structural', $currentAsgn) }}" method="POST" onsubmit="return confirm('Hapus data penugasan {{ $currentAsgn->teacher?->name }} dari jabatan {{ $pos->name }}? Data ini akan terhapus.');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="dropdown-item text-danger">
-                                                    <i class="ti ti-user-x me-2"></i> Cabut Penugasan
+                                                    <i class="ti ti-trash me-2"></i> Hapus Penugasan
                                                 </button>
                                             </form>
                                         @endif
@@ -1274,7 +1502,7 @@
                                             <option value="">-- Pilih Pegawai yang Ditugaskan --</option>
                                             @foreach($allTeachers as $at)
                                                 <option value="{{ $at->id }}">
-                                                    {{ $at->name }} {{ $at->nigs ? '(NIGS: ' . $at->nigs . ')' : '' }}
+                                                    {{ $at->name }} ({{ $at->position ?? $at->role?->name ?? 'GTK' }}){{ $at->nip ? ' • NIP: ' . $at->nip : ($at->nigs ? ' • NIGS: ' . $at->nigs : '') }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -1287,6 +1515,18 @@
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Tanggal SK / TMT</label>
                                             <input type="date" name="sk_date" class="form-control" value="{{ date('Y-m-d') }}">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">TMT Mulai Berlaku</label>
+                                            <input type="date" name="valid_from" class="form-control" value="{{ date('Y-m-d') }}">
+                                            <div class="form-text small text-muted">Default: tanggal SK</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Masa Berlaku Sampai (Opsional)</label>
+                                            <input type="date" name="valid_until" class="form-control">
+                                            <div class="form-text small text-muted">Saran master: {{ $pos->default_tenure_years ?? 1 }} tahun. Kosongkan jika belum diketahui / SK tahunan.</div>
                                         </div>
                                     </div>
                                     <div class="mb-3">
@@ -1328,7 +1568,7 @@
                                         <select name="teacher_id" class="form-select" required>
                                             @foreach($allTeachers as $at)
                                                 <option value="{{ $at->id }}" {{ ($asgn->teacher_id == $at->id) ? 'selected' : '' }}>
-                                                    {{ $at->name }} {{ $at->nigs ? '(NIGS: ' . $at->nigs . ')' : '' }}
+                                                    {{ $at->name }} ({{ $at->position ?? $at->role?->name ?? 'GTK' }}){{ $at->nip ? ' • NIP: ' . $at->nip : ($at->nigs ? ' • NIGS: ' . $at->nigs : '') }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -1341,6 +1581,18 @@
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold">Tanggal SK / TMT</label>
                                             <input type="date" name="sk_date" class="form-control" value="{{ old('sk_date', $asgn->sk_date ? $asgn->sk_date->format('Y-m-d') : date('Y-m-d')) }}">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">TMT Mulai Berlaku</label>
+                                            <input type="date" name="valid_from" class="form-control" value="{{ old('valid_from', $asgn->valid_from ? $asgn->valid_from->format('Y-m-d') : ($asgn->sk_date ? $asgn->sk_date->format('Y-m-d') : date('Y-m-d'))) }}">
+                                            <div class="form-text small text-muted">Default: tanggal SK</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Masa Berlaku Sampai (Opsional)</label>
+                                            <input type="date" name="valid_until" class="form-control" value="{{ old('valid_until', $asgn->valid_until ? $asgn->valid_until->format('Y-m-d') : '') }}">
+                                            <div class="form-text small text-muted">Saran master: {{ $pos->default_tenure_years ?? 1 }} tahun. Kosongkan jika belum diketahui / SK tahunan.</div>
                                         </div>
                                     </div>
                                     <div class="mb-3">
@@ -1486,6 +1738,7 @@
         <div class="modal-content">
             <form action="{{ route('structural-positions.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
+                <input type="hidden" name="type" value="struktural">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold"><i class="ti ti-plus me-1 text-primary"></i> Tambah Master Jabatan Struktural</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1588,7 +1841,7 @@
                         <label class="form-label required fw-bold">Pilih Jabatan Struktural</label>
                         <select name="structural_position_id" id="selectStructuralPosition" class="form-select" required>
                             <option value="">-- Pilih Jabatan Struktural --</option>
-                            @foreach($structuralPositions as $sp)
+                            @foreach($structuralPositionChoices as $sp)
                                 @php
                                     $spCurrentAsgn = $sp->activeAssignments->first();
                                 @endphp
@@ -1611,7 +1864,7 @@
                             <option value="">-- Pilih Guru yang Ditugaskan --</option>
                             @foreach($allTeachers as $at)
                                 <option value="{{ $at->id }}" {{ $teacherId == $at->id ? 'selected' : '' }}>
-                                    {{ $at->name }} {{ $at->nigs ? '(NIGS: ' . $at->nigs . ')' : '' }}
+                                    {{ $at->name }} ({{ $at->position ?? $at->role?->name ?? 'GTK' }}){{ $at->nip ? ' • NIP: ' . $at->nip : ($at->nigs ? ' • NIGS: ' . $at->nigs : '') }}
                                 </option>
                             @endforeach
                         </select>
@@ -1625,6 +1878,19 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Tanggal SK / TMT</label>
                             <input type="date" name="sk_date" class="form-control" value="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">TMT Mulai Berlaku</label>
+                            <input type="date" name="valid_from" class="form-control" value="{{ date('Y-m-d') }}">
+                            <div class="form-text small text-muted">Default: tanggal SK</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Masa Berlaku Sampai (Opsional)</label>
+                            <input type="date" name="valid_until" class="form-control">
+                            <div class="form-text small text-muted">Saran master: jabatan terkait. Kosongkan jika belum diketahui / SK tahunan.</div>
                         </div>
                     </div>
 
@@ -1696,11 +1962,822 @@
         </form>
     </div>
 </div>
+
+@elseif($tab === 'operasional')
+<!-- ======================= TAB 4: PENUGASAN OPERASIONAL ======================= -->
+
+<!-- Card Info & Filter -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body p-3">
+        <form action="{{ route('teacher-assignments.index') }}" method="GET" class="row g-2 align-items-end">
+            <input type="hidden" name="tab" value="operasional">
+            
+            <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Tahun Ajaran</label>
+                <select name="academic_year" class="form-select" onchange="this.form.submit()">
+                    <option value="{{ $academicYear }}">{{ $academicYear }} (Aktif)</option>
+                    <option value="2025/2026" {{ $academicYear === '2025/2026' ? 'selected' : '' }}>2025/2026</option>
+                    <option value="2026/2027" {{ $academicYear === '2026/2027' ? 'selected' : '' }}>2026/2027</option>
+                    <option value="2027/2028" {{ $academicYear === '2027/2028' ? 'selected' : '' }}>2027/2028</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Filter Kategori</label>
+                <select name="category" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Semua Kategori --</option>
+                    @foreach($operationalCategories as $cat)
+                        <option value="{{ $cat }}" {{ ($category ?? '') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">Cari Tugas / GTK / SK</label>
+                <div class="input-icon">
+                    <span class="input-icon-addon"><i class="ti ti-search"></i></span>
+                    <input type="text" name="search" class="form-control" placeholder="Cari nama tugas, GTK, kode, SK..." value="{{ $search }}">
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1 d-none d-md-block">&nbsp;</label>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ti ti-filter me-1"></i> Filter
+                    </button>
+                    @if($search || $positionId || $teacherId || !empty($category))
+                        <a href="{{ route('teacher-assignments.index', ['tab' => 'operasional', 'academic_year' => $academicYear]) }}" class="btn btn-icon btn-outline-secondary" title="Reset Filter">
+                            <i class="ti ti-rotate-2"></i>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card Penugasan Operasional -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <div>
+            <h4 class="card-title fw-bold text-dark m-0">
+                <i class="ti ti-settings-cog me-2 text-azure"></i>
+                Daftar Tugas &amp; Penugasan Operasional (TP. {{ $academicYear }})
+            </h4>
+            <div class="text-muted small mt-1">
+                Kelola penugasan operasional sekolah (seperti Tim Kedisiplinan, Operator Sistem, Laboran, Toolman, Petugas Perpustakaan, dsb).
+            </div>
+        </div>
+        <div class="card-actions d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCreateOperationalPosition">
+                <i class="ti ti-plus me-1"></i> Tambah Master Tugas
+            </button>
+            <button type="button" class="btn btn-sm btn-azure" data-bs-toggle="modal" data-bs-target="#modalAssignOperational">
+                <i class="ti ti-user-plus me-1"></i> Tugaskan Personil Operasional
+            </button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table table-hover">
+            <thead>
+                <tr class="text-muted small">
+                    <th style="width: 50px;" class="text-center">No</th>
+                    <th>Nama Tugas Operasional</th>
+                    <th style="width: 110px;">Kode</th>
+                    <th style="width: 100px;">Cakupan</th>
+                    <th>GTK yang Ditugaskan</th>
+                    <th>Nomor SK &amp; TMT</th>
+                    <th class="text-center" style="width: 90px;">Status</th>
+                    <th class="w-1 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php
+                    $opRowNo = $operationalAssignments->firstItem();
+                @endphp
+                @forelse($operationalAssignments as $posIndex => $pos)
+                @php
+                    $isMultiple = (bool) $pos->allows_multiple;
+                    $activeCount = $pos->activeAssignments->count();
+                @endphp
+
+                @if($isMultiple && $activeCount > 0)
+                    {{-- JAMAK: Render 1 baris per personil penugasan --}}
+                    @foreach($pos->activeAssignments as $asgnIndex => $asgn)
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ $opRowNo++ }}</td>
+                        <td>
+                            <div class="fw-bold text-dark fs-3">{{ $pos->name }}</div>
+                            @if($pos->description)
+                                <div class="text-muted small">{{ $pos->description }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="badge bg-blue-lt fw-bold font-monospace">{{ $pos->code ?? '-' }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-lt">{{ $pos->scope_label }}</span>
+                        </td>
+                        <td>
+                            @if($asgn->teacher)
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-xs bg-azure-lt rounded-circle me-2 fw-bold" style="font-size: 0.70rem;">
+                                        {{ strtoupper(substr($asgn->teacher->name, 0, 1)) }}
+                                    </span>
+                                    <div>
+                                        <div class="fw-bold text-dark small">{{ $asgn->teacher->name }}</div>
+                                        <div class="text-muted" style="font-size: 0.70rem;">
+                                            NIGS: {{ $asgn->teacher->nigs ?? '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <span class="text-muted small fst-italic">Data personil tidak ditemukan</span>
+                            @endif
+                        </td>
+                        <td>
+                            <div class="small">
+                                @if($asgn->sk_number)
+                                    <div class="fw-semibold text-dark text-nowrap" style="font-size: 0.75rem;">
+                                        <i class="ti ti-file-certificate me-1 text-primary"></i>{{ $asgn->sk_number }}
+                                    </div>
+                                @endif
+                                @if($asgn->sk_date)
+                                    <div class="text-muted" style="font-size: 0.70rem;">
+                                        <i class="ti ti-calendar me-1"></i>TMT: {{ $asgn->sk_date->format('d/m/Y') }}
+                                    </div>
+                                @endif
+                                @if($asgn->valid_until)
+                                    <div class="text-indigo fw-medium" style="font-size: 0.70rem;">
+                                        <i class="ti ti-calendar-time me-1"></i>Masa: s.d. {{ $asgn->valid_until->format('d/m/Y') }}
+                                    </div>
+                                @else
+                                    <div class="text-warning fw-medium" style="font-size: 0.70rem;" title="Tanggal akhir SK belum diisi. Penugasan hanya aktif pada tahun ajaran asal.">
+                                        <i class="ti ti-alert-triangle me-1"></i>Perlu Verifikasi Masa
+                                    </div>
+                                @endif
+                                @if($asgn->notes)
+                                    <div class="text-secondary fst-italic" style="font-size: 0.70rem;" title="{{ $asgn->notes }}">
+                                        <i class="ti ti-notes me-1"></i>{{ Str::limit($asgn->notes, 30) }}
+                                    </div>
+                                @endif
+                                @if(!$asgn->sk_number && !$asgn->sk_date && !$asgn->notes)
+                                    <span class="text-muted" style="font-size: 0.70rem;">-</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-success-lt">Aktif</span>
+                            @if($asgn->academic_year !== $academicYear)
+                                <div class="mt-1">
+                                    <span class="badge bg-purple-lt" style="font-size: 0.65rem;" title="SK Multi-Tahun asal {{ $asgn->academic_year }}">SK {{ $asgn->academic_year }}</span>
+                                </div>
+                            @elseif(!$asgn->valid_until)
+                                <div class="mt-1">
+                                    <span class="badge bg-warning-lt text-dark" style="font-size: 0.65rem;" title="Masa akhir SK belum diverifikasi definitif."><i class="ti ti-help me-1"></i> Belum Verifikasi Akhir</span>
+                                </div>
+                            @endif
+                        </td>
+                        <td class="text-center text-nowrap">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditOpAsgn{{ $asgn->id }}" title="Ubah SK / Ganti Personil Ini">
+                                    <i class="ti ti-edit me-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAddPersonilOpPos{{ $pos->id }}" title="Tambah Personil Baru untuk {{ $pos->name }}">
+                                    <i class="ti ti-plus"></i>
+                                </button>
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-light btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalEditOpPos{{ $pos->id }}">
+                                            <i class="ti ti-adjustments me-2 text-muted"></i> Edit Master Tugas
+                                        </button>
+                                        @if($asgn->is_active)
+                                            <div class="dropdown-divider"></div>
+                                            <form action="{{ route('teacher-assignments.deactivate-operational', $asgn) }}" method="POST" onsubmit="return confirm('Hentikan masa penugasan {{ $asgn->teacher?->name }} untuk tugas {{ $pos->name }}? Riwayat SK dan data penugasan akan tetap tersimpan.');">
+                                                @csrf
+                                                <button type="submit" class="dropdown-item text-warning">
+                                                    <i class="ti ti-calendar-off me-2"></i> Hentikan Masa Penugasan
+                                                </button>
+                                            </form>
+                                        @endif
+                                        <div class="dropdown-divider"></div>
+                                        <form action="{{ route('teacher-assignments.destroy-operational', $asgn) }}" method="POST" onsubmit="return confirm('Hapus data penugasan {{ $asgn->teacher?->name }} dari tugas {{ $pos->name }}? Data ini akan terhapus.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="ti ti-trash me-2"></i> Hapus Penugasan
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                @else
+                    {{-- TUNGGAL atau JAMAK BELUM TERISI: Render 1 baris --}}
+                    @php
+                        $currentOpAsgn = $pos->activeAssignments->first();
+                    @endphp
+                    <tr>
+                        <td class="text-center text-muted fw-bold">{{ $opRowNo++ }}</td>
+                        <td>
+                            <div class="fw-bold text-dark fs-3">{{ $pos->name }}</div>
+                            @if($pos->description)
+                                <div class="text-muted small">{{ $pos->description }}</div>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="badge bg-blue-lt fw-bold font-monospace">{{ $pos->code ?? '-' }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-lt">{{ $pos->scope_label }}</span>
+                        </td>
+                        <td>
+                            @if($currentOpAsgn && $currentOpAsgn->teacher)
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-xs bg-azure-lt rounded-circle me-2 fw-bold" style="font-size: 0.70rem;">
+                                        {{ strtoupper(substr($currentOpAsgn->teacher->name, 0, 1)) }}
+                                    </span>
+                                    <div>
+                                        <div class="fw-bold text-dark small">{{ $currentOpAsgn->teacher->name }}</div>
+                                        <div class="text-muted" style="font-size: 0.70rem;">
+                                            NIGS: {{ $currentOpAsgn->teacher->nigs ?? '-' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <span class="badge bg-warning-lt text-warning fw-bold py-1 px-2">
+                                    <i class="ti ti-alert-triangle me-1"></i> Belum Ditetapkan
+                                </span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($currentOpAsgn)
+                                <div class="small">
+                                    @if($currentOpAsgn->sk_number)
+                                        <div class="fw-semibold text-dark text-nowrap" style="font-size: 0.75rem;">
+                                            <i class="ti ti-file-certificate me-1 text-primary"></i>{{ $currentOpAsgn->sk_number }}
+                                        </div>
+                                    @endif
+                                    @if($currentOpAsgn->sk_date)
+                                        <div class="text-muted" style="font-size: 0.70rem;">
+                                            <i class="ti ti-calendar me-1"></i>TMT: {{ $currentOpAsgn->sk_date->format('d/m/Y') }}
+                                        </div>
+                                    @endif
+                                    @if($currentOpAsgn->valid_until)
+                                        <div class="text-indigo fw-medium" style="font-size: 0.70rem;">
+                                            <i class="ti ti-calendar-time me-1"></i>Masa: s.d. {{ $currentOpAsgn->valid_until->format('d/m/Y') }}
+                                        </div>
+                                    @else
+                                        <div class="text-warning fw-medium" style="font-size: 0.70rem;" title="Tanggal akhir SK belum diisi. Penugasan hanya aktif pada tahun ajaran asal.">
+                                            <i class="ti ti-alert-triangle me-1"></i>Perlu Verifikasi Masa
+                                        </div>
+                                    @endif
+                                    @if($currentOpAsgn->notes)
+                                        <div class="text-secondary fst-italic" style="font-size: 0.70rem;" title="{{ $currentOpAsgn->notes }}">
+                                            <i class="ti ti-notes me-1"></i>{{ Str::limit($currentOpAsgn->notes, 30) }}
+                                        </div>
+                                    @endif
+                                    @if(!$currentOpAsgn->sk_number && !$currentOpAsgn->sk_date && !$currentOpAsgn->notes)
+                                        <span class="text-muted" style="font-size: 0.70rem;">-</span>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-muted small">-</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            @if($currentOpAsgn)
+                                <span class="badge bg-success-lt">Aktif</span>
+                                @if($currentOpAsgn->academic_year !== $academicYear)
+                                    <div class="mt-1">
+                                        <span class="badge bg-purple-lt" style="font-size: 0.65rem;" title="SK Multi-Tahun asal {{ $currentOpAsgn->academic_year }}">SK {{ $currentOpAsgn->academic_year }}</span>
+                                    </div>
+                                @elseif(!$currentOpAsgn->valid_until)
+                                    <div class="mt-1">
+                                        <span class="badge bg-warning-lt text-dark" style="font-size: 0.65rem;" title="Masa akhir SK belum diverifikasi definitif."><i class="ti ti-help me-1"></i> Belum Verifikasi Akhir</span>
+                                    </div>
+                                @endif
+                            @else
+                                <span class="badge bg-warning-lt">Kosong</span>
+                            @endif
+                        </td>
+                        <td class="text-center text-nowrap">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                @if($currentOpAsgn)
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEditOpAsgn{{ $currentOpAsgn->id }}" title="Ubah SK / Ganti Personil">
+                                        <i class="ti ti-edit me-1"></i> Ganti Personil
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddPersonilOpPos{{ $pos->id }}" title="Tugaskan Personil">
+                                        <i class="ti ti-user-plus me-1"></i> Tugaskan
+                                    </button>
+                                @endif
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-light btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="ti ti-dots-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#modalEditOpPos{{ $pos->id }}">
+                                            <i class="ti ti-adjustments me-2 text-muted"></i> Edit Master Tugas
+                                        </button>
+                                        @if($currentOpAsgn)
+                                            @if($currentOpAsgn->is_active)
+                                                <div class="dropdown-divider"></div>
+                                                <form action="{{ route('teacher-assignments.deactivate-operational', $currentOpAsgn) }}" method="POST" onsubmit="return confirm('Hentikan masa penugasan {{ $currentOpAsgn->teacher?->name }} untuk tugas {{ $pos->name }}? Riwayat SK dan data penugasan akan tetap tersimpan.');">
+                                                    @csrf
+                                                    <button type="submit" class="dropdown-item text-warning">
+                                                        <i class="ti ti-calendar-off me-2"></i> Hentikan Masa Penugasan
+                                                    </button>
+                                                </form>
+                                            @endif
+                                            <div class="dropdown-divider"></div>
+                                            <form action="{{ route('teacher-assignments.destroy-operational', $currentOpAsgn) }}" method="POST" onsubmit="return confirm('Hapus data penugasan {{ $currentOpAsgn->teacher?->name }} dari tugas {{ $pos->name }}? Data ini akan terhapus.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="ti ti-trash me-2"></i> Hapus Penugasan
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                @endif
+
+                <!-- Modal Tambah / Ganti Personil Operasional untuk Posisi ini -->
+                @php
+                    $posCurrentOpAsgn = $pos->activeAssignments->first();
+                @endphp
+                <div class="modal fade" id="modalAddPersonilOpPos{{ $pos->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <form action="{{ route('teacher-assignments.store-operational') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="academic_year" value="{{ $academicYear }}">
+                                <input type="hidden" name="structural_position_id" value="{{ $pos->id }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="ti ti-settings-cog me-1 {{ $pos->allows_multiple ? 'text-teal' : ($posCurrentOpAsgn ? 'text-warning' : 'text-azure') }}"></i>
+                                        {{ $pos->allows_multiple ? 'Tambah Personil' : ($posCurrentOpAsgn ? 'Ganti Personil' : 'Tugaskan Personil') }}: {{ $pos->name }}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    @if(!$pos->allows_multiple)
+                                        @if($posCurrentOpAsgn)
+                                            <div class="alert alert-warning py-2 px-3 mb-3 small">
+                                                <div class="fw-bold mb-1"><i class="ti ti-alert-triangle me-1"></i> Kapasitas Penugasan: Tunggal (hanya 1 orang)</div>
+                                                <div>Kode: <code>{{ $pos->code ?? '-' }}</code> &bull; Saat ini ditugaskan kepada: <strong>{{ $posCurrentOpAsgn->teacher?->name }}</strong> (NIGS: {{ $posCurrentOpAsgn->teacher?->nigs ?? '-' }}).</div>
+                                                <div class="text-danger mt-1"><i class="ti ti-info-circle me-1"></i> Menyimpan form ini akan <strong>menggantikan</strong> personil di atas (riwayat lama tetap tersimpan).</div>
+                                            </div>
+                                        @else
+                                            <div class="alert alert-info py-2 px-3 mb-3 small">
+                                                <i class="ti ti-info-circle me-1"></i> <strong>Kapasitas Penugasan: Tunggal (hanya 1 orang)</strong> &bull; Kode: <code>{{ $pos->code ?? '-' }}</code> (Belum ada personil aktif).
+                                            </div>
+                                        @endif
+                                    @else
+                                        <div class="alert alert-teal py-2 px-3 mb-3 small">
+                                            <i class="ti ti-users me-1 text-teal"></i> <strong>Kapasitas Penugasan: Jamak (bisa lebih 1 orang)</strong> &bull; Kode: <code>{{ $pos->code ?? '-' }}</code>. Penugasan baru akan ditambahkan ke <strong>baris baru</strong>.
+                                        </div>
+                                    @endif
+
+                                    <div class="mb-3">
+                                        <label class="form-label required fw-bold">Pilih Pegawai / Guru / Staf</label>
+                                        <select name="teacher_id" class="form-select" required>
+                                            <option value="">-- Pilih Personil yang Ditugaskan --</option>
+                                            @foreach($allTeachers as $at)
+                                                <option value="{{ $at->id }}">
+                                                    {{ $at->name }} ({{ $at->position ?? $at->role?->name ?? 'GTK' }}){{ $at->nip ? ' • NIP: ' . $at->nip : ($at->nigs ? ' • NIGS: ' . $at->nigs : '') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Nomor SK Penugasan</label>
+                                            <input type="text" name="sk_number" class="form-control" placeholder="Contoh: 421.5/028/SMK-PK/2026">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Tanggal SK / TMT</label>
+                                            <input type="date" name="sk_date" class="form-control" value="{{ date('Y-m-d') }}">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">TMT Mulai Berlaku</label>
+                                            <input type="date" name="valid_from" class="form-control" value="{{ date('Y-m-d') }}">
+                                            <div class="form-text small text-muted">Default: tanggal SK</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Masa Berlaku Sampai (Opsional)</label>
+                                            <input type="date" name="valid_until" class="form-control">
+                                            <div class="form-text small text-muted">Saran master: {{ $pos->default_tenure_years ?? 1 }} tahun. Kosongkan jika belum diketahui / SK tahunan.</div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Keterangan / Catatan Tambahan (Opsional)</label>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tugas pokok atau wewenang tambahan..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-check me-1"></i> {{ $posCurrentOpAsgn && !$pos->allows_multiple ? 'Ganti Personil' : 'Simpan Penugasan' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modals Edit untuk masing-masing penugasan personil operasional yang ada -->
+                @foreach($pos->activeAssignments as $asgn)
+                <div class="modal fade" id="modalEditOpAsgn{{ $asgn->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <form action="{{ route('teacher-assignments.store-operational') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="academic_year" value="{{ $academicYear }}">
+                                <input type="hidden" name="structural_position_id" value="{{ $pos->id }}">
+                                <input type="hidden" name="assignment_id" value="{{ $asgn->id }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="ti ti-settings-cog me-1 text-azure"></i>
+                                        Ubah Penugasan Operasional: {{ $pos->name }}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label required fw-bold">Pegawai / Guru / Staf</label>
+                                        <select name="teacher_id" class="form-select" required>
+                                            @foreach($allTeachers as $at)
+                                                <option value="{{ $at->id }}" {{ ($asgn->teacher_id == $at->id) ? 'selected' : '' }}>
+                                                    {{ $at->name }} ({{ $at->position ?? $at->role?->name ?? 'GTK' }}){{ $at->nip ? ' • NIP: ' . $at->nip : ($at->nigs ? ' • NIGS: ' . $at->nigs : '') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Nomor SK Penugasan</label>
+                                            <input type="text" name="sk_number" class="form-control" value="{{ old('sk_number', $asgn->sk_number) }}" placeholder="Contoh: 421.5/028/SMK-PK/2026">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Tanggal SK / TMT</label>
+                                            <input type="date" name="sk_date" class="form-control" value="{{ old('sk_date', $asgn->sk_date ? $asgn->sk_date->format('Y-m-d') : date('Y-m-d')) }}">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">TMT Mulai Berlaku</label>
+                                            <input type="date" name="valid_from" class="form-control" value="{{ old('valid_from', $asgn->valid_from ? $asgn->valid_from->format('Y-m-d') : ($asgn->sk_date ? $asgn->sk_date->format('Y-m-d') : date('Y-m-d'))) }}">
+                                            <div class="form-text small text-muted">Default: tanggal SK</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold">Masa Berlaku Sampai (Opsional)</label>
+                                            <input type="date" name="valid_until" class="form-control" value="{{ old('valid_until', $asgn->valid_until ? $asgn->valid_until->format('Y-m-d') : '') }}">
+                                            <div class="form-text small text-muted">Saran master: {{ $pos->default_tenure_years ?? 1 }} tahun. Kosongkan jika belum diketahui / SK tahunan.</div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Keterangan / Catatan Tambahan (Opsional)</label>
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tugas pokok atau wewenang tambahan...">{{ old('notes', $asgn->notes) }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ti ti-check me-1"></i> Perbarui Penugasan
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+
+                <!-- Modal Edit Master Tugas Operasional -->
+                <div class="modal fade" id="modalEditOpPos{{ $pos->id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <form action="{{ route('structural-positions.update', $pos) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">Edit Master Tugas: {{ $pos->name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label required">Nama Tugas</label>
+                                        <input type="text" name="name" class="form-control" value="{{ old('name', $pos->name) }}" required>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Kode Singkat</label>
+                                            <input type="text" name="code" class="form-control text-uppercase" value="{{ old('code', $pos->code) }}" placeholder="Contoh: TIM_KEDISIPLINAN">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Urutan</label>
+                                            <input type="number" name="order" class="form-control" value="{{ old('order', $pos->order) }}" min="0">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label required fw-bold">Kapasitas Penugasan</label>
+                                        <div class="row g-2">
+                                            <div class="col-sm-6">
+                                                <label class="form-selectgroup-item w-100">
+                                                    <input type="radio" name="allows_multiple" value="0" class="form-selectgroup-input" {{ empty($pos->allows_multiple) ? 'checked' : '' }}>
+                                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                                        <span class="me-2"><i class="ti ti-user text-indigo fs-2"></i></span>
+                                                        <span>
+                                                            <span class="fw-bold d-block text-dark">Tunggal (1 orang)</span>
+                                                            <span class="text-muted small">Input baru menggantikan</span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <label class="form-selectgroup-item w-100">
+                                                    <input type="radio" name="allows_multiple" value="1" class="form-selectgroup-input" {{ !empty($pos->allows_multiple) ? 'checked' : '' }}>
+                                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                                        <span class="me-2"><i class="ti ti-users text-teal fs-2"></i></span>
+                                                        <span>
+                                                            <span class="fw-bold d-block text-dark">Jamak (&gt; 1 orang)</span>
+                                                            <span class="text-muted small">Tambah personil baris baru</span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Cakupan Tugas</label>
+                                            <select name="scope_type" class="form-select">
+                                                @foreach(\App\Models\StructuralPosition::SCOPES as $skVal => $skLbl)
+                                                    <option value="{{ $skVal }}" {{ $pos->scope_type === $skVal ? 'selected' : '' }}>{{ $skLbl }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Masa Jabatan Default</label>
+                                            <select name="default_tenure_years" class="form-select">
+                                                @foreach(\App\Models\StructuralPosition::TENURE_OPTIONS as $tYr)
+                                                    <option value="{{ $tYr }}" {{ (int) $pos->default_tenure_years === $tYr ? 'selected' : '' }}>{{ $tYr }} Tahun</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Kategori</label>
+                                        <input type="text" name="category" class="form-control" value="{{ old('category', $pos->category) }}" placeholder="Contoh: Kesiswaan, Sarpras...">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Keterangan / Uraian Tugas</label>
+                                        <textarea name="description" class="form-control" rows="2" placeholder="Uraian singkat tupoksi...">{{ old('description', $pos->description) }}</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" name="is_active" value="1" {{ $pos->is_active ? 'checked' : '' }}>
+                                            <span class="form-check-label fw-bold">Status Tugas Aktif</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary ms-auto">Simpan Perubahan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="ti ti-settings-off fs-1 mb-2 d-block text-secondary"></i>
+                        Belum ada data tugas operasional yang sesuai kriteria.
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalCreateOperationalPosition">
+                                <i class="ti ti-plus me-1"></i> Tambah Master Tugas Operasional Pertama
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+    @if($operationalAssignments->hasPages())
+    <div class="card-footer d-flex align-items-center justify-content-between">
+        <div class="text-muted small">
+            Menampilkan {{ $operationalAssignments->firstItem() }} s/d {{ $operationalAssignments->lastItem() }} dari {{ $operationalAssignments->total() }} data
+        </div>
+        <div>
+            {{ $operationalAssignments->links() }}
+        </div>
+    </div>
+    @endif
+</div>
+
+<!-- Modal Tambah Master Tugas Operasional -->
+<div class="modal fade" id="modalCreateOperationalPosition" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('structural-positions.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="type" value="operasional">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="ti ti-plus me-1 text-primary"></i> Tambah Master Tugas Operasional</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Nama Tugas Operasional</label>
+                        <input type="text" name="name" class="form-control" placeholder="Contoh: Tim Kedisiplinan Siswa" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Kode Singkat</label>
+                            <input type="text" name="code" class="form-control text-uppercase" placeholder="Contoh: TIM_KEDISIPLINAN">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Urutan</label>
+                            <input type="number" name="order" class="form-control" value="{{ \App\Models\StructuralPosition::max('order') + 1 }}" min="0">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label required fw-bold">Kapasitas Penugasan</label>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="allows_multiple" value="0" class="form-selectgroup-input">
+                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                        <span class="me-2"><i class="ti ti-user text-indigo fs-2"></i></span>
+                                        <span>
+                                            <span class="fw-bold d-block text-dark">Tunggal (1 orang)</span>
+                                            <span class="text-muted small">Input baru menggantikan</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-selectgroup-item w-100">
+                                    <input type="radio" name="allows_multiple" value="1" class="form-selectgroup-input" checked>
+                                    <span class="form-selectgroup-label d-flex align-items-center p-2 text-start">
+                                        <span class="me-2"><i class="ti ti-users text-teal fs-2"></i></span>
+                                        <span>
+                                            <span class="fw-bold d-block text-dark">Jamak (&gt; 1 orang)</span>
+                                            <span class="text-muted small">Tambah personil baris baru</span>
+                                        </span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Cakupan Tugas</label>
+                            <select name="scope_type" class="form-select">
+                                @foreach(\App\Models\StructuralPosition::SCOPES as $skVal => $skLbl)
+                                    <option value="{{ $skVal }}">{{ $skLbl }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Masa Jabatan Default</label>
+                            <select name="default_tenure_years" class="form-select">
+                                @foreach(\App\Models\StructuralPosition::TENURE_OPTIONS as $tYr)
+                                    <option value="{{ $tYr }}" {{ $tYr === 1 ? 'selected' : '' }}>{{ $tYr }} Tahun</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kategori</label>
+                        <input type="text" name="category" class="form-control" placeholder="Contoh: Kesiswaan, Kepegawaian, Sarpras...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Keterangan / Uraian Tugas</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Uraian singkat tupoksi penugasan operasional..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" value="1" checked>
+                            <span class="form-check-label fw-bold">Status Tugas Aktif</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary ms-auto">Simpan Master Tugas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tambah Penugasan Operasional Bebas -->
+<div class="modal fade" id="modalAssignOperational" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('teacher-assignments.store-operational') }}" method="POST">
+                @csrf
+                <input type="hidden" name="academic_year" value="{{ $academicYear }}">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="ti ti-settings-cog me-1 text-azure"></i> Tambah Penugasan Operasional
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required fw-bold">Pilih Tugas Operasional</label>
+                        <select name="structural_position_id" id="selectOperationalPosition" class="form-select" required>
+                            <option value="">-- Pilih Tugas Operasional --</option>
+                            @foreach($operationalPositionChoices as $op)
+                                @php
+                                    $opCurrentAsgn = $op->activeAssignments->first();
+                                @endphp
+                                <option value="{{ $op->id }}" 
+                                    data-allows-multiple="{{ $op->allows_multiple ? '1' : '0' }}"
+                                    data-code="{{ $op->code ?? '-' }}"
+                                    data-current-name="{{ $opCurrentAsgn?->teacher?->name ?? '' }}"
+                                    data-current-nigs="{{ $opCurrentAsgn?->teacher?->nigs ? 'NIGS: ' . $opCurrentAsgn->teacher->nigs : '' }}"
+                                    {{ $positionId == $op->id ? 'selected' : '' }}>
+                                    {{ $op->name }} ({{ $op->category ?? 'Umum' }}) — [{{ $op->allows_multiple ? 'Jamak' : 'Tunggal' }}]
+                                </option>
+                            @endforeach
+                        </select>
+                        <div id="alertOperationalCapacity" class="mt-2 d-none"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label required fw-bold">Pilih Personil / GTK</label>
+                        <select name="teacher_id" class="form-select" required>
+                            <option value="">-- Pilih Pegawai yang Ditugaskan --</option>
+                            @foreach($allTeachers as $at)
+                                <option value="{{ $at->id }}" {{ $teacherId == $at->id ? 'selected' : '' }}>
+                                    {{ $at->name }} ({{ $at->position ?? $at->role?->name ?? 'GTK' }}){{ $at->nip ? ' • NIP: ' . $at->nip : ($at->nigs ? ' • NIGS: ' . $at->nigs : '') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nomor SK Penugasan</label>
+                            <input type="text" name="sk_number" class="form-control" placeholder="Contoh: 421.5/028/SMK-PK/2026">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tanggal SK / TMT</label>
+                            <input type="date" name="sk_date" class="form-control" value="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">TMT Mulai Berlaku</label>
+                            <input type="date" name="valid_from" class="form-control" value="{{ date('Y-m-d') }}">
+                            <div class="form-text small text-muted">Default: tanggal SK</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Masa Berlaku Sampai (Opsional)</label>
+                            <input type="date" name="valid_until" class="form-control">
+                            <div class="form-text small text-muted">Saran master: tugas terkait. Kosongkan jika belum diketahui / SK tahunan.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Keterangan / Catatan Tambahan (Opsional)</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Catatan tugas pokok atau wewenang tambahan..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-check me-1"></i> Simpan Penugasan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endif
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Structural Position Capacity Alert
     const posSelect = document.getElementById('selectStructuralPosition');
     const alertBox = document.getElementById('alertPositionCapacity');
 
@@ -1737,6 +2814,46 @@ document.addEventListener('DOMContentLoaded', function () {
         posSelect.addEventListener('change', updateCapacityAlert);
         if (posSelect.value) {
             updateCapacityAlert();
+        }
+    }
+
+    // Operational Position Capacity Alert
+    const opSelect = document.getElementById('selectOperationalPosition');
+    const opAlertBox = document.getElementById('alertOperationalCapacity');
+
+    if (opSelect && opAlertBox) {
+        function updateOpCapacityAlert() {
+            const opt = opSelect.options[opSelect.selectedIndex];
+            if (!opt || !opt.value) {
+                opAlertBox.className = 'mt-2 d-none';
+                opAlertBox.innerHTML = '';
+                return;
+            }
+
+            const allowsMultiple = opt.getAttribute('data-allows-multiple') === '1';
+            const code = opt.getAttribute('data-code') || '-';
+            const curName = opt.getAttribute('data-current-name');
+            const curNigs = opt.getAttribute('data-current-nigs');
+
+            if (!allowsMultiple) {
+                if (curName) {
+                    opAlertBox.className = 'mt-2 alert alert-warning py-2 px-3 small';
+                    opAlertBox.innerHTML = '<div class="fw-bold mb-1"><i class="ti ti-alert-triangle text-warning me-1"></i> Kapasitas Penugasan: Tunggal (hanya 1 orang)</div>' +
+                        '<div>Kode: <code>' + code + '</code> &bull; Saat ini ditugaskan kepada: <strong>' + curName + '</strong> ' + (curNigs ? '(' + curNigs + ')' : '') + '.</div>' +
+                        '<div class="text-danger mt-1"><i class="ti ti-info-circle me-1"></i> Menyimpan form ini akan <strong>menggantikan</strong> personil di atas.</div>';
+                } else {
+                    opAlertBox.className = 'mt-2 alert alert-info py-2 px-3 small';
+                    opAlertBox.innerHTML = '<div><i class="ti ti-info-circle me-1"></i> <strong>Kapasitas Penugasan: Tunggal (hanya 1 orang)</strong> &bull; Kode: <code>' + code + '</code> (Belum ada personil aktif).</div>';
+                }
+            } else {
+                opAlertBox.className = 'mt-2 alert alert-teal py-2 px-3 small';
+                opAlertBox.innerHTML = '<div><i class="ti ti-users me-1 text-teal"></i> <strong>Kapasitas Penugasan: Jamak (bisa lebih 1 orang)</strong> &bull; Kode: <code>' + code + '</code>. Penugasan baru akan ditambahkan ke <strong>baris baru</strong>.</div>';
+            }
+        }
+
+        opSelect.addEventListener('change', updateOpCapacityAlert);
+        if (opSelect.value) {
+            updateOpCapacityAlert();
         }
     }
 });

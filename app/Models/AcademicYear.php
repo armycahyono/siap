@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
 class AcademicYear extends Model
@@ -77,5 +78,10 @@ class AcademicYear extends Model
                 ]);
             }
         });
+    }
+
+    public function gtkDecrees(): HasMany
+    {
+        return $this->hasMany(GtkDecree::class);
     }
 }

@@ -36,18 +36,6 @@ class PiketIncidentController extends Controller
             abort(401);
         }
 
-        if (! method_exists($user, 'canViewPiketCases') || ! $user->canViewPiketCases()) {
-            abort(403, 'Anda tidak memiliki hak akses untuk melihat data kejadian siswa.');
-        }
-
-        $canManageAllCases = $user->canManagePiketCases()
-            || $user->isPrincipal()
-            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
-            || $user->hasPermission('operate_piket');
-
-        $isCounselingBK = method_exists($user, 'isCounselingBK') && $user->isCounselingBK();
-        $isHomeroomTeacher = method_exists($user, 'isHomeroomTeacher') && $user->isHomeroomTeacher();
-
         $academicYearContext = app(AcademicYearContext::class);
         try {
             $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
@@ -55,7 +43,21 @@ class PiketIncidentController extends Controller
             throw ValidationException::withMessages([
                 'academic_year' => $e->getMessage(),
             ]);
+        } catch (\Throwable) {
+            $academicYear = AcademicYear::getActive()?->name ?? SchoolSetting::getMasterYear();
         }
+
+        if (! method_exists($user, 'canViewPiketCases') || ! $user->canViewPiketCases($academicYear)) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat data kejadian siswa.');
+        }
+
+        $canManageAllCases = $user->canManagePiketCases($academicYear)
+            || $user->isPrincipal()
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
+            || $user->hasPermission('operate_piket', $academicYear);
+
+        $isCounselingBK = method_exists($user, 'isCounselingBK') && $user->isCounselingBK($academicYear);
+        $isHomeroomTeacher = method_exists($user, 'isHomeroomTeacher') && $user->isHomeroomTeacher(academicYear: $academicYear);
 
         $ayModel = AcademicYear::where('name', $academicYear)->first();
 
@@ -89,6 +91,7 @@ class PiketIncidentController extends Controller
         $date = $startDate;
 
         $query = PiketIncident::with(['classroom.homeroomTeacher', 'student', 'recordedBy', 'verifier'])
+            ->forAcademicYear($academicYear)
             ->latest('incident_date')
             ->latest('incident_time');
 
@@ -152,7 +155,7 @@ class PiketIncidentController extends Controller
         $incidents = $query->paginate(20)->withQueryString();
 
         // Rekap angka statistik kejadian/kasus sesuai filter aktif
-        $statsQuery = PiketIncident::query();
+        $statsQuery = PiketIncident::forAcademicYear($academicYear);
 
         if (! $canManageAllCases) {
             $statsQuery->where(function ($q) use ($user, $isCounselingBK, $isHomeroomTeacher) {
@@ -325,6 +328,14 @@ class PiketIncidentController extends Controller
             'recorded_by' => Auth::id(),
             'status' => $validated['follow_up_target'] === 'selesai_di_piket' ? 'selesai' : 'tercatat',
         ]);
+
+        // Jika dirujuk ke BK, buat rujukan BK otomatis agar langsung muncul di agenda/dashboard BK
+        if ($incident->follow_up_target === 'rujuk_bk' && $incident->student_id) {
+            BkReferral::firstOrCreate(
+                ['piket_incident_id' => $incident->id],
+                ['status' => 'menunggu']
+            );
+        }
 
         // Kirim notifikasi Telegram
         $classroom = $incident->classroom_id ? Classroom::with('homeroomTeacher')->find($incident->classroom_id) : null;

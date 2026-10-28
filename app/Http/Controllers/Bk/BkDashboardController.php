@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\BkReferral;
 use App\Models\BkService;
+use App\Models\Classroom;
 use App\Models\StudentVisitation;
 use App\Services\AcademicYearContext;
 use Carbon\Carbon;
@@ -30,7 +31,7 @@ class BkDashboardController extends Controller
         }
 
         abort_unless(
-            $user->canOperateBk($academicYear) || $user->hasRole(['super_admin', 'guru_bk', 'koordinator_bk']),
+            $user->canOperateBk($academicYear) || $user->hasRole(['super_admin', 'guru_bk', 'koordinator_bk'], $academicYear),
             403,
             'Anda tidak memiliki hak akses untuk Dashboard Bimbingan & Konseling.'
         );
@@ -38,9 +39,34 @@ class BkDashboardController extends Controller
         $availableYears = AcademicYear::orderByDesc('start_date')->get();
         $today = Carbon::today('Asia/Jakarta');
 
+        // Batasi rombel binaan jika guru BK ditugaskan secara spesifik per rombel
+        $assignedClassroomIds = [];
+        if (! $user->isSuperAdmin()) {
+            $bkAssignments = $user->activeRoleAssignments()
+                ->whereHas('role', fn ($q) => $q->whereIn('slug', ['guru_bk', 'bk']))
+                ->where(function ($sub) use ($academicYear) {
+                    $sub->where('academic_year', $academicYear)
+                        ->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $academicYear));
+                })
+                ->get();
+
+            $hasGlobalBk = $bkAssignments->contains(fn ($a) => empty($a->context_type) || empty($a->context_id));
+            if (! $hasGlobalBk && $bkAssignments->isNotEmpty()) {
+                $assignedClassroomIds = $bkAssignments->where('context_type', Classroom::class)
+                    ->pluck('context_id')
+                    ->filter()
+                    ->all();
+            }
+        }
+
         // 1. Kartu Metrik Utama BK
         $baseServiceQuery = BkService::forAcademicYear($academicYear);
         $baseReferralQuery = BkReferral::forAcademicYear($academicYear);
+
+        if (! empty($assignedClassroomIds)) {
+            $baseServiceQuery->whereHas('student', fn ($s) => $s->whereIn('classroom_id', $assignedClassroomIds));
+            $baseReferralQuery->whereHas('incident', fn ($i) => $i->whereIn('classroom_id', $assignedClassroomIds));
+        }
 
         $activeCasesCount = (clone $baseServiceQuery)
             ->where('follow_up_status', 'sedang_berjalan')

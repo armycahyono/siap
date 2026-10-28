@@ -13,10 +13,39 @@ class StructuralPosition extends Model
 {
     use HasFactory;
 
+    public const TYPE_STRUKTURAL = 'struktural';
+
+    public const TYPE_OPERASIONAL = 'operasional';
+
+    public const TYPES = [
+        self::TYPE_STRUKTURAL => 'Struktural',
+        self::TYPE_OPERASIONAL => 'Operasional',
+    ];
+
+    public const SCOPE_SCHOOL = 'school';
+
+    public const SCOPE_DEPARTMENT = 'department';
+
+    public const SCOPE_UNIT = 'unit';
+
+    public const SCOPE_CLASSROOM = 'classroom';
+
+    public const SCOPES = [
+        self::SCOPE_SCHOOL => 'Sekolah (Global)',
+        self::SCOPE_DEPARTMENT => 'Jurusan / Keahlian',
+        self::SCOPE_UNIT => 'Unit Fasilitas / Lab / Bengkel',
+        self::SCOPE_CLASSROOM => 'Rombel / Kelas',
+    ];
+
+    public const TENURE_OPTIONS = [1, 2, 3, 4, 5];
+
     protected $fillable = [
         'name',
         'code',
         'category',
+        'type',
+        'default_tenure_years',
+        'scope_type',
         'allows_multiple',
         'order',
         'description',
@@ -28,6 +57,7 @@ class StructuralPosition extends Model
         'is_active' => 'boolean',
         'allows_multiple' => 'boolean',
         'order' => 'integer',
+        'default_tenure_years' => 'integer',
     ];
 
     public function assignments(): HasMany
@@ -92,5 +122,53 @@ class StructuralPosition extends Model
         $data = file_get_contents($path);
 
         return 'data:'.$mime.';base64,'.base64_encode($data);
+    }
+
+    /**
+     * Scope untuk penugasan struktural.
+     */
+    public function scopeStructural($query)
+    {
+        return $query->where('type', self::TYPE_STRUKTURAL);
+    }
+
+    /**
+     * Scope untuk penugasan operasional.
+     */
+    public function scopeOperational($query)
+    {
+        return $query->where('type', self::TYPE_OPERASIONAL);
+    }
+
+    /**
+     * Scope untuk tugas yang aktif.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Label tipe penugasan.
+     */
+    public function getTypeLabelAttribute(): string
+    {
+        return self::TYPES[$this->type] ?? ucfirst($this->type ?? 'Struktural');
+    }
+
+    /**
+     * Label cakupan penugasan.
+     */
+    public function getScopeLabelAttribute(): string
+    {
+        return self::SCOPES[$this->scope_type] ?? ucfirst($this->scope_type ?? 'Sekolah');
+    }
+
+    /**
+     * Cek apakah jabatan/tugas sudah memiliki riwayat penugasan personil.
+     */
+    public function hasHistoricalAssignments(): bool
+    {
+        return $this->assignments()->exists();
     }
 }

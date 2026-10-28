@@ -27,9 +27,21 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('teacher-assignments.*', 'structural-positions.*') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('teacher-assignments.index') }}">
+                <a class="nav-link {{ request()->routeIs('teacher-assignments.*', 'gtk-assignments.*') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('teacher-assignments.index') }}">
                     <i class="ti ti-user-check me-1 fs-3"></i>
-                    <span>Penugasan Guru</span>
+                    <span>Penugasan GTK</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('gtk-decrees.*') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('gtk-decrees.index') }}">
+                    <i class="ti ti-file-certificate me-1 fs-3"></i>
+                    <span>Arsip SK GTK</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('structural-positions.*', 'duty-positions.*') ? 'active bg-primary text-white fw-bold shadow-sm' : 'text-dark' }}" href="{{ route('structural-positions.index') }}">
+                    <i class="ti ti-briefcase me-1 fs-3"></i>
+                    <span>Master Penugasan</span>
                 </a>
             </li>
             <li class="nav-item">

@@ -25,6 +25,7 @@ use App\Http\Controllers\CurriculumCalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\EmployeeAssignmentController;
+use App\Http\Controllers\GtkDecreeController;
 use App\Http\Controllers\HomeroomAttendanceRecapController;
 use App\Http\Controllers\HomeroomStudentPermitController;
 use App\Http\Controllers\LessonScheduleController;
@@ -148,6 +149,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('classrooms', ClassroomController::class)->except(['create', 'show', 'edit']);
         Route::post('classrooms/grade-levels', [ClassroomController::class, 'storeGradeLevel'])->name('classrooms.grade-levels.store');
         Route::resource('structural-positions', StructuralPositionController::class)->except(['create', 'show', 'edit']);
+        Route::post('structural-positions/{structural_position}/toggle', [StructuralPositionController::class, 'toggle'])->name('structural-positions.toggle');
+        Route::get('master-penugasan', [StructuralPositionController::class, 'index'])->name('duty-positions.index');
         Route::resource('stakeholders', SchoolStakeholderController::class)->except(['create', 'show', 'edit']);
         Route::resource('activity-categories', ActivityCategoryController::class)->except(['create', 'show', 'edit']);
 
@@ -165,7 +168,35 @@ Route::middleware('auth')->group(function () {
         Route::get('penugasan-guru/struktural/template', [TeacherAssignmentController::class, 'downloadStructuralTemplate'])->name('teacher-assignments.template-structural');
         Route::post('penugasan-guru/struktural/import', [TeacherAssignmentController::class, 'importStructural'])->name('teacher-assignments.import-structural');
         Route::post('penugasan-guru/struktural', [TeacherAssignmentController::class, 'storeStructuralAssignment'])->name('teacher-assignments.store-structural');
+        Route::post('penugasan-guru/struktural/{assignment}/deactivate', [TeacherAssignmentController::class, 'deactivateStructuralAssignment'])->name('teacher-assignments.deactivate-structural');
         Route::delete('penugasan-guru/struktural/{assignment}', [TeacherAssignmentController::class, 'destroyStructuralAssignment'])->name('teacher-assignments.destroy-structural');
+        Route::post('penugasan-guru/bk', [TeacherAssignmentController::class, 'storeBkAssignment'])->name('teacher-assignments.store-bk');
+        Route::delete('penugasan-guru/bk/{assignment}', [TeacherAssignmentController::class, 'destroyBkAssignment'])->name('teacher-assignments.destroy-bk');
+        Route::post('penugasan-guru/operasional', [TeacherAssignmentController::class, 'storeOperationalAssignment'])->name('teacher-assignments.store-operational');
+        Route::post('penugasan-guru/operasional/{assignment}/deactivate', [TeacherAssignmentController::class, 'deactivateOperationalAssignment'])->name('teacher-assignments.deactivate-operational');
+        Route::delete('penugasan-guru/operasional/{assignment}', [TeacherAssignmentController::class, 'destroyOperationalAssignment'])->name('teacher-assignments.destroy-operational');
+        Route::get('penugasan-gtk', [TeacherAssignmentController::class, 'index'])->name('gtk-assignments.index');
+
+        // Arsip Dokumen & Draf SK GTK
+        Route::get('arsip-sk-gtk', [GtkDecreeController::class, 'index'])->name('gtk-decrees.index');
+        Route::get('arsip-sk-gtk/tambah', [GtkDecreeController::class, 'create'])->name('gtk-decrees.create');
+        Route::post('arsip-sk-gtk', [GtkDecreeController::class, 'store'])->name('gtk-decrees.store');
+        Route::get('arsip-sk-gtk/{gtkDecree}', [GtkDecreeController::class, 'show'])->name('gtk-decrees.show');
+        Route::get('arsip-sk-gtk/{gtkDecree}/edit', [GtkDecreeController::class, 'edit'])->name('gtk-decrees.edit');
+        Route::put('arsip-sk-gtk/{gtkDecree}', [GtkDecreeController::class, 'update'])->name('gtk-decrees.update');
+        Route::delete('arsip-sk-gtk/{gtkDecree}', [GtkDecreeController::class, 'destroy'])->name('gtk-decrees.destroy');
+        Route::get('arsip-sk-gtk/{gtkDecree}/dokumen', [GtkDecreeController::class, 'downloadDocument'])->name('gtk-decrees.document');
+        Route::get('arsip-sk-gtk/{gtkDecree}/pratinjau', [GtkDecreeController::class, 'previewImpact'])->name('gtk-decrees.preview');
+        Route::get('arsip-sk-gtk/{gtkDecree}/pratinjau-pembatalan', [GtkDecreeController::class, 'previewCancellation'])->name('gtk-decrees.cancel-preview');
+        Route::post('arsip-sk-gtk/{gtkDecree}/batalkan', [GtkDecreeController::class, 'cancel'])->name('gtk-decrees.cancel');
+        Route::post('arsip-sk-gtk/{gtkDecree}/aktifkan', [GtkDecreeController::class, 'activate'])->name('gtk-decrees.activate');
+
+        // Pengelolaan Penerima & Butir Rincian Keputusan SK GTK
+        Route::post('arsip-sk-gtk/{gtkDecree}/penerima', [GtkDecreeController::class, 'addRecipients'])->name('gtk-decrees.recipients.store');
+        Route::delete('arsip-sk-gtk/{gtkDecree}/penerima/{recipient}', [GtkDecreeController::class, 'removeRecipient'])->name('gtk-decrees.recipients.destroy');
+        Route::post('arsip-sk-gtk/{gtkDecree}/rincian', [GtkDecreeController::class, 'storeDetail'])->name('gtk-decrees.details.store');
+        Route::post('arsip-sk-gtk/{gtkDecree}/rincian/massal', [GtkDecreeController::class, 'storeBulkDetails'])->name('gtk-decrees.details.bulk-store');
+        Route::delete('arsip-sk-gtk/{gtkDecree}/rincian/{detail}', [GtkDecreeController::class, 'destroyDetail'])->name('gtk-decrees.details.destroy');
 
         // Penugasan Pegawai Terpusat (Lintas Modul & Seluruh Sekolah)
         Route::get('penugasan-pegawai', [EmployeeAssignmentController::class, 'index'])->name('employee-assignments.index');

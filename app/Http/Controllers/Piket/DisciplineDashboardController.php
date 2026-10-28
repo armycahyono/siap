@@ -31,7 +31,7 @@ class DisciplineDashboardController extends Controller
         }
 
         abort_unless(
-            $user->canManageDiscipline($academicYear) || $user->hasRole(['super_admin', 'tim_kedisiplinan', 'koordinator_kedisiplinan']),
+            $user->canManageDiscipline($academicYear) || $user->hasRole(['super_admin', 'tim_kedisiplinan', 'koordinator_kedisiplinan'], $academicYear),
             403,
             'Anda tidak memiliki hak akses untuk Dashboard Kedisiplinan.'
         );

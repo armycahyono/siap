@@ -13,6 +13,23 @@
 ])
 
 <div class="container-xl">
+    <!-- Banner Konsolidasi Penugasan GTK -->
+    <div class="alert alert-primary border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between p-3 mb-3">
+        <div class="d-flex align-items-center me-3">
+            <span class="avatar bg-primary-lt text-primary rounded me-3">
+                <i class="ti ti-user-check fs-2"></i>
+            </span>
+            <div>
+                <h5 class="alert-title fw-bold mb-1">Pengelolaan Terpadu: Penugasan GTK</h5>
+                <div class="text-muted small">Seluruh penugasan guru dan tenaga kependidikan (Mata Pelajaran, Wali Kelas &amp; BK, Jabatan Struktural, serta Tugas Operasional) kini dikelola melalui satu pintu di menu <strong>Penugasan GTK</strong>. Halaman ini dipertahankan untuk kebutuhan audit RBAC teknis.</div>
+            </div>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <a href="{{ route('teacher-assignments.index') }}" class="btn btn-primary text-nowrap">
+                <i class="ti ti-arrow-right me-1"></i> Buka Penugasan GTK
+            </a>
+        </div>
+    </div>
     <!-- Feedback Alerts -->
     @if(session('success'))
         <div class="alert alert-important alert-success alert-dismissible shadow-sm fade show mb-3" role="alert">

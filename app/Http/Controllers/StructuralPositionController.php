@@ -6,30 +6,109 @@ use App\Models\StructuralPosition;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 class StructuralPositionController extends Controller
 {
-    public function index(Request $request): RedirectResponse
+    /**
+     * Tampilkan halaman pengelolaan Master Penugasan (Struktural & Operasional).
+     */
+    public function index(Request $request): View
     {
-        return redirect()->route('teacher-assignments.index', array_merge(['tab' => 'struktural'], $request->query()));
+        $search = $request->query('search');
+        $type = $request->query('type');
+        $status = $request->query('status');
+        $scopeType = $request->query('scope_type');
+
+        $query = StructuralPosition::query()
+            ->withCount(['assignments', 'activeAssignments']);
+
+        if (! empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if (! empty($type) && $type !== 'all') {
+            $query->where('type', $type);
+        }
+
+        if (! empty($status) && $status !== 'all') {
+            $query->where('is_active', $status === 'active' || $status === '1');
+        }
+
+        if (! empty($scopeType) && $scopeType !== 'all') {
+            $query->where('scope_type', $scopeType);
+        }
+
+        $totalPositions = StructuralPosition::count();
+        $totalStructural = StructuralPosition::where('type', StructuralPosition::TYPE_STRUKTURAL)->count();
+        $totalOperational = StructuralPosition::where('type', StructuralPosition::TYPE_OPERASIONAL)->count();
+        $totalActive = StructuralPosition::where('is_active', true)->count();
+        $totalInactive = StructuralPosition::where('is_active', false)->count();
+
+        $categories = StructuralPosition::whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
+
+        $positions = $query->orderBy('type')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('master.structural_positions.index', compact(
+            'positions',
+            'categories',
+            'search',
+            'type',
+            'status',
+            'scopeType',
+            'totalPositions',
+            'totalStructural',
+            'totalOperational',
+            'totalActive',
+            'totalInactive'
+        ));
     }
 
+    /**
+     * Simpan jenis tugas baru ke Master Penugasan.
+     */
     public function store(Request $request): RedirectResponse
     {
+        if ($request->has('code')) {
+            $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', 'unique:structural_positions,code'],
+            'code' => ['required', 'string', 'max:50', 'regex:/^[A-Z0-9_\-]+$/', 'unique:structural_positions,code'],
+            'type' => ['required', 'string', Rule::in([StructuralPosition::TYPE_STRUKTURAL, StructuralPosition::TYPE_OPERASIONAL])],
+            'default_tenure_years' => ['required', 'integer', 'min:1', 'max:5'],
+            'scope_type' => ['required', 'string', Rule::in(array_keys(StructuralPosition::SCOPES))],
             'category' => ['nullable', 'string', 'max:100'],
             'allows_multiple' => ['nullable', 'boolean'],
             'order' => ['nullable', 'integer', 'min:0'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'signature_image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
             'is_active' => ['nullable', 'boolean'],
+        ], [
+            'code.regex' => 'Format kode tugas harus berupa huruf kapital, angka, garis bawah (_), atau strip (-).',
+            'code.unique' => 'Kode tugas sudah digunakan oleh jenis tugas lain.',
+            'default_tenure_years.min' => 'Masa jabatan minimal 1 tahun.',
+            'default_tenure_years.max' => 'Masa jabatan maksimal 5 tahun.',
         ]);
 
         $data['allows_multiple'] = $request->boolean('allows_multiple');
-        $data['is_active'] = $request->boolean('is_active');
+        $data['is_active'] = $request->has('is_active') ? $request->boolean('is_active') : true;
         $data['order'] = $data['order'] ?? (StructuralPosition::max('order') + 1);
 
         if ($request->hasFile('signature_image')) {
@@ -40,24 +119,49 @@ class StructuralPositionController extends Controller
 
         unset($data['signature_image']);
 
-        StructuralPosition::create($data);
+        $position = StructuralPosition::create($data);
 
-        return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
-            ->with('success', "Jabatan Struktural {$data['name']} berhasil ditambahkan.");
+        return redirect()->back()
+            ->with('success', "Jenis tugas {$position->name} ({$position->code}) berhasil ditambahkan ke Master Penugasan.");
     }
 
+    /**
+     * Perbarui jenis tugas yang sudah ada.
+     */
     public function update(Request $request, StructuralPosition $structuralPosition): RedirectResponse
     {
+        if ($request->has('code')) {
+            $request->merge(['code' => strtoupper(trim((string) $request->input('code')))]);
+        }
+
+        // Cek perlindungan perubahan kode jika sudah memiliki riwayat penugasan
+        if ($structuralPosition->hasHistoricalAssignments()) {
+            $requestedCode = $request->input('code');
+            if ($requestedCode && $requestedCode !== $structuralPosition->code) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "Kode tugas untuk '{$structuralPosition->name}' tidak dapat diubah karena sudah digunakan oleh riwayat penugasan.");
+            }
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', 'unique:structural_positions,code,'.$structuralPosition->id],
+            'code' => ['required', 'string', 'max:50', 'regex:/^[A-Z0-9_\-]+$/', Rule::unique('structural_positions', 'code')->ignore($structuralPosition->id)],
+            'type' => ['required', 'string', Rule::in([StructuralPosition::TYPE_STRUKTURAL, StructuralPosition::TYPE_OPERASIONAL])],
+            'default_tenure_years' => ['required', 'integer', 'min:1', 'max:5'],
+            'scope_type' => ['required', 'string', Rule::in(array_keys(StructuralPosition::SCOPES))],
             'category' => ['nullable', 'string', 'max:100'],
             'allows_multiple' => ['nullable', 'boolean'],
             'order' => ['nullable', 'integer', 'min:0'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:1000'],
             'signature_image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
             'remove_signature' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
+        ], [
+            'code.regex' => 'Format kode tugas harus berupa huruf kapital, angka, garis bawah (_), atau strip (-).',
+            'code.unique' => 'Kode tugas sudah digunakan oleh jenis tugas lain.',
+            'default_tenure_years.min' => 'Masa jabatan minimal 1 tahun.',
+            'default_tenure_years.max' => 'Masa jabatan maksimal 5 tahun.',
         ]);
 
         $data['allows_multiple'] = $request->boolean('allows_multiple');
@@ -78,7 +182,6 @@ class StructuralPositionController extends Controller
             $newPath = $file->storeAs('signatures', $filename, 'local');
 
             if ($newPath) {
-                // Hapus file lama hanya setelah file baru berhasil disimpan ke disk privat
                 if ($structuralPosition->signature_image_path) {
                     if (Storage::disk('local')->exists($structuralPosition->signature_image_path)) {
                         Storage::disk('local')->delete($structuralPosition->signature_image_path);
@@ -94,15 +197,33 @@ class StructuralPositionController extends Controller
 
         $structuralPosition->update($data);
 
-        return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
-            ->with('success', "Jabatan Struktural {$structuralPosition->name} berhasil diperbarui.");
+        return redirect()->back()
+            ->with('success', "Jenis tugas {$structuralPosition->name} berhasil diperbarui.");
     }
 
+    /**
+     * Beralih status aktif / nonaktif untuk jenis tugas tertentu.
+     */
+    public function toggle(StructuralPosition $structuralPosition): RedirectResponse
+    {
+        $structuralPosition->update([
+            'is_active' => ! $structuralPosition->is_active,
+        ]);
+
+        $statusStr = $structuralPosition->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
+        return redirect()->back()
+            ->with('success', "Jenis tugas {$structuralPosition->name} berhasil {$statusStr}.");
+    }
+
+    /**
+     * Hapus jenis tugas permanen jika belum pernah ditugaskan ke personil.
+     */
     public function destroy(StructuralPosition $structuralPosition): RedirectResponse
     {
-        if ($structuralPosition->assignments()->exists()) {
-            return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
-                ->with('error', "Jabatan Struktural {$structuralPosition->name} tidak dapat dihapus karena masih memiliki riwayat penugasan guru.");
+        if ($structuralPosition->hasHistoricalAssignments()) {
+            return redirect()->back()
+                ->with('error', "Jenis tugas '{$structuralPosition->name}' tidak dapat dihapus permanen karena masih memiliki riwayat penugasan. Anda dapat menonaktifkan status tugas ini.");
         }
 
         if ($structuralPosition->signature_image_path) {
@@ -116,8 +237,8 @@ class StructuralPositionController extends Controller
         $name = $structuralPosition->name;
         $structuralPosition->delete();
 
-        return redirect()->route('teacher-assignments.index', ['tab' => 'struktural'])
-            ->with('success', "Jabatan Struktural {$name} berhasil dihapus.");
+        return redirect()->back()
+            ->with('success', "Jenis tugas {$name} berhasil dihapus dari Master Penugasan.");
     }
 
     /**
@@ -147,7 +268,6 @@ class StructuralPositionController extends Controller
             abort(404, 'File tanda tangan tidak valid.');
         }
 
-        // Dual-disk resolution: prioritaskan disk privat 'local', fallback ke disk 'public' untuk data warisan
         $disk = null;
         if (Storage::disk('local')->exists($path)) {
             $disk = 'local';

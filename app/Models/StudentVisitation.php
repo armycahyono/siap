@@ -152,7 +152,7 @@ class StudentVisitation extends Model
         }
 
         $classroom = $this->student?->classroomForAcademicYear($ay) ?? $this->student?->classroom;
-        if ($classroom && $user->isHomeroomTeacher($classroom)) {
+        if ($classroom && $user->isHomeroomTeacher($classroom, academicYear: $ay)) {
             return true;
         }
 

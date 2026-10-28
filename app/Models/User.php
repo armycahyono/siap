@@ -285,10 +285,7 @@ class User extends Authenticatable
 
         if ($this->relationLoaded('structuralPositions')) {
             return $this->structuralPositions->contains(function ($p) use ($academicYear) {
-                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($p->name ?? '');
@@ -298,14 +295,14 @@ class User extends Authenticatable
             });
         }
 
-        return $this->structuralPositions()
+        $query = $this->structuralPositions()
             ->wherePivot('is_active', true)
             ->where(function ($q) {
                 $q->where('name', 'like', '%kurikulum%')
                     ->orWhere('code', 'like', '%KURIKULUM%');
-            })
-            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
-            ->exists();
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isSupervisor(?string $academicYear = null): bool
@@ -399,26 +396,23 @@ class User extends Authenticatable
 
         if ($this->relationLoaded('structuralPositions')) {
             return $this->structuralPositions->contains(function ($p) use ($academicYear) {
-                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($p->name ?? '');
                 $code = strtoupper($p->code ?? '');
 
-                return $code === 'KEPSEK' || str_contains($name, 'kepala sekolah');
+                return in_array($code, ['KS', 'KEPSEK']) || str_contains($name, 'kepala sekolah');
             });
         }
 
-        return $this->structuralPositions()
+        $query = $this->structuralPositions()
             ->wherePivot('is_active', true)
             ->where(function ($q) {
-                $q->where('code', 'KEPSEK')->orWhere('name', 'like', '%kepala sekolah%');
-            })
-            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
-            ->exists();
+                $q->whereIn('code', ['KS', 'KEPSEK'])->orWhere('name', 'like', '%kepala sekolah%');
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isHeadmaster(?string $academicYear = null): bool
@@ -439,10 +433,7 @@ class User extends Authenticatable
 
         if ($this->relationLoaded('structuralPositions')) {
             return $this->structuralPositions->contains(function ($p) use ($academicYear) {
-                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($p->name ?? '');
@@ -452,16 +443,16 @@ class User extends Authenticatable
             });
         }
 
-        return $this->structuralPositions()
+        $query = $this->structuralPositions()
             ->wherePivot('is_active', true)
             ->where(function ($q) {
                 $q->where('code', 'WAKA_SARPRAS')
                     ->orWhere(function ($sq) {
                         $sq->where('name', 'like', '%waka%')->where('name', 'like', '%sarpras%');
                     });
-            })
-            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
-            ->exists();
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isWakaHumas(?string $academicYear = null): bool
@@ -477,10 +468,7 @@ class User extends Authenticatable
 
         if ($this->relationLoaded('structuralPositions')) {
             return $this->structuralPositions->contains(function ($p) use ($academicYear) {
-                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($p->name ?? '');
@@ -490,7 +478,7 @@ class User extends Authenticatable
             });
         }
 
-        return $this->structuralPositions()
+        $query = $this->structuralPositions()
             ->wherePivot('is_active', true)
             ->where(function ($q) {
                 $q->where('code', 'WAKA_HUMAS')
@@ -498,9 +486,9 @@ class User extends Authenticatable
                         $sq->where('name', 'like', '%waka%')
                             ->where(fn ($s) => $s->where('name', 'like', '%humas%')->orWhere('name', 'like', '%hubin%'));
                     });
-            })
-            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
-            ->exists();
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isLibrarian(?string $academicYear = null): bool
@@ -678,16 +666,13 @@ class User extends Authenticatable
 
     public function isWakaKesiswaan(?string $academicYear = null): bool
     {
-        if ($this->hasRole(['waka_kesiswaan', 'kesiswaan'])) {
+        if ($this->hasRole(['waka_kesiswaan', 'kesiswaan'], $academicYear)) {
             return true;
         }
 
         if ($this->relationLoaded('structuralPositions')) {
             $hasPos = $this->structuralPositions->contains(function ($pos) use ($academicYear) {
-                if (isset($pos->pivot->is_active) && ! $pos->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($pos->pivot->academic_year) && $pos->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($pos->pivot ?? $pos, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($pos->name ?? '');
@@ -709,11 +694,7 @@ class User extends Authenticatable
                         });
                 });
 
-            if ($academicYear) {
-                $query->wherePivot('academic_year', $academicYear);
-            }
-
-            if ($query->exists()) {
+            if ($this->applyStructuralYearScope($query, $academicYear)->exists()) {
                 return true;
             }
         }
@@ -736,7 +717,7 @@ class User extends Authenticatable
         if ($this->relationLoaded('activeRoleAssignments')) {
             $today = now()->toDateString();
 
-            return $this->activeRoleAssignments->contains(function ($ra) use ($academicYear, $today) {
+            $hasAssignment = $this->activeRoleAssignments->contains(function ($ra) use ($academicYear, $today) {
                 if (! in_array($ra->role?->slug, ['guru_bk', 'bk'], true)) {
                     return false;
                 }
@@ -764,6 +745,8 @@ class User extends Authenticatable
 
                 return true;
             });
+
+            return $hasAssignment;
         }
 
         return $this->activeRoleAssignments()
@@ -847,10 +830,7 @@ class User extends Authenticatable
         // 3. Explicit active structural position for Discipline / Tatib (NEVER includes BK)
         if ($this->relationLoaded('structuralPositions')) {
             $hasPos = $this->structuralPositions->contains(function ($pos) use ($academicYear) {
-                if (isset($pos->pivot->is_active) && ! $pos->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($pos->pivot->academic_year) && $pos->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($pos->pivot ?? $pos, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($pos->name ?? '');
@@ -874,11 +854,7 @@ class User extends Authenticatable
                         ->orWhere('name', 'like', '%tata tertib%');
                 });
 
-            if ($academicYear) {
-                $query->wherePivot('academic_year', $academicYear);
-            }
-
-            if ($query->exists()) {
+            if ($this->applyStructuralYearScope($query, $academicYear)->exists()) {
                 return true;
             }
         }
@@ -902,7 +878,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if ($this->hasRole(['koordinator_kedisiplinan', 'koordinator_tatib'])) {
+        if ($this->hasRole(['koordinator_kedisiplinan', 'koordinator_tatib'], $academicYear)) {
             return true;
         }
 
@@ -913,10 +889,7 @@ class User extends Authenticatable
 
         if ($this->relationLoaded('structuralPositions')) {
             return $this->structuralPositions->contains(function ($p) use ($academicYear) {
-                if (isset($p->pivot->is_active) && ! $p->pivot->is_active) {
-                    return false;
-                }
-                if ($academicYear && isset($p->pivot->academic_year) && $p->pivot->academic_year !== $academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
                     return false;
                 }
                 $name = strtolower($p->name ?? '');
@@ -927,7 +900,7 @@ class User extends Authenticatable
             });
         }
 
-        return $this->structuralPositions()
+        $query = $this->structuralPositions()
             ->wherePivot('is_active', true)
             ->where(function ($q) {
                 $q->whereIn('code', ['KOORD_TATIB', 'KOORD_DISIPLIN'])
@@ -938,9 +911,9 @@ class User extends Authenticatable
                                     ->orWhere('name', 'like', '%tatib%');
                             });
                     });
-            })
-            ->when($academicYear, fn ($q) => $q->wherePivot('academic_year', $academicYear))
-            ->exists();
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     /**
@@ -996,10 +969,13 @@ class User extends Authenticatable
 
         return $this->canOperateBk($academicYear)
             || $this->canManageDiscipline($academicYear)
-            || $this->isHomeroomTeacher()
-            || StudentVisitation::where('requested_by', $this->id)
-                ->orWhere('primary_officer_id', $this->id)
-                ->orWhere('secondary_officer_id', $this->id)
+            || $this->isHomeroomTeacher(academicYear: $academicYear)
+            || StudentVisitation::where(function ($q) {
+                $q->where('requested_by', $this->id)
+                    ->orWhere('primary_officer_id', $this->id)
+                    ->orWhere('secondary_officer_id', $this->id);
+            })
+                ->when($academicYear, fn ($q) => $q->where('academic_year', $academicYear))
                 ->exists();
     }
 
@@ -1158,7 +1134,7 @@ class User extends Authenticatable
             || $this->isHomeroomTeacher();
     }
 
-    public function isPiketOfficerToday(): bool
+    public function isPiketOfficerToday(?string $academicYear = null): bool
     {
         $today = match (now()->dayOfWeekIso) {
             1 => 'Senin',
@@ -1174,9 +1150,18 @@ class User extends Authenticatable
             return false;
         }
 
+        if ($academicYear === null) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getViewingYear();
+            } catch (\Throwable) {
+                $academicYear = AcademicYear::getActive()?->name ?? SchoolSetting::getMasterYear();
+            }
+        }
+
         return PiketSchedule::where('teacher_id', $this->id)
             ->where('day', $today)
             ->where('is_active', true)
+            ->when($academicYear, fn ($q) => $q->where('academic_year', $academicYear))
             ->exists();
     }
 
@@ -1185,15 +1170,15 @@ class User extends Authenticatable
         return $this->isSuperAdmin()
             || $this->hasPermission('access_piket', $academicYear)
             || $this->canManagePiketCases($academicYear)
-            || $this->canOperatePiket()
+            || $this->canOperatePiket($academicYear)
             || $this->isDisciplineTeam($academicYear);
     }
 
-    public function canOperatePiket(): bool
+    public function canOperatePiket(?string $academicYear = null): bool
     {
         return $this->isSuperAdmin()
-            || $this->hasPermission('operate_piket')
-            || $this->isPiketOfficerToday();
+            || $this->hasPermission('operate_piket', $academicYear)
+            || $this->isPiketOfficerToday($academicYear);
     }
 
     public function canManagePiketCases(?string $academicYear = null): bool
@@ -1201,7 +1186,7 @@ class User extends Authenticatable
         return $this->isSuperAdmin()
             || $this->isPrincipal()
             || $this->hasPermission('manage_piket_cases', $academicYear)
-            || $this->isPiketOfficerToday()
+            || $this->isPiketOfficerToday($academicYear)
             || $this->isWakaKesiswaan($academicYear)
             || $this->isDisciplineCoordinator($academicYear)
             || $this->isDisciplineTeam($academicYear);
@@ -1221,7 +1206,7 @@ class User extends Authenticatable
             || $this->isWakaKesiswaan($academicYear)
             || $this->isDisciplineCoordinator($academicYear)
             || $this->isDisciplineTeam($academicYear)
-            || $this->isPiketOfficerToday()
+            || $this->isPiketOfficerToday($academicYear)
             || $this->hasPermission('operate_piket', $academicYear)
             || $this->hasPermission('manage_piket_cases', $academicYear);
     }
@@ -1472,10 +1457,115 @@ class User extends Authenticatable
         return $this->hasMany(TeacherStructuralAssignment::class, 'teacher_id');
     }
 
+    /**
+     * Memeriksa apakah pivot penugasan struktural aktif untuk tahun ajaran tertentu,
+     * mendukung penugasan multi-tahun berdasarkan rentang tanggal definitif yang beririsan.
+     */
+    protected function isStructuralPivotActiveForYear(mixed $pivot, ?string $academicYear): bool
+    {
+        if (isset($pivot->is_active) && ! $pivot->is_active) {
+            return false;
+        }
+
+        if ($academicYear && isset($pivot->academic_year)) {
+            $ayModel = AcademicYear::where('name', $academicYear)->first();
+            $targetStartDate = $ayModel?->start_date
+                ? ($ayModel->start_date instanceof \DateTimeInterface ? $ayModel->start_date->format('Y-m-d') : substr((string) $ayModel->start_date, 0, 10))
+                : (str_contains($academicYear, '/') ? explode('/', $academicYear)[0].'-07-01' : null);
+
+            $targetEndDate = $ayModel?->end_date
+                ? ($ayModel->end_date instanceof \DateTimeInterface ? $ayModel->end_date->format('Y-m-d') : substr((string) $ayModel->end_date, 0, 10))
+                : (str_contains($academicYear, '/') ? (explode('/', $academicYear)[0] + 1).'-06-30' : null);
+
+            $validUntil = ! empty($pivot->valid_until)
+                ? ($pivot->valid_until instanceof \DateTimeInterface ? $pivot->valid_until->format('Y-m-d') : substr((string) $pivot->valid_until, 0, 10))
+                : null;
+
+            $validFrom = ! empty($pivot->valid_from)
+                ? ($pivot->valid_from instanceof \DateTimeInterface ? $pivot->valid_from->format('Y-m-d') : substr((string) $pivot->valid_from, 0, 10))
+                : (! empty($pivot->sk_date)
+                    ? ($pivot->sk_date instanceof \DateTimeInterface ? $pivot->sk_date->format('Y-m-d') : substr((string) $pivot->sk_date, 0, 10))
+                    : null);
+
+            if ($pivot->academic_year === $academicYear) {
+                if ($targetStartDate && $validUntil && $validUntil < $targetStartDate) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Lintas tahun ajaran: harus memiliki valid_until definitif dan beririsan dengan rentang tanggal tahun ajaran
+            if (! $validUntil || ! $targetStartDate || ! $targetEndDate) {
+                return false;
+            }
+
+            if ($validUntil < $targetStartDate) {
+                return false;
+            }
+
+            if ($validFrom && $validFrom > $targetEndDate) {
+                return false;
+            }
+
+            return true;
+        }
+
+        return true;
+    }
+
+    /**
+     * Menambahkan scope tahun ajaran pada relasi structuralPositions query builder
+     * dengan pemeriksaan tanggal awal dan akhir tahun ajaran (beririsan murni berbasis tanggal).
+     */
+    protected function applyStructuralYearScope($query, ?string $academicYear)
+    {
+        if (! $academicYear) {
+            return $query;
+        }
+
+        $ayModel = AcademicYear::where('name', $academicYear)->first();
+        $targetStartDate = $ayModel?->start_date
+            ? ($ayModel->start_date instanceof \DateTimeInterface ? $ayModel->start_date->format('Y-m-d') : substr((string) $ayModel->start_date, 0, 10))
+            : (str_contains($academicYear, '/') ? explode('/', $academicYear)[0].'-07-01' : null);
+
+        $targetEndDate = $ayModel?->end_date
+            ? ($ayModel->end_date instanceof \DateTimeInterface ? $ayModel->end_date->format('Y-m-d') : substr((string) $ayModel->end_date, 0, 10))
+            : (str_contains($academicYear, '/') ? (explode('/', $academicYear)[0] + 1).'-06-30' : null);
+
+        return $query->where(function ($sq) use ($academicYear, $targetStartDate, $targetEndDate) {
+            $sq->where(function ($sameYear) use ($academicYear, $targetStartDate) {
+                $sameYear->where('teacher_structural_assignments.academic_year', $academicYear);
+                if ($targetStartDate) {
+                    $sameYear->where(function ($sub) use ($targetStartDate) {
+                        $sub->whereNull('teacher_structural_assignments.valid_until')
+                            ->orWhere('teacher_structural_assignments.valid_until', '>=', $targetStartDate);
+                    });
+                }
+            });
+
+            if ($targetStartDate && $targetEndDate) {
+                $sq->orWhere(function ($multiYear) use ($academicYear, $targetStartDate, $targetEndDate) {
+                    $multiYear->where('teacher_structural_assignments.academic_year', '!=', $academicYear)
+                        ->whereNotNull('teacher_structural_assignments.valid_until')
+                        ->where('teacher_structural_assignments.valid_until', '>=', $targetStartDate)
+                        ->where(function ($subFrom) use ($targetEndDate) {
+                            $subFrom->whereNotNull('teacher_structural_assignments.valid_from')->where('teacher_structural_assignments.valid_from', '<=', $targetEndDate)
+                                ->orWhere(function ($fallbackDate) use ($targetEndDate) {
+                                    $fallbackDate->whereNull('teacher_structural_assignments.valid_from')
+                                        ->whereNotNull('teacher_structural_assignments.sk_date')
+                                        ->where('teacher_structural_assignments.sk_date', '<=', $targetEndDate);
+                                });
+                        });
+                });
+            }
+        });
+    }
+
     public function structuralPositions(): BelongsToMany
     {
         return $this->belongsToMany(StructuralPosition::class, 'teacher_structural_assignments', 'teacher_id', 'structural_position_id')
-            ->withPivot(['academic_year', 'sk_number', 'sk_date', 'notes', 'is_active'])
+            ->withPivot(['academic_year', 'sk_number', 'sk_date', 'valid_from', 'valid_until', 'notes', 'is_active'])
             ->withTimestamps();
     }
 
@@ -1573,6 +1663,22 @@ class User extends Authenticatable
         $num = $this->id_number;
 
         return $num !== '-' ? "{$label}. {$num}" : '-';
+    }
+
+    public function gtkDecreeRecipients(): HasMany
+    {
+        return $this->hasMany(GtkDecreeRecipient::class, 'user_id');
+    }
+
+    public function gtkDecrees(): BelongsToMany
+    {
+        return $this->belongsToMany(GtkDecree::class, 'gtk_decree_recipients', 'user_id', 'gtk_decree_id')
+            ->withTimestamps();
+    }
+
+    public function gtkDecreeDetails(): HasMany
+    {
+        return $this->hasMany(GtkDecreeDetail::class, 'user_id');
     }
 
     public function getActivityLogTitle(): string

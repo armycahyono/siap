@@ -86,9 +86,27 @@ class UserRoleAssignment extends Model
             });
 
         if (! empty($academicYear)) {
-            $query->where(function (Builder $q) use ($academicYear) {
-                $q->where('academic_year', $academicYear)
-                    ->orWhereNull('academic_year');
+            $ayRecord = AcademicYear::where('name', $academicYear)->first();
+            $targetStartDate = $ayRecord?->start_date ? $ayRecord->start_date->toDateString() : (str_contains($academicYear, '/') ? explode('/', $academicYear)[0].'-07-01' : null);
+            $targetEndDate = $ayRecord?->end_date ? $ayRecord->end_date->toDateString() : (str_contains($academicYear, '/') ? (explode('/', $academicYear)[0] + 1).'-06-30' : null);
+
+            $query->where(function (Builder $q) use ($academicYear, $targetStartDate, $targetEndDate) {
+                $q->where(function (Builder $sameYear) use ($academicYear) {
+                    $sameYear->where('academic_year', $academicYear)
+                        ->orWhereNull('academic_year');
+                });
+
+                if ($targetStartDate && $targetEndDate) {
+                    $q->orWhere(function (Builder $multi) use ($academicYear, $targetStartDate, $targetEndDate) {
+                        $multi->where('academic_year', '!=', $academicYear)
+                            ->whereNotNull('valid_until')
+                            ->where('valid_until', '>=', $targetStartDate)
+                            ->where(function ($subFrom) use ($targetEndDate) {
+                                $subFrom->whereNull('valid_from')
+                                    ->orWhere('valid_from', '<=', $targetEndDate);
+                            });
+                    });
+                }
             });
         }
 
@@ -114,7 +132,19 @@ class UserRoleAssignment extends Model
 
         if (! empty($academicYear)) {
             if (! empty($this->academic_year) && $this->academic_year !== $academicYear) {
-                return false;
+                $ayRecord = AcademicYear::where('name', $academicYear)->first();
+                $targetStartDate = $ayRecord?->start_date ? $ayRecord->start_date->toDateString() : (str_contains($academicYear, '/') ? explode('/', $academicYear)[0].'-07-01' : null);
+                $targetEndDate = $ayRecord?->end_date ? $ayRecord->end_date->toDateString() : (str_contains($academicYear, '/') ? (explode('/', $academicYear)[0] + 1).'-06-30' : null);
+
+                if (! $this->valid_until || ! $targetStartDate || ! $targetEndDate) {
+                    return false;
+                }
+                if ($this->valid_until->toDateString() < $targetStartDate) {
+                    return false;
+                }
+                if ($this->valid_from && $this->valid_from->toDateString() > $targetEndDate) {
+                    return false;
+                }
             }
         }
 
