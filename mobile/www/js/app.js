@@ -1038,6 +1038,120 @@
                 : `${data.target_date?.day_name}, ${data.target_date?.current}`;
         }
 
+        // 1.5 KARTU UTAMA: UNIFIED LIVE MONITORING
+        const cardLm = container.querySelector('#card-unified-live-monitoring');
+        const lmData = data.live_monitoring;
+
+        if (lmData) {
+            if (cardLm) cardLm.classList.remove('hidden');
+
+            const roleBadge = container.querySelector('#lm-role-badge');
+            const scopeSub = container.querySelector('#lm-scope-subtitle');
+            const siswaScope = container.querySelector('#lm-siswa-scope');
+            const siswaSummary = container.querySelector('#lm-siswa-summary-count');
+
+            if (roleBadge) roleBadge.textContent = lmData.role_label || 'Live Monitoring';
+            if (scopeSub) scopeSub.textContent = `Monitoring Terpadu: ${lmData.scope_label || 'KBM & Aktivitas'}`;
+            if (siswaScope) siswaScope.textContent = `(${lmData.scope_label || 'Sekolah'})`;
+
+            // Stat Siswa (8 Status)
+            const s = lmData.siswa || {};
+            const statHadir = container.querySelector('#lm-stat-hadir');
+            const statTelat = container.querySelector('#lm-stat-telat');
+            const statSakit = container.querySelector('#lm-stat-sakit');
+            const statIzin = container.querySelector('#lm-stat-izin');
+            const statDispen = container.querySelector('#lm-stat-dispen');
+            const statPulang = container.querySelector('#lm-stat-pulang');
+            const statAlfa = container.querySelector('#lm-stat-alfa');
+            const statBolos = container.querySelector('#lm-stat-bolos');
+
+            if (statHadir) statHadir.textContent = s.hadir || 0;
+            if (statTelat) statTelat.textContent = s.telat || 0;
+            if (statSakit) statSakit.textContent = s.sakit || 0;
+            if (statIzin) statIzin.textContent = s.izin || 0;
+            if (statDispen) statDispen.textContent = s.dispen || 0;
+            if (statPulang) statPulang.textContent = s.pulang || 0;
+            if (statAlfa) statAlfa.textContent = s.alfa || 0;
+            if (statBolos) statBolos.textContent = s.bolos || 0;
+
+            if (siswaSummary) {
+                const totalNonHadir = (s.telat || 0) + (s.sakit || 0) + (s.izin || 0) + (s.dispen || 0) + (s.pulang || 0) + (s.alfa || 0) + (s.bolos || 0);
+                siswaSummary.textContent = `${s.hadir || 0} Hadir • ${totalNonHadir} Catatan`;
+            }
+
+            // Stat GTK (Khusus Kurikulum & Kepala Sekolah)
+            const gtkSection = container.querySelector('#lm-gtk-section');
+            const g = lmData.gtk;
+
+            if (g && lmData.can_view_gtk) {
+                if (gtkSection) gtkSection.classList.remove('hidden');
+                const gtkTotalLabel = container.querySelector('#lm-gtk-total-label');
+                const statGtkHadir = container.querySelector('#lm-stat-gtk-hadir');
+                const statGtkTelat = container.querySelector('#lm-stat-gtk-telat');
+                const statGtkBelum = container.querySelector('#lm-stat-gtk-belum');
+                const statGtkIzin = container.querySelector('#lm-stat-gtk-izin');
+                const statInval = container.querySelector('#lm-stat-inval');
+                const statUnattended = container.querySelector('#lm-stat-unattended');
+
+                if (gtkTotalLabel) gtkTotalLabel.textContent = `Total Wajib: ${g.total_expected || 0} GTK`;
+                if (statGtkHadir) statGtkHadir.textContent = g.hadir || 0;
+                if (statGtkTelat) statGtkTelat.textContent = g.terlambat || 0;
+                if (statGtkBelum) statGtkBelum.textContent = g.belum_masuk || 0;
+                if (statGtkIzin) statGtkIzin.textContent = g.izin || 0;
+                if (statInval) statInval.textContent = g.inval || 0;
+                if (statUnattended) statUnattended.textContent = g.unattended_kbm || 0;
+            } else {
+                if (gtkSection) gtkSection.classList.add('hidden');
+            }
+
+            // Timeline Feed
+            const timelineList = container.querySelector('#lm-timeline-list');
+            const timelineCount = container.querySelector('#lm-timeline-count');
+            const events = lmData.timeline || [];
+
+            if (timelineCount) timelineCount.textContent = `${events.length} Peristiwa`;
+
+            if (timelineList) {
+                if (events.length === 0) {
+                    timelineList.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Belum ada peristiwa/kejadian pada tanggal ini.</div>';
+                } else {
+                    timelineList.innerHTML = events.map(ev => {
+                        const badgeColorMap = {
+                            rose: 'bg-rose-100 text-rose-800 border-rose-200',
+                            amber: 'bg-amber-100 text-amber-800 border-amber-200',
+                            purple: 'bg-purple-100 text-purple-800 border-purple-200',
+                            slate: 'bg-slate-900 text-white border-slate-900',
+                            indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                            blue: 'bg-blue-100 text-blue-800 border-blue-200',
+                            emerald: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        };
+                        const badgeColorClass = badgeColorMap[ev.badge_color] || 'bg-slate-100 text-slate-700 border-slate-200';
+
+                        return `
+                            <div class="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs hover:border-emerald-200 transition">
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="flex items-center gap-1.5 overflow-hidden">
+                                        <span class="font-bold text-slate-800 text-[11px] truncate">${ev.person_name}</span>
+                                        <span class="text-[9px] text-slate-400 font-mono flex-shrink-0">(${ev.classroom_name})</span>
+                                    </div>
+                                    <span class="px-1.5 py-0.2 rounded text-[8px] font-bold border ${badgeColorClass} uppercase font-mono flex-shrink-0">${ev.badge}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[9px] text-slate-500 mb-1">
+                                    <span class="font-mono font-bold text-slate-700">⏱ ${ev.time}</span>
+                                    <span>•</span>
+                                    <span class="font-semibold text-slate-600">${ev.title}</span>
+                                </div>
+                                ${ev.description ? `<p class="text-[10px] text-slate-600 leading-snug mb-1">${ev.description}</p>` : ''}
+                                ${ev.action_taken ? `<div class="text-[9px] text-emerald-700 font-medium">✓ ${ev.action_taken}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        } else {
+            if (cardLm) cardLm.classList.add('hidden');
+        }
+
         // 2. Kartu Izin & Cuti Saya
         const badgeMyPermit = container.querySelector('#badge-my-permit-status');
         const infoMyPermit = container.querySelector('#info-my-permit-today');
@@ -1429,6 +1543,105 @@
         } catch (err) {
             showToast(err.message || 'Terjadi kesalahan sistem.', 'error');
         }
+    };
+
+    window.toggleLmDrawer = function(category, type) {
+        const drawer = document.getElementById('lm-drawer-detail');
+        const drawerTitle = document.getElementById('lm-drawer-title');
+        const drawerList = document.getElementById('lm-drawer-list');
+        if (!drawer || !drawerList) return;
+
+        if (!tasksDataCache?.live_monitoring) return;
+        const lm = tasksDataCache.live_monitoring;
+
+        let items = [];
+        let title = '';
+
+        if (category === 'siswa') {
+            const detail = lm.siswa?.detail || {};
+            items = detail[type] || [];
+            const typeTitles = {
+                hadir: 'Siswa Hadir',
+                telat: 'Siswa Terlambat Masuk',
+                sakit: 'Siswa Sakit',
+                izin: 'Siswa Izin Tidak Masuk',
+                dispen: 'Siswa Dispensasi Tugas/Lomba',
+                pulang: 'Siswa Izin Pulang Cepat',
+                alfa: 'Siswa Alfa Mapel',
+                bolos: 'Siswa Terindikasi Bolos KBM',
+            };
+            title = typeTitles[type] || `Siswa (${type})`;
+        } else if (category === 'gtk') {
+            const detail = lm.gtk?.detail || {};
+            items = detail[type] || [];
+            const typeTitles = {
+                hadir: 'GTK Hadir Tepat Waktu',
+                telat: 'GTK Terlambat Masuk',
+                belum_masuk: 'GTK Belum Absen Masuk (Wajib Hadir)',
+                izin: 'GTK Izin / Cuti Resmi',
+                inval: 'Penugasan Guru Inval Hari Ini',
+                unattended: 'Jadwal KBM Belum Diabsen (Jam Lewat)',
+            };
+            title = typeTitles[type] || `GTK (${type})`;
+        }
+
+        if (drawerTitle) drawerTitle.textContent = `${title} (${items.length})`;
+
+        if (items.length === 0) {
+            drawerList.innerHTML = `<div class="text-center py-2 text-slate-400 text-[11px]">Tidak ada data untuk ${title.toLowerCase()}.</div>`;
+        } else {
+            if (category === 'siswa') {
+                drawerList.innerHTML = items.map(item => `
+                    <div class="p-1.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <span class="font-bold text-slate-800 text-[11px] block">${item.name}</span>
+                            <span class="text-[9px] text-slate-500">${item.classroom} ${item.reason ? `• ${item.reason}` : ''}</span>
+                        </div>
+                        ${item.time ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded">${item.time}</span>` : ''}
+                    </div>
+                `).join('');
+            } else if (category === 'gtk') {
+                if (type === 'inval') {
+                    drawerList.innerHTML = items.map(item => `
+                        <div class="p-1.5 rounded-lg bg-white border border-indigo-200">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <span class="font-bold text-indigo-950 text-[11px]">${item.classroom} &bull; ${item.subject}</span>
+                                <span class="text-[9px] font-mono font-bold text-indigo-700 bg-indigo-50 px-1 rounded">${item.period}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-600">Pengganti: <strong>${item.inval_teacher}</strong> (Asli: ${item.absent_teacher})</p>
+                        </div>
+                    `).join('');
+                } else if (type === 'unattended') {
+                    drawerList.innerHTML = items.map(item => `
+                        <div class="p-1.5 rounded-lg bg-white border border-rose-200">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <span class="font-bold text-slate-800 text-[11px]">${item.teacher_name}</span>
+                                <span class="text-[9px] font-mono font-bold text-rose-700 bg-rose-50 px-1 rounded">${item.period}</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500">${item.classroom} &bull; ${item.subject}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    drawerList.innerHTML = items.map(item => `
+                        <div class="p-1.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
+                            <div>
+                                <span class="font-bold text-slate-800 text-[11px] block">${item.user_name}</span>
+                                <span class="text-[9px] text-slate-500">${item.position || item.reason || item.permit_type || '-'}</span>
+                            </div>
+                            ${item.time ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded">${item.time}</span>` : ''}
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        drawer.classList.remove('hidden');
+        drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    window.closeLmDrawer = function() {
+        const drawer = document.getElementById('lm-drawer-detail');
+        if (drawer) drawer.classList.add('hidden');
     };
 
     // ==========================================

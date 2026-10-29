@@ -398,4 +398,57 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.verification_status', 'terverifikasi');
     }
+
+    public function test_unified_live_monitoring_for_principal_and_homeroom(): void
+    {
+        $adminRole = Role::where('slug', 'super_admin')->first() ?? Role::create(['name' => 'Super Admin', 'slug' => 'super_admin']);
+        $admin = User::create([
+            'name' => 'Kepala Sekolah Penguji',
+            'username' => 'ks_penguji',
+            'email' => 'ks_penguji@example.com',
+            'password' => bcrypt('password123'),
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $resAdmin = $this->actingAs($admin)->getJson('/api/v1/mobile/tasks');
+        $resAdmin->assertOk()
+            ->assertJsonPath('data.live_monitoring.role_key', 'principal')
+            ->assertJsonPath('data.live_monitoring.can_view_student_all', true)
+            ->assertJsonPath('data.live_monitoring.can_view_gtk', true)
+            ->assertJsonStructure([
+                'data' => [
+                    'live_monitoring' => [
+                        'role_key',
+                        'role_label',
+                        'scope_label',
+                        'can_view_student_all',
+                        'can_view_gtk',
+                        'can_view_bk',
+                        'siswa' => [
+                            'hadir',
+                            'telat',
+                            'sakit',
+                            'izin',
+                            'dispen',
+                            'pulang',
+                            'alfa',
+                            'bolos',
+                            'detail' => ['hadir', 'telat', 'sakit', 'izin', 'dispen', 'pulang', 'alfa', 'bolos'],
+                        ],
+                        'gtk' => [
+                            'total_expected',
+                            'hadir',
+                            'terlambat',
+                            'belum_masuk',
+                            'izin',
+                            'inval',
+                            'unattended_kbm',
+                            'detail' => ['hadir', 'terlambat', 'belum_masuk', 'izin', 'inval', 'unattended_kbm'],
+                        ],
+                        'timeline',
+                    ],
+                ],
+            ]);
+    }
 }

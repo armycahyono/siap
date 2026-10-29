@@ -6,15 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\BkReferral;
+use App\Models\Classroom;
 use App\Models\GtkPermit;
 use App\Models\PiketIncident;
+use App\Models\PiketInvalClass;
 use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\StudentVisitation;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\Supervision;
+use App\Models\User;
 use App\Services\AcademicYearContext;
+use App\Services\DailyKbmSnapshotService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -566,8 +570,461 @@ class MobileTasksController extends Controller
                     'is_waka_kesiswaan' => $user->isWakaKesiswaan(),
                     'can_operate_bk' => $user->canOperateBk(),
                 ],
+                'live_monitoring' => $this->buildLiveMonitoringData($user, $date, $operationalAcademicYear, $myHomeroomClassroom),
             ],
         ]);
+    }
+
+    /**
+     * Bangun payload Live Monitoring terpadu (1 kartu adaptif untuk semua peran).
+     */
+    protected function buildLiveMonitoringData(
+        User $user,
+        Carbon $date,
+        string $operationalAcademicYear,
+        ?Classroom $myHomeroomClassroom
+    ): ?array {
+        $isPrincipal = $user->isPrincipal() || $user->isSuperAdmin();
+        $isKurikulum = $user->isWakaKurikulum();
+        $isKesiswaan = $user->isWakaKesiswaan() || $user->canManageDiscipline($operationalAcademicYear);
+        $isHomeroom = (bool) $myHomeroomClassroom;
+
+        if (! $isPrincipal && ! $isKurikulum && ! $isKesiswaan && ! $isHomeroom) {
+            return null;
+        }
+
+        $roleKey = match (true) {
+            $isPrincipal => 'principal',
+            $isKurikulum => 'kurikulum',
+            $isKesiswaan => 'kesiswaan',
+            default => 'homeroom',
+        };
+
+        $roleLabel = match ($roleKey) {
+            'principal' => 'Kepala Sekolah',
+            'kurikulum' => 'Waka Kurikulum',
+            'kesiswaan' => 'Kedisiplinan & Kesiswaan',
+            default => 'Wali Kelas ('.($myHomeroomClassroom?->name ?? 'Perwalian').')',
+        };
+
+        $canViewStudentAll = $isPrincipal || $isKurikulum || $isKesiswaan;
+        $canViewGtk = $isPrincipal || $isKurikulum;
+        $canViewBk = $isPrincipal || $isKurikulum || $isKesiswaan || $user->canOperateBk($operationalAcademicYear);
+
+        $targetDateStr = $date->toDateString();
+        $isToday = $date->isToday();
+        $currentTimeStr = now()->format('H:i');
+
+        // 1. DATA SISWA (Presensi KBM & Perizinan Meja Piket)
+        $permitsQuery = PiketStudentPermit::with(['student.classroom', 'classroom'])
+            ->whereDate('permit_date', $targetDateStr)
+            ->orderBy('created_at', 'desc');
+
+        $sessionsQuery = SubjectAttendanceSession::whereDate('attendance_date', $targetDateStr);
+
+        if (! $canViewStudentAll && $myHomeroomClassroom) {
+            $permitsQuery->where('classroom_id', $myHomeroomClassroom->id);
+            $sessionsQuery->where('classroom_id', $myHomeroomClassroom->id);
+        }
+
+        $studentPermits = $permitsQuery->get();
+        $todaySessionIds = $sessionsQuery->pluck('id');
+
+        $studentRecords = SubjectAttendanceRecord::with(['student.classroom', 'session.classroom', 'session.subject'])
+            ->whereIn('subject_attendance_session_id', $todaySessionIds)
+            ->get();
+
+        // 8 Status Siswa
+        $latePermits = $studentPermits->where('permit_type', 'terlambat')->unique('student_id')->values();
+        $earlyLeavePermits = $studentPermits->where('permit_type', 'izin_pulang_cepat')->unique('student_id')->values();
+        $izinPermits = $studentPermits->where('permit_type', 'izin_tidak_masuk')->unique('student_id')->values();
+
+        $sakitPermits = $izinPermits->filter(fn ($p) => strtolower($p->permit_category ?? '') === 'sakit' || str_contains(strtolower($p->reason ?? ''), 'sakit'))->values();
+        $murniIzinPermits = $izinPermits->reject(fn ($p) => strtolower($p->permit_category ?? '') === 'sakit' || str_contains(strtolower($p->reason ?? ''), 'sakit'))->values();
+
+        $sakitRecords = $studentRecords->where('status', 's')->values();
+        $murniIzinRecords = $studentRecords->where('status', 'i')->values();
+        $dispenRecords = $studentRecords->where('status', 'd')->values();
+        $alfaRecords = $studentRecords->where('status', 'a')->values();
+
+        $allSakitStudentIds = $sakitPermits->pluck('student_id')->concat($sakitRecords->pluck('student_id'))->filter()->unique();
+        $allMurniIzinStudentIds = $murniIzinPermits->pluck('student_id')->concat($murniIzinRecords->pluck('student_id'))->filter()->diff($allSakitStudentIds)->unique();
+        $allDispenStudentIds = $dispenRecords->pluck('student_id')->filter()->diff($allSakitStudentIds)->diff($allMurniIzinStudentIds)->unique();
+
+        $latestStatusPerStudent = $studentRecords->sortByDesc('subject_attendance_session_id')->unique('student_id');
+        $hadirStudents = $latestStatusPerStudent->where('status', 'h')->values();
+
+        // Indikasi Bolos KBM
+        $fingerprintLogs = AttendanceLog::where('user_type', 'student')
+            ->whereDate('scanned_at', $targetDateStr)
+            ->pluck('student_id')
+            ->filter()
+            ->unique();
+
+        $earlyLeaveStudentIds = $earlyLeavePermits->pluck('student_id')->filter()->unique();
+        $recordsByStudent = $studentRecords->groupBy('student_id');
+        $truancyStudents = collect();
+
+        foreach ($recordsByStudent as $sId => $recs) {
+            if ($earlyLeaveStudentIds->contains($sId)) {
+                continue;
+            }
+
+            $hasPresent = $recs->contains('status', 'h');
+            $hasAlfa = $recs->contains('status', 'a');
+            $hasFp = $fingerprintLogs->contains($sId);
+
+            if (($hasPresent && $hasAlfa) || ($hasFp && $hasAlfa)) {
+                $st = $recs->first()?->student;
+                $alfaSubjects = $recs->where('status', 'a')->map(fn ($r) => $r->session?->subject?->name)->filter()->unique()->implode(', ');
+                $presentSubjects = $recs->where('status', 'h')->map(fn ($r) => $r->session?->subject?->name)->filter()->unique()->implode(', ');
+
+                $truancyStudents->push((object) [
+                    'student_id' => $sId,
+                    'student_name' => $st?->name ?? 'Siswa',
+                    'classroom_name' => $st?->classroom?->name ?? '-',
+                    'alfa_count_jp' => $recs->where('status', 'a')->count(),
+                    'alfa_subjects' => $alfaSubjects ?: 'Mapel Tertentu',
+                    'present_subjects' => $presentSubjects ?: ($hasFp ? 'Scan Masuk Gerbang' : '-'),
+                ]);
+            }
+        }
+
+        $truancyStudentIds = $truancyStudents->pluck('student_id');
+        $pureAlfaRecords = $alfaRecords->reject(fn ($r) => $truancyStudentIds->contains($r->student_id))->values();
+        $pureAlfaCount = $pureAlfaRecords->pluck('student_id')->unique()->count();
+
+        // 2. DATA GTK (Khusus Kurikulum & Kepala Sekolah)
+        $gtkData = null;
+        if ($canViewGtk) {
+            $snapshotService = app(DailyKbmSnapshotService::class);
+            $snapshot = $snapshotService->getOrGenerateSnapshot($date);
+            $dailyRosters = $snapshot['rosters'] ?? collect();
+            $dailySchedules = $snapshot['schedules'] ?? collect();
+
+            $expectedGtkUsers = $dailyRosters->where('is_expected_checkin', true)
+                ->map(fn ($r) => $r->user)
+                ->filter()
+                ->unique('id')
+                ->values();
+
+            $expectedGtkCount = $expectedGtkUsers->count();
+            $expectedGtkUserIds = $expectedGtkUsers->pluck('id');
+
+            // Presensi Log GTK
+            $gtkScans = AttendanceLog::with('user')
+                ->where('user_type', 'teacher')
+                ->whereDate('scanned_at', $targetDateStr)
+                ->orderBy('scanned_at', 'asc')
+                ->get();
+
+            $gtkPresentScans = $gtkScans->unique('user_id')->values();
+            $gtkPresentCount = $gtkPresentScans->count();
+
+            // GTK Telat (status terlambat ATAU scan > 07:00)
+            $gtkLateScans = $gtkScans->filter(function ($log) {
+                return $log->status === 'terlambat' || ($log->scanned_at && $log->scanned_at->format('H:i') > '07:00');
+            })->unique('user_id')->values();
+            $gtkLateCount = $gtkLateScans->count();
+
+            // GTK Izin / Cuti
+            $gtkPermits = GtkPermit::approved()->with('user')
+                ->whereDate('start_date', '<=', $targetDateStr)
+                ->whereDate('end_date', '>=', $targetDateStr)
+                ->get()
+                ->filter(fn ($p) => $expectedGtkUserIds->contains($p->user_id))
+                ->values();
+            $gtkPermitUserIds = $gtkPermits->pluck('user_id')->unique();
+            $gtkPermitCount = $gtkPermitUserIds->count();
+
+            // GTK Belum Masuk: realtime berdasarkan jam kewajiban masuk (07:00)
+            $attendedUserIds = $gtkScans->pluck('user_id')->filter()->unique();
+            $isPastCheckinTime = ! $isToday || $currentTimeStr >= '07:00';
+
+            $gtkAwaitingList = collect();
+            if ($isPastCheckinTime) {
+                $gtkAwaitingList = $expectedGtkUsers->reject(function ($u) use ($attendedUserIds, $gtkPermitUserIds) {
+                    return $attendedUserIds->contains($u->id) || $gtkPermitUserIds->contains($u->id);
+                })->values();
+            }
+            $gtkAwaitingCount = $gtkAwaitingList->count();
+
+            // Inval Mengajar Hari Ini
+            $todayInvals = PiketInvalClass::with(['classroom', 'absentTeacher', 'subject', 'invalTeacher'])
+                ->whereHas('journal', fn ($j) => $j->whereDate('date', $targetDateStr))
+                ->get();
+
+            // Belum Absen Mapel KBM
+            $activeScheduleTargets = $dailySchedules->where('is_exempted', false)->values();
+            $unattendedSchedules = collect();
+            if ($isToday) {
+                $unattendedSchedules = $activeScheduleTargets->filter(function ($t) use ($currentTimeStr) {
+                    if ($t->attendanceSession) {
+                        return false;
+                    }
+                    $startTime = $t->start_time ?? '07:00';
+
+                    return $startTime <= $currentTimeStr;
+                })->values();
+            }
+
+            $gtkData = [
+                'total_expected' => $expectedGtkCount,
+                'hadir' => $gtkPresentCount,
+                'terlambat' => $gtkLateCount,
+                'belum_masuk' => $gtkAwaitingCount,
+                'izin' => $gtkPermitCount,
+                'inval' => $todayInvals->count(),
+                'unattended_kbm' => $unattendedSchedules->count(),
+                'detail' => [
+                    'hadir' => $gtkPresentScans->map(fn ($s) => [
+                        'user_name' => $s->user?->name ?? 'GTK',
+                        'time' => $s->scanned_at?->format('H:i') ?? '-',
+                    ])->values(),
+                    'terlambat' => $gtkLateScans->map(fn ($s) => [
+                        'user_name' => $s->user?->name ?? 'GTK',
+                        'time' => $s->scanned_at?->format('H:i') ?? '-',
+                    ])->values(),
+                    'belum_masuk' => $gtkAwaitingList->map(fn ($u) => [
+                        'user_name' => $u->name,
+                        'position' => $u->position ?? 'Guru/Staf',
+                    ])->values(),
+                    'izin' => $gtkPermits->map(fn ($p) => [
+                        'user_name' => $p->user?->name ?? 'GTK',
+                        'permit_type' => $p->permit_type,
+                        'reason' => $p->reason,
+                    ])->values(),
+                    'inval' => $todayInvals->map(fn ($inv) => [
+                        'classroom' => $inv->classroom?->name ?? '-',
+                        'subject' => $inv->subject?->name ?? '-',
+                        'absent_teacher' => $inv->absentTeacher?->name ?? 'Guru',
+                        'inval_teacher' => $inv->invalTeacher?->name ?? 'Guru Pengganti',
+                        'period' => "Jam {$inv->period_start}-{$inv->period_end}",
+                    ])->values(),
+                    'unattended_kbm' => $unattendedSchedules->map(fn ($sch) => [
+                        'teacher_name' => $sch->teacher?->name ?? 'Guru',
+                        'classroom' => $sch->classroom?->name ?? '-',
+                        'subject' => $sch->subject?->name ?? '-',
+                        'period' => "Jam {$sch->start_period}-{$sch->end_period}",
+                    ])->values(),
+                ],
+            ];
+        }
+
+        // 3. EVENT TIMELINE (Feed Peristiwa Hari Ini Secara Kronologis)
+        $timelineEvents = collect();
+
+        // (a) Kejadian / Pelanggaran Meja Piket
+        $incidentsQuery = PiketIncident::with(['student.classroom', 'classroom', 'recordedBy'])
+            ->whereDate('incident_date', $targetDateStr);
+
+        if (! $canViewStudentAll && $myHomeroomClassroom) {
+            $incidentsQuery->where('classroom_id', $myHomeroomClassroom->id);
+        }
+
+        foreach ($incidentsQuery->get() as $inc) {
+            $timelineEvents->push([
+                'type' => 'incident',
+                'time' => substr($inc->incident_time, 0, 5) ?: '-',
+                'title' => $inc->category_label ?? 'Pelanggaran Siswa',
+                'badge' => ($inc->penalty_points ?? 0).' Poin',
+                'badge_color' => 'rose',
+                'person_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
+                'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
+                'description' => $inc->description,
+                'action_taken' => $inc->action_taken,
+                'officer' => $inc->recordedBy?->name ?? 'Piket',
+            ]);
+        }
+
+        // (b) Izin Siswa Terlambat Masuk
+        foreach ($latePermits as $lp) {
+            $timelineEvents->push([
+                'type' => 'permit_late',
+                'time' => $lp->created_at ? $lp->created_at->format('H:i') : '-',
+                'title' => 'Terlambat Masuk Gerbang',
+                'badge' => 'Jam ke-'.($lp->period_assigned ?? '1'),
+                'badge_color' => 'amber',
+                'person_name' => $lp->student?->name ?? 'Siswa',
+                'classroom_name' => $lp->classroom?->name ?? $lp->student?->classroom?->name ?? '-',
+                'description' => $lp->reason ?? 'Izin masuk terlambat',
+                'action_taken' => 'Diberikan surat izin piket',
+                'officer' => $lp->giver?->name ?? 'Piket',
+            ]);
+        }
+
+        // (c) Izin Siswa Pulang Cepat
+        foreach ($earlyLeavePermits as $ep) {
+            $timelineEvents->push([
+                'type' => 'permit_early',
+                'time' => $ep->created_at ? $ep->created_at->format('H:i') : '-',
+                'title' => 'Izin Pulang Lebih Awal',
+                'badge' => 'Pulang Cepat',
+                'badge_color' => 'purple',
+                'person_name' => $ep->student?->name ?? 'Siswa',
+                'classroom_name' => $ep->classroom?->name ?? $ep->student?->classroom?->name ?? '-',
+                'description' => $ep->reason ?? 'Izin pulang lebih awal',
+                'action_taken' => 'Disetujui piket',
+                'officer' => $ep->giver?->name ?? 'Piket',
+            ]);
+        }
+
+        // (d) Siswa Bolos KBM
+        foreach ($truancyStudents as $ts) {
+            $timelineEvents->push([
+                'type' => 'truancy',
+                'time' => '-',
+                'title' => 'Indikasi Bolos Pelajaran',
+                'badge' => $ts->alfa_count_jp.' JP Alfa',
+                'badge_color' => 'slate',
+                'person_name' => $ts->student_name,
+                'classroom_name' => $ts->classroom_name,
+                'description' => 'Alfa di mapel: '.$ts->alfa_subjects,
+                'action_taken' => 'Terdeteksi di: '.$ts->present_subjects,
+                'officer' => 'Sistem KBM',
+            ]);
+        }
+
+        // (e) Rujukan & Layanan BK (jika berwenang)
+        if ($canViewBk) {
+            $bkReferralsQuery = PiketIncident::where('follow_up_target', 'rujuk_bk')
+                ->whereDate('incident_date', $targetDateStr)
+                ->with(['student.classroom', 'bkReferral']);
+
+            if (! $canViewStudentAll && $myHomeroomClassroom) {
+                $bkReferralsQuery->where('classroom_id', $myHomeroomClassroom->id);
+            }
+
+            foreach ($bkReferralsQuery->get() as $bkr) {
+                $timelineEvents->push([
+                    'type' => 'bk_referral',
+                    'time' => substr($bkr->incident_time, 0, 5) ?: '-',
+                    'title' => 'Rujukan Kasus ke BK',
+                    'badge' => $bkr->bkReferral?->status_label ?? 'Rujukan BK',
+                    'badge_color' => 'indigo',
+                    'person_name' => $bkr->student?->name ?? 'Siswa',
+                    'classroom_name' => $bkr->classroom?->name ?? '-',
+                    'description' => $bkr->description,
+                    'action_taken' => 'Kasus dilimpahkan ke Guru BK',
+                    'officer' => 'Meja Piket',
+                ]);
+            }
+        }
+
+        // (f) GTK Izin & Inval (jika berwenang)
+        if ($canViewGtk) {
+            foreach ($gtkPermits ?? [] as $gp) {
+                $timelineEvents->push([
+                    'type' => 'gtk_permit',
+                    'time' => '-',
+                    'title' => 'Izin / Cuti Guru GTK',
+                    'badge' => ucfirst(str_replace('_', ' ', $gp->permit_type)),
+                    'badge_color' => 'purple',
+                    'person_name' => $gp->user?->name ?? 'GTK',
+                    'classroom_name' => 'Guru/Staf',
+                    'description' => $gp->reason ?? 'Izin GTK',
+                    'action_taken' => 'Telah disetujui pimpinan',
+                    'officer' => 'Kepala Sekolah',
+                ]);
+            }
+
+            foreach ($todayInvals ?? [] as $inv) {
+                $timelineEvents->push([
+                    'type' => 'inval',
+                    'time' => '-',
+                    'title' => 'Penugasan Guru Inval',
+                    'badge' => "Jam {$inv->period_start}-{$inv->period_end}",
+                    'badge_color' => 'blue',
+                    'person_name' => $inv->invalTeacher?->name ?? 'Guru Pengganti',
+                    'classroom_name' => $inv->classroom?->name ?? '-',
+                    'description' => 'Menggantikan '.($inv->absentTeacher?->name ?? 'Guru').' ('.($inv->subject?->name ?? 'Mapel').')',
+                    'action_taken' => $inv->assignment_material ?: 'Pendampingan kelas',
+                    'officer' => 'Piket Inval',
+                ]);
+            }
+        }
+
+        $timelineEvents = $timelineEvents->sortByDesc('time')->values();
+
+        return [
+            'role_key' => $roleKey,
+            'role_label' => $roleLabel,
+            'scope_label' => $canViewStudentAll ? 'Seluruh Siswa (Tingkat Sekolah)' : 'Kelas '.($myHomeroomClassroom?->name ?? '-'),
+            'can_view_student_all' => $canViewStudentAll,
+            'can_view_gtk' => $canViewGtk,
+            'can_view_bk' => $canViewBk,
+            'siswa' => [
+                'hadir' => $hadirStudents->count(),
+                'telat' => $latePermits->count(),
+                'sakit' => $allSakitStudentIds->count(),
+                'izin' => $allMurniIzinStudentIds->count(),
+                'dispen' => $allDispenStudentIds->count(),
+                'pulang' => $earlyLeavePermits->count(),
+                'alfa' => $pureAlfaCount,
+                'bolos' => $truancyStudents->count(),
+                'detail' => [
+                    'hadir' => $hadirStudents->map(fn ($r) => [
+                        'name' => $r->student?->name ?? 'Siswa',
+                        'classroom' => $r->session?->classroom?->name ?? $r->student?->classroom?->name ?? '-',
+                    ])->take(50)->values(),
+                    'telat' => $latePermits->map(fn ($p) => [
+                        'name' => $p->student?->name ?? 'Siswa',
+                        'classroom' => $p->classroom?->name ?? '-',
+                        'reason' => $p->reason ?? 'Terlambat masuk',
+                        'time' => $p->created_at?->format('H:i') ?? '-',
+                    ])->values(),
+                    'sakit' => $allSakitStudentIds->map(function ($id) use ($studentRecords, $sakitPermits) {
+                        $p = $sakitPermits->firstWhere('student_id', $id);
+                        $r = $studentRecords->firstWhere('student_id', $id);
+                        $st = $p?->student ?? $r?->student;
+
+                        return [
+                            'name' => $st?->name ?? 'Siswa',
+                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? '-',
+                            'reason' => $p?->reason ?? 'Sakit',
+                        ];
+                    })->values(),
+                    'izin' => $allMurniIzinStudentIds->map(function ($id) use ($studentRecords, $murniIzinPermits) {
+                        $p = $murniIzinPermits->firstWhere('student_id', $id);
+                        $r = $studentRecords->firstWhere('student_id', $id);
+                        $st = $p?->student ?? $r?->student;
+
+                        return [
+                            'name' => $st?->name ?? 'Siswa',
+                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? '-',
+                            'reason' => $p?->reason ?? 'Izin',
+                        ];
+                    })->values(),
+                    'dispen' => $allDispenStudentIds->map(function ($id) use ($studentRecords) {
+                        $r = $studentRecords->firstWhere('student_id', $id);
+
+                        return [
+                            'name' => $r?->student?->name ?? 'Siswa',
+                            'classroom' => $r?->session?->classroom?->name ?? '-',
+                            'reason' => 'Dispensasi Kegiatan / Tugas',
+                        ];
+                    })->values(),
+                    'pulang' => $earlyLeavePermits->map(fn ($p) => [
+                        'name' => $p->student?->name ?? 'Siswa',
+                        'classroom' => $p->classroom?->name ?? '-',
+                        'reason' => $p->reason ?? 'Izin pulang awal',
+                        'time' => $p->created_at?->format('H:i') ?? '-',
+                    ])->values(),
+                    'alfa' => $pureAlfaRecords->unique('student_id')->map(fn ($r) => [
+                        'name' => $r->student?->name ?? 'Siswa',
+                        'classroom' => $r->session?->classroom?->name ?? '-',
+                        'reason' => 'Tanpa Keterangan',
+                    ])->values(),
+                    'bolos' => $truancyStudents->map(fn ($t) => [
+                        'name' => $t->student_name,
+                        'classroom' => $t->classroom_name,
+                        'reason' => "Alfa di {$t->alfa_subjects} (Hadir di {$t->present_subjects})",
+                    ])->values(),
+                ],
+            ],
+            'gtk' => $gtkData,
+            'timeline' => $timelineEvents,
+        ];
     }
 
     /**
