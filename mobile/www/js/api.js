@@ -165,7 +165,11 @@ const SIAP_API = (function() {
             body: JSON.stringify({ incident_id: incidentId, status, notes }),
         }),
         getProfile: () => request('profile', { method: 'GET' }),
-        getActivityLogs: (limit = 40) => request('profile/activity-logs?limit=' + limit, { method: 'GET' }),
+        getActivityLogs: (date = null, limit = 50) => {
+            let url = 'profile/activity-logs?limit=' + limit;
+            if (date) url += '&date=' + encodeURIComponent(date);
+            return request(url, { method: 'GET' });
+        },
         getNotifications: () => request('notifications', { method: 'GET' }),
         updateProfile: (data) => request('profile/update', {
             method: 'POST',

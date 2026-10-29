@@ -1975,10 +1975,12 @@
 
     let currentActivityLogs = [];
     let currentActivityFilter = 'all';
+    let currentActivityDate = null;
 
     function renderProfileActivityLogs(logs, container = null) {
         const root = container || document;
         const listEl = root.querySelector('#prof-activity-logs-list');
+        const countInfoEl = root.querySelector('#act-logs-count-info');
         if (!listEl) return;
 
         currentActivityLogs = logs || [];
@@ -1987,11 +1989,16 @@
             ? currentActivityLogs
             : currentActivityLogs.filter(item => item.category === currentActivityFilter);
 
+        if (countInfoEl) {
+            countInfoEl.textContent = `Menampilkan ${filtered.length} catatan aktivitas`;
+        }
+
         if (filtered.length === 0) {
+            const dateNotice = currentActivityDate ? ` pada tanggal ${currentActivityDate}` : '';
             listEl.innerHTML = `
                 <div class="p-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
                     <span class="text-xl block mb-1">📋</span>
-                    Tidak ada catatan aktivitas untuk filter ini.
+                    Tidak ada catatan aktivitas${dateNotice} untuk filter ini.
                 </div>
             `;
             return;
@@ -2035,6 +2042,73 @@
         }).join('');
     }
 
+    function updateDateFilterButtons(activeMode) {
+        const btnToday = document.getElementById('btn-act-date-today');
+        const btnAll = document.getElementById('btn-act-date-all');
+        if (btnToday) {
+            btnToday.className = activeMode === 'today'
+                ? 'px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-bold shadow-xs active:scale-95 transition shrink-0'
+                : 'px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 text-[10px] font-bold active:scale-95 transition shrink-0 hover:bg-slate-100';
+        }
+        if (btnAll) {
+            btnAll.className = activeMode === 'all'
+                ? 'px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-bold shadow-xs active:scale-95 transition shrink-0'
+                : 'px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 text-[10px] font-bold active:scale-95 transition shrink-0 hover:bg-slate-100';
+        }
+    }
+
+    async function loadActivityLogsByDate(dateStr) {
+        const listEl = document.querySelector('#prof-activity-logs-list');
+        const countInfoEl = document.querySelector('#act-logs-count-info');
+        if (listEl) {
+            listEl.innerHTML = '<div class="text-center py-6 text-xs text-slate-400 animate-pulse">Memuat log aktivitas...</div>';
+        }
+        if (countInfoEl) {
+            countInfoEl.textContent = 'Memuat aktivitas...';
+        }
+
+        try {
+            const res = await SIAP_API.getActivityLogs(dateStr, 50);
+            if (res.success && res.data) {
+                renderProfileActivityLogs(res.data);
+            }
+        } catch (err) {
+            if (listEl) {
+                listEl.innerHTML = `<div class="p-4 text-center text-xs text-rose-500">Gagal memuat aktivitas: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+    }
+
+    window.setActivityDateFilter = function(mode) {
+        if (mode === 'today') {
+            const todayStr = new Date().toISOString().split('T')[0];
+            currentActivityDate = todayStr;
+            const dateInput = document.getElementById('act-date-input');
+            if (dateInput) dateInput.value = todayStr;
+            updateDateFilterButtons('today');
+            loadActivityLogsByDate(todayStr);
+        } else {
+            currentActivityDate = null;
+            const dateInput = document.getElementById('act-date-input');
+            if (dateInput) dateInput.value = '';
+            updateDateFilterButtons('all');
+            loadActivityLogsByDate(null);
+        }
+    };
+
+    window.handleActivityDateChange = function(val) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (val === todayStr) {
+            updateDateFilterButtons('today');
+        } else if (!val) {
+            updateDateFilterButtons('all');
+        } else {
+            updateDateFilterButtons('custom');
+        }
+        currentActivityDate = val || null;
+        loadActivityLogsByDate(currentActivityDate);
+    };
+
     window.filterActivityLogs = function(category) {
         currentActivityFilter = category;
 
@@ -2054,20 +2128,8 @@
     };
 
     window.refreshProfileActivityLogs = async function() {
-        const listEl = document.querySelector('#prof-activity-logs-list');
-        if (listEl) {
-            listEl.innerHTML = '<div class="text-center py-6 text-xs text-slate-400 animate-pulse">Memuat ulang riwayat aktivitas...</div>';
-        }
-
-        try {
-            const res = await SIAP_API.getActivityLogs(40);
-            if (res.success && res.data) {
-                renderProfileActivityLogs(res.data);
-                showToast('Riwayat aktivitas berhasil diperbarui.', 'success');
-            }
-        } catch (err) {
-            showToast('Gagal memuat riwayat aktivitas: ' + err.message, 'error');
-        }
+        showToast('Memuat ulang riwayat aktivitas...', 'info');
+        await loadActivityLogsByDate(currentActivityDate);
     };
 
     // ==========================================

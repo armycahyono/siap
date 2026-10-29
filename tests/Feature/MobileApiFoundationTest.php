@@ -574,10 +574,23 @@ class MobileApiFoundationTest extends TestCase
                         'description',
                         'channel',
                         'timestamp',
+                        'date_ymd',
                         'date_formatted',
                         'time_human',
                     ],
                 ],
             ]);
+
+        // 3. Cek filter tanggal hari ini vs tanggal lain
+        $todayStr = now()->toDateString();
+        $todayRes = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/profile/activity-logs?date='.$todayStr);
+        $todayRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data');
+
+        $pastRes = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/profile/activity-logs?date=2020-01-01');
+        $pastRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(0, 'data');
     }
 }

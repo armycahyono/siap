@@ -126,7 +126,7 @@ class MobileProfileController extends Controller
     }
 
     /**
-     * Ambil log aktivitas pengguna (mendukung filter dan limit).
+     * Ambil log aktivitas pengguna (mendukung filter tanggal dan limit).
      */
     public function getActivityLogs(Request $request): JsonResponse
     {
@@ -139,8 +139,13 @@ class MobileProfileController extends Controller
             ], 401);
         }
 
-        $limit = min((int) $request->input('limit', 40), 100);
-        $logs = $this->getUserActivityLogs($user, $limit);
+        $limit = min((int) $request->input('limit', 50), 100);
+        $date = $request->input('date');
+        if ($date && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $date = null;
+        }
+
+        $logs = $this->getUserActivityLogs($user, $limit, $date);
 
         return response()->json([
             'success' => true,
@@ -151,15 +156,16 @@ class MobileProfileController extends Controller
     /**
      * Mengumpulkan riwayat log aktivitas pengguna dari berbagai sumber data (Web & Mobile).
      */
-    protected function getUserActivityLogs(User $user, int $limit = 40): array
+    protected function getUserActivityLogs(User $user, int $limit = 40, ?string $date = null): array
     {
         $activities = collect();
 
         // 1. Ambil dari UserActivityLog
-        $ualLogs = UserActivityLog::where('user_id', $user->id)
-            ->latest()
-            ->take($limit)
-            ->get();
+        $ualQuery = UserActivityLog::where('user_id', $user->id);
+        if ($date) {
+            $ualQuery->whereDate('created_at', $date);
+        }
+        $ualLogs = $ualQuery->latest()->take($limit)->get();
 
         $loggedAttIds = [];
         $loggedKbmIds = [];
@@ -241,18 +247,20 @@ class MobileProfileController extends Controller
                 'description' => $log->description,
                 'channel' => $channel,
                 'timestamp' => $log->created_at?->timestamp ?? 0,
+                'date_ymd' => $log->created_at?->toDateString(),
                 'date_formatted' => $log->created_at?->translatedFormat('d M Y, H:i').' WIB',
                 'time_human' => $log->created_at ? Carbon::parse($log->created_at)->diffForHumans() : '-',
             ]);
         }
 
         // 2. Ambil dari AttendanceLog (Presensi Masuk & Pulang) yang belum ada di activities
-        $attLogs = AttendanceLog::where('user_type', 'teacher')
+        $attQuery = AttendanceLog::where('user_type', 'teacher')
             ->where('user_id', $user->id)
-            ->whereNotIn('id', $loggedAttIds)
-            ->latest('scanned_at')
-            ->take($limit)
-            ->get();
+            ->whereNotIn('id', $loggedAttIds);
+        if ($date) {
+            $attQuery->whereDate('scanned_at', $date);
+        }
+        $attLogs = $attQuery->latest('scanned_at')->take($limit)->get();
 
         foreach ($attLogs as $att) {
             $raw = json_decode($att->raw_payload ?? '{}', true) ?: [];
@@ -276,18 +284,23 @@ class MobileProfileController extends Controller
                 'description' => "Presensi geotagging {$label} berhasil{$dist}{$note}.",
                 'channel' => $channel,
                 'timestamp' => $att->scanned_at?->timestamp ?? 0,
+                'date_ymd' => $att->scanned_at?->toDateString(),
                 'date_formatted' => $att->scanned_at?->translatedFormat('d M Y, H:i').' WIB',
                 'time_human' => $att->scanned_at ? Carbon::parse($att->scanned_at)->diffForHumans() : '-',
             ]);
         }
 
         // 3. Ambil dari SubjectAttendanceSession (Absen KBM) yang belum ada di activities
-        $kbmSessions = SubjectAttendanceSession::where('teacher_id', $user->id)
+        $kbmQuery = SubjectAttendanceSession::where('teacher_id', $user->id)
             ->whereNotIn('id', $loggedKbmIds)
-            ->with(['classroom', 'subject'])
-            ->latest('created_at')
-            ->take($limit)
-            ->get();
+            ->with(['classroom', 'subject']);
+        if ($date) {
+            $kbmQuery->where(function ($sq) use ($date) {
+                $sq->whereDate('attendance_date', $date)
+                    ->orWhereDate('created_at', $date);
+            });
+        }
+        $kbmSessions = $kbmQuery->latest('created_at')->take($limit)->get();
 
         foreach ($kbmSessions as $sess) {
             $className = $sess->classroom?->name ?? 'Kelas';
@@ -305,6 +318,7 @@ class MobileProfileController extends Controller
                 'description' => "Mengabsen KBM {$subjectName} (Jam ke-{$sess->start_period}-{$sess->end_period}){$topic}.",
                 'channel' => 'Web',
                 'timestamp' => $sess->created_at?->timestamp ?? 0,
+                'date_ymd' => $sess->attendance_date?->toDateString() ?? $sess->created_at?->toDateString(),
                 'date_formatted' => $sess->created_at?->translatedFormat('d M Y, H:i').' WIB',
                 'time_human' => $sess->created_at ? Carbon::parse($sess->created_at)->diffForHumans() : '-',
             ]);
