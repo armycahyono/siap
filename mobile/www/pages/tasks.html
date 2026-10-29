@@ -1,84 +1,269 @@
-<div class="space-y-4">
-    <!-- Date Navigation Header -->
+<div class="space-y-4 pb-8">
+    <!-- 1. Navigasi Tanggal Pemantauan -->
     <div class="card-elevated p-3 flex items-center justify-between">
-        <button type="button" id="tasks-btn-prev" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition" title="Hari Sebelumnya">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        <button type="button" id="tasks-btn-prev" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition active:scale-95" title="Hari Sebelumnya">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div class="text-center">
-            <span class="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Tanggal Pemantauan</span>
-            <h4 id="tasks-target-date-label" class="text-xs font-black text-slate-800">Hari Ini</h4>
+            <span class="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Tanggal Tugas &amp; Pemantauan</span>
+            <div class="flex items-center justify-center gap-1.5 mt-0.5">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <h4 id="tasks-target-date-label" class="text-xs font-black text-slate-800">Hari Ini</h4>
+            </div>
         </div>
-        <button type="button" id="tasks-btn-next" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition" title="Hari Berikutnya">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <button type="button" id="tasks-btn-next" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition active:scale-95" title="Hari Berikutnya">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
         </button>
     </div>
 
-    <!-- Operational Roles Badges (Kesiswaan & BK) -->
-    <div class="grid grid-cols-2 gap-2.5">
-        <div id="tasks-badge-kesiswaan" class="hidden card-elevated p-3 bg-rose-50 border-rose-200 flex items-center gap-2">
-            <span class="text-base">🛡️</span>
-            <div>
-                <h5 class="text-[11px] font-black text-rose-900">Tim Kedisiplinan</h5>
-                <p class="text-[9px] text-rose-700">Waka Kesiswaan & Penanganan</p>
+    <!-- 2. Kartu Izin & Cuti Saya (Untuk Semua GTK) -->
+    <div id="card-my-permits" class="card-elevated p-3.5 border-orange-200/80 bg-orange-50/40">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-orange-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-orange-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Izin &amp; Cuti Saya</h4>
+                    <p class="text-[10px] text-orange-800 font-medium">Pengajuan Mandiri &amp; Riwayat Izin GTK</p>
+                </div>
+            </div>
+            <span id="badge-my-permit-status" class="hidden px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800">Aktif</span>
+        </div>
+
+        <div id="info-my-permit-today" class="hidden mb-2.5 p-2 rounded-xl bg-orange-100/70 border border-orange-200 text-[11px] text-orange-950 font-semibold flex items-center justify-between">
+            <span id="text-my-permit-today">-</span>
+            <span class="text-[9px] px-1.5 py-0.2 rounded bg-orange-200 text-orange-800 font-bold uppercase">Disetujui</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <a href="/attendance/gtk-permits/create" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                <span>Ajukan Izin</span>
+            </a>
+            <a href="/attendance/gtk-permits?scope=personal" class="py-2.5 px-3 rounded-xl bg-white border border-orange-200 text-orange-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-orange-50 active:scale-95 transition">
+                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Riwayat Saya</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 3. Kartu Piket Sekolah (Bila Bertugas Hari Ini / Jadwal Piket) -->
+    <div id="card-piket-section" class="hidden card-elevated p-3.5 border-purple-200 bg-purple-50/40">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-purple-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Kartu Piket Sekolah</h4>
+                    <p id="piket-location-sub" class="text-[10px] text-purple-800 font-medium">Meja Piket Utama &amp; Operasional</p>
+                </div>
+            </div>
+            <span id="badge-piket-today" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs">Aktif Hari Ini</span>
+        </div>
+
+        <!-- 6 Menu Meja Piket Grid -->
+        <div class="grid grid-cols-3 gap-2">
+            <a href="/piket" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">📊</span>
+                <span class="text-[10px] font-bold text-slate-800">Meja Piket</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Dashboard</span>
+            </a>
+            <a href="/piket/journals" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">📓</span>
+                <span class="text-[10px] font-bold text-slate-800">Jurnal Piket</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Laporan</span>
+            </a>
+            <a href="/piket/permits/create" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">🎟️</span>
+                <span class="text-[10px] font-bold text-slate-800">Izin Siswa</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Masuk/Keluar</span>
+            </a>
+            <a href="/piket/guests" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">👥</span>
+                <span class="text-[10px] font-bold text-slate-800">Buku Tamu</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Kunjungan</span>
+            </a>
+            <a href="/piket/inval" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">🔄</span>
+                <span class="text-[10px] font-bold text-slate-800">Guru Inval</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Jam Kosong</span>
+            </a>
+            <a href="/piket/swaps" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">⇄</span>
+                <span class="text-[10px] font-bold text-slate-800">Tukar Jadwal</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Shift Piket</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 4. Kartu Tugas Wali Kelas (Live Monitoring 8 Status Siswa) -->
+    <div id="card-homeroom-section" class="hidden card-elevated p-3.5 border-amber-200 bg-amber-50/30">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-amber-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Tugas Wali Kelas</h4>
+                    <p id="homeroom-classroom-name" class="text-[10px] text-amber-800 font-bold">Kelas Perwalian</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-[9px] text-slate-400 font-semibold block">Tingkat Hadir</span>
+                <span id="stat-rate" class="text-xs font-black text-emerald-600 font-mono">0%</span>
             </div>
         </div>
-        <div id="tasks-badge-bk" class="hidden card-elevated p-3 bg-indigo-50 border-indigo-200 flex items-center gap-2">
-            <span class="text-base">🤝</span>
-            <div>
-                <h5 class="text-[11px] font-black text-indigo-900">Layanan BK</h5>
-                <p class="text-[9px] text-indigo-700">Konseling & Rujukan Kasus</p>
+
+        <!-- Bilah 8 Chip Status Siswa Rombel (Bisa Diklik untuk Filter) -->
+        <div class="space-y-1.5 mb-3">
+            <div class="grid grid-cols-4 gap-1.5 text-center">
+                <div onclick="selectHomeroomCategory('hadir')" class="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-emerald-700 block">Hadir</span>
+                    <p id="stat-hadir" class="text-xs font-black text-emerald-950 font-mono">0</p>
+                </div>
+                <div onclick="selectHomeroomCategory('late')" class="p-1.5 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer hover:bg-amber-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-amber-700 block">Telat</span>
+                    <p id="stat-terlambat" class="text-xs font-black text-amber-950 font-mono">0</p>
+                </div>
+                <div onclick="selectHomeroomCategory('sakit')" class="p-1.5 rounded-xl bg-blue-50 border border-blue-200 cursor-pointer hover:bg-blue-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-blue-700 block">Sakit</span>
+                    <p id="stat-sakit" class="text-xs font-black text-blue-950 font-mono">0</p>
+                </div>
+                <div onclick="selectHomeroomCategory('izin')" class="p-1.5 rounded-xl bg-cyan-50 border border-cyan-200 cursor-pointer hover:bg-cyan-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-cyan-700 block">Izin</span>
+                    <p id="stat-izin" class="text-xs font-black text-cyan-950 font-mono">0</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 text-center">
+                <div onclick="selectHomeroomCategory('dispen')" class="p-1.5 rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer hover:bg-indigo-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-indigo-700 block">Dispen</span>
+                    <p id="stat-dispen" class="text-xs font-black text-indigo-950 font-mono">0</p>
+                </div>
+                <div onclick="selectHomeroomCategory('pulang')" class="p-1.5 rounded-xl bg-purple-50 border border-purple-200 cursor-pointer hover:bg-purple-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-purple-700 block">Pulang</span>
+                    <p id="stat-pulang" class="text-xs font-black text-purple-950 font-mono">0</p>
+                </div>
+                <div onclick="selectHomeroomCategory('alfa')" class="p-1.5 rounded-xl bg-rose-50 border border-rose-200 cursor-pointer hover:bg-rose-100 transition active:scale-95">
+                    <span class="text-[9px] font-bold text-rose-700 block">Alfa</span>
+                    <p id="stat-alfa" class="text-xs font-black text-rose-950 font-mono">0</p>
+                </div>
+                <div onclick="selectHomeroomCategory('truancy')" class="p-1.5 rounded-xl bg-slate-900 text-white cursor-pointer hover:bg-slate-800 transition active:scale-95 shadow-xs">
+                    <span class="text-[9px] font-bold text-rose-400 block">Bolos</span>
+                    <p id="stat-bolos" class="text-xs font-black text-white font-mono">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3 Tombol Aksi Cepat Wali Kelas -->
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-amber-200/80">
+            <a id="btn-homeroom-permits" href="/attendance/homeroom-permits" class="py-2 px-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-[10px] font-bold text-center shadow-xs hover:bg-amber-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>📝 Izin Siswa</span>
+            </a>
+            <a href="/visitations" class="py-2 px-1 rounded-xl bg-white border border-cyan-300 text-cyan-900 text-[10px] font-bold text-center shadow-xs hover:bg-cyan-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>🏠 Visitasi</span>
+            </a>
+            <a id="btn-homeroom-recap" href="/attendance/homeroom-recap" class="py-2 px-1 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-[10px] font-bold text-center shadow-xs hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>📋 Rekap</span>
+            </a>
+        </div>
+
+        <!-- Log & Kejadian Siswa Rombel -->
+        <div class="mt-3 pt-3 border-t border-amber-200/80">
+            <h5 class="text-[11px] font-black text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Catatan &amp; Insiden Siswa</span>
+                <span id="homeroom-event-counter" class="text-[9px] font-bold text-slate-400">0 Catatan</span>
+            </h5>
+            <div id="tasks-student-events" class="space-y-2">
+                <div class="text-center py-4 text-xs text-slate-400">Tidak ada kejadian/pelanggaran siswa pada tanggal ini.</div>
             </div>
         </div>
     </div>
 
-    <!-- Homeroom Live Monitoring (8 Status Cards) -->
-    <div id="tasks-homeroom-section" class="hidden space-y-3">
-        <div class="flex items-center justify-between px-1">
-            <h4 class="text-xs font-black text-slate-800 uppercase tracking-wider">Pemantauan Rombel Perwalian</h4>
-            <span class="text-[10px] font-bold text-slate-500">Tingkat Hadir: <span id="stat-rate" class="text-blue-600">0%</span></span>
+    <!-- 5. Kartu Visitasi & BK (Bila Punya Akses / Guru BK) -->
+    <div id="card-visitation-section" class="hidden card-elevated p-3.5 border-cyan-200 bg-cyan-50/30">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b border-cyan-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-cyan-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Visitasi Siswa &amp; BK</h4>
+                    <p class="text-[10px] text-cyan-800 font-medium">Home Visit &amp; Pemantauan Khusus Siswa</p>
+                </div>
+            </div>
+            <span id="badge-visitation-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-600 text-white">0 Agenda</span>
         </div>
 
-        <div class="grid grid-cols-4 gap-2 text-center">
-            <div class="p-2 card-elevated bg-emerald-50/80 border-emerald-100">
-                <span class="text-[9px] font-bold text-emerald-700">Hadir</span>
-                <p id="stat-hadir" class="text-sm font-black text-emerald-900 mt-0.5">0</p>
+        <div id="visitation-recent-list" class="space-y-2 mb-2.5"></div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <a href="/visitations/create" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+                <span>+ Jadwal Visitasi</span>
+            </a>
+            <a href="/visitations" class="py-2.5 px-3 rounded-xl bg-white border border-cyan-300 text-cyan-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-cyan-50 active:scale-95 transition">
+                <span>Semua Data</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 6. Kartu Kedisiplinan & Layanan BK (Operational Roles) -->
+    <div id="card-roles-operational" class="hidden grid grid-cols-2 gap-2.5">
+        <a id="tasks-badge-kesiswaan" href="/discipline/dashboard" class="hidden card-elevated p-3 bg-rose-50 border-rose-200 flex flex-col items-center text-center hover:border-rose-400 active:scale-95 transition">
+            <span class="text-lg mb-1">🛡️</span>
+            <h5 class="text-[11px] font-black text-rose-950">Tim Kedisiplinan</h5>
+            <p class="text-[9px] text-rose-700 mt-0.5">Verifikasi Pelanggaran</p>
+        </a>
+        <a id="tasks-badge-bk" href="/bk/referrals" class="hidden card-elevated p-3 bg-indigo-50 border-indigo-200 flex flex-col items-center text-center hover:border-indigo-400 active:scale-95 transition">
+            <span class="text-lg mb-1">🤝</span>
+            <h5 class="text-[11px] font-black text-indigo-950">Layanan BK</h5>
+            <p class="text-[9px] text-indigo-700 mt-0.5">Rujukan Meja Piket</p>
+        </a>
+    </div>
+
+    <!-- 7. Kartu Persetujuan Izin GTK (Khusus Kepala Sekolah & Waka Kurikulum) -->
+    <div id="card-admin-gtk-permits" class="hidden card-elevated p-3.5 border-blue-200 bg-blue-50/30">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-blue-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Persetujuan Izin GTK</h4>
+                    <p class="text-[10px] text-blue-800 font-medium">Monitoring &amp; Approval Izin/Cuti</p>
+                </div>
             </div>
-            <div class="p-2 card-elevated bg-amber-50/80 border-amber-100">
-                <span class="text-[9px] font-bold text-amber-700">Sakit</span>
-                <p id="stat-sakit" class="text-sm font-black text-amber-900 mt-0.5">0</p>
-            </div>
-            <div class="p-2 card-elevated bg-blue-50/80 border-blue-100">
-                <span class="text-[9px] font-bold text-blue-700">Izin</span>
-                <p id="stat-izin" class="text-sm font-black text-blue-900 mt-0.5">0</p>
-            </div>
-            <div class="p-2 card-elevated bg-purple-50/80 border-purple-100">
-                <span class="text-[9px] font-bold text-purple-700">Dispen</span>
-                <p id="stat-dispen" class="text-sm font-black text-purple-900 mt-0.5">0</p>
-            </div>
-            <div class="p-2 card-elevated bg-orange-50/80 border-orange-100">
-                <span class="text-[9px] font-bold text-orange-700">Terlambat</span>
-                <p id="stat-terlambat" class="text-sm font-black text-orange-900 mt-0.5">0</p>
-            </div>
-            <div class="p-2 card-elevated bg-violet-50/80 border-violet-100">
-                <span class="text-[9px] font-bold text-violet-700">Pulang</span>
-                <p id="stat-pulang" class="text-sm font-black text-violet-900 mt-0.5">0</p>
-            </div>
-            <div class="p-2 card-elevated bg-rose-50/80 border-rose-100">
-                <span class="text-[9px] font-bold text-rose-700">Alfa</span>
-                <p id="stat-alfa" class="text-sm font-black text-rose-900 mt-0.5">0</p>
-            </div>
-            <div class="p-2 card-elevated bg-slate-100 border-slate-200">
-                <span class="text-[9px] font-bold text-slate-700">Bolos KBM</span>
-                <p id="stat-bolos" class="text-sm font-black text-slate-900 mt-0.5">0</p>
-            </div>
+            <span id="badge-pending-permits-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500 text-white">0 Pengajuan</span>
         </div>
 
-        <!-- Log Kejadian Siswa Rombel -->
-        <div class="card-elevated p-3.5">
-            <h5 class="text-[11px] font-black text-slate-800 uppercase tracking-wider mb-2.5">Log Peristiwa & Catatan Kasus Siswa</h5>
-            <div id="tasks-student-events">
-                <div class="text-center py-4 text-xs text-slate-400">Memuat catatan...</div>
+        <div id="list-pending-gtk-permits" class="space-y-2 mb-2">
+            <div class="text-center py-3 text-xs text-slate-400">Tidak ada pengajuan izin GTK yang menunggu.</div>
+        </div>
+
+        <div class="pt-2 border-t border-blue-100 flex justify-between items-center text-[10px]">
+            <span class="text-slate-500 font-medium">GTK Izin Hari Ini: <strong id="count-approved-today">0 Orang</strong></span>
+            <a href="/attendance/gtk-permits?scope=manage" class="font-bold text-blue-600 hover:underline">Kelola Izin &raquo;</a>
+        </div>
+    </div>
+
+    <!-- 8. Kartu Pengesahan Supervisi Akademik (Kepala Sekolah & Kurikulum) -->
+    <div id="card-supervision-section" class="hidden card-elevated p-3.5 border-indigo-200 bg-indigo-50/30">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-indigo-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Pengesahan Supervisi</h4>
+                    <p class="text-[10px] text-indigo-800 font-medium">Observasi Mengajar Menunggu Pengesahan</p>
+                </div>
             </div>
+            <span id="badge-supervision-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white">0 Berkas</span>
+        </div>
+
+        <div id="list-pending-supervisions" class="space-y-2">
+            <div class="text-center py-3 text-xs text-slate-400">Tidak ada berkas supervisi menunggu pengesahan.</div>
         </div>
     </div>
 </div>

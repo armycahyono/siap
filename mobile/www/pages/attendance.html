@@ -1,70 +1,64 @@
 <div class="space-y-4">
-    <!-- Header Card -->
+    <!-- Header Card Presensi (Duo Grid Compact) -->
     <div class="card-elevated p-4">
-        <div class="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
+        <!-- Header & Twin-Chip Sensor Badge -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-                <h3 class="text-xs font-black text-slate-800 uppercase tracking-tight">Presensi Geotagging GPS</h3>
-                <p class="text-[10px] text-slate-400 font-medium">Validasi Koordinat Radius Sekolah</p>
-                <div class="flex items-center gap-1.5 mt-1.5">
-                    <svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <span id="att-distance-text" class="text-[10px] font-semibold text-slate-500">Mencari lokasi perangkat...</span>
-                </div>
+                <h3 class="text-xs font-black text-slate-800 uppercase tracking-tight">Presensi Geotagging</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Validasi Koordinat GPS &amp; Radius</p>
             </div>
-            <!-- Dua Badge Status Kanan: GPS Ready & Radius Ready -->
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <!-- 1. GPS Status -->
-                <div id="badge-gps-status" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold transition-all">
+            <!-- Terpadu: Twin-Chip Badge GPS & Radius -->
+            <div class="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/70">
+                <div id="badge-gps-status" class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-200 text-slate-500 text-[9px] font-extrabold transition-all">
                     <span id="dot-gps-status" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                    <span id="text-gps-status">GPS Not Ready</span>
+                    <span id="text-gps-status">GPS</span>
                 </div>
-                <!-- 2. Radius Status -->
-                <div id="badge-radius-status" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold transition-all">
+                <div id="badge-radius-status" class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-200 text-slate-500 text-[9px] font-extrabold transition-all">
                     <span id="dot-radius-status" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                    <span id="text-radius-status">Radius Not Ready</span>
+                    <span id="text-radius-status">Radius</span>
                 </div>
             </div>
         </div>
 
-        <!-- Grid Ringkasan Jam Hari Ini -->
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-center">
-                <span class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Jam Masuk</span>
-                <p id="att-today-in" class="text-base font-black text-slate-800 font-mono mt-0.5">--:--</p>
-            </div>
-            <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-center">
-                <span class="text-[9px] font-bold text-blue-700 uppercase tracking-wider">Jam Pulang</span>
-                <p id="att-today-out" class="text-base font-black text-slate-800 font-mono mt-0.5">--:--</p>
-            </div>
+        <!-- Realtime Distance Bar -->
+        <div class="mt-2.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between text-[10px]">
+            <span class="text-slate-500 font-medium flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Jarak Sekolah:
+            </span>
+            <span id="att-distance-text" class="font-bold text-slate-500">Mencari lokasi perangkat...</span>
         </div>
 
-        <!-- Tombol Aksi GPS (Logo Presensi di Tengah) -->
-        <div class="space-y-3">
-            <!-- 1. Tombol Presensi Masuk (Logo di Tengah) -->
-            <button type="button" id="btn-att-checkin" class="w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all shadow-md active:scale-98 bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-1.5 shadow-inner">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+        <!-- Dual Grid: Jam + Tombol Aksi Langsung Sejajar Kiri & Kanan (Compact & Proporsional) -->
+        <div class="grid grid-cols-2 gap-2.5 mt-3">
+            <!-- 1. Tombol Presensi Masuk (Kiri, Logo di Tengah) -->
+            <button type="button" id="btn-att-checkin" class="p-3.5 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-600 text-white flex flex-col items-center justify-center text-center shadow-sm hover:shadow transition active:scale-95 border border-emerald-400/40">
+                <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-1 shadow-inner">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
                 </div>
-                <span class="text-xs font-black tracking-tight uppercase">Presensi Masuk (Check-In)</span>
-                <span id="sub-att-checkin" class="text-[10px] text-white/85 font-medium mt-0.5">Ketuk untuk mencatat jam kehadiran masuk</span>
+                <span class="text-[11px] font-black uppercase tracking-tight">Presensi Masuk</span>
+                <p id="att-today-in" class="text-[11px] font-black font-mono mt-0.5 text-emerald-100">--:--</p>
+                <span id="sub-att-checkin" class="text-[9px] text-white/80 font-medium mt-0.5">Ketuk Rekam Masuk</span>
             </button>
 
-            <!-- 2. Tombol Presensi Pulang (Logo di Tengah) -->
-            <button type="button" id="btn-att-checkout" class="w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all shadow-md active:scale-98 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700">
-                <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-1.5 shadow-inner">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            <!-- 2. Tombol Presensi Pulang (Kanan, Logo di Tengah) -->
+            <button type="button" id="btn-att-checkout" class="p-3.5 rounded-2xl bg-gradient-to-b from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center text-center shadow-sm hover:shadow transition active:scale-95 border border-blue-400/40">
+                <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-1 shadow-inner">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                 </div>
-                <span class="text-xs font-black tracking-tight uppercase">Presensi Pulang (Check-Out)</span>
-                <span id="sub-att-checkout" class="text-[10px] text-white/85 font-medium mt-0.5">Ketuk untuk mencatat jam kepulangan</span>
+                <span class="text-[11px] font-black uppercase tracking-tight">Presensi Pulang</span>
+                <p id="att-today-out" class="text-[11px] font-black font-mono mt-0.5 text-blue-100">--:--</p>
+                <span id="sub-att-checkout" class="text-[9px] text-white/80 font-medium mt-0.5">Ketuk Rekam Pulang</span>
             </button>
         </div>
 
-        <!-- 3. Catatan Tambahan Opsional di Bawah Presensi Pulang (Seperti Versi Lama) -->
+        <!-- 3. Catatan Tambahan Opsional di Bawah Presensi Pulang -->
         <div class="mt-3">
             <details class="group rounded-2xl border border-slate-200/80 bg-slate-50/70 p-2 text-xs transition">
                 <summary class="flex items-center justify-center gap-1.5 font-bold text-slate-600 cursor-pointer select-none py-1 text-center hover:text-blue-600 transition">
-                    <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    <span class="text-[11px]">Tambah catatan presensi (opsional)</span>
-                    <svg class="w-3.5 h-3.5 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    <span class="text-[10px]">Tambah catatan presensi (opsional)</span>
+                    <svg class="w-3 h-3 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
                 <div class="mt-2 pt-2 border-t border-slate-200/80">
                     <input type="text" id="att-notes-input" placeholder="Contoh: Mengajar jam ke-1 / Petugas piket / Dinas luar..." maxlength="255" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium placeholder:text-slate-400">

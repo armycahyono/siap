@@ -676,38 +676,38 @@
         // 1. Update GPS Badge
         if (badgeGps && dotGps && textGps) {
             if (gpsState === 'ready') {
-                badgeGps.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold transition-all';
+                badgeGps.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-[9px] font-extrabold transition-all border border-emerald-200/60';
                 dotGps.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
-                textGps.textContent = 'GPS Ready';
+                textGps.textContent = 'GPS';
             } else if (gpsState === 'loading') {
-                badgeGps.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold transition-all';
+                badgeGps.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[9px] font-extrabold transition-all border border-amber-200/60';
                 dotGps.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse';
-                textGps.textContent = 'Mencari GPS...';
+                textGps.textContent = 'GPS...';
             } else {
-                badgeGps.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold transition-all';
+                badgeGps.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-[9px] font-extrabold transition-all border border-rose-200/60';
                 dotGps.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
-                textGps.textContent = 'GPS Not Ready';
+                textGps.textContent = 'GPS Off';
             }
         }
 
         // 2. Update Radius Badge
         if (badgeRadius && dotRadius && textRadius) {
             if (radiusState === 'ready') {
-                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold transition-all';
+                badgeRadius.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-[9px] font-extrabold transition-all border border-emerald-200/60';
                 dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
-                textRadius.textContent = 'Radius Ready';
+                textRadius.textContent = 'Radius';
             } else if (radiusState === 'out') {
-                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold transition-all';
+                badgeRadius.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-[9px] font-extrabold transition-all border border-rose-200/60';
                 dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
-                textRadius.textContent = 'Radius Not Ready';
+                textRadius.textContent = 'Radius Out';
             } else if (radiusState === 'checking') {
-                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold transition-all';
+                badgeRadius.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-200 text-slate-500 text-[9px] font-extrabold transition-all';
                 dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse';
-                textRadius.textContent = 'Mengecek Radius...';
+                textRadius.textContent = 'Radius...';
             } else {
-                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold transition-all';
+                badgeRadius.className = 'flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-[9px] font-extrabold transition-all border border-rose-200/60';
                 dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
-                textRadius.textContent = 'Radius Not Ready';
+                textRadius.textContent = 'Radius Off';
             }
         }
 
@@ -715,11 +715,11 @@
         if (distanceTextEl) {
             if (distance !== null) {
                 if (radiusState === 'ready') {
-                    distanceTextEl.innerHTML = `Jarak: <span class="font-bold text-emerald-700">${distance}m</span> dari sekolah (Maks. ${radiusLimit}m)`;
+                    distanceTextEl.innerHTML = `<span class="text-emerald-700 font-bold">${distance}m</span> dari sekolah (Batas ${radiusLimit}m)`;
                 } else if (radiusState === 'out') {
-                    distanceTextEl.innerHTML = `Jarak: <span class="font-bold text-rose-600">${distance}m</span> (Di luar batas ${radiusLimit}m)`;
+                    distanceTextEl.innerHTML = `<span class="text-rose-600 font-bold">${distance}m</span> (Di luar batas ${radiusLimit}m)`;
                 } else {
-                    distanceTextEl.textContent = `Jarak: ${distance} meter`;
+                    distanceTextEl.textContent = `${distance} meter`;
                 }
             } else if (errText) {
                 distanceTextEl.textContent = errText;
@@ -833,37 +833,37 @@
         if (checkInTimeEl) checkInTimeEl.textContent = data.today?.check_in_time || '--:--';
         if (checkOutTimeEl) checkOutTimeEl.textContent = data.today?.check_out_time || '--:--';
 
-        // 1. Tombol Presensi Masuk (Logo di Tengah)
+        // 1. Tombol Presensi Masuk (Duo Grid Compact, Logo di Tengah)
         if (btnCheckIn) {
             const canIn = !!data.today?.can_check_in;
             btnCheckIn.disabled = !canIn;
             if (canIn) {
-                btnCheckIn.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all shadow-md active:scale-98 bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 cursor-pointer';
-                if (subCheckIn) subCheckIn.textContent = 'Ketuk untuk mencatat jam kehadiran masuk';
+                btnCheckIn.className = 'p-3.5 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-600 text-white flex flex-col items-center justify-center text-center shadow-sm hover:shadow transition active:scale-95 border border-emerald-400/40 cursor-pointer';
+                if (subCheckIn) subCheckIn.textContent = 'Ketuk Rekam Masuk';
             } else {
-                btnCheckIn.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed';
+                btnCheckIn.className = 'p-3.5 rounded-2xl bg-slate-100 text-slate-400 border border-slate-200 flex flex-col items-center justify-center text-center cursor-not-allowed shadow-none';
                 if (subCheckIn) {
                     subCheckIn.textContent = data.today?.check_in_time 
-                        ? `Sudah tercatat masuk pukul ${data.today.check_in_time} WIB` 
-                        : 'Presensi masuk tidak tersedia';
+                        ? 'Sudah Absen' 
+                        : 'Tidak Tersedia';
                 }
             }
         }
 
-        // 2. Tombol Presensi Pulang (Logo di Tengah)
+        // 2. Tombol Presensi Pulang (Duo Grid Compact, Logo di Tengah)
         if (btnCheckOut) {
             const canOut = !!data.today?.can_check_out;
             btnCheckOut.disabled = !canOut;
             if (canOut) {
-                btnCheckOut.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all shadow-md active:scale-98 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 cursor-pointer';
+                btnCheckOut.className = 'p-3.5 rounded-2xl bg-gradient-to-b from-blue-600 to-indigo-600 text-white flex flex-col items-center justify-center text-center shadow-sm hover:shadow transition active:scale-95 border border-blue-400/40 cursor-pointer';
                 if (subCheckOut) {
                     subCheckOut.textContent = data.today?.has_check_out 
-                        ? `Sudah absen pulang pukul ${data.today.check_out_time} WIB (Ketuk untuk perbarui)`
-                        : 'Ketuk untuk mencatat jam kepulangan';
+                        ? 'Ketuk Perbarui'
+                        : 'Ketuk Rekam Pulang';
                 }
             } else {
-                btnCheckOut.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed';
-                if (subCheckOut) subCheckOut.textContent = 'Harap presensi masuk terlebih dahulu';
+                btnCheckOut.className = 'p-3.5 rounded-2xl bg-slate-100 text-slate-400 border border-slate-200 flex flex-col items-center justify-center text-center cursor-not-allowed shadow-none';
+                if (subCheckOut) subCheckOut.textContent = 'Belum Masuk';
             }
         }
 
@@ -1028,75 +1028,280 @@
     };
 
     function renderTasksContent(container, data) {
-        // Date label
+        // 1. Date label
         const dateLabel = container.querySelector('#tasks-target-date-label');
         if (dateLabel) {
-            dateLabel.textContent = `${data.target_date?.day_name}, ${data.target_date?.current}`;
+            const isToday = data.target_date?.is_today;
+            dateLabel.textContent = isToday
+                ? `Hari Ini (${data.target_date?.day_name}, ${data.target_date?.current})`
+                : `${data.target_date?.day_name}, ${data.target_date?.current}`;
         }
 
-        // Homeroom Live Monitoring (8 cards)
-        const homeroomSection = container.querySelector('#tasks-homeroom-section');
-        if (homeroomSection) {
-            if (data.homeroom) {
-                homeroomSection.classList.remove('hidden');
-                const s = data.homeroom.summary || {};
-                
-                const setVal = (id, val) => {
-                    const el = container.querySelector(id);
-                    if (el) el.textContent = val ?? 0;
-                };
+        // 2. Kartu Izin & Cuti Saya
+        const badgeMyPermit = container.querySelector('#badge-my-permit-status');
+        const infoMyPermit = container.querySelector('#info-my-permit-today');
+        const textMyPermit = container.querySelector('#text-my-permit-today');
+        const myPermitToday = data.gtk_permits?.my_permit_today;
 
-                setVal('#stat-hadir', s.hadir_count);
-                setVal('#stat-sakit', s.sakit_count);
-                setVal('#stat-izin', s.izin_count);
-                setVal('#stat-dispen', s.dispen_count);
-                setVal('#stat-terlambat', s.late_count);
-                setVal('#stat-pulang', s.pulang_count);
-                setVal('#stat-alfa', s.alfa_count);
-                setVal('#stat-bolos', s.truancy_count);
+        if (myPermitToday) {
+            if (badgeMyPermit) badgeMyPermit.classList.remove('hidden');
+            if (infoMyPermit) infoMyPermit.classList.remove('hidden');
+            if (textMyPermit) {
+                textMyPermit.textContent = `${(myPermitToday.type || 'Izin').toUpperCase()}: ${myPermitToday.reason || 'Izin Resmi'}`;
+            }
+        } else {
+            if (badgeMyPermit) badgeMyPermit.classList.add('hidden');
+            if (infoMyPermit) infoMyPermit.classList.add('hidden');
+        }
 
-                const rateEl = container.querySelector('#stat-rate');
-                if (rateEl) rateEl.textContent = s.attendance_rate !== null ? `${s.attendance_rate}%` : '-';
+        // 3. Kartu Piket Sekolah
+        const cardPiket = container.querySelector('#card-piket-section');
+        const piketLocationSub = container.querySelector('#piket-location-sub');
+        const badgePiketToday = container.querySelector('#badge-piket-today');
+        const isPiketToday = data.piket?.is_piket_today;
+        const weeklyDays = data.piket?.weekly_days || [];
 
-                // Log Siswa Kronologis
-                const eventList = container.querySelector('#tasks-student-events');
-                if (eventList) {
-                    const events = data.homeroom.student_events || [];
-                    if (events.length === 0) {
-                        eventList.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Tidak ada kejadian/pelanggaran siswa hari ini.</div>';
-                    } else {
-                        eventList.innerHTML = events.map(ev => `
-                            <div class="p-3 card-subtle mb-2">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-xs font-bold text-slate-800">${ev.student_name}</span>
-                                    <span class="text-[10px] font-mono text-slate-500">${ev.time}</span>
-                                </div>
-                                <p class="text-[11px] text-slate-600 font-medium">${ev.title}: ${ev.description}</p>
-                                ${ev.action ? `<p class="text-[10px] text-blue-600 mt-1">Tindakan: ${ev.action}</p>` : ''}
-                            </div>
-                        `).join('');
-                    }
+        if (isPiketToday || weeklyDays.length > 0) {
+            if (cardPiket) cardPiket.classList.remove('hidden');
+            if (isPiketToday) {
+                if (badgePiketToday) {
+                    badgePiketToday.textContent = 'Aktif Hari Ini';
+                    badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs';
+                }
+                if (piketLocationSub) {
+                    piketLocationSub.textContent = 'Bertugas Hari Ini di Meja Piket & Gerbang';
                 }
             } else {
-                homeroomSection.classList.add('hidden');
+                if (badgePiketToday) {
+                    badgePiketToday.textContent = `Piket: ${weeklyDays.join(', ')}`;
+                    badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800';
+                }
+                if (piketLocationSub) {
+                    piketLocationSub.textContent = `Jadwal Piket Anda: ${weeklyDays.join(', ')}`;
+                }
             }
+        } else {
+            if (cardPiket) cardPiket.classList.add('hidden');
         }
 
-        // Operational Roles Badges (BK & Kesiswaan)
+        // 4. Kartu Tugas Wali Kelas & Live Monitoring 8 Status
+        const cardHomeroom = container.querySelector('#card-homeroom-section');
+        const homeroomClsName = container.querySelector('#homeroom-classroom-name');
+        const btnHomeroomPermits = container.querySelector('#btn-homeroom-permits');
+        const btnHomeroomRecap = container.querySelector('#btn-homeroom-recap');
+        const homeroomEventCounter = container.querySelector('#homeroom-event-counter');
+        const eventList = container.querySelector('#tasks-student-events');
+
+        if (data.homeroom) {
+            if (cardHomeroom) cardHomeroom.classList.remove('hidden');
+            if (homeroomClsName) homeroomClsName.textContent = data.homeroom.classroom?.name || 'Kelas Perwalian';
+
+            if (btnHomeroomPermits && data.homeroom.classroom?.id) {
+                btnHomeroomPermits.href = `/attendance/homeroom-permits?classroom_id=${data.homeroom.classroom.id}&date=${data.target_date?.current}`;
+            }
+            if (btnHomeroomRecap && data.homeroom.classroom?.id) {
+                btnHomeroomRecap.href = `/attendance/homeroom-recap?classroom_id=${data.homeroom.classroom.id}&date=${data.target_date?.current}`;
+            }
+
+            const s = data.homeroom.summary || {};
+            const setVal = (id, val) => {
+                const el = container.querySelector(id);
+                if (el) el.textContent = val ?? 0;
+            };
+
+            setVal('#stat-hadir', s.hadir_count);
+            setVal('#stat-sakit', s.sakit_count);
+            setVal('#stat-izin', s.izin_count);
+            setVal('#stat-dispen', s.dispen_count);
+            setVal('#stat-terlambat', s.late_count);
+            setVal('#stat-pulang', s.pulang_count);
+            setVal('#stat-alfa', s.alfa_count);
+            setVal('#stat-bolos', s.truancy_count);
+
+            const rateEl = container.querySelector('#stat-rate');
+            if (rateEl) rateEl.textContent = s.attendance_rate !== null ? `${s.attendance_rate}%` : '-';
+
+            // Log Kejadian Siswa Rombel
+            const events = data.homeroom.student_events || [];
+            if (homeroomEventCounter) {
+                homeroomEventCounter.textContent = `${events.length} Catatan`;
+            }
+
+            if (eventList) {
+                if (events.length === 0) {
+                    eventList.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Tidak ada kejadian/pelanggaran siswa pada tanggal ini.</div>';
+                } else {
+                    eventList.innerHTML = events.map(ev => {
+                        const badgeColor = ev.badge_class === 'danger' ? 'bg-rose-100 text-rose-700' : (ev.badge_class === 'dark' ? 'bg-slate-900 text-white' : 'bg-amber-100 text-amber-800');
+                        return `
+                            <div class="p-3 card-subtle border-slate-200/80 bg-white">
+                                <div class="flex items-start justify-between gap-1.5 mb-1">
+                                    <div class="overflow-hidden">
+                                        <h5 class="text-xs font-bold text-slate-800 truncate">${ev.student_name}</h5>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">${ev.time !== '-' ? ev.time + ' WIB • ' : ''}${ev.title}</p>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${badgeColor} flex-shrink-0">${ev.badge}</span>
+                                </div>
+                                <div class="p-2 rounded-lg bg-slate-50 text-[11px] text-slate-700 mt-1.5 space-y-0.5">
+                                    <div><strong>Keterangan:</strong> ${ev.description}</div>
+                                    ${ev.action ? `<div class="text-slate-500"><strong>Tindakan:</strong> ${ev.action}</div>` : ''}
+                                    ${ev.note ? `<div class="text-rose-600"><strong>Catatan:</strong> ${ev.note}</div>` : ''}
+                                </div>
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 pt-1 border-t border-slate-100">
+                                    <span>Dicatat: ${ev.officer || 'Petugas'}</span>
+                                    ${ev.photo ? `<a href="${ev.photo}" target="_blank" class="text-blue-600 font-semibold hover:underline">Lihat Bukti Foto</a>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        } else {
+            if (cardHomeroom) cardHomeroom.classList.add('hidden');
+        }
+
+        // 5. Kartu Visitasi Siswa & BK
+        const cardVisitation = container.querySelector('#card-visitation-section');
+        const badgeVisitationCount = container.querySelector('#badge-visitation-count');
+        const listRecentVisitation = container.querySelector('#visitation-recent-list');
+        const visitations = data.visitations || {};
+
+        if (visitations.can_access) {
+            if (cardVisitation) cardVisitation.classList.remove('hidden');
+            if (badgeVisitationCount) {
+                badgeVisitationCount.textContent = `${visitations.pending_count || 0} Agenda`;
+            }
+            if (listRecentVisitation) {
+                const recentV = visitations.recent || [];
+                if (recentV.length === 0) {
+                    listRecentVisitation.innerHTML = '<div class="text-center py-2 text-xs text-slate-400">Belum ada agenda visitasi siswa.</div>';
+                } else {
+                    listRecentVisitation.innerHTML = recentV.map(v => `
+                        <div class="p-2.5 rounded-xl bg-white border border-cyan-200/70 text-xs">
+                            <div class="flex items-center justify-between gap-1 mb-1">
+                                <span class="font-bold text-slate-800 truncate">${v.student_name} (${v.classroom_name})</span>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold bg-cyan-100 text-cyan-800">${v.status}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[10px] text-slate-500">
+                                <span>${v.purpose || 'Home Visit'}</span>
+                                <span class="font-mono text-slate-400">${v.planned_date}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        } else {
+            if (cardVisitation) cardVisitation.classList.add('hidden');
+        }
+
+        // 6. Kartu Kedisiplinan & Layanan BK (Operational Roles)
+        const cardOps = container.querySelector('#card-roles-operational');
         const roleOps = data.roles_operational || {};
         const bkBadge = container.querySelector('#tasks-badge-bk');
         const kesiswaanBadge = container.querySelector('#tasks-badge-kesiswaan');
-
-        if (bkBadge) {
-            if (roleOps.can_operate_bk) bkBadge.classList.remove('hidden');
-            else bkBadge.classList.add('hidden');
-        }
+        let hasAnyOps = false;
 
         if (kesiswaanBadge) {
-            if (roleOps.can_manage_discipline || roleOps.is_waka_kesiswaan) kesiswaanBadge.classList.remove('hidden');
-            else kesiswaanBadge.classList.add('hidden');
+            if (roleOps.can_manage_discipline || roleOps.is_waka_kesiswaan) {
+                kesiswaanBadge.classList.remove('hidden');
+                hasAnyOps = true;
+            } else {
+                kesiswaanBadge.classList.add('hidden');
+            }
+        }
+        if (bkBadge) {
+            if (roleOps.can_operate_bk) {
+                bkBadge.classList.remove('hidden');
+                hasAnyOps = true;
+            } else {
+                bkBadge.classList.add('hidden');
+            }
+        }
+        if (cardOps) {
+            if (hasAnyOps) cardOps.classList.remove('hidden');
+            else cardOps.classList.add('hidden');
+        }
+
+        // 7. Kartu Persetujuan Izin GTK (Kepala Sekolah & Kurikulum)
+        const cardAdminPermits = container.querySelector('#card-admin-gtk-permits');
+        const badgePendingPermits = container.querySelector('#badge-pending-permits-count');
+        const listPendingPermits = container.querySelector('#list-pending-gtk-permits');
+        const countApprovedToday = container.querySelector('#count-approved-today');
+        const pendingPermits = data.gtk_permits?.pending_approval || [];
+        const todayApproved = data.gtk_permits?.today_approved || [];
+
+        if (pendingPermits.length > 0 || todayApproved.length > 0) {
+            if (cardAdminPermits) cardAdminPermits.classList.remove('hidden');
+            if (badgePendingPermits) badgePendingPermits.textContent = `${pendingPermits.length} Pengajuan`;
+            if (countApprovedToday) countApprovedToday.textContent = `${todayApproved.length} Orang`;
+
+            if (listPendingPermits) {
+                if (pendingPermits.length === 0) {
+                    listPendingPermits.innerHTML = '<div class="text-center py-2 text-xs text-slate-400">Tidak ada pengajuan izin GTK yang menunggu.</div>';
+                } else {
+                    listPendingPermits.innerHTML = pendingPermits.map(p => `
+                        <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 text-xs">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-slate-800">${p.user_name}</span>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase">${p.permit_type} (${p.days_count}h)</span>
+                            </div>
+                            <p class="text-[11px] text-slate-600 mb-1.5 italic">"${p.reason || 'Izin'}"</p>
+                            <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px]">
+                                <span class="text-slate-400 font-mono">${p.start_date} s/d ${p.end_date}</span>
+                                <a href="/attendance/gtk-permits?scope=manage" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700">Tinjau</a>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        } else {
+            if (cardAdminPermits) cardAdminPermits.classList.add('hidden');
+        }
+
+        // 8. Kartu Pengesahan Supervisi Akademik (Kepala Sekolah & Kurikulum)
+        const cardSupervision = container.querySelector('#card-supervision-section');
+        const badgeSupervisionCount = container.querySelector('#badge-supervision-count');
+        const listSupervisions = container.querySelector('#list-pending-supervisions');
+        const pendingSupervisions = data.supervisions?.pending || [];
+
+        if (pendingSupervisions.length > 0) {
+            if (cardSupervision) cardSupervision.classList.remove('hidden');
+            if (badgeSupervisionCount) badgeSupervisionCount.textContent = `${pendingSupervisions.length} Berkas`;
+            if (listSupervisions) {
+                listSupervisions.innerHTML = pendingSupervisions.map(s => `
+                    <div class="p-2.5 rounded-xl bg-white border border-indigo-200/80 text-xs">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-bold text-slate-800">${s.teacher_name}</span>
+                            <span class="px-2 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800">Menunggu</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1.5">
+                            <span>Supervisor: ${s.supervisor_name}</span>
+                            <span class="font-mono text-slate-400">${s.obs_date}</span>
+                        </div>
+                        <a href="/persetujuan" class="w-full py-1 rounded bg-indigo-600 text-white font-bold text-center block text-[10px] hover:bg-indigo-700">Buka &amp; Sahkan Supervisi</a>
+                    </div>
+                `).join('');
+            }
+        } else {
+            if (cardSupervision) cardSupervision.classList.add('hidden');
         }
     }
+
+    window.selectHomeroomCategory = function(cat) {
+        if (!tasksDataCache?.homeroom) return;
+        const s = tasksDataCache.homeroom.summary || {};
+        const labels = {
+            hadir: `Hadir: ${s.hadir_count || 0} siswa aktif di kelas.`,
+            late: `Terlambat: ${s.late_count || 0} siswa izin masuk gerbang terlambat.`,
+            sakit: `Sakit: ${s.sakit_count || 0} siswa tercatat sakit.`,
+            izin: `Izin: ${s.izin_count || 0} siswa berhalangan izin.`,
+            dispen: `Dispensasi: ${s.dispen_count || 0} siswa dispensasi tugas/lomba.`,
+            pulang: `Pulang: ${s.pulang_count || 0} siswa izin pulang lebih awal.`,
+            alfa: `Alfa: ${s.alfa_count || 0} siswa tidak hadir tanpa keterangan.`,
+            truancy: `Indikasi Bolos: ${s.truancy_count || 0} siswa terdeteksi alfa di tengah jam KBM.`,
+        };
+        showToast(labels[cat] || `Kategori ${cat}`, 'info');
+    };
 
     // ==========================================
     // 5. PROFILE VIEW CONTROLLER
