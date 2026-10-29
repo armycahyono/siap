@@ -122,6 +122,7 @@ const SIAP_API = (function() {
         getKbm: (date = null) => request(date ? `kbm?date=${date}` : 'kbm', { method: 'GET' }),
         getTasks: (date = null) => request(date ? `tasks?date=${date}` : 'tasks', { method: 'GET' }),
         getProfile: () => request('profile', { method: 'GET' }),
+        getNotifications: () => request('notifications', { method: 'GET' }),
         updateProfile: (data) => request('profile/update', {
             method: 'POST',
             body: JSON.stringify(data),

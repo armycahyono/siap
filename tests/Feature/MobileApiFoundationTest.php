@@ -58,6 +58,9 @@ class MobileApiFoundationTest extends TestCase
 
         $response = $this->getJson('/api/v1/mobile/kbm');
         $response->assertStatus(401);
+
+        $response = $this->getJson('/api/v1/mobile/notifications');
+        $response->assertStatus(401);
     }
 
     public function test_user_can_login_via_mobile_api(): void
@@ -259,6 +262,22 @@ class MobileApiFoundationTest extends TestCase
                     'swap_sessions',
                     'total_sessions',
                     'attended_sessions_count',
+                ],
+            ]);
+    }
+
+    public function test_authenticated_user_can_fetch_mobile_notifications(): void
+    {
+        $response = $this->actingAs($this->teacher)
+            ->getJson('/api/v1/mobile/notifications');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'notifications',
+                    'unread_count',
                 ],
             ]);
     }

@@ -45,10 +45,191 @@
         SIAP_API.setToken(null);
         SIAP_ROUTER.setCurrentUser(null);
         localStorage.removeItem('siap_user_data');
+        updateTopBarUser(null);
         showToast('Anda telah keluar dari sistem.', 'info');
         SIAP_ROUTER.navigate('/auth/login');
     }
     window.handleLogout = handleLogout;
+
+    // ==========================================
+    // TOP BAR & NOTIFICATION HANDLERS
+    // ==========================================
+    function updateTopBarUser(user) {
+        const avatarEl = document.getElementById('top-user-avatar');
+        if (!avatarEl) return;
+        if (user && user.avatar_url) {
+            avatarEl.src = user.avatar_url;
+        } else {
+            avatarEl.src = 'assets/logo.png';
+        }
+    }
+    window.updateTopBarUser = updateTopBarUser;
+
+    async function fetchNotificationBadge() {
+        try {
+            const res = await SIAP_API.getNotifications();
+            if (res && res.success && res.data) {
+                const count = res.data.unread_count || 0;
+                const badgeEl = document.getElementById('top-notif-badge');
+                if (badgeEl) {
+                    if (count > 0) {
+                        badgeEl.textContent = count > 99 ? '99+' : count;
+                        badgeEl.classList.remove('hidden');
+                    } else {
+                        badgeEl.classList.add('hidden');
+                    }
+                }
+            }
+        } catch (e) {
+            // silent background error
+        }
+    }
+    window.fetchNotificationBadge = fetchNotificationBadge;
+
+    async function openNotificationModal() {
+        const modal = document.getElementById('modal-notifications');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        const listContainer = document.getElementById('notif-list-container');
+        const counterEl = document.getElementById('notif-modal-counter');
+        const subEl = document.getElementById('notif-modal-sub');
+        const badgeEl = document.getElementById('top-notif-badge');
+
+        if (!modal) return;
+
+        if (bottomNav) bottomNav.classList.add('hidden');
+        modal.classList.remove('hidden');
+
+        if (listContainer) {
+            listContainer.innerHTML = `
+                <div class="text-center py-8 text-xs text-slate-400">
+                    <svg class="animate-spin h-5 w-5 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                    Memuat data pemberitahuan...
+                </div>
+            `;
+        }
+
+        try {
+            const res = await SIAP_API.getNotifications();
+            if (res && res.success && res.data) {
+                const list = res.data.notifications || [];
+                const count = res.data.unread_count ?? list.length;
+
+                // Sync header badge
+                if (badgeEl) {
+                    if (count > 0) {
+                        badgeEl.textContent = count > 99 ? '99+' : count;
+                        badgeEl.classList.remove('hidden');
+                    } else {
+                        badgeEl.classList.add('hidden');
+                    }
+                }
+
+                // Sync modal badge counter
+                if (counterEl) {
+                    if (count > 0) {
+                        counterEl.textContent = count;
+                        counterEl.classList.remove('hidden');
+                    } else {
+                        counterEl.classList.add('hidden');
+                    }
+                }
+
+                if (subEl) {
+                    subEl.textContent = count > 0
+                        ? `${count} tugas & pengingat aktif hari ini`
+                        : 'Tidak ada tugas yang tertunda';
+                }
+
+                if (listContainer) {
+                    if (list.length === 0) {
+                        listContainer.innerHTML = `
+                            <div class="text-center py-10 px-4">
+                                <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <h4 class="text-xs font-black text-slate-800">Semua Tugas Selesai</h4>
+                                <p class="text-[11px] text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">Tidak ada pengingat presensi KBM, tugas piket, atau agenda yang tertunda hari ini.</p>
+                            </div>
+                        `;
+                    } else {
+                        listContainer.innerHTML = list.map((item) => {
+                            const badgeMarkup = item.badge ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold ${item.badge_class || 'bg-blue-100 text-blue-700'}">${item.badge}</span>` : '';
+                            const targetUrl = item.url || '';
+                            return `
+                                <div onclick="handleNotificationClick('${targetUrl}')" class="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50/60 border border-slate-200/70 transition-all cursor-pointer flex items-start gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex-shrink-0 flex items-center justify-center shadow-xs">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between gap-1.5 mb-0.5">
+                                            <h4 class="text-xs font-bold text-slate-800 truncate">${item.title || 'Pemberitahuan'}</h4>
+                                            ${badgeMarkup}
+                                        </div>
+                                        <p class="text-[11px] text-slate-600 leading-snug break-words">${item.message || ''}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } else {
+                throw new Error(res?.message || 'Gagal memuat pemberitahuan');
+            }
+        } catch (err) {
+            console.error('Notification fetch error:', err);
+            if (listContainer) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-xs text-rose-500">
+                        <p class="font-bold">Gagal memuat pemberitahuan</p>
+                        <p class="text-[10px] text-slate-400 mt-1">${err.message || 'Terjadi kesalahan sistem'}</p>
+                        <button onclick="openNotificationModal()" class="mt-3 px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-semibold hover:bg-slate-200">Coba Lagi</button>
+                    </div>
+                `;
+            }
+        }
+    }
+    window.openNotificationModal = openNotificationModal;
+
+    function closeNotificationModal() {
+        const modal = document.getElementById('modal-notifications');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
+    }
+    window.closeNotificationModal = closeNotificationModal;
+
+    function handleNotificationClick(url) {
+        closeNotificationModal();
+        if (!url) return;
+
+        if (url.startsWith('#')) {
+            SIAP_ROUTER.navigate(url.replace(/^#/, ''));
+            return;
+        }
+
+        if (url.includes('/kbm')) {
+            SIAP_ROUTER.navigate('/kbm');
+        } else if (url.includes('/attendance')) {
+            SIAP_ROUTER.navigate('/attendance');
+        } else if (url.includes('/tasks')) {
+            SIAP_ROUTER.navigate('/tasks');
+        } else if (url.includes('/profile')) {
+            SIAP_ROUTER.navigate('/profile');
+        } else {
+            window.location.href = url;
+        }
+    }
+    window.handleNotificationClick = handleNotificationClick;
+
+    // Close notification modal on backdrop click
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('modal-notifications');
+        if (modal && !modal.classList.contains('hidden')) {
+            if (e.target === modal) {
+                closeNotificationModal();
+            }
+        }
+    });
 
     // ==========================================
     // 1. AUTH VIEW CONTROLLER
@@ -81,6 +262,8 @@
                 if (res.success && res.data?.user) {
                     SIAP_ROUTER.setCurrentUser(res.data.user);
                     localStorage.setItem('siap_user_data', JSON.stringify(res.data.user));
+                    updateTopBarUser(res.data.user);
+                    fetchNotificationBadge();
                     showToast(res.message || 'Login berhasil!', 'success');
                     SIAP_ROUTER.navigate('/dashboard');
                 } else {
@@ -783,6 +966,12 @@
                             dashAvatar.src = updatedUser.avatar_url + '?t=' + Date.now();
                         }
 
+                        // Perbarui avatar di top header jika ada di DOM
+                        const topAvatar = document.querySelector('#top-user-avatar');
+                        if (topAvatar && updatedUser.avatar_url) {
+                            topAvatar.src = updatedUser.avatar_url + '?t=' + Date.now();
+                        }
+
                         if (profileDataCache && profileDataCache.user) {
                             profileDataCache.user.avatar_url = updatedUser.avatar_url;
                         }
@@ -1011,12 +1200,16 @@
             if (res && res.authenticated && res.data?.user) {
                 SIAP_ROUTER.setCurrentUser(res.data.user);
                 localStorage.setItem('siap_user_data', JSON.stringify(res.data.user));
+                updateTopBarUser(res.data.user);
+                fetchNotificationBadge();
             } else {
                 SIAP_ROUTER.setCurrentUser(null);
                 localStorage.removeItem('siap_user_data');
+                updateTopBarUser(null);
             }
         } catch (err) {
             SIAP_ROUTER.setCurrentUser(null);
+            updateTopBarUser(null);
         }
 
         // 2. Jalankan Router setelah sesi pengguna terkonfirmasi

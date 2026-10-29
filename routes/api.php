@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Mobile\MobileAttendanceController;
 use App\Http\Controllers\Api\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\Mobile\MobileDashboardController;
 use App\Http\Controllers\Api\Mobile\MobileKbmController;
+use App\Http\Controllers\Api\Mobile\MobileNotificationController;
 use App\Http\Controllers\Api\Mobile\MobileProfileController;
 use App\Http\Controllers\Api\Mobile\MobileTasksController;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -36,6 +37,7 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('kbm', [MobileKbmController::class, 'index']);
     Route::get('tasks', [MobileTasksController::class, 'index']);
     Route::get('profile', [MobileProfileController::class, 'index']);
+    Route::get('notifications', [MobileNotificationController::class, 'index']);
     Route::post('profile/update', [MobileAuthController::class, 'updateProfile']);
     Route::post('profile/password', [MobileAuthController::class, 'updatePassword']);
 

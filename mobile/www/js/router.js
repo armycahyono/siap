@@ -55,6 +55,9 @@ const SIAP_ROUTER = (function() {
 
     function setCurrentUser(user) {
         currentUser = user;
+        if (typeof window.updateTopBarUser === 'function') {
+            window.updateTopBarUser(user);
+        }
         if (!user) {
             clearMountedViews();
         }
@@ -187,6 +190,9 @@ const SIAP_ROUTER = (function() {
             if (topBar) topBar.classList.remove('hidden');
             if (bottomNav) bottomNav.classList.remove('hidden');
             if (topBarTitle) topBarTitle.textContent = route.title || 'SIAP Mobile';
+            if (currentUser && typeof window.updateTopBarUser === 'function') {
+                window.updateTopBarUser(currentUser);
+            }
         }
 
         // Update active bottom nav item
