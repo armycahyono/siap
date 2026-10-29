@@ -1006,6 +1006,7 @@
         }
 
         await fetchTasks(currentDate);
+        window.refreshTasks = () => fetchTasks(tasksDataCache?.target_date?.current || null);
 
         // Bind date navigation
         const btnPrev = container.querySelector('#tasks-btn-prev');
@@ -1194,32 +1195,125 @@
             if (cardVisitation) cardVisitation.classList.add('hidden');
         }
 
-        // 6. Kartu Kedisiplinan & Layanan BK (Operational Roles)
-        const cardOps = container.querySelector('#card-roles-operational');
-        const roleOps = data.roles_operational || {};
-        const bkBadge = container.querySelector('#tasks-badge-bk');
-        const kesiswaanBadge = container.querySelector('#tasks-badge-kesiswaan');
-        let hasAnyOps = false;
+        // 6. Kartu Tugas Tim Kedisiplinan (Interactive Widget)
+        const cardDiscipline = container.querySelector('#card-discipline-section');
+        const disciplineData = data.discipline;
 
-        if (kesiswaanBadge) {
-            if (roleOps.can_manage_discipline || roleOps.is_waka_kesiswaan) {
-                kesiswaanBadge.classList.remove('hidden');
-                hasAnyOps = true;
-            } else {
-                kesiswaanBadge.classList.add('hidden');
+        if (disciplineData && disciplineData.can_access) {
+            if (cardDiscipline) cardDiscipline.classList.remove('hidden');
+            const summary = disciplineData.summary || {};
+            const badgeDiscipline = container.querySelector('#badge-discipline-pending-count');
+            const statToday = container.querySelector('#stat-discipline-today');
+            const statWaiting = container.querySelector('#stat-discipline-waiting');
+            const statFollowup = container.querySelector('#stat-discipline-followup');
+            const statActive = container.querySelector('#stat-discipline-active');
+            const listDiscipline = container.querySelector('#list-discipline-incidents');
+
+            if (badgeDiscipline) badgeDiscipline.textContent = `${summary.waiting_verification_count || 0} Menunggu`;
+            if (statToday) statToday.textContent = summary.today_count || 0;
+            if (statWaiting) statWaiting.textContent = summary.waiting_verification_count || 0;
+            if (statFollowup) statFollowup.textContent = summary.follow_up_count || 0;
+            if (statActive) statActive.textContent = summary.active_monitoring_count || 0;
+
+            if (listDiscipline) {
+                const incidents = disciplineData.action_required_incidents || [];
+                if (incidents.length === 0) {
+                    listDiscipline.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Tidak ada kasus yang menunggu verifikasi.</div>';
+                } else {
+                    listDiscipline.innerHTML = incidents.map(inc => `
+                        <div class="p-2.5 rounded-xl bg-white border border-rose-200/80 text-xs shadow-xs">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-slate-800">${inc.student_name} <span class="text-[10px] text-slate-400 font-normal">(${inc.classroom_name})</span></span>
+                                <span class="px-2 py-0.5 rounded text-[9px] font-bold ${inc.penalty_points > 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'} uppercase font-mono">${inc.penalty_points} Poin</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-800 uppercase">${inc.category_label}</span>
+                                <span class="text-[9px] text-slate-400 font-mono">${inc.incident_date} ${inc.incident_time}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-600 mb-1 leading-tight">${inc.description || 'Tidak ada deskripsi'}</p>
+                            ${inc.confiscated_items ? `<p class="text-[10px] text-rose-700 font-medium mb-1.5">📦 Sitaan: ${inc.confiscated_items}</p>` : ''}
+                            <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
+                                <span class="text-slate-400">Oleh: ${inc.recorded_by_name}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="quickVerifyDiscipline(${inc.id}, 'terverifikasi')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 active:scale-95 transition">
+                                        ✓ Sahkan
+                                    </button>
+                                    <button onclick="quickVerifyDiscipline(${inc.id}, 'bukan_pelanggaran')" class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 active:scale-95 transition">
+                                        Bukan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
             }
+        } else {
+            if (cardDiscipline) cardDiscipline.classList.add('hidden');
         }
-        if (bkBadge) {
-            if (roleOps.can_operate_bk) {
-                bkBadge.classList.remove('hidden');
-                hasAnyOps = true;
-            } else {
-                bkBadge.classList.add('hidden');
+
+        // 7. Kartu Tugas Layanan BK (Interactive Widget)
+        const cardBk = container.querySelector('#card-bk-section');
+        const bkData = data.bk;
+
+        if (bkData && bkData.can_access) {
+            if (cardBk) cardBk.classList.remove('hidden');
+            const summary = bkData.summary || {};
+            const badgeBk = container.querySelector('#badge-bk-waiting-count');
+            const statTotal = container.querySelector('#stat-bk-total');
+            const statMenunggu = container.querySelector('#stat-bk-menunggu');
+            const statDiproses = container.querySelector('#stat-bk-diproses');
+            const statSelesai = container.querySelector('#stat-bk-selesai');
+            const listBk = container.querySelector('#list-bk-referrals');
+
+            if (badgeBk) badgeBk.textContent = `${summary.menunggu || 0} Menunggu`;
+            if (statTotal) statTotal.textContent = summary.total_rujukan || 0;
+            if (statMenunggu) statMenunggu.textContent = summary.menunggu || 0;
+            if (statDiproses) statDiproses.textContent = summary.diproses || 0;
+            if (statSelesai) statSelesai.textContent = summary.selesai || 0;
+
+            if (listBk) {
+                const referrals = bkData.recent_referrals || [];
+                if (referrals.length === 0) {
+                    listBk.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Tidak ada rujukan meja piket yang menunggu.</div>';
+                } else {
+                    listBk.innerHTML = referrals.map(ref => {
+                        const isMenunggu = ref.referral_status === 'menunggu';
+                        const isDiproses = ref.referral_status === 'diproses';
+                        const statusBadgeClass = isMenunggu ? 'bg-amber-100 text-amber-800' : (isDiproses ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800');
+
+                        return `
+                            <div class="p-2.5 rounded-xl bg-white border border-indigo-200/80 text-xs shadow-xs">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="font-bold text-slate-800">${ref.student_name} <span class="text-[10px] text-slate-400 font-normal">(${ref.classroom_name})</span></span>
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusBadgeClass} uppercase">${ref.referral_status_label}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 mb-1.5">
+                                    <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-100 text-indigo-800 uppercase">${ref.category_label}</span>
+                                    <span class="text-[9px] text-slate-400 font-mono">${ref.incident_date}</span>
+                                </div>
+                                <p class="text-[11px] text-slate-600 mb-1 leading-tight">${ref.description || 'Tidak ada deskripsi'}</p>
+                                ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-1.5">🎯 Piket: ${ref.action_taken}</p>` : ''}
+                                <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
+                                    <a href="/bk/rujukan/${ref.id}" class="text-indigo-600 font-bold hover:underline">Tinjau &raquo;</a>
+                                    <div class="flex items-center gap-1.5">
+                                        ${isMenunggu ? `
+                                            <button onclick="quickUpdateBkStatus(${ref.id}, 'diproses')" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-95 transition">
+                                                ⚡ Tangani
+                                            </button>
+                                        ` : (isDiproses ? `
+                                            <button onclick="quickUpdateBkStatus(${ref.id}, 'selesai')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 active:scale-95 transition">
+                                                ✓ Selesai
+                                            </button>
+                                        ` : '')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
             }
-        }
-        if (cardOps) {
-            if (hasAnyOps) cardOps.classList.remove('hidden');
-            else cardOps.classList.add('hidden');
+        } else {
+            if (cardBk) cardBk.classList.add('hidden');
         }
 
         // 7. Kartu Persetujuan Izin GTK (Kepala Sekolah & Kurikulum)
@@ -1301,6 +1395,40 @@
             truancy: `Indikasi Bolos: ${s.truancy_count || 0} siswa terdeteksi alfa di tengah jam KBM.`,
         };
         showToast(labels[cat] || `Kategori ${cat}`, 'info');
+    };
+
+    window.quickUpdateBkStatus = async function(incidentId, status) {
+        try {
+            showToast('Memperbarui status rujukan BK...', 'info');
+            const res = await SIAP_API.updateBkReferralStatus(incidentId, status);
+            if (res && res.success) {
+                showToast(res.message || 'Status rujukan BK berhasil diperbarui!', 'success');
+                if (window.refreshTasks) {
+                    window.refreshTasks();
+                }
+            } else {
+                showToast(res.message || 'Gagal memperbarui status rujukan BK.', 'error');
+            }
+        } catch (err) {
+            showToast(err.message || 'Terjadi kesalahan sistem.', 'error');
+        }
+    };
+
+    window.quickVerifyDiscipline = async function(incidentId, verificationStatus) {
+        try {
+            showToast('Memproses verifikasi insiden...', 'info');
+            const res = await SIAP_API.verifyDisciplineIncident(incidentId, verificationStatus);
+            if (res && res.success) {
+                showToast(res.message || 'Verifikasi insiden berhasil disimpan!', 'success');
+                if (window.refreshTasks) {
+                    window.refreshTasks();
+                }
+            } else {
+                showToast(res.message || 'Gagal memverifikasi insiden.', 'error');
+            }
+        } catch (err) {
+            showToast(err.message || 'Terjadi kesalahan sistem.', 'error');
+        }
     };
 
     // ==========================================

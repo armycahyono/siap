@@ -36,6 +36,8 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('dashboard', [MobileDashboardController::class, 'index']);
     Route::get('kbm', [MobileKbmController::class, 'index']);
     Route::get('tasks', [MobileTasksController::class, 'index']);
+    Route::post('tasks/bk/status', [MobileTasksController::class, 'updateBkReferralStatus']);
+    Route::post('tasks/discipline/verify', [MobileTasksController::class, 'verifyDisciplineIncident']);
     Route::get('profile', [MobileProfileController::class, 'index']);
     Route::get('notifications', [MobileNotificationController::class, 'index']);
     Route::post('profile/update', [MobileAuthController::class, 'updateProfile']);

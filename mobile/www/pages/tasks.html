@@ -208,18 +208,118 @@
         </div>
     </div>
 
-    <!-- 6. Kartu Kedisiplinan & Layanan BK (Operational Roles) -->
-    <div id="card-roles-operational" class="hidden grid grid-cols-2 gap-2.5">
-        <a id="tasks-badge-kesiswaan" href="/discipline/dashboard" class="hidden card-elevated p-3 bg-rose-50 border-rose-200 flex flex-col items-center text-center hover:border-rose-400 active:scale-95 transition">
-            <span class="text-lg mb-1">🛡️</span>
-            <h5 class="text-[11px] font-black text-rose-950">Tim Kedisiplinan</h5>
-            <p class="text-[9px] text-rose-700 mt-0.5">Verifikasi Pelanggaran</p>
-        </a>
-        <a id="tasks-badge-bk" href="/bk/referrals" class="hidden card-elevated p-3 bg-indigo-50 border-indigo-200 flex flex-col items-center text-center hover:border-indigo-400 active:scale-95 transition">
-            <span class="text-lg mb-1">🤝</span>
-            <h5 class="text-[11px] font-black text-indigo-950">Layanan BK</h5>
-            <p class="text-[9px] text-indigo-700 mt-0.5">Rujukan Meja Piket</p>
-        </a>
+    <!-- 6. Kartu Tugas Tim Kedisiplinan (Interactive Widget) -->
+    <div id="card-discipline-section" class="hidden card-elevated p-3.5 border-rose-200 bg-rose-50/20">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-rose-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Tim Kedisiplinan</h4>
+                    <p class="text-[10px] text-rose-800 font-medium">Verifikasi Pelanggaran &amp; Ketertiban</p>
+                </div>
+            </div>
+            <span id="badge-discipline-pending-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500 text-white font-mono">0 Menunggu</span>
+        </div>
+
+        <!-- 4 Chip Rekap Kedisiplinan -->
+        <div class="grid grid-cols-4 gap-1.5 text-center mb-3">
+            <div class="p-1.5 rounded-xl bg-white border border-rose-200">
+                <span class="text-[9px] font-bold text-rose-700 block">Hari Ini</span>
+                <p id="stat-discipline-today" class="text-xs font-black text-slate-800 font-mono">0</p>
+            </div>
+            <div class="p-1.5 rounded-xl bg-white border border-amber-200">
+                <span class="text-[9px] font-bold text-amber-700 block">Verifikasi</span>
+                <p id="stat-discipline-waiting" class="text-xs font-black text-amber-900 font-mono">0</p>
+            </div>
+            <div class="p-1.5 rounded-xl bg-white border border-indigo-200">
+                <span class="text-[9px] font-bold text-indigo-700 block">Rujukan</span>
+                <p id="stat-discipline-followup" class="text-xs font-black text-indigo-900 font-mono">0</p>
+            </div>
+            <div class="p-1.5 rounded-xl bg-white border border-emerald-200">
+                <span class="text-[9px] font-bold text-emerald-700 block">Kasus Aktif</span>
+                <p id="stat-discipline-active" class="text-xs font-black text-emerald-900 font-mono">0</p>
+            </div>
+        </div>
+
+        <!-- Daftar Pelanggaran Membutuhkan Tindakan/Verifikasi -->
+        <div class="space-y-2 mb-3">
+            <h5 class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>Pelanggaran Butuh Verifikasi</span>
+                <span class="text-[9px] text-slate-400">Terbaru</span>
+            </h5>
+            <div id="list-discipline-incidents" class="space-y-2">
+                <div class="text-center py-3 text-xs text-slate-400">Tidak ada kasus yang menunggu verifikasi.</div>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi Cepat Bawah -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-rose-100">
+            <a href="/discipline/dashboard" class="py-2 px-2 rounded-xl bg-white border border-rose-300 text-rose-900 text-[10px] font-bold text-center shadow-xs hover:bg-rose-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>📊 Dashboard Kesiswaan</span>
+            </a>
+            <a href="/piket/incidents" class="py-2 px-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-[10px] font-bold text-center shadow-xs hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>📝 Log Insiden Piket</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 7. Kartu Tugas Layanan BK (Interactive Widget) -->
+    <div id="card-bk-section" class="hidden card-elevated p-3.5 border-indigo-200 bg-indigo-50/20">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-indigo-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-800">Layanan BK</h4>
+                    <p class="text-[10px] text-indigo-800 font-medium">Rujukan Meja Piket &amp; Konseling</p>
+                </div>
+            </div>
+            <span id="badge-bk-waiting-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-600 text-white font-mono">0 Rujukan</span>
+        </div>
+
+        <!-- 4 Chip Rekap Rujukan BK -->
+        <div class="grid grid-cols-4 gap-1.5 text-center mb-3">
+            <div class="p-1.5 rounded-xl bg-white border border-slate-200">
+                <span class="text-[9px] font-bold text-slate-600 block">Total</span>
+                <p id="stat-bk-total" class="text-xs font-black text-slate-800 font-mono">0</p>
+            </div>
+            <div class="p-1.5 rounded-xl bg-white border border-amber-200">
+                <span class="text-[9px] font-bold text-amber-700 block">Menunggu</span>
+                <p id="stat-bk-menunggu" class="text-xs font-black text-amber-900 font-mono">0</p>
+            </div>
+            <div class="p-1.5 rounded-xl bg-white border border-blue-200">
+                <span class="text-[9px] font-bold text-blue-700 block">Diproses</span>
+                <p id="stat-bk-diproses" class="text-xs font-black text-blue-900 font-mono">0</p>
+            </div>
+            <div class="p-1.5 rounded-xl bg-white border border-emerald-200">
+                <span class="text-[9px] font-bold text-emerald-700 block">Selesai</span>
+                <p id="stat-bk-selesai" class="text-xs font-black text-emerald-900 font-mono">0</p>
+            </div>
+        </div>
+
+        <!-- Daftar Rujukan Kasus Piket ke BK -->
+        <div class="space-y-2 mb-3">
+            <h5 class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>Rujukan Butuh Penanganan</span>
+                <span class="text-[9px] text-slate-400">Kasus Masuk</span>
+            </h5>
+            <div id="list-bk-referrals" class="space-y-2">
+                <div class="text-center py-3 text-xs text-slate-400">Tidak ada rujukan meja piket yang menunggu.</div>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi Cepat Bawah -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-indigo-100">
+            <a href="/bk/layanan/buat" class="py-2 px-2 rounded-xl bg-white border border-indigo-300 text-indigo-900 text-[10px] font-bold text-center shadow-xs hover:bg-indigo-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>➕ Sesi Konseling</span>
+            </a>
+            <a href="/bk/rujukan" class="py-2 px-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-[10px] font-bold text-center shadow-xs hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-1">
+                <span>📋 Semua Rujukan</span>
+            </a>
+        </div>
     </div>
 
     <!-- 7. Kartu Persetujuan Izin GTK (Khusus Kepala Sekolah & Waka Kurikulum) -->

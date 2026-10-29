@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\PiketIncident;
 use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\User;
+use App\Services\AcademicYearContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -281,5 +283,119 @@ class MobileApiFoundationTest extends TestCase
                     'unread_count',
                 ],
             ]);
+    }
+
+    public function test_bk_officer_can_fetch_and_update_referral_status(): void
+    {
+        $adminRole = Role::where('slug', 'super_admin')->first() ?? Role::create(['name' => 'Super Admin', 'slug' => 'super_admin']);
+        $admin = User::create([
+            'name' => 'Admin BK',
+            'username' => 'adminbk',
+            'email' => 'adminbk@example.com',
+            'password' => bcrypt('password123'),
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $operationalAy = app(AcademicYearContext::class)->getOperationalYear()->name;
+
+        $incident = PiketIncident::create([
+            'academic_year' => $operationalAy,
+            'incident_date' => now()->toDateString(),
+            'incident_time' => '08:30:00',
+            'student_name' => 'Siswa Bermasalah',
+            'category' => 'kedisiplinan',
+            'description' => 'Terlambat berulang dan perlu bimbingan',
+            'action_taken' => 'Pencatatan dan rujukan piket',
+            'follow_up_target' => 'rujuk_bk',
+            'status' => 'tercatat',
+            'recorded_by' => $this->teacher->id,
+        ]);
+
+        // Regular teacher does not have BK widget
+        $resTeacher = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks');
+        $resTeacher->assertOk()
+            ->assertJsonPath('data.bk', null);
+
+        // BK Officer / Super Admin has BK widget with summary
+        $resAdmin = $this->actingAs($admin)->getJson('/api/v1/mobile/tasks');
+        $resAdmin->assertOk()
+            ->assertJsonPath('data.bk.can_access', true)
+            ->assertJsonPath('data.bk.summary.total_rujukan', 1)
+            ->assertJsonPath('data.bk.summary.menunggu', 1);
+
+        // Regular teacher forbidden to update BK status
+        $resForbidden = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/bk/status', [
+            'incident_id' => $incident->id,
+            'status' => 'diproses',
+        ]);
+        $resForbidden->assertStatus(403);
+
+        // Authorized officer updates status
+        $resUpdate = $this->actingAs($admin)->postJson('/api/v1/mobile/tasks/bk/status', [
+            'incident_id' => $incident->id,
+            'status' => 'diproses',
+            'notes' => 'Dijadwalkan konseling individu besok pagi.',
+        ]);
+        $resUpdate->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'diproses');
+    }
+
+    public function test_discipline_officer_can_fetch_and_verify_incident(): void
+    {
+        $adminRole = Role::where('slug', 'super_admin')->first() ?? Role::create(['name' => 'Super Admin', 'slug' => 'super_admin']);
+        $admin = User::create([
+            'name' => 'Admin Kedisiplinan',
+            'username' => 'admindisiplin',
+            'email' => 'admindisiplin@example.com',
+            'password' => bcrypt('password123'),
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $operationalAy = app(AcademicYearContext::class)->getOperationalYear()->name;
+
+        $incident = PiketIncident::create([
+            'academic_year' => $operationalAy,
+            'incident_date' => now()->toDateString(),
+            'incident_time' => '09:00:00',
+            'student_name' => 'Siswa Pelanggar',
+            'category' => 'kerapian',
+            'penalty_points' => 10,
+            'description' => 'Mengenakan seragam tidak sesuai ketentuan',
+            'action_taken' => 'Peringatan lisan dan pembinaan',
+            'verification_status' => 'menunggu_verifikasi',
+            'status' => 'tercatat',
+            'recorded_by' => $this->teacher->id,
+        ]);
+
+        // Regular teacher does not have Discipline widget
+        $resTeacher = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks');
+        $resTeacher->assertOk()
+            ->assertJsonPath('data.discipline', null);
+
+        // Discipline Officer has widget
+        $resAdmin = $this->actingAs($admin)->getJson('/api/v1/mobile/tasks');
+        $resAdmin->assertOk()
+            ->assertJsonPath('data.discipline.can_access', true)
+            ->assertJsonPath('data.discipline.summary.waiting_verification_count', 1);
+
+        // Regular teacher cannot verify
+        $resForbidden = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/discipline/verify', [
+            'incident_id' => $incident->id,
+            'verification_status' => 'terverifikasi',
+        ]);
+        $resForbidden->assertStatus(403);
+
+        // Discipline officer can verify
+        $resVerify = $this->actingAs($admin)->postJson('/api/v1/mobile/tasks/discipline/verify', [
+            'incident_id' => $incident->id,
+            'verification_status' => 'terverifikasi',
+            'verification_notes' => 'Sudah dikonfirmasi dan poin dicatat.',
+        ]);
+        $resVerify->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.verification_status', 'terverifikasi');
     }
 }

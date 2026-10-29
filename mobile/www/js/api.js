@@ -121,6 +121,19 @@ const SIAP_API = (function() {
         getDashboard: () => request('dashboard', { method: 'GET' }),
         getKbm: (date = null) => request(date ? `kbm?date=${date}` : 'kbm', { method: 'GET' }),
         getTasks: (date = null) => request(date ? `tasks?date=${date}` : 'tasks', { method: 'GET' }),
+        updateBkReferralStatus: (incidentId, status, notes = null) => request('tasks/bk/status', {
+            method: 'POST',
+            body: JSON.stringify({ incident_id: incidentId, status, notes }),
+        }),
+        verifyDisciplineIncident: (incidentId, verificationStatus, verificationNotes = null, followUpTarget = null) => request('tasks/discipline/verify', {
+            method: 'POST',
+            body: JSON.stringify({
+                incident_id: incidentId,
+                verification_status: verificationStatus,
+                verification_notes: verificationNotes,
+                follow_up_target: followUpTarget,
+            }),
+        }),
         getProfile: () => request('profile', { method: 'GET' }),
         getNotifications: () => request('notifications', { method: 'GET' }),
         updateProfile: (data) => request('profile/update', {

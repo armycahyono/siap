@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
+use App\Models\BkReferral;
 use App\Models\GtkPermit;
 use App\Models\PiketIncident;
 use App\Models\PiketSchedule;
@@ -389,6 +390,137 @@ class MobileTasksController extends Controller
                 ]);
         }
 
+        // 7. Layanan Bimbingan Konseling (BK)
+        $bkData = null;
+        if ($user->canOperateBk($operationalAcademicYear)) {
+            $baseBkQuery = PiketIncident::where('follow_up_target', 'rujuk_bk')
+                ->where(function ($q) use ($operationalAcademicYear) {
+                    $q->where('academic_year', $operationalAcademicYear)
+                        ->orWhereHas('journal', fn ($j) => $j->where('academic_year', $operationalAcademicYear))
+                        ->orWhereHas('classroom', fn ($c) => $c->where('academic_year', $operationalAcademicYear)->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear)))
+                        ->orWhereHas('student.studentClassrooms', fn ($sc) => $sc->where('academic_year_name', $operationalAcademicYear)->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear)));
+                });
+
+            $totalRujukan = (clone $baseBkQuery)->count();
+            $totalMenunggu = (clone $baseBkQuery)->where(function ($q) {
+                $q->doesntHave('bkReferral')
+                    ->orWhereHas('bkReferral', fn ($r) => $r->where('status', 'menunggu'));
+            })->count();
+            $totalDiproses = (clone $baseBkQuery)->whereHas('bkReferral', fn ($r) => $r->where('status', 'diproses'))->count();
+            $totalSelesai = (clone $baseBkQuery)->whereHas('bkReferral', fn ($r) => $r->where('status', 'selesai'))->count();
+
+            $recentReferrals = (clone $baseBkQuery)
+                ->with(['student.classroom', 'classroom', 'recordedBy', 'bkReferral.handler'])
+                ->latest('incident_date')
+                ->latest('incident_time')
+                ->take(6)
+                ->get()
+                ->map(function ($inc) {
+                    $refStatus = $inc->bkReferral?->status ?? 'menunggu';
+                    $statusLabel = match ($refStatus) {
+                        'diproses' => 'Diproses',
+                        'selesai' => 'Selesai',
+                        default => 'Menunggu',
+                    };
+
+                    return [
+                        'id' => $inc->id,
+                        'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
+                        'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
+                        'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
+                        'incident_time' => $inc->incident_time ? substr($inc->incident_time, 0, 5) : '-',
+                        'category' => $inc->category,
+                        'category_label' => $inc->category_label ?? ucfirst($inc->category),
+                        'description' => $inc->description,
+                        'action_taken' => $inc->action_taken,
+                        'referral_status' => $refStatus,
+                        'referral_status_label' => $statusLabel,
+                        'referral_notes' => $inc->bkReferral?->notes,
+                        'recorded_by_name' => $inc->recordedBy?->name ?? 'Piket',
+                        'evidence_photo_url' => $inc->evidence_photo_url,
+                    ];
+                });
+
+            $bkData = [
+                'can_access' => true,
+                'summary' => [
+                    'total_rujukan' => $totalRujukan,
+                    'menunggu' => $totalMenunggu,
+                    'diproses' => $totalDiproses,
+                    'selesai' => $totalSelesai,
+                ],
+                'recent_referrals' => $recentReferrals->values(),
+            ];
+        }
+
+        // 8. Tim Kedisiplinan Siswa
+        $disciplineData = null;
+        if ($user->canManageDiscipline($operationalAcademicYear)) {
+            $baseIncidentQuery = PiketIncident::forAcademicYear($operationalAcademicYear);
+
+            $todayIncidentsCount = (clone $baseIncidentQuery)
+                ->whereDate('incident_date', $todayStr)
+                ->count();
+
+            $waitingVerificationCount = (clone $baseIncidentQuery)
+                ->where(function ($q) {
+                    $q->where('verification_status', 'menunggu_verifikasi')
+                        ->orWhere('status', 'tercatat');
+                })
+                ->count();
+
+            $followUpCount = (clone $baseIncidentQuery)
+                ->whereIn('follow_up_target', ['rujuk_bk', 'rujuk_kesiswaan', 'rujuk_wali_kelas'])
+                ->whereIn('status', ['tercatat', 'proses'])
+                ->count();
+
+            $activeMonitoringCount = (clone $baseIncidentQuery)
+                ->where('status', 'proses')
+                ->count();
+
+            $actionRequiredIncidents = (clone $baseIncidentQuery)
+                ->with(['student.classroom', 'classroom', 'recordedBy'])
+                ->where(function ($q) {
+                    $q->where('verification_status', 'menunggu_verifikasi')
+                        ->orWhere('status', 'tercatat')
+                        ->orWhereNotNull('confiscated_items');
+                })
+                ->latest('incident_date')
+                ->latest('incident_time')
+                ->take(6)
+                ->get()
+                ->map(function ($inc) {
+                    return [
+                        'id' => $inc->id,
+                        'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
+                        'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
+                        'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
+                        'incident_time' => $inc->incident_time ? substr($inc->incident_time, 0, 5) : '-',
+                        'category' => $inc->category,
+                        'category_label' => $inc->category_label ?? ucfirst($inc->category),
+                        'penalty_points' => $inc->penalty_points ?? 0,
+                        'description' => $inc->description,
+                        'action_taken' => $inc->action_taken,
+                        'confiscated_items' => $inc->confiscated_items,
+                        'verification_status' => $inc->verification_status ?? 'menunggu_verifikasi',
+                        'verification_status_label' => $inc->verification_status_label ?? 'Menunggu',
+                        'recorded_by_name' => $inc->recordedBy?->name ?? 'Piket',
+                        'evidence_photo_url' => $inc->evidence_photo_url,
+                    ];
+                });
+
+            $disciplineData = [
+                'can_access' => true,
+                'summary' => [
+                    'today_count' => $todayIncidentsCount,
+                    'waiting_verification_count' => $waitingVerificationCount,
+                    'follow_up_count' => $followUpCount,
+                    'active_monitoring_count' => $activeMonitoringCount,
+                ],
+                'action_required_incidents' => $actionRequiredIncidents->values(),
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -427,11 +559,130 @@ class MobileTasksController extends Controller
                     'pending_count' => $myPendingVisitationsCount,
                     'recent' => $myRecentVisitations->values(),
                 ],
+                'bk' => $bkData,
+                'discipline' => $disciplineData,
                 'roles_operational' => [
                     'can_manage_discipline' => $user->canManageDiscipline(),
                     'is_waka_kesiswaan' => $user->isWakaKesiswaan(),
                     'can_operate_bk' => $user->canOperateBk(),
                 ],
+            ],
+        ]);
+    }
+
+    /**
+     * Update status rujukan BK secara cepat dari mobile.
+     */
+    public function updateBkReferralStatus(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        if (! $user->canOperateBk($operationalAcademicYear)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki kewenangan sebagai Guru BK.'], 403);
+        }
+
+        $validated = $request->validate([
+            'incident_id' => 'required|exists:piket_incidents,id',
+            'status' => 'required|in:menunggu,diproses,selesai',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $incident = PiketIncident::findOrFail($validated['incident_id']);
+        if ($incident->follow_up_target !== 'rujuk_bk') {
+            return response()->json(['success' => false, 'message' => 'Kasus kejadian ini tidak dirujuk kepada Guru BK.'], 422);
+        }
+
+        $referral = BkReferral::firstOrNew(['piket_incident_id' => $incident->id]);
+        $referral->status = $validated['status'];
+        if (isset($validated['notes'])) {
+            $referral->notes = $validated['notes'];
+        }
+        $referral->handled_by = $user->id;
+
+        if ($validated['status'] === 'selesai') {
+            $referral->completed_at = now();
+        } else {
+            $referral->completed_at = null;
+        }
+
+        $referral->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Status rujukan BK berhasil diperbarui menjadi '{$referral->status_label}'.",
+            'data' => [
+                'incident_id' => $incident->id,
+                'status' => $referral->status,
+                'status_label' => $referral->status_label,
+            ],
+        ]);
+    }
+
+    /**
+     * Verifikasi insiden kedisiplinan secara cepat dari mobile.
+     */
+    public function verifyDisciplineIncident(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        if (! $user->canVerifyDiscipline($operationalAcademicYear)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki hak akses verifikasi kedisiplinan.'], 403);
+        }
+
+        $validated = $request->validate([
+            'incident_id' => 'required|exists:piket_incidents,id',
+            'verification_status' => 'required|in:terverifikasi,bukan_pelanggaran,dibatalkan,menunggu_verifikasi',
+            'verification_notes' => 'nullable|string|max:1000',
+            'follow_up_target' => 'nullable|in:selesai_di_piket,rujuk_wali_kelas,rujuk_bk,rujuk_kesiswaan',
+        ]);
+
+        $incident = PiketIncident::findOrFail($validated['incident_id']);
+
+        $updateData = [
+            'verification_status' => $validated['verification_status'],
+            'verified_by' => $user->id,
+            'verified_at' => now(),
+            'verification_notes' => $validated['verification_notes'] ?? null,
+        ];
+
+        if (! empty($validated['follow_up_target'])) {
+            $updateData['follow_up_target'] = $validated['follow_up_target'];
+        }
+
+        if ($validated['verification_status'] === 'terverifikasi') {
+            $updateData['status'] = 'ditindaklanjuti';
+        } elseif (in_array($validated['verification_status'], ['bukan_pelanggaran', 'dibatalkan'])) {
+            $updateData['status'] = 'selesai';
+        }
+
+        $incident->update($updateData);
+
+        if ($incident->follow_up_target === 'rujuk_bk' && $incident->student_id) {
+            BkReferral::firstOrCreate(
+                ['piket_incident_id' => $incident->id],
+                ['status' => 'menunggu']
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Insiden berhasil diperbarui menjadi '{$incident->verification_status_label}'.",
+            'data' => [
+                'incident_id' => $incident->id,
+                'verification_status' => $incident->verification_status,
+                'verification_status_label' => $incident->verification_status_label,
             ],
         ]);
     }
