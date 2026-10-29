@@ -174,11 +174,11 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-            <a href="/attendance/gtk-permits/create" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+            <a href="/izin-cuti-gtk/ajukan" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                 <span>Ajukan Izin</span>
             </a>
-            <a href="/attendance/gtk-permits?scope=personal" class="py-2.5 px-3 rounded-xl bg-white border border-orange-200 text-orange-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-orange-50 active:scale-95 transition">
+            <a href="/izin-cuti-gtk" class="py-2.5 px-3 rounded-xl bg-white border border-orange-200 text-orange-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-orange-50 active:scale-95 transition">
                 <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <span>Riwayat Saya</span>
             </a>
@@ -207,17 +207,17 @@
                 <span class="text-[10px] font-bold text-slate-800">Meja Piket</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Dashboard</span>
             </a>
-            <a href="/piket/journals" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            <a href="/piket/jurnal" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">📓</span>
                 <span class="text-[10px] font-bold text-slate-800">Jurnal Piket</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Laporan</span>
             </a>
-            <a href="/piket/permits/create" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            <a href="/piket/perizinan/buat" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">🎟️</span>
                 <span class="text-[10px] font-bold text-slate-800">Izin Siswa</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Masuk/Keluar</span>
             </a>
-            <a href="/piket/guests" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            <a href="/piket/tamu" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">👥</span>
                 <span class="text-[10px] font-bold text-slate-800">Buku Tamu</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Kunjungan</span>
@@ -227,7 +227,7 @@
                 <span class="text-[10px] font-bold text-slate-800">Guru Inval</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Jam Kosong</span>
             </a>
-            <a href="/piket/swaps" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            <a href="/piket/tukar-jadwal" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">⇄</span>
                 <span class="text-[10px] font-bold text-slate-800">Tukar Jadwal</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Shift Piket</span>
@@ -295,13 +295,13 @@
 
         <!-- 3 Tombol Aksi Cepat Wali Kelas -->
         <div class="grid grid-cols-3 gap-2 pt-2 border-t border-amber-200/80">
-            <a id="btn-homeroom-permits" href="/attendance/homeroom-permits" class="py-2 px-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-[10px] font-bold text-center shadow-xs hover:bg-amber-50 transition active:scale-95 flex items-center justify-center gap-1">
+            <a id="btn-homeroom-permits" href="/presensi/izin-siswa" class="py-2 px-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-[10px] font-bold text-center shadow-xs hover:bg-amber-50 transition active:scale-95 flex items-center justify-center gap-1">
                 <span>📝 Izin Siswa</span>
             </a>
-            <a href="/visitations" class="py-2 px-1 rounded-xl bg-white border border-cyan-300 text-cyan-900 text-[10px] font-bold text-center shadow-xs hover:bg-cyan-50 transition active:scale-95 flex items-center justify-center gap-1">
+            <a href="/visitasi" class="py-2 px-1 rounded-xl bg-white border border-cyan-300 text-cyan-900 text-[10px] font-bold text-center shadow-xs hover:bg-cyan-50 transition active:scale-95 flex items-center justify-center gap-1">
                 <span>🏠 Visitasi</span>
             </a>
-            <a id="btn-homeroom-recap" href="/attendance/homeroom-recap" class="py-2 px-1 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-[10px] font-bold text-center shadow-xs hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center gap-1">
+            <a id="btn-homeroom-recap" href="/presensi/rekap-kelas" class="py-2 px-1 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-[10px] font-bold text-center shadow-xs hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center gap-1">
                 <span>📋 Rekap</span>
             </a>
         </div>
@@ -336,10 +336,10 @@
         <div id="visitation-recent-list" class="space-y-2 mb-2.5"></div>
 
         <div class="grid grid-cols-2 gap-2">
-            <a href="/visitations/create" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+            <a href="/visitasi/tambah" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
                 <span>+ Jadwal Visitasi</span>
             </a>
-            <a href="/visitations" class="py-2.5 px-3 rounded-xl bg-white border border-cyan-300 text-cyan-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-cyan-50 active:scale-95 transition">
+            <a href="/visitasi" class="py-2.5 px-3 rounded-xl bg-white border border-cyan-300 text-cyan-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-cyan-50 active:scale-95 transition">
                 <span>Semua Data</span>
             </a>
         </div>
@@ -393,10 +393,10 @@
 
         <!-- Tombol Aksi Cepat Bawah -->
         <div class="grid grid-cols-2 gap-2 pt-2 border-t border-rose-100">
-            <a href="/discipline/dashboard" class="py-2 px-2 rounded-xl bg-white border border-rose-300 text-rose-900 text-[10px] font-bold text-center shadow-xs hover:bg-rose-50 transition active:scale-95 flex items-center justify-center gap-1">
+            <a href="/kedisiplinan/dashboard" class="py-2 px-2 rounded-xl bg-white border border-rose-300 text-rose-900 text-[10px] font-bold text-center shadow-xs hover:bg-rose-50 transition active:scale-95 flex items-center justify-center gap-1">
                 <span>📊 Dashboard Kesiswaan</span>
             </a>
-            <a href="/piket/incidents" class="py-2 px-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-[10px] font-bold text-center shadow-xs hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-1">
+            <a href="/piket/kasus" class="py-2 px-2 rounded-xl bg-white border border-slate-300 text-slate-800 text-[10px] font-bold text-center shadow-xs hover:bg-slate-50 transition active:scale-95 flex items-center justify-center gap-1">
                 <span>📝 Log Insiden Piket</span>
             </a>
         </div>
@@ -480,7 +480,7 @@
 
         <div class="pt-2 border-t border-blue-100 flex justify-between items-center text-[10px]">
             <span class="text-slate-500 font-medium">GTK Izin Hari Ini: <strong id="count-approved-today">0 Orang</strong></span>
-            <a href="/attendance/gtk-permits?scope=manage" class="font-bold text-blue-600 hover:underline">Kelola Izin &raquo;</a>
+            <a href="/izin-cuti-gtk" class="font-bold text-blue-600 hover:underline">Kelola Izin &raquo;</a>
         </div>
     </div>
 

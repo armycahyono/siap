@@ -935,7 +935,7 @@ class User extends Authenticatable
      */
     public function canOperateBk(?string $academicYear = null): bool
     {
-        return $this->isSuperAdmin() || $this->isCounselingBK($academicYear);
+        return $this->isSuperAdmin() || $this->isPrincipal() || $this->isCounselingBK($academicYear);
     }
 
     /**

@@ -36,8 +36,8 @@ class BkReferralController extends Controller
             ]);
         }
 
-        if (! $user->canOperateBk($academicYear)) {
-            abort(403, 'Anda tidak memiliki kewenangan sebagai Guru BK untuk tahun ajaran ini.');
+        if (! ($user->canOperateBk($academicYear) || $user->canManageDiscipline($academicYear))) {
+            abort(403, 'Anda tidak memiliki kewenangan mengakses rujukan BK.');
         }
 
         $status = $request->query('status'); // 'menunggu', 'diproses', 'selesai'
@@ -131,8 +131,8 @@ class BkReferralController extends Controller
 
         $academicYear = $incident->journal?->academic_year ?? app(AcademicYearContext::class)->getViewingYear();
 
-        if (! $user->canOperateBk($academicYear)) {
-            abort(403, 'Anda tidak memiliki kewenangan sebagai Guru BK.');
+        if (! ($user->canOperateBk($academicYear) || $user->canManageDiscipline($academicYear))) {
+            abort(403, 'Anda tidak memiliki kewenangan mengakses rujukan BK.');
         }
 
         if ($incident->follow_up_target !== 'rujuk_bk') {
@@ -164,8 +164,8 @@ class BkReferralController extends Controller
 
         $academicYear = $incident->journal?->academic_year ?? app(AcademicYearContext::class)->getViewingYear();
 
-        if (! $user->canOperateBk($academicYear)) {
-            abort(403, 'Anda tidak memiliki kewenangan sebagai Guru BK.');
+        if (! ($user->canOperateBk($academicYear) || $user->canManageDiscipline($academicYear))) {
+            abort(403, 'Anda tidak memiliki kewenangan mengakses rujukan BK.');
         }
 
         if ($incident->follow_up_target !== 'rujuk_bk') {

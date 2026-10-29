@@ -1456,7 +1456,7 @@
                             <p class="text-[11px] text-slate-600 mb-1.5 italic">"${p.reason || 'Izin'}"</p>
                             <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px]">
                                 <span class="text-slate-400 font-mono">${p.start_date} s/d ${p.end_date}</span>
-                                <a href="/attendance/gtk-permits?scope=manage" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700">Tinjau</a>
+                                <a href="/izin-cuti-gtk" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700">Tinjau</a>
                             </div>
                         </div>
                     `).join('');
