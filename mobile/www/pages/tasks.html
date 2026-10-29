@@ -202,36 +202,36 @@
 
         <!-- 6 Menu Meja Piket Grid -->
         <div class="grid grid-cols-3 gap-2">
-            <a href="/piket" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/piket')" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">📊</span>
                 <span class="text-[10px] font-bold text-slate-800">Meja Piket</span>
-                <span class="text-[8px] text-slate-400 mt-0.5">Dashboard</span>
-            </a>
-            <a href="/piket/jurnal" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
-                <span class="text-base mb-0.5">📓</span>
-                <span class="text-[10px] font-bold text-slate-800">Jurnal Piket</span>
-                <span class="text-[8px] text-slate-400 mt-0.5">Laporan</span>
-            </a>
-            <a href="/piket/perizinan/buat" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-[8px] text-slate-400 mt-0.5">Workspace</span>
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/piket?tab=permits')" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">🎟️</span>
                 <span class="text-[10px] font-bold text-slate-800">Izin Siswa</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Masuk/Keluar</span>
-            </a>
-            <a href="/piket/tamu" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
-                <span class="text-base mb-0.5">👥</span>
-                <span class="text-[10px] font-bold text-slate-800">Buku Tamu</span>
-                <span class="text-[8px] text-slate-400 mt-0.5">Kunjungan</span>
-            </a>
-            <a href="/piket/inval" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/piket?tab=incidents')" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">🚨</span>
+                <span class="text-[10px] font-bold text-slate-800">Kejadian</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Pelanggaran</span>
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/piket?tab=invals')" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">🔄</span>
                 <span class="text-[10px] font-bold text-slate-800">Guru Inval</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Jam Kosong</span>
-            </a>
-            <a href="/piket/tukar-jadwal" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/piket?tab=guests')" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
+                <span class="text-base mb-0.5">👥</span>
+                <span class="text-[10px] font-bold text-slate-800">Buku Tamu</span>
+                <span class="text-[8px] text-slate-400 mt-0.5">Kunjungan</span>
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/piket/swaps')" class="p-2.5 rounded-xl bg-white border border-purple-200/80 flex flex-col items-center text-center shadow-xs hover:border-purple-400 active:scale-95 transition">
                 <span class="text-base mb-0.5">⇄</span>
                 <span class="text-[10px] font-bold text-slate-800">Tukar Jadwal</span>
                 <span class="text-[8px] text-slate-400 mt-0.5">Shift Piket</span>
-            </a>
+            </button>
         </div>
     </div>
 

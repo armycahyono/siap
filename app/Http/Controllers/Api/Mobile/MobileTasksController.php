@@ -11,12 +11,16 @@ use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
+use App\Models\PiketDutySwap;
+use App\Models\PiketGuest;
 use App\Models\PiketIncident;
 use App\Models\PiketInvalClass;
+use App\Models\PiketJournal;
 use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\Student;
 use App\Models\StudentVisitation;
+use App\Models\Subject;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\Supervision;
@@ -29,9 +33,14 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class MobileTasksController extends Controller
 {
+    public function __construct(
+        protected TelegramService $telegramService
+    ) {}
+
     /**
      * Get operational tasks and live monitoring payload for SIAP Mobile.
      */
@@ -1777,8 +1786,8 @@ class MobileTasksController extends Controller
                     ->orWhere('nis', 'like', "%{$q}%");
             });
 
-        // Jika hanya wali kelas / guru biasa dan bukan pimpinan/BK/kedisiplinan, batasi ke kelas binaan jika ada
-        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->canOperateBk($operationalAcademicYear) && ! $user->canManageDiscipline($operationalAcademicYear)) {
+        // Jika hanya wali kelas / guru biasa dan bukan pimpinan/BK/kedisiplinan/piket, batasi ke kelas binaan jika ada
+        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->canOperateBk($operationalAcademicYear) && ! $user->canManageDiscipline($operationalAcademicYear) && ! $user->canOperatePiket($operationalAcademicYear) && ! $user->isPiketOfficerToday($operationalAcademicYear)) {
             $myClassroomIds = $user->homeroomClassrooms()->pluck('id');
             if ($myClassroomIds->isNotEmpty()) {
                 $query->whereIn('classroom_id', $myClassroomIds);
@@ -1802,5 +1811,823 @@ class MobileTasksController extends Controller
             'success' => true,
             'data' => $students,
         ]);
+    }
+
+    /**
+     * Get Piket operational workspace payload for mobile.
+     */
+    public function getPiketData(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalYear = $academicYearContext->getOperationalYear();
+        $academicYear = $operationalYear->name;
+
+        $isOfficerToday = $user->isPiketOfficerToday($academicYear);
+        $canOperate = $user->canOperatePiket($academicYear) || $isOfficerToday;
+        $isCoordinator = $user->isPiketCoordinator();
+        $isManagement = $user->isSuperAdmin() || $user->isPrincipal() || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum());
+        $hasAnyPiketSchedule = PiketSchedule::where('teacher_id', $user->id)->where('is_active', true)->exists();
+
+        $today = Carbon::today()->toDateString();
+        $dayNames = [
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
+
+        // Approved swaps affecting today
+        $approvedSwapsToday = PiketDutySwap::where('status', 'disetujui')
+            ->whereDate('duty_date', $today)
+            ->with(['requester:id,name', 'replacementTeacher:id,name'])
+            ->get();
+
+        $isSwappedInToday = $approvedSwapsToday->where('replacement_teacher_id', $user->id)->isNotEmpty();
+        $isSwappedOutToday = $approvedSwapsToday->where('requester_id', $user->id)->isNotEmpty();
+        $isOnDutyToday = ($isOfficerToday || $isSwappedInToday) && ! $isSwappedOutToday;
+
+        // Ensure today's journal exists
+        $journal = $this->getOrCreatePiketJournal($today, $user, $academicYear, $operationalYear->semester);
+
+        // Scheduled officers today
+        $schedulesToday = PiketSchedule::with('teacher:id,name,role')
+            ->where('day', $todayDay)
+            ->where('is_active', true)
+            ->orderByRaw("CASE WHEN role = 'koordinator' THEN 0 ELSE 1 END")
+            ->get();
+
+        $scheduledOfficers = $schedulesToday->map(function ($sch) use ($approvedSwapsToday) {
+            $swap = $approvedSwapsToday->firstWhere('original_schedule_id', $sch->id)
+                ?? $approvedSwapsToday->firstWhere('requester_id', $sch->teacher_id);
+
+            return [
+                'id' => $sch->id,
+                'teacher_id' => $sch->teacher_id,
+                'teacher_name' => $sch->teacher?->name ?? 'Guru',
+                'role' => $sch->role,
+                'duty_location' => $sch->duty_location,
+                'is_swapped' => (bool) $swap,
+                'replacement_teacher_name' => $swap?->replacementTeacher?->name,
+            ];
+        });
+
+        // 1. Stats
+        $permitsToday = PiketStudentPermit::whereDate('permit_date', $today)->get();
+        $incidentsToday = PiketIncident::whereDate('incident_date', $today)->get();
+        $invalsToday = PiketInvalClass::where('piket_journal_id', $journal->id)->get();
+        $guestsToday = PiketGuest::whereDate('visit_date', $today)->get();
+
+        $stats = [
+            'total_permits' => $permitsToday->count(),
+            'permits_terlambat' => $permitsToday->where('permit_type', 'terlambat')->count(),
+            'permits_keluar' => $permitsToday->where('permit_type', 'izin_keluar_sementara')->count(),
+            'permits_pulang' => $permitsToday->where('permit_type', 'izin_pulang_cepat')->count(),
+            'permits_tidak_masuk' => $permitsToday->where('permit_type', 'izin_tidak_masuk')->count(),
+
+            'total_incidents' => $incidentsToday->count(),
+            'incidents_tercatat' => $incidentsToday->where('status', 'tercatat')->count(),
+            'incidents_selesai' => $incidentsToday->where('status', 'selesai')->count(),
+            'incidents_rujuk_bk' => $incidentsToday->where('follow_up_target', 'rujuk_bk')->count(),
+
+            'total_invals' => $invalsToday->count(),
+            'invals_handled' => $invalsToday->whereNotNull('inval_teacher_id')->count(),
+            'invals_unhandled' => $invalsToday->whereNull('inval_teacher_id')->count(),
+
+            'total_guests' => $guestsToday->count(),
+            'guests_visiting' => $guestsToday->whereNull('check_out_time')->count(),
+            'guests_checked_out' => $guestsToday->whereNotNull('check_out_time')->count(),
+        ];
+
+        // 2. Recent lists
+        $permitsList = PiketStudentPermit::whereDate('permit_date', $today)
+            ->with(['student:id,name,nisn', 'classroom:id,name'])
+            ->latest()
+            ->take(30)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'permit_number' => $p->permit_number,
+                'permit_type' => $p->permit_type,
+                'permit_category' => $p->permit_category,
+                'student_name' => $p->student_name,
+                'classroom_name' => $p->classroom?->name ?? '-',
+                'reason' => $p->reason,
+                'entry_time' => $p->entry_time ? substr($p->entry_time, 0, 5) : null,
+                'departure_time' => $p->departure_time ? substr($p->departure_time, 0, 5) : null,
+                'return_time' => $p->return_time ? substr($p->return_time, 0, 5) : null,
+                'period_assigned' => $p->period_assigned,
+                'status' => $p->status,
+                'action_taken' => $p->action_taken,
+                'created_at_human' => $p->created_at?->diffForHumans(),
+            ]);
+
+        $incidentsList = PiketIncident::whereDate('incident_date', $today)
+            ->with(['student:id,name,nisn', 'classroom:id,name', 'recordedBy:id,name'])
+            ->latest('id')
+            ->take(30)
+            ->get()
+            ->map(fn ($i) => [
+                'id' => $i->id,
+                'student_name' => $i->student_name,
+                'classroom_name' => $i->classroom?->name ?? '-',
+                'incident_time' => substr($i->incident_time, 0, 5),
+                'category' => $i->category,
+                'description' => $i->description,
+                'action_taken' => $i->action_taken,
+                'follow_up_target' => $i->follow_up_target,
+                'evidence_photo_url' => $i->evidence_photo_url,
+                'status' => $i->status,
+                'recorder_name' => $i->recordedBy?->name ?? 'Petugas Piket',
+                'created_at_human' => $i->created_at?->diffForHumans(),
+            ]);
+
+        $invalsList = PiketInvalClass::where('piket_journal_id', $journal->id)
+            ->with(['classroom:id,name', 'absentTeacher:id,name', 'invalTeacher:id,name', 'subject:id,name'])
+            ->latest('id')
+            ->take(30)
+            ->get()
+            ->map(fn ($inv) => [
+                'id' => $inv->id,
+                'classroom_name' => $inv->classroom?->name ?? '-',
+                'absent_teacher_name' => $inv->absentTeacher?->name ?? '-',
+                'inval_teacher_name' => $inv->invalTeacher?->name,
+                'subject_name' => $inv->subject?->name ?? '-',
+                'period_start' => $inv->period_start,
+                'period_end' => $inv->period_end,
+                'period_label' => "Jam ke {$inv->period_start}".($inv->period_end > $inv->period_start ? "-{$inv->period_end}" : ''),
+                'reason' => $inv->reason,
+                'assignment_material' => $inv->assignment_material,
+                'notes' => $inv->notes,
+                'is_handled' => (bool) $inv->inval_teacher_id,
+            ]);
+
+        $guestsList = PiketGuest::whereDate('visit_date', $today)
+            ->latest('id')
+            ->take(30)
+            ->get()
+            ->map(fn ($g) => [
+                'id' => $g->id,
+                'guest_name' => $g->guest_name,
+                'institution' => $g->institution ?: 'Tamu Pribadi / Orang Tua',
+                'phone' => $g->phone,
+                'purpose' => $g->purpose,
+                'meet_with' => $g->meet_with,
+                'badge_number' => $g->badge_number,
+                'check_in_time' => substr($g->check_in_time, 0, 5),
+                'check_out_time' => $g->check_out_time ? substr($g->check_out_time, 0, 5) : null,
+                'is_checked_out' => (bool) $g->check_out_time,
+                'notes' => $g->notes,
+            ]);
+
+        // Helpers
+        $classrooms = Classroom::orderBy('name')->get(['id', 'name']);
+        $teachers = User::operationalPersonnel()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        $subjects = Subject::orderBy('name')->get(['id', 'name']);
+
+        $mySchedules = PiketSchedule::where('teacher_id', $user->id)
+            ->where('is_active', true)
+            ->pluck('day')
+            ->toArray();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'today' => $today,
+                'today_day' => $todayDay,
+                'is_on_duty_today' => $isOnDutyToday,
+                'can_operate' => $canOperate || $isOnDutyToday || $isManagement,
+                'is_coordinator' => $isCoordinator || $journal->coordinator_id === $user->id || $isManagement,
+                'is_management' => $isManagement,
+                'has_piket_schedule' => $hasAnyPiketSchedule,
+                'my_schedules' => $mySchedules,
+                'journal' => [
+                    'id' => $journal->id,
+                    'status' => $journal->status,
+                    'coordinator_name' => $journal->coordinator?->name ?? $user->name,
+                    'completed_at' => $journal->completed_at?->format('H:i d/m/Y'),
+                    'general_notes' => $journal->general_notes,
+                ],
+                'scheduled_officers' => $scheduledOfficers,
+                'stats' => $stats,
+                'permits' => $permitsList,
+                'incidents' => $incidentsList,
+                'invals' => $invalsList,
+                'guests' => $guestsList,
+                'helpers' => [
+                    'classrooms' => $classrooms,
+                    'teachers' => $teachers,
+                    'subjects' => $subjects,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Store new student permit issued by piket officer.
+     */
+    public function storePiketStudentPermit(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'permit_type' => 'required|in:terlambat,izin_keluar_sementara,izin_pulang_cepat,izin_tidak_masuk',
+            'permit_date' => 'nullable|date',
+            'student_id' => 'nullable|exists:students,id',
+            'student_name' => 'required|string|max:255',
+            'classroom_id' => 'required|exists:classrooms,id',
+            'reason' => 'required|string|max:500',
+            'permit_category' => 'nullable|in:sakit,izin,dispen,terlambat',
+            'entry_time' => 'nullable|string',
+            'departure_time' => 'nullable|string',
+            'return_time' => 'nullable|string',
+            'period_assigned' => 'nullable|string|max:50',
+            'action_taken' => 'nullable|string|max:255',
+        ]);
+
+        $permitDate = (! empty($validated['permit_date'])) ? $validated['permit_date'] : Carbon::today()->toDateString();
+        $todayStr = Carbon::parse($permitDate)->toDateString();
+
+        // Prevent duplicate input for same student, type, and day
+        if (! empty($validated['student_id'])) {
+            $existingPermit = PiketStudentPermit::where('student_id', $validated['student_id'])
+                ->where('permit_type', $validated['permit_type'])
+                ->whereDate('permit_date', $todayStr)
+                ->first();
+
+            if ($existingPermit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Surat izin untuk {$validated['student_name']} dengan jenis ini sudah pernah dibuat hari ini ({$existingPermit->permit_number}).",
+                ], 422);
+            }
+        }
+
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $journal = $this->getOrCreatePiketJournal($todayStr, $user, $operationalYear->name, $operationalYear->semester);
+
+        $countToday = PiketStudentPermit::whereDate('permit_date', $todayStr)->count() + 1;
+        $permitNumber = sprintf('IZN-%s-%03d', Carbon::parse($todayStr)->format('Ymd'), $countToday);
+
+        $departureTime = null;
+        if (in_array($validated['permit_type'], ['izin_pulang_cepat', 'izin_keluar_sementara'])) {
+            $departureTime = $validated['departure_time'] ?: Carbon::now()->format('H:i');
+        }
+
+        $permit = PiketStudentPermit::create([
+            'piket_journal_id' => $journal->id,
+            'permit_number' => $permitNumber,
+            'permit_date' => $permitDate,
+            'student_id' => $validated['student_id'] ?? null,
+            'student_name' => $validated['student_name'],
+            'classroom_id' => $validated['classroom_id'],
+            'permit_type' => $validated['permit_type'],
+            'permit_category' => $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin'),
+            'reason' => $validated['reason'],
+            'entry_time' => ($validated['permit_type'] === 'terlambat') ? (($validated['entry_time'] ?? null) ?: Carbon::now()->format('H:i')) : null,
+            'departure_time' => $departureTime,
+            'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? null) : null,
+            'period_assigned' => ($validated['permit_type'] === 'terlambat') ? ($validated['period_assigned'] ?? null) : null,
+            'action_taken' => $validated['action_taken'] ?? null,
+            'given_by' => $user->id,
+            'status' => 'diberikan',
+        ]);
+
+        ActivityLogger::log('create', "Menerbitkan surat izin piket: {$permit->student_name} ({$permit->permit_number})", $permit, [
+            'type' => $permit->permit_type,
+            'classroom_id' => $permit->classroom_id,
+        ]);
+
+        // Send Telegram notification
+        try {
+            $classroom = Classroom::with('homeroomTeacher')->find($validated['classroom_id']);
+            $homeroomTeacher = $classroom?->homeroomTeacher;
+
+            $dayNames = [
+                1 => 'Senin',
+                2 => 'Selasa',
+                3 => 'Rabu',
+                4 => 'Kamis',
+                5 => 'Jumat',
+                6 => 'Sabtu',
+                7 => 'Minggu',
+            ];
+            $dayName = $dayNames[Carbon::parse($permitDate)->dayOfWeekIso] ?? 'Senin';
+
+            $scheduleQuery = LessonSchedule::where('classroom_id', $validated['classroom_id'])
+                ->where('day', $dayName)
+                ->with('teacher');
+
+            if (! empty($validated['period_assigned']) && is_numeric($validated['period_assigned'])) {
+                $p = (int) $validated['period_assigned'];
+                $scheduleQuery->where('start_period', '<=', $p)
+                    ->where('end_period', '>=', $p);
+            }
+
+            $subjectTeacher = $scheduleQuery->first()?->teacher;
+
+            if ($validated['permit_type'] === 'terlambat') {
+                $this->telegramService->notifyStudentLate($permit, $subjectTeacher, $homeroomTeacher);
+            } else {
+                $this->telegramService->notifyStudentPermit($permit, $homeroomTeacher, $subjectTeacher);
+            }
+        } catch (\Throwable $e) {
+            // Silently continue if Telegram notification fails
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Surat izin {$permit->permit_number} berhasil diterbitkan.",
+            'data' => $permit,
+        ]);
+    }
+
+    /**
+     * Store new student incident recorded by piket officer.
+     */
+    public function storePiketIncident(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'incident_date' => 'nullable|date',
+            'incident_time' => 'nullable|string',
+            'student_id' => 'nullable|exists:students,id',
+            'student_name' => 'required|string|max:255',
+            'classroom_id' => 'nullable|exists:classrooms,id',
+            'location' => 'nullable|string|max:255',
+            'category' => 'required|in:kedisiplinan,seragam,gadget_terlarang,perkelahian,rokok,kesehatan_pingsan,lainnya',
+            'description' => 'required|string',
+            'action_taken' => 'required|string',
+            'follow_up_target' => 'required|in:selesai_di_piket,rujuk_wali_kelas,rujuk_bk,rujuk_kesiswaan',
+            'confiscated_items' => 'nullable|string|max:255',
+            'evidence_photo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'evidence_photo_base64' => 'nullable|string',
+        ]);
+
+        if (empty($validated['classroom_id']) && ! empty($validated['student_id'])) {
+            $student = Student::find($validated['student_id']);
+            if ($student) {
+                $validated['classroom_id'] = $student->classroom_id;
+            }
+        }
+
+        $photoPath = null;
+        if ($request->hasFile('evidence_photo')) {
+            $photoPath = $request->file('evidence_photo')->store('piket/incidents', 'local');
+        } elseif (! empty($validated['evidence_photo_base64'])) {
+            $b64 = $validated['evidence_photo_base64'];
+            if (preg_match('/^data:image\/(\w+);base64,/', $b64, $type)) {
+                $b64 = substr($b64, strpos($b64, ',') + 1);
+                $type = strtolower($type[1]);
+                if (in_array($type, ['jpg', 'jpeg', 'gif', 'png', 'webp'])) {
+                    $decoded = base64_decode($b64);
+                    if ($decoded !== false) {
+                        $filename = 'piket/incidents/'.uniqid('piket_inc_').'.'.$type;
+                        Storage::disk('local')->put($filename, $decoded);
+                        $photoPath = $filename;
+                    }
+                }
+            }
+        }
+
+        $incidentDate = (! empty($validated['incident_date'])) ? $validated['incident_date'] : Carbon::today()->toDateString();
+        $incidentTime = (! empty($validated['incident_time'])) ? $validated['incident_time'] : Carbon::now()->format('H:i');
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+
+        $journal = $this->getOrCreatePiketJournal($incidentDate, $user, $operationalYear->name, $operationalYear->semester);
+
+        $incident = PiketIncident::create([
+            'piket_journal_id' => $journal->id,
+            'academic_year' => $operationalYear->name ?? $journal->academic_year,
+            'incident_date' => $incidentDate,
+            'incident_time' => $incidentTime,
+            'student_id' => $validated['student_id'] ?? null,
+            'student_name' => $validated['student_name'],
+            'classroom_id' => $validated['classroom_id'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'category' => $validated['category'],
+            'description' => $validated['description'],
+            'action_taken' => $validated['action_taken'],
+            'follow_up_target' => $validated['follow_up_target'],
+            'confiscated_items' => $validated['confiscated_items'] ?? null,
+            'evidence_photo' => $photoPath,
+            'recorded_by' => $user->id,
+            'status' => $validated['follow_up_target'] === 'selesai_di_piket' ? 'selesai' : 'tercatat',
+        ]);
+
+        if ($incident->follow_up_target === 'rujuk_bk' && $incident->student_id) {
+            BkReferral::firstOrCreate(
+                ['piket_incident_id' => $incident->id],
+                ['status' => 'menunggu']
+            );
+        }
+
+        ActivityLogger::log('create', "Mencatat kejadian piket: {$incident->student_name} - {$incident->category}", $incident, [
+            'category' => $incident->category,
+            'follow_up' => $incident->follow_up_target,
+        ]);
+
+        try {
+            $classroom = $incident->classroom_id ? Classroom::with('homeroomTeacher')->find($incident->classroom_id) : null;
+            $homeroomTeacher = $classroom?->homeroomTeacher;
+            $this->telegramService->notifyIncident($incident, $homeroomTeacher);
+        } catch (\Throwable $e) {
+            // Silently continue
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Laporan kejadian berhasil dicatat.',
+            'data' => $incident,
+        ]);
+    }
+
+    /**
+     * Store new inval class assignment.
+     */
+    public function storePiketInval(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'classroom_id' => 'required|exists:classrooms,id',
+            'absent_teacher_id' => 'required|exists:users,id',
+            'subject_id' => 'nullable|exists:subjects,id',
+            'inval_teacher_id' => 'nullable|exists:users,id',
+            'period_start' => 'required|integer|min:1|max:15',
+            'period_end' => 'required|integer|min:1|max:15|gte:period_start',
+            'reason' => 'required|string|max:255',
+            'assignment_material' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $today = Carbon::today()->toDateString();
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $journal = $this->getOrCreatePiketJournal($today, $user, $operationalYear->name, $operationalYear->semester);
+
+        $inval = PiketInvalClass::create([
+            'piket_journal_id' => $journal->id,
+            'classroom_id' => $validated['classroom_id'],
+            'absent_teacher_id' => $validated['absent_teacher_id'],
+            'subject_id' => $validated['subject_id'] ?? null,
+            'inval_teacher_id' => $validated['inval_teacher_id'] ?? null,
+            'period_start' => $validated['period_start'],
+            'period_end' => $validated['period_end'],
+            'reason' => $validated['reason'],
+            'assignment_material' => $validated['assignment_material'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        GtkPermit::syncFromPiketInvals();
+
+        ActivityLogger::log('create', "Menugaskan guru inval: {$inval->classroom?->name}", $inval, [
+            'absent' => $inval->absent_teacher_id,
+            'inval' => $inval->inval_teacher_id,
+        ]);
+
+        try {
+            $this->telegramService->notifyInvalClassToWakaAndPiket($inval);
+        } catch (\Throwable $e) {
+            // Silently continue
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Penugasan guru inval berhasil disimpan.',
+            'data' => $inval,
+        ]);
+    }
+
+    /**
+     * Store new guest in piket guestbook.
+     */
+    public function storePiketGuest(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'guest_name' => 'required|string|max:255',
+            'institution' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'purpose' => 'required|string|max:255',
+            'meet_with' => 'required|string|max:255',
+            'badge_number' => 'nullable|string|max:50',
+            'notes' => 'nullable|string',
+            'check_in_time' => 'nullable|string',
+        ]);
+
+        $today = Carbon::today()->toDateString();
+        $checkInTime = (! empty($validated['check_in_time'])) ? $validated['check_in_time'] : Carbon::now()->format('H:i');
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $journal = $this->getOrCreatePiketJournal($today, $user, $operationalYear->name, $operationalYear->semester);
+
+        $guest = PiketGuest::create([
+            'piket_journal_id' => $journal->id,
+            'visit_date' => $today,
+            'check_in_time' => $checkInTime,
+            'guest_name' => $validated['guest_name'],
+            'institution' => $validated['institution'] ?? null,
+            'phone' => $validated['phone'] ?? null,
+            'purpose' => $validated['purpose'],
+            'meet_with' => $validated['meet_with'],
+            'badge_number' => $validated['badge_number'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'recorded_by' => $user->id,
+        ]);
+
+        ActivityLogger::log('create', "Mencatat buku tamu piket: {$guest->guest_name} ({$guest->purpose})", $guest, [
+            'guest' => $guest->guest_name,
+            'meet_with' => $guest->meet_with,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Buku tamu berhasil dicatat.',
+            'data' => $guest,
+        ]);
+    }
+
+    /**
+     * Mark checkout for a guest.
+     */
+    public function checkoutPiketGuest(Request $request, int $id): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $guest = PiketGuest::findOrFail($id);
+        $checkOutTime = Carbon::now()->format('H:i:s');
+        $guest->update(['check_out_time' => $checkOutTime]);
+
+        ActivityLogger::log('update', "Checkout tamu: {$guest->guest_name}", $guest, [
+            'check_out' => $checkOutTime,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Tamu {$guest->guest_name} telah check-out pada {$checkOutTime}.",
+            'data' => $guest,
+        ]);
+    }
+
+    /**
+     * Close/finalize today's piket journal.
+     */
+    public function closePiketJournal(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $today = Carbon::today()->toDateString();
+        $journal = PiketJournal::whereDate('date', $today)->first();
+
+        if (! $journal) {
+            return response()->json(['success' => false, 'message' => 'Jurnal piket hari ini tidak ditemukan.'], 404);
+        }
+
+        $journal->update([
+            'status' => 'selesai',
+            'completed_at' => Carbon::now(),
+            'completed_by' => $user->id,
+            'general_notes' => $request->input('general_notes', $journal->general_notes),
+        ]);
+
+        ActivityLogger::log('update', "Menutup jurnal piket harian {$today}", $journal, [
+            'completed_by' => $user->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jurnal piket harian berhasil divalidasi dan ditutup.',
+            'data' => $journal,
+        ]);
+    }
+
+    /**
+     * Get Duty Swaps and available schedules for duty swapping.
+     */
+    public function getPiketDutySwaps(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $isManagement = $user->isSuperAdmin() || $user->isPrincipal() || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum());
+
+        // My schedules that can be swapped
+        $mySchedules = PiketSchedule::where('teacher_id', $user->id)
+            ->where('is_active', true)
+            ->get(['id', 'day', 'role', 'duty_location']);
+
+        // Swaps query
+        $query = PiketDutySwap::with(['originalSchedule', 'requester:id,name', 'replacementTeacher:id,name', 'approver:id,name'])
+            ->latest('duty_date')
+            ->latest('id');
+
+        if (! $isManagement) {
+            $query->where(function ($q) use ($user) {
+                $q->where('requester_id', $user->id)
+                    ->orWhere('replacement_teacher_id', $user->id);
+            });
+        }
+
+        $swaps = $query->take(50)->get()->map(fn ($s) => [
+            'id' => $s->id,
+            'original_schedule_id' => $s->original_schedule_id,
+            'schedule_day' => $s->originalSchedule?->day ?? '-',
+            'requester_id' => $s->requester_id,
+            'requester_name' => $s->requester?->name ?? 'Pemohon',
+            'replacement_teacher_id' => $s->replacement_teacher_id,
+            'replacement_teacher_name' => $s->replacementTeacher?->name ?? 'Pengganti',
+            'duty_date' => $s->duty_date?->format('Y-m-d'),
+            'duty_date_formatted' => $s->duty_date?->translatedFormat('d M Y') ?? '-',
+            'reason' => $s->reason,
+            'status' => $s->status,
+            'can_action' => ($user->id === $s->replacement_teacher_id && $s->status === 'menunggu') || ($isManagement && $s->status === 'menunggu'),
+            'created_at_human' => $s->created_at?->diffForHumans(),
+        ]);
+
+        $teachers = User::operationalPersonnel()
+            ->where('id', '!=', $user->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'my_schedules' => $mySchedules,
+                'swaps' => $swaps,
+                'teachers' => $teachers,
+            ],
+        ]);
+    }
+
+    /**
+     * Store new duty swap proposal.
+     */
+    public function storePiketDutySwap(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'original_schedule_id' => 'required|exists:piket_schedules,id',
+            'replacement_teacher_id' => 'required|exists:users,id',
+            'duty_date' => 'required|date|after_or_equal:today',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if ($validated['replacement_teacher_id'] == $user->id) {
+            return response()->json(['success' => false, 'message' => 'Tidak dapat memilih diri sendiri sebagai pengganti.'], 422);
+        }
+
+        $schedule = PiketSchedule::findOrFail($validated['original_schedule_id']);
+
+        $swap = PiketDutySwap::create([
+            'original_schedule_id' => $schedule->id,
+            'requester_id' => $user->id,
+            'replacement_teacher_id' => $validated['replacement_teacher_id'],
+            'duty_date' => $validated['duty_date'],
+            'reason' => $validated['reason'],
+            'status' => 'menunggu',
+        ]);
+
+        ActivityLogger::log('create', "Mengajukan tukar piket untuk tanggal {$swap->duty_date->format('d/m/Y')}", $swap, [
+            'replacement_id' => $swap->replacement_teacher_id,
+        ]);
+
+        try {
+            $this->telegramService->notifyDutySwapRequested($swap);
+        } catch (\Throwable $e) {
+            // Silently continue
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permohonan tukar jadwal piket berhasil diajukan.',
+            'data' => $swap,
+        ]);
+    }
+
+    /**
+     * Approve or reject a duty swap request.
+     */
+    public function actionPiketDutySwap(Request $request, int $id): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|in:approve,reject',
+        ]);
+
+        $swap = PiketDutySwap::with(['requester', 'replacementTeacher'])->findOrFail($id);
+
+        $isAuthorized = ($user->id === $swap->replacement_teacher_id) || $user->canManagePiketSchedules();
+        if (! $isAuthorized) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya guru pengganti atau manajemen yang dapat memproses permohonan ini.',
+            ], 403);
+        }
+
+        if ($validated['action'] === 'approve') {
+            $swap->update([
+                'status' => 'disetujui',
+                'approved_by' => $user->id,
+                'approved_at' => Carbon::now(),
+            ]);
+
+            ActivityLogger::log('update', "Menyetujui permohonan tukar jadwal piket dari {$swap->requester?->name}", $swap, [
+                'status' => 'disetujui',
+            ]);
+
+            try {
+                $this->telegramService->notifyDutySwapApproved($swap);
+            } catch (\Throwable $e) {
+                // Silently continue
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permohonan tukar jadwal piket telah disetujui.',
+                'data' => $swap,
+            ]);
+        }
+
+        $swap->update([
+            'status' => 'ditolak',
+            'approved_by' => $user->id,
+            'approved_at' => Carbon::now(),
+        ]);
+
+        ActivityLogger::log('update', "Menolak permohonan tukar jadwal piket dari {$swap->requester?->name}", $swap, [
+            'status' => 'ditolak',
+        ]);
+
+        try {
+            $this->telegramService->notifyDutySwapRejected($swap);
+        } catch (\Throwable $e) {
+            // Silently continue
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Permohonan tukar jadwal piket telah ditolak.',
+            'data' => $swap,
+        ]);
+    }
+
+    /**
+     * Find or create PiketJournal safely across database drivers.
+     */
+    protected function getOrCreatePiketJournal(string $date, User $user, string $academicYear, ?string $semester = null): PiketJournal
+    {
+        $journal = PiketJournal::whereDate('date', $date)->first();
+        if (! $journal) {
+            $journal = PiketJournal::create([
+                'date' => $date,
+                'academic_year' => $academicYear,
+                'semester' => $semester ?? 'Ganjil',
+                'status' => 'berlangsung',
+                'coordinator_id' => $user->id,
+            ]);
+        }
+
+        return $journal;
     }
 }

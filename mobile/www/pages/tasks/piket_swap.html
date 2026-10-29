@@ -1,0 +1,84 @@
+<div class="space-y-3 pb-12">
+    <!-- Header Navigasi -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Tukar Jadwal Piket</h3>
+                <p class="text-[10px] text-slate-400">Pengajuan &amp; Persetujuan Shift Guru Piket</p>
+            </div>
+        </div>
+        <button type="button" onclick="loadTasksPiketSwap()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-purple-50 text-slate-500 hover:text-purple-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+    </div>
+
+    <!-- Informasi Jadwal Piket User -->
+    <div class="card-elevated p-3 border-purple-200 bg-purple-50/40">
+        <div class="flex items-center gap-2 mb-1.5">
+            <span class="text-base">📅</span>
+            <div>
+                <h4 class="text-xs font-black text-slate-800">Jadwal Piket Rutin Anda</h4>
+                <p id="piket-swap-my-schedules-text" class="text-[10px] text-purple-900 font-semibold">Memeriksa jadwal...</p>
+            </div>
+        </div>
+        <p class="text-[9px] text-slate-500 leading-tight">
+            Jika berhalangan hadir pada hari bertugas, Anda dapat mengajukan tukar jadwal kepada rekan guru piket lainnya.
+        </p>
+    </div>
+
+    <!-- Segmented Tab Bar -->
+    <div class="flex rounded-xl bg-slate-100 p-1 text-center font-bold text-xs gap-1">
+        <button type="button" id="tab-swap-history-btn" onclick="switchSwapTab('history')" class="flex-1 py-1.5 rounded-lg bg-white shadow-xs text-purple-700 transition">
+            📋 Riwayat &amp; Menunggu
+        </button>
+        <button type="button" id="tab-swap-form-btn" onclick="switchSwapTab('form')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            ➕ Ajukan Tukar
+        </button>
+    </div>
+
+    <!-- Panel 1: Riwayat & Menunggu Persetujuan -->
+    <div id="panel-swap-history" class="space-y-2">
+        <div id="list-swap-requests-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat data pertukaran jadwal...</div>
+        </div>
+    </div>
+
+    <!-- Panel 2: Formulir Pengajuan Tukar Piket -->
+    <div id="panel-swap-form" class="hidden card-elevated p-4">
+        <form id="form-submit-piket-swap" onsubmit="handlePiketSwapSubmit(event)" class="space-y-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Pilih Jadwal Piket Anda *</label>
+                <select id="swap-original-schedule-select" name="original_schedule_id" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 font-medium">
+                    <option value="">-- Pilih Jadwal Anda --</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Pilih Guru Pengganti *</label>
+                <select id="swap-replacement-teacher-select" name="replacement_teacher_id" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 font-medium">
+                    <option value="">-- Pilih Guru Pengganti --</option>
+                </select>
+                <p class="text-[9px] text-slate-400 mt-1">Notifikasi akan dikirimkan otomatis ke guru pengganti terpilih.</p>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Tanggal Tugas Yang Ditukar *</label>
+                <input type="date" id="swap-duty-date" name="duty_date" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-purple-500 font-medium">
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Alasan Pertukaran *</label>
+                <textarea id="swap-reason" name="reason" rows="2" placeholder="Contoh: Mengikuti diklat kurikulum / keperluan keluarga mendesak..." required class="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:outline-hidden focus:ring-2 focus:ring-purple-500"></textarea>
+            </div>
+
+            <div class="pt-2">
+                <button type="submit" id="btn-submit-piket-swap" class="w-full py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                    <span>Kirim Permohonan Tukar Piket</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

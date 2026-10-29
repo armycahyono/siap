@@ -71,6 +71,22 @@ const SIAP_ROUTER = (function() {
             tabKey: 'tasks',
             hasBack: true,
         },
+        '/tasks/piket': {
+            page: 'pages/tasks/piket.html',
+            requiresAuth: true,
+            title: 'Meja Piket',
+            init: 'initTasksPiket',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
+        '/tasks/piket/swaps': {
+            page: 'pages/tasks/piket_swap.html',
+            requiresAuth: true,
+            title: 'Tukar Jadwal Piket',
+            init: 'initTasksPiketSwap',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
         '/profile': {
             page: 'pages/profile.html',
             requiresAuth: true,

@@ -593,4 +593,111 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonCount(0, 'data');
     }
+
+    public function test_mobile_piket_endpoints_and_operations(): void
+    {
+        $grade = GradeLevel::first() ?? GradeLevel::create(['name' => '10', 'level' => 10]);
+        $dept = Department::first() ?? Department::create(['name' => 'TKJ', 'code' => 'TKJ']);
+        $classroom = Classroom::first() ?? Classroom::create([
+            'name' => 'X-TKJ-1',
+            'grade_level_id' => $grade->id,
+            'department_id' => $dept->id,
+            'academic_year' => '2026/2027',
+            'is_active' => true,
+        ]);
+
+        $student = Student::first() ?? Student::create([
+            'name' => 'Siswa Tes Piket',
+            'nisn' => '1122334455',
+            'classroom_id' => $classroom->id,
+            'status' => 'aktif',
+        ]);
+
+        // 1. Get Piket Workspace Data
+        $res = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks/piket');
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'success',
+                'data' => [
+                    'today',
+                    'today_day',
+                    'is_on_duty_today',
+                    'can_operate',
+                    'stats',
+                    'permits',
+                    'incidents',
+                    'invals',
+                    'guests',
+                    'helpers',
+                ],
+            ]);
+
+        // 2. Terbitkan Surat Izin Siswa
+        $permitPayload = [
+            'permit_type' => 'terlambat',
+            'student_id' => $student->id,
+            'student_name' => $student->name,
+            'classroom_id' => $classroom->id,
+            'reason' => 'Rantai sepeda putus',
+            'entry_time' => '07:35',
+            'period_assigned' => '1',
+            'action_taken' => 'Dinasihati dan diberikan surat izin masuk',
+        ];
+        $permitRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/permits/store', $permitPayload);
+        $permitRes->assertOk()
+            ->assertJsonPath('success', true);
+
+        // 3. Catat Kejadian Siswa
+        $incPayload = [
+            'student_id' => $student->id,
+            'student_name' => $student->name,
+            'classroom_id' => $classroom->id,
+            'category' => 'seragam',
+            'incident_time' => '08:00',
+            'description' => 'Tidak mengenakan dasi dan kaos kaki putih',
+            'action_taken' => 'Diberikan pembinaan dan teguran',
+            'follow_up_target' => 'selesai_di_piket',
+        ];
+        $incRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/incidents/store', $incPayload);
+        $incRes->assertOk()
+            ->assertJsonPath('success', true);
+
+        // 4. Catat Guru Inval
+        $invalPayload = [
+            'classroom_id' => $classroom->id,
+            'absent_teacher_id' => $this->teacher->id,
+            'period_start' => 3,
+            'period_end' => 4,
+            'reason' => 'Tugas dinas luar',
+            'assignment_material' => 'LKS hal 20',
+        ];
+        $invalRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/invals/store', $invalPayload);
+        $invalRes->assertOk()
+            ->assertJsonPath('success', true);
+
+        // 5. Catat Buku Tamu & Checkout
+        $guestPayload = [
+            'guest_name' => 'Bpk. Hendro',
+            'institution' => 'Wali Murid',
+            'phone' => '081234567890',
+            'purpose' => 'Konsultasi nilai siswa',
+            'meet_with' => 'Wali Kelas X-TKJ-1',
+        ];
+        $guestRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/guests/store', $guestPayload);
+        $guestRes->assertOk()
+            ->assertJsonPath('success', true);
+        $guestId = $guestRes->json('data.id');
+
+        $checkoutRes = $this->actingAs($this->teacher)->postJson("/api/v1/mobile/tasks/piket/guests/{$guestId}/checkout");
+        $checkoutRes->assertOk()
+            ->assertJsonPath('success', true);
+
+        // 6. Tutup Jurnal Piket
+        $closeRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/journal/close', [
+            'general_notes' => 'Situasi KBM dan piket hari ini tertib dan aman.',
+        ]);
+        $closeRes->assertOk()
+            ->assertJsonPath('success', true);
+    }
 }

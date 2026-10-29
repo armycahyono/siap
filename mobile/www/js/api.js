@@ -164,6 +164,41 @@ const SIAP_API = (function() {
             method: 'POST',
             body: JSON.stringify({ incident_id: incidentId, status, notes }),
         }),
+        // Piket Operations (Meja Piket & Tukar Jadwal)
+        getPiket: () => request('tasks/piket', { method: 'GET' }),
+        submitPiketStudentPermit: (payload) => request('tasks/piket/permits/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        submitPiketIncident: (payload) => request('tasks/piket/incidents/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        submitPiketInval: (payload) => request('tasks/piket/invals/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        submitPiketGuest: (payload) => request('tasks/piket/guests/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        checkoutPiketGuest: (guestId) => request(`tasks/piket/guests/${guestId}/checkout`, {
+            method: 'POST',
+        }),
+        closePiketJournal: (notes = null) => request('tasks/piket/journal/close', {
+            method: 'POST',
+            body: JSON.stringify({ general_notes: notes }),
+        }),
+        getPiketSwaps: () => request('tasks/piket/swaps', { method: 'GET' }),
+        submitPiketSwap: (payload) => request('tasks/piket/swaps/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        actionPiketSwap: (swapId, action) => request(`tasks/piket/swaps/${swapId}/action`, {
+            method: 'POST',
+            body: JSON.stringify({ action }),
+        }),
+
         getProfile: () => request('profile', { method: 'GET' }),
         getActivityLogs: (date = null, limit = 50) => {
             let url = 'profile/activity-logs?limit=' + limit;

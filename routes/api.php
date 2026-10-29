@@ -52,6 +52,19 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('tasks/bk', [MobileTasksController::class, 'getBkData']);
     Route::post('tasks/bk/services/store', [MobileTasksController::class, 'storeBkService']);
     Route::post('tasks/bk/status', [MobileTasksController::class, 'updateBkReferralStatus']);
+
+    // Sub-modul Meja Piket Mobile (In-App Workspace & Operasional Cepat)
+    Route::get('tasks/piket', [MobileTasksController::class, 'getPiketData']);
+    Route::post('tasks/piket/permits/store', [MobileTasksController::class, 'storePiketStudentPermit']);
+    Route::post('tasks/piket/incidents/store', [MobileTasksController::class, 'storePiketIncident']);
+    Route::post('tasks/piket/invals/store', [MobileTasksController::class, 'storePiketInval']);
+    Route::post('tasks/piket/guests/store', [MobileTasksController::class, 'storePiketGuest']);
+    Route::post('tasks/piket/guests/{id}/checkout', [MobileTasksController::class, 'checkoutPiketGuest']);
+    Route::post('tasks/piket/journal/close', [MobileTasksController::class, 'closePiketJournal']);
+    Route::get('tasks/piket/swaps', [MobileTasksController::class, 'getPiketDutySwaps']);
+    Route::post('tasks/piket/swaps/store', [MobileTasksController::class, 'storePiketDutySwap']);
+    Route::post('tasks/piket/swaps/{id}/action', [MobileTasksController::class, 'actionPiketDutySwap']);
+
     Route::get('profile', [MobileProfileController::class, 'index']);
     Route::get('profile/activity-logs', [MobileProfileController::class, 'getActivityLogs']);
     Route::get('notifications', [MobileNotificationController::class, 'index']);
