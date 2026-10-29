@@ -1626,7 +1626,7 @@
                         <div class="p-1.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
                             <div>
                                 <span class="font-bold text-slate-800 text-[11px] block">${item.user_name}</span>
-                                <span class="text-[9px] text-slate-500">${item.position || item.reason || item.permit_type || '-'}</span>
+                                <span class="text-[9px] text-slate-500">${item.duty_info || item.position || item.reason || item.permit_type || '-'}</span>
                             </div>
                             ${item.time ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded">${item.time}</span>` : ''}
                         </div>

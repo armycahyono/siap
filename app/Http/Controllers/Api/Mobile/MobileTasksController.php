@@ -8,6 +8,7 @@ use App\Models\AttendanceLog;
 use App\Models\BkReferral;
 use App\Models\Classroom;
 use App\Models\GtkPermit;
+use App\Models\LessonSchedule;
 use App\Models\PiketIncident;
 use App\Models\PiketInvalClass;
 use App\Models\PiketSchedule;
@@ -702,52 +703,111 @@ class MobileTasksController extends Controller
             $dailyRosters = $snapshot['rosters'] ?? collect();
             $dailySchedules = $snapshot['schedules'] ?? collect();
 
-            $expectedGtkUsers = $dailyRosters->where('is_expected_checkin', true)
-                ->map(fn ($r) => $r->user)
-                ->filter()
-                ->unique('id')
-                ->values();
+            $periodTimes = LessonSchedule::periodTimes($date->dayOfWeekIso === 5 ? 'jumat' : 'senin');
 
-            $expectedGtkCount = $expectedGtkUsers->count();
-            $expectedGtkUserIds = $expectedGtkUsers->pluck('id');
-
-            // Presensi Log GTK
+            // Presensi Log GTK pada tanggal target
             $gtkScans = AttendanceLog::with('user')
                 ->where('user_type', 'teacher')
                 ->whereDate('scanned_at', $targetDateStr)
                 ->orderBy('scanned_at', 'asc')
                 ->get();
 
-            $gtkPresentScans = $gtkScans->unique('user_id')->values();
-            $gtkPresentCount = $gtkPresentScans->count();
-
-            // GTK Telat (status terlambat ATAU scan > 07:00)
-            $gtkLateScans = $gtkScans->filter(function ($log) {
-                return $log->status === 'terlambat' || ($log->scanned_at && $log->scanned_at->format('H:i') > '07:00');
-            })->unique('user_id')->values();
-            $gtkLateCount = $gtkLateScans->count();
+            $scansByUserId = $gtkScans->groupBy('user_id');
 
             // GTK Izin / Cuti
             $gtkPermits = GtkPermit::approved()->with('user')
                 ->whereDate('start_date', '<=', $targetDateStr)
                 ->whereDate('end_date', '>=', $targetDateStr)
-                ->get()
-                ->filter(fn ($p) => $expectedGtkUserIds->contains($p->user_id))
-                ->values();
+                ->get();
             $gtkPermitUserIds = $gtkPermits->pluck('user_id')->unique();
-            $gtkPermitCount = $gtkPermitUserIds->count();
 
-            // GTK Belum Masuk: realtime berdasarkan jam kewajiban masuk (07:00)
-            $attendedUserIds = $gtkScans->pluck('user_id')->filter()->unique();
-            $isPastCheckinTime = ! $isToday || $currentTimeStr >= '07:00';
+            // Evaluasi Setiap GTK Berdasarkan Kewajiban Mengajar / Tugasnya Hari Ini
+            $expectedGtkUsers = $dailyRosters->where('is_expected_checkin', true)
+                ->map(fn ($r) => $r->user)
+                ->filter()
+                ->unique('id')
+                ->values();
 
+            $obligatedGtkList = collect();
+            $gtkPresentList = collect();
+            $gtkLateList = collect();
             $gtkAwaitingList = collect();
-            if ($isPastCheckinTime) {
-                $gtkAwaitingList = $expectedGtkUsers->reject(function ($u) use ($attendedUserIds, $gtkPermitUserIds) {
-                    return $attendedUserIds->contains($u->id) || $gtkPermitUserIds->contains($u->id);
-                })->values();
+
+            foreach ($expectedGtkUsers as $u) {
+                // Cari jadwal mengajar aktif guru hari ini
+                $teacherSchedules = $dailySchedules->where('is_exempted', false)
+                    ->where('teacher_id', $u->id)
+                    ->sortBy('start_period');
+
+                $isStaffTu = $u->isStaff();
+                $isPiket = $u->isPiketOfficerToday($targetDateStr);
+                $hasSchedule = $teacherSchedules->isNotEmpty();
+
+                // Tentukan jam kewajiban masuk (Datang)
+                $expectedStartTimeStr = null;
+                $dutyLabel = 'Tugas';
+
+                if ($isPiket) {
+                    $expectedStartTimeStr = '07:00';
+                    $dutyLabel = 'Guru Piket Sekolah (07:00)';
+                } elseif ($isStaffTu) {
+                    $expectedStartTimeStr = '07:00';
+                    $dutyLabel = ($u->position ?: 'Staf TU').' (07:00)';
+                } elseif ($hasSchedule) {
+                    $earliestSched = $teacherSchedules->first();
+                    $periodNum = (int) $earliestSched->start_period;
+                    $expectedStartTimeStr = $earliestSched->start_time ?: ($periodTimes[$periodNum]['start'] ?? '07:00');
+                    $dutyLabel = "Jam ke-{$periodNum} ({$expectedStartTimeStr} WIB)";
+                }
+
+                // Jika bukan staf, bukan piket, dan tidak punya jam mengajar hari ini: TIDAK WAJIB MASUK
+                if (! $expectedStartTimeStr) {
+                    continue;
+                }
+
+                $obligatedGtkList->push($u);
+
+                $userScans = $scansByUserId->get($u->id);
+                $firstScan = $userScans ? $userScans->sortBy('scanned_at')->first() : null;
+                $hasPermit = $gtkPermitUserIds->contains($u->id);
+
+                if ($firstScan) {
+                    $scanTimeStr = $firstScan->scanned_at ? $firstScan->scanned_at->format('H:i') : null;
+                    $isLate = false;
+                    if ($scanTimeStr && $scanTimeStr > $expectedStartTimeStr) {
+                        $isLate = true;
+                    } elseif ($firstScan->status === 'terlambat') {
+                        $isLate = true;
+                    }
+
+                    $presentItem = [
+                        'user_name' => $u->name,
+                        'time' => $scanTimeStr ?? '-',
+                        'duty_info' => $dutyLabel,
+                    ];
+
+                    $gtkPresentList->push($presentItem);
+
+                    if ($isLate) {
+                        $gtkLateList->push([
+                            'user_name' => $u->name,
+                            'time' => $scanTimeStr ?? '-',
+                            'duty_info' => $dutyLabel." • Masuk {$scanTimeStr}",
+                        ]);
+                    }
+                } elseif (! $hasPermit) {
+                    // Belum ada scan dan belum ada izin:
+                    // Cek apakah jam sekarang sudah melewati jam kewajiban masuk guru tersebut
+                    $isPastDutyTime = ! $isToday || $currentTimeStr >= $expectedStartTimeStr;
+                    if ($isPastDutyTime) {
+                        $gtkAwaitingList->push([
+                            'user_name' => $u->name,
+                            'position' => $u->position ?? 'Guru',
+                            'duty_info' => $dutyLabel,
+                        ]);
+                    }
+                }
             }
-            $gtkAwaitingCount = $gtkAwaitingList->count();
 
             // Inval Mengajar Hari Ini
             $todayInvals = PiketInvalClass::with(['classroom', 'absentTeacher', 'subject', 'invalTeacher'])
@@ -758,38 +818,30 @@ class MobileTasksController extends Controller
             $activeScheduleTargets = $dailySchedules->where('is_exempted', false)->values();
             $unattendedSchedules = collect();
             if ($isToday) {
-                $unattendedSchedules = $activeScheduleTargets->filter(function ($t) use ($currentTimeStr) {
+                $unattendedSchedules = $activeScheduleTargets->filter(function ($t) use ($currentTimeStr, $periodTimes) {
                     if ($t->attendanceSession) {
                         return false;
                     }
-                    $startTime = $t->start_time ?? '07:00';
+                    $periodNum = (int) $t->start_period;
+                    $startTime = $t->start_time ?: ($periodTimes[$periodNum]['start'] ?? '07:00');
 
                     return $startTime <= $currentTimeStr;
                 })->values();
             }
 
             $gtkData = [
-                'total_expected' => $expectedGtkCount,
-                'hadir' => $gtkPresentCount,
-                'terlambat' => $gtkLateCount,
-                'belum_masuk' => $gtkAwaitingCount,
-                'izin' => $gtkPermitCount,
+                'total_expected' => $obligatedGtkList->count(),
+                'hadir' => $gtkPresentList->count(),
+                'terlambat' => $gtkLateList->count(),
+                'belum_masuk' => $gtkAwaitingList->count(),
+                'izin' => $gtkPermits->whereIn('user_id', $obligatedGtkList->pluck('id'))->count(),
                 'inval' => $todayInvals->count(),
                 'unattended_kbm' => $unattendedSchedules->count(),
                 'detail' => [
-                    'hadir' => $gtkPresentScans->map(fn ($s) => [
-                        'user_name' => $s->user?->name ?? 'GTK',
-                        'time' => $s->scanned_at?->format('H:i') ?? '-',
-                    ])->values(),
-                    'terlambat' => $gtkLateScans->map(fn ($s) => [
-                        'user_name' => $s->user?->name ?? 'GTK',
-                        'time' => $s->scanned_at?->format('H:i') ?? '-',
-                    ])->values(),
-                    'belum_masuk' => $gtkAwaitingList->map(fn ($u) => [
-                        'user_name' => $u->name,
-                        'position' => $u->position ?? 'Guru/Staf',
-                    ])->values(),
-                    'izin' => $gtkPermits->map(fn ($p) => [
+                    'hadir' => $gtkPresentList->values(),
+                    'terlambat' => $gtkLateList->values(),
+                    'belum_masuk' => $gtkAwaitingList->values(),
+                    'izin' => $gtkPermits->whereIn('user_id', $obligatedGtkList->pluck('id'))->map(fn ($p) => [
                         'user_name' => $p->user?->name ?? 'GTK',
                         'permit_type' => $p->permit_type,
                         'reason' => $p->reason,
