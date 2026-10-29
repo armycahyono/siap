@@ -136,6 +136,8 @@ const SIAP_API = (function() {
             body: JSON.stringify({ action, note }),
         }),
 
+        searchStudents: (query) => request('students/search?q=' + encodeURIComponent(query || ''), { method: 'GET' }),
+
         getVisitations: () => request('tasks/visitations', { method: 'GET' }),
         submitVisitation: (payload) => request('tasks/visitations/store', {
             method: 'POST',

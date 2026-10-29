@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\Classroom;
+use App\Models\Department;
+use App\Models\GradeLevel;
 use App\Models\PiketIncident;
 use App\Models\Role;
 use App\Models\SchoolSetting;
+use App\Models\Student;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -450,5 +454,64 @@ class MobileApiFoundationTest extends TestCase
                     ],
                 ],
             ]);
+    }
+
+    public function test_mobile_students_smart_search_behavior(): void
+    {
+        $unauth = $this->getJson('/api/v1/mobile/students/search?q=Ahmad');
+        $unauth->assertStatus(401);
+
+        // Query kurang dari 3 karakter
+        $shortQuery = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/students/search?q=Ah');
+        $shortQuery->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('message', 'Ketik minimal 3 karakter untuk mencari siswa.');
+
+        // Buat kelas & siswa untuk pengujian
+        $grade = GradeLevel::firstOrCreate(['name' => 'X'], ['level' => 10]);
+        $dept = Department::firstOrCreate(['code' => 'TKJ'], ['name' => 'Teknik Komputer & Jaringan']);
+
+        $classroom = Classroom::first() ?? Classroom::create([
+            'name' => 'X TKJ 1',
+            'grade_level_id' => $grade->id,
+            'department_id' => $dept->id,
+            'academic_year' => '2026/2027',
+            'is_active' => true,
+        ]);
+
+        $student1 = Student::create([
+            'name' => 'Ahmad Rizky Pratama',
+            'nisn' => '0098765432',
+            'nis' => '10291',
+            'gender' => 'L',
+            'classroom_id' => $classroom->id,
+            'status' => 'aktif',
+        ]);
+
+        $student2 = Student::create([
+            'name' => 'Budi Santoso Utomo',
+            'nisn' => '0011223344',
+            'nis' => '10292',
+            'gender' => 'L',
+            'classroom_id' => $classroom->id,
+            'status' => 'aktif',
+        ]);
+
+        // Cari berdasarkan nama (>= 3 karakter)
+        $searchName = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/students/search?q=Ahm');
+        $searchName->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $student1->id)
+            ->assertJsonPath('data.0.name', 'AHMAD RIZKY PRATAMA')
+            ->assertJsonPath('data.0.classroom_name', $classroom->name);
+
+        // Cari berdasarkan NISN (>= 3 karakter)
+        $searchNisn = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/students/search?q=9876');
+        $searchNisn->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $student1->id);
     }
 }

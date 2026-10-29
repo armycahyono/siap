@@ -2142,8 +2142,210 @@
         }
     };
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Smart Autocomplete Student Picker Component
+     * Model pencarian pintar ketika diketik >= 3 karakter otomatis menampilkan referensi siswa yang cocok.
+     */
+    function setupStudentSmartPicker(pickerElement, options = {}) {
+        if (!pickerElement) return null;
+
+        const hiddenInput = pickerElement.querySelector('input[type="hidden"]');
+        const selectedCard = pickerElement.querySelector('.selected-student-card');
+        const selectedName = pickerElement.querySelector('.student-selected-name');
+        const selectedMeta = pickerElement.querySelector('.student-selected-meta');
+        const selectedInitial = pickerElement.querySelector('.student-avatar-initial');
+        const btnClearSelection = pickerElement.querySelector('.btn-clear-selection');
+
+        const searchWrapper = pickerElement.querySelector('.search-input-wrapper');
+        const searchInput = pickerElement.querySelector('.student-search-input');
+        const btnClearInput = pickerElement.querySelector('.btn-clear-input');
+        const suggestionsPanel = pickerElement.querySelector('.student-suggestions-panel');
+
+        let debounceTimer = null;
+        let lastQuery = '';
+
+        function showSuggestions(html) {
+            if (!suggestionsPanel) return;
+            suggestionsPanel.innerHTML = html;
+            suggestionsPanel.classList.remove('hidden');
+        }
+
+        function hideSuggestions() {
+            if (!suggestionsPanel) return;
+            suggestionsPanel.classList.add('hidden');
+        }
+
+        function selectStudent(student) {
+            if (!student || !student.id) return;
+            if (hiddenInput) hiddenInput.value = student.id;
+            if (selectedName) selectedName.textContent = student.name;
+            if (selectedMeta) {
+                const parts = [];
+                if (student.classroom_name) parts.push(student.classroom_name);
+                if (student.nisn) parts.push(`NISN: ${student.nisn}`);
+                else if (student.nis) parts.push(`NIS: ${student.nis}`);
+                selectedMeta.textContent = parts.join(' • ') || 'Siswa Aktif';
+            }
+            if (selectedInitial) {
+                selectedInitial.textContent = (student.name || 'S').trim().charAt(0).toUpperCase();
+            }
+
+            if (searchWrapper) searchWrapper.classList.add('hidden');
+            if (selectedCard) selectedCard.classList.remove('hidden');
+            hideSuggestions();
+
+            if (hiddenInput) {
+                hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            if (typeof options.onSelect === 'function') {
+                options.onSelect(student);
+            }
+        }
+
+        function clearSelection() {
+            if (hiddenInput) hiddenInput.value = '';
+            if (selectedCard) selectedCard.classList.add('hidden');
+            if (searchWrapper) searchWrapper.classList.remove('hidden');
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            if (btnClearInput) btnClearInput.classList.add('hidden');
+            hideSuggestions();
+
+            if (hiddenInput) {
+                hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            if (typeof options.onClear === 'function') {
+                options.onClear();
+            }
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.trim();
+                lastQuery = query;
+
+                if (query.length > 0) {
+                    if (btnClearInput) btnClearInput.classList.remove('hidden');
+                } else {
+                    if (btnClearInput) btnClearInput.classList.add('hidden');
+                }
+
+                clearTimeout(debounceTimer);
+
+                if (query.length < 3) {
+                    if (query.length > 0) {
+                        showSuggestions(`
+                            <div class="p-3 text-center text-[11px] text-slate-400">
+                                💡 Ketik minimal 3 huruf nama atau NISN siswa...
+                            </div>
+                        `);
+                    } else {
+                        hideSuggestions();
+                    }
+                    return;
+                }
+
+                showSuggestions(`
+                    <div class="p-3 text-center text-xs text-slate-400 animate-pulse flex items-center justify-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 animate-spin text-slate-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                        <span>Mencari referensi siswa...</span>
+                    </div>
+                `);
+
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const res = await SIAP_API.searchStudents(query);
+                        if (lastQuery !== query) return; // Mencegah race condition
+
+                        const students = (res && res.data) ? res.data : [];
+                        if (students.length === 0) {
+                            showSuggestions(`
+                                <div class="p-3 text-center text-xs text-slate-400">
+                                    Tidak ada siswa ditemukan dengan kata kunci "<strong>${escapeHtml(query)}</strong>".
+                                </div>
+                            `);
+                            return;
+                        }
+
+                        suggestionsPanel.innerHTML = students.map((s, idx) => `
+                            <div class="p-2.5 rounded-lg hover:bg-slate-50 active:bg-slate-100 cursor-pointer flex items-center justify-between transition group" data-idx="${idx}">
+                                <div class="min-w-0 pr-2">
+                                    <div class="text-xs font-bold text-slate-800 group-hover:text-cyan-700 truncate">${escapeHtml(s.name)}</div>
+                                    <div class="text-[10px] text-slate-400">NISN: ${escapeHtml(s.nisn || '-')} &bull; NIS: ${escapeHtml(s.nis || '-')}</div>
+                                </div>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 shrink-0 border border-slate-200">
+                                    ${escapeHtml(s.classroom_name || '-')}
+                                </span>
+                            </div>
+                        `).join('');
+
+                        suggestionsPanel.querySelectorAll('[data-idx]').forEach(item => {
+                            item.addEventListener('click', () => {
+                                const idx = parseInt(item.getAttribute('data-idx'), 10);
+                                selectStudent(students[idx]);
+                            });
+                        });
+
+                        suggestionsPanel.classList.remove('hidden');
+                    } catch (err) {
+                        showSuggestions(`
+                            <div class="p-3 text-center text-xs text-rose-500">
+                                Gagal mencari siswa: ${escapeHtml(err.message)}
+                            </div>
+                        `);
+                    }
+                }, 250);
+            });
+        }
+
+        if (btnClearInput) {
+            btnClearInput.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
+                btnClearInput.classList.add('hidden');
+                hideSuggestions();
+            });
+        }
+
+        if (btnClearSelection) {
+            btnClearSelection.addEventListener('click', () => {
+                clearSelection();
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!pickerElement.contains(e.target)) {
+                hideSuggestions();
+            }
+        });
+
+        return {
+            selectStudent,
+            clearSelection,
+            reset: clearSelection,
+            getValue: () => (hiddenInput ? hiddenInput.value : ''),
+        };
+    }
+
     // --- B. VISITASI SISWA CONTROLLER ---
     let currentVisitationsContainer = null;
+    let visitationStudentPicker = null;
 
     window.initTasksVisitations = function(container) {
         currentVisitationsContainer = container;
@@ -2151,6 +2353,7 @@
         if (dateInput) {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
+        visitationStudentPicker = setupStudentSmartPicker(container.querySelector('#visitation-student-picker'));
         loadTasksVisitations();
     };
 
@@ -2189,15 +2392,8 @@
     function renderVisitationsUI(data) {
         if (!currentVisitationsContainer) return;
         const listContainer = currentVisitationsContainer.querySelector('#list-visitations-container');
-        const studentSelect = currentVisitationsContainer.querySelector('#visitation-student-select');
         const primarySelect = currentVisitationsContainer.querySelector('#visitation-primary-officer');
         const secondarySelect = currentVisitationsContainer.querySelector('#visitation-secondary-officer');
-
-        // Populate Siswa Dropdown
-        if (studentSelect && data.students) {
-            studentSelect.innerHTML = '<option value="">-- Pilih Siswa Target --</option>' +
-                data.students.map(s => `<option value="${s.id}">${s.name} (${s.classroom})</option>`).join('');
-        }
 
         // Populate Petugas Dropdown
         if (primarySelect && data.officers) {
@@ -2221,13 +2417,13 @@
                     return `
                         <div class="card-elevated p-3 border-cyan-100">
                             <div class="flex items-center justify-between mb-1">
-                                <h4 class="text-xs font-black text-slate-900">${v.student_name} <span class="text-[10px] text-slate-400 font-normal">(${v.classroom_name})</span></h4>
-                                <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeClass}">${v.status}</span>
+                                <h4 class="text-xs font-black text-slate-900">${escapeHtml(v.student_name)} <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(v.classroom_name)})</span></h4>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeClass}">${escapeHtml(v.status)}</span>
                             </div>
-                            <p class="text-xs text-slate-700 my-1 font-medium">🎯 ${v.reason}</p>
+                            <p class="text-xs text-slate-700 my-1 font-medium">🎯 ${escapeHtml(v.reason)}</p>
                             <div class="text-[10px] text-slate-500 font-mono flex items-center justify-between pt-1 border-t border-slate-100">
-                                <span>📅 ${v.planned_date}</span>
-                                <span>👤 ${v.primary_officer} ${v.secondary_officer ? '+ ' + v.secondary_officer : ''}</span>
+                                <span>📅 ${escapeHtml(v.planned_date)}</span>
+                                <span>👤 ${escapeHtml(v.primary_officer)} ${v.secondary_officer ? '+ ' + escapeHtml(v.secondary_officer) : ''}</span>
                             </div>
                         </div>
                     `;
@@ -2240,12 +2436,19 @@
         e.preventDefault();
         const form = e.target;
         const btn = form.querySelector('#btn-submit-visitation');
+        const studentId = form.querySelector('#visitation-student-id')?.value;
+
+        if (!studentId) {
+            showToast('Silakan cari dan pilih siswa target terlebih dahulu.', 'warning');
+            return;
+        }
+
         btn.disabled = true;
         btn.textContent = 'Menyimpan...';
 
         try {
             const payload = {
-                student_id: form.querySelector('#visitation-student-select').value,
+                student_id: studentId,
                 planned_date: form.querySelector('#visitation-planned-date').value,
                 visit_type: form.querySelector('#visitation-type-select').value,
                 primary_officer_id: form.querySelector('#visitation-primary-officer').value,
@@ -2257,6 +2460,7 @@
             if (res.success) {
                 showToast(res.message || 'Jadwal visitasi berhasil disimpan!', 'success');
                 form.reset();
+                if (visitationStudentPicker) visitationStudentPicker.reset();
                 await loadTasksVisitations();
                 switchVisitationTab('list');
             } else {
@@ -2394,6 +2598,7 @@
 
     // --- D. LAYANAN BK CONTROLLER ---
     let currentBkContainer = null;
+    let bkStudentPicker = null;
     let bkDataCache = null;
 
     window.initTasksBk = function(container) {
@@ -2402,6 +2607,7 @@
         if (dateInput) {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
+        bkStudentPicker = setupStudentSmartPicker(container.querySelector('#bk-student-picker'));
         loadTasksBk();
     };
 
@@ -2458,13 +2664,6 @@
         if (statProcessing) statProcessing.textContent = stats.diproses || 0;
         if (statDone) statDone.textContent = stats.selesai || 0;
 
-        // Populate Siswa Select
-        const studentSelect = currentBkContainer.querySelector('#bk-student-select');
-        if (studentSelect && data.students) {
-            studentSelect.innerHTML = '<option value="">-- Pilih Siswa --</option>' +
-                data.students.map(s => `<option value="${s.id}">${s.name} (${s.classroom})</option>`).join('');
-        }
-
         // Render Rujukan Meja Piket
         const listRefContainer = currentBkContainer.querySelector('#list-bk-referrals-container');
         if (listRefContainer) {
@@ -2480,17 +2679,22 @@
                     return `
                         <div class="card-elevated p-3 border-indigo-100">
                             <div class="flex items-center justify-between mb-1">
-                                <h4 class="text-xs font-black text-slate-900">${ref.student_name} <span class="text-[10px] text-slate-400 font-normal">(${ref.classroom_name})</span></h4>
-                                <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeClass}">${ref.referral_status_label}</span>
+                                <h4 class="text-xs font-black text-slate-900">${escapeHtml(ref.student_name)} <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(ref.classroom_name)})</span></h4>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeClass}">${escapeHtml(ref.referral_status_label)}</span>
                             </div>
                             <div class="flex items-center gap-1.5 mb-1.5">
-                                <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-100 text-indigo-800 uppercase">${ref.category_label}</span>
-                                <span class="text-[9px] font-mono text-slate-400">${ref.incident_date}</span>
+                                <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-100 text-indigo-800 uppercase">${escapeHtml(ref.category_label)}</span>
+                                <span class="text-[9px] font-mono text-slate-400">${escapeHtml(ref.incident_date)}</span>
                             </div>
-                            <p class="text-xs text-slate-700 mb-1 leading-snug">${ref.description || 'Tidak ada deskripsi'}</p>
-                            ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-2">🎯 Piket: ${ref.action_taken}</p>` : ''}
+                            <p class="text-xs text-slate-700 mb-1 leading-snug">${escapeHtml(ref.description || 'Tidak ada deskripsi')}</p>
+                            ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-2">🎯 Piket: ${escapeHtml(ref.action_taken)}</p>` : ''}
                             
-                            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
+                            <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 text-xs">
+                                ${ref.student_id ? `
+                                    <button type="button" onclick="fillBkReferralToForm(${ref.student_id}, '${escapeHtml(ref.student_name)}', '${escapeHtml(ref.classroom_name)}', '${escapeHtml(ref.student_nisn || '')}', '${escapeHtml(ref.description || '')}')" class="py-1 px-2.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold active:scale-95 transition text-[10px]">
+                                        📝 Catat Konseling
+                                    </button>
+                                ` : ''}
                                 ${isMenunggu ? `
                                     <button type="button" onclick="quickUpdateBkStatusFromPage(${ref.id}, 'diproses')" class="py-1 px-3 rounded-lg bg-indigo-600 text-white font-bold shadow-xs active:scale-95 transition">
                                         ⚡ Tangani Kasus
@@ -2517,21 +2721,38 @@
                 listServicesContainer.innerHTML = services.map(s => `
                     <div class="card-elevated p-3 border-indigo-100">
                         <div class="flex items-center justify-between mb-1">
-                            <h4 class="text-xs font-black text-slate-900">${s.student_name} <span class="text-[10px] text-slate-400 font-normal">(${s.classroom_name})</span></h4>
-                            <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase bg-indigo-100 text-indigo-800">${s.service_type}</span>
+                            <h4 class="text-xs font-black text-slate-900">${escapeHtml(s.student_name)} <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(s.classroom_name)})</span></h4>
+                            <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase bg-indigo-100 text-indigo-800">${escapeHtml(s.service_type)}</span>
                         </div>
-                        <p class="text-xs text-slate-800 font-medium my-1">💬 "${s.summary}"</p>
-                        <p class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">Hasil: ${s.result}</p>
-                        ${s.follow_up_plan ? `<p class="text-[10px] text-indigo-900 font-bold mt-1">RTL: ${s.follow_up_plan}</p>` : ''}
+                        <p class="text-xs text-slate-800 font-medium my-1">💬 "${escapeHtml(s.summary)}"</p>
+                        <p class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">Hasil: ${escapeHtml(s.result)}</p>
+                        ${s.follow_up_plan ? `<p class="text-[10px] text-indigo-900 font-bold mt-1">RTL: ${escapeHtml(s.follow_up_plan)}</p>` : ''}
                         <div class="text-[10px] text-slate-400 font-mono mt-1 pt-1 border-t border-slate-100 flex justify-between">
-                            <span>📅 ${s.service_date}</span>
-                            <span>👤 ${s.counselor_name}</span>
+                            <span>📅 ${escapeHtml(s.service_date)}</span>
+                            <span>👤 ${escapeHtml(s.counselor_name)}</span>
                         </div>
                     </div>
                 `).join('');
             }
         }
     }
+
+    window.fillBkReferralToForm = function(studentId, studentName, classroomName, nisn, desc) {
+        switchBkTab('form');
+        if (bkStudentPicker) {
+            bkStudentPicker.selectStudent({
+                id: studentId,
+                name: studentName,
+                classroom_name: classroomName,
+                nisn: nisn
+            });
+        }
+        const summaryInput = currentBkContainer?.querySelector('#bk-summary');
+        if (summaryInput && desc) {
+            summaryInput.value = 'Rujukan Piket: ' + desc;
+        }
+        showToast(`Siswa ${studentName} dipilih. Silakan isi rencana konseling.`, 'info');
+    };
 
     window.quickUpdateBkStatusFromPage = async function(id, status) {
         try {
@@ -2550,12 +2771,19 @@
         e.preventDefault();
         const form = e.target;
         const btn = form.querySelector('#btn-submit-bk-service');
+        const studentId = form.querySelector('#bk-student-id')?.value;
+
+        if (!studentId) {
+            showToast('Silakan cari dan pilih siswa terlebih dahulu.', 'warning');
+            return;
+        }
+
         btn.disabled = true;
         btn.textContent = 'Menyimpan...';
 
         try {
             const payload = {
-                student_id: form.querySelector('#bk-student-select').value,
+                student_id: studentId,
                 service_date: form.querySelector('#bk-service-date').value,
                 service_type: form.querySelector('#bk-service-type').value,
                 summary: form.querySelector('#bk-summary').value,
@@ -2567,6 +2795,7 @@
             if (res.success) {
                 showToast(res.message || 'Sesi konseling berhasil disimpan!', 'success');
                 form.reset();
+                if (bkStudentPicker) bkStudentPicker.reset();
                 await loadTasksBk();
                 switchBkTab('services');
             } else {

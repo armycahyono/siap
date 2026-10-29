@@ -36,6 +36,7 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('dashboard', [MobileDashboardController::class, 'index']);
     Route::get('kbm', [MobileKbmController::class, 'index']);
     Route::get('tasks', [MobileTasksController::class, 'index']);
+    Route::get('students/search', [MobileTasksController::class, 'searchStudents']);
 
     // Sub-modul Tugas Khusus Mobile (In-App Pages)
     Route::get('tasks/permits', [MobileTasksController::class, 'getPermitsData']);

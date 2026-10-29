@@ -1586,6 +1586,8 @@ class MobileTasksController extends Controller
 
                 return [
                     'id' => $inc->id,
+                    'student_id' => $inc->student_id,
+                    'student_nisn' => $inc->student?->nisn,
                     'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
                     'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
                     'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
@@ -1699,6 +1701,60 @@ class MobileTasksController extends Controller
             'success' => true,
             'message' => 'Sesi konseling siswa berhasil dicatat.',
             'data' => $service,
+        ]);
+    }
+
+    public function searchStudents(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $q = trim((string) $request->input('q', ''));
+        if (mb_strlen($q) < 3) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'message' => 'Ketik minimal 3 karakter untuk mencari siswa.',
+            ]);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        $query = Student::where('status', 'aktif')
+            ->with('classroom')
+            ->where(function ($sq) use ($q) {
+                $sq->where('name', 'like', "%{$q}%")
+                    ->orWhere('nisn', 'like', "%{$q}%")
+                    ->orWhere('nis', 'like', "%{$q}%");
+            });
+
+        // Jika hanya wali kelas / guru biasa dan bukan pimpinan/BK/kedisiplinan, batasi ke kelas binaan jika ada
+        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->canOperateBk($operationalAcademicYear) && ! $user->canManageDiscipline($operationalAcademicYear)) {
+            $myClassroomIds = $user->homeroomClassrooms()->pluck('id');
+            if ($myClassroomIds->isNotEmpty()) {
+                $query->whereIn('classroom_id', $myClassroomIds);
+            }
+        }
+
+        $students = $query->orderBy('name')
+            ->take(25)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'nisn' => $s->nisn,
+                'nis' => $s->nis,
+                'classroom_id' => $s->classroom_id,
+                'classroom_name' => $s->classroom?->name ?? '-',
+                'label' => "{$s->name} (".($s->classroom?->name ?? '-').($s->nisn ? " - {$s->nisn}" : '').')',
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $students,
         ]);
     }
 }
