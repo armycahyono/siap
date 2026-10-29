@@ -55,9 +55,12 @@ const SIAP_API = (function() {
 
         const headers = {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
             ...(options.headers || {}),
         };
+
+        if (!(options.body instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+        }
 
         const token = getToken();
         if (token) {
@@ -121,10 +124,25 @@ const SIAP_API = (function() {
         getDashboard: () => request('dashboard', { method: 'GET' }),
         getKbm: (date = null) => request(date ? `kbm?date=${date}` : 'kbm', { method: 'GET' }),
         getTasks: (date = null) => request(date ? `tasks?date=${date}` : 'tasks', { method: 'GET' }),
-        updateBkReferralStatus: (incidentId, status, notes = null) => request('tasks/bk/status', {
+        
+        // Modul Tugas Khusus Mobile
+        getPermits: () => request('tasks/permits', { method: 'GET' }),
+        submitPermit: (formData) => request('tasks/permits/store', {
             method: 'POST',
-            body: JSON.stringify({ incident_id: incidentId, status, notes }),
+            body: formData,
         }),
+        actionPermit: (id, action, note = null) => request(`tasks/permits/${id}/action`, {
+            method: 'POST',
+            body: JSON.stringify({ action, note }),
+        }),
+
+        getVisitations: () => request('tasks/visitations', { method: 'GET' }),
+        submitVisitation: (payload) => request('tasks/visitations/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+
+        getDiscipline: () => request('tasks/discipline', { method: 'GET' }),
         verifyDisciplineIncident: (incidentId, verificationStatus, verificationNotes = null, followUpTarget = null) => request('tasks/discipline/verify', {
             method: 'POST',
             body: JSON.stringify({
@@ -133,6 +151,16 @@ const SIAP_API = (function() {
                 verification_notes: verificationNotes,
                 follow_up_target: followUpTarget,
             }),
+        }),
+
+        getBk: () => request('tasks/bk', { method: 'GET' }),
+        submitBkService: (payload) => request('tasks/bk/services/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        updateBkReferralStatus: (incidentId, status, notes = null) => request('tasks/bk/status', {
+            method: 'POST',
+            body: JSON.stringify({ incident_id: incidentId, status, notes }),
         }),
         getProfile: () => request('profile', { method: 'GET' }),
         getNotifications: () => request('notifications', { method: 'GET' }),

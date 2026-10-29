@@ -39,6 +39,38 @@ const SIAP_ROUTER = (function() {
             init: 'initTasks',
             tabKey: 'tasks',
         },
+        '/tasks/permits': {
+            page: 'pages/tasks/permits.html',
+            requiresAuth: true,
+            title: 'Izin & Cuti GTK',
+            init: 'initTasksPermits',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
+        '/tasks/visitations': {
+            page: 'pages/tasks/visitations.html',
+            requiresAuth: true,
+            title: 'Visitasi Siswa',
+            init: 'initTasksVisitations',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
+        '/tasks/discipline': {
+            page: 'pages/tasks/discipline.html',
+            requiresAuth: true,
+            title: 'Tim Kedisiplinan',
+            init: 'initTasksDiscipline',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
+        '/tasks/bk': {
+            page: 'pages/tasks/bk.html',
+            requiresAuth: true,
+            title: 'Layanan BK',
+            init: 'initTasksBk',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
         '/profile': {
             page: 'pages/profile.html',
             requiresAuth: true,
@@ -195,6 +227,19 @@ const SIAP_ROUTER = (function() {
             if (topBar) topBar.classList.remove('hidden');
             if (bottomNav) bottomNav.classList.remove('hidden');
             if (topBarTitle) topBarTitle.textContent = route.title || 'SIAP Mobile';
+            
+            const backBtn = document.getElementById('top-bar-back-btn');
+            const logoImg = document.getElementById('top-bar-logo');
+            if (backBtn && logoImg) {
+                if (route.hasBack) {
+                    backBtn.classList.remove('hidden');
+                    logoImg.classList.add('hidden');
+                } else {
+                    backBtn.classList.add('hidden');
+                    logoImg.classList.remove('hidden');
+                }
+            }
+
             if (currentUser && typeof window.updateTopBarUser === 'function') {
                 window.updateTopBarUser(currentUser);
             }

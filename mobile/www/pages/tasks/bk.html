@@ -1,0 +1,111 @@
+<div class="space-y-3 pb-8">
+    <!-- Header Sub-Halaman dengan Navigasi Kembali -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali ke Tugas">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Layanan BK</h3>
+                <p class="text-[10px] text-slate-400">Rujukan Piket &amp; Sesi Konseling Siswa</p>
+            </div>
+        </div>
+        <button type="button" onclick="loadTasksBk()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+    </div>
+
+    <!-- Segmented Tab Bar -->
+    <div class="flex rounded-xl bg-slate-100 p-1 text-center font-bold text-xs gap-1">
+        <button type="button" id="tab-bk-referrals-btn" onclick="switchBkTab('referrals')" class="flex-1 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 transition">
+            📥 Rujukan Piket
+        </button>
+        <button type="button" id="tab-bk-form-btn" onclick="switchBkTab('form')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            ➕ Catat Sesi
+        </button>
+        <button type="button" id="tab-bk-services-btn" onclick="switchBkTab('services')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            📋 Riwayat Layanan
+        </button>
+    </div>
+
+    <!-- Panel 1: Rujukan Meja Piket -->
+    <div id="panel-bk-referrals" class="space-y-3">
+        <!-- 4 Chip Rekap Rujukan BK -->
+        <div class="grid grid-cols-4 gap-1.5 text-center">
+            <div class="card-elevated p-2 border-slate-200">
+                <span class="text-[8px] font-bold text-slate-600 block">Total</span>
+                <p id="stat-bk-total" class="text-xs font-black text-slate-800 font-mono">0</p>
+            </div>
+            <div class="card-elevated p-2 border-amber-200 bg-amber-50/40">
+                <span class="text-[8px] font-bold text-amber-700 block">Menunggu</span>
+                <p id="stat-bk-menunggu" class="text-xs font-black text-amber-900 font-mono">0</p>
+            </div>
+            <div class="card-elevated p-2 border-blue-200 bg-blue-50/40">
+                <span class="text-[8px] font-bold text-blue-700 block">Diproses</span>
+                <p id="stat-bk-diproses" class="text-xs font-black text-blue-900 font-mono">0</p>
+            </div>
+            <div class="card-elevated p-2 border-emerald-200 bg-emerald-50/40">
+                <span class="text-[8px] font-bold text-emerald-700 block">Selesai</span>
+                <p id="stat-bk-selesai" class="text-xs font-black text-emerald-900 font-mono">0</p>
+            </div>
+        </div>
+
+        <div id="list-bk-referrals-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat data rujukan...</div>
+        </div>
+    </div>
+
+    <!-- Panel 2: Formulir Catat Sesi Konseling -->
+    <div id="panel-bk-form" class="hidden card-elevated p-4">
+        <form id="form-submit-bk-service" onsubmit="handleBkServiceSubmit(event)" class="space-y-3">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Pilih Siswa <span class="text-rose-500">*</span></label>
+                <select id="bk-student-select" name="student_id" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <option value="">-- Pilih Siswa --</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Konseling <span class="text-rose-500">*</span></label>
+                    <input type="date" id="bk-service-date" name="service_date" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Bidang Layanan <span class="text-rose-500">*</span></label>
+                    <select id="bk-service-type" name="service_type" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500">
+                        <option value="pribadi">Pribadi</option>
+                        <option value="sosial">Sosial</option>
+                        <option value="belajar">Belajar / Akademik</option>
+                        <option value="karier">Karier / Masa Depan</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Ringkasan Masalah / Pembahasan <span class="text-rose-500">*</span></label>
+                <textarea id="bk-summary" name="summary" rows="2" required placeholder="Pokok bahasan sesi konseling..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Hasil Konseling &amp; Kesepakatan <span class="text-rose-500">*</span></label>
+                <textarea id="bk-result" name="result" rows="2" required placeholder="Komitmen atau hasil dari pertemuan..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Rencana Tindak Lanjut (RTL)</label>
+                <input type="text" id="bk-follow-up-plan" name="follow_up_plan" placeholder="Contoh: Pemantauan kehadiran 1 minggu ke depan" class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <button type="submit" id="btn-submit-bk-service" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold text-xs shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5">
+                <span>Simpan Sesi Konseling</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Panel 3: Riwayat Sesi Konseling -->
+    <div id="panel-bk-services" class="hidden space-y-2">
+        <div id="list-bk-services-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat riwayat layanan...</div>
+        </div>
+    </div>
+</div>

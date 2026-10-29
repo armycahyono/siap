@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\BkReferral;
+use App\Models\BkService;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
@@ -14,6 +15,7 @@ use App\Models\PiketIncident;
 use App\Models\PiketInvalClass;
 use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
+use App\Models\Student;
 use App\Models\StudentVisitation;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
@@ -21,6 +23,7 @@ use App\Models\Supervision;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\DailyKbmSnapshotService;
+use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -1209,6 +1212,493 @@ class MobileTasksController extends Controller
                 'verification_status' => $incident->verification_status,
                 'verification_status_label' => $incident->verification_status_label,
             ],
+        ]);
+    }
+
+    /**
+     * Ambil data lengkap untuk Sub-halaman Izin & Cuti GTK Mobile.
+     */
+    public function getPermitsData(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $myPermits = GtkPermit::with('approver')
+            ->where('user_id', $user->id)
+            ->latest('start_date')
+            ->take(30)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'permit_type' => $p->permission_type,
+                'status' => $p->status,
+                'start_date' => $p->start_date?->format('d M Y'),
+                'end_date' => $p->end_date?->format('d M Y'),
+                'duration_days' => $p->duration_days,
+                'reason' => $p->reason,
+                'notes' => $p->notes,
+                'approval_note' => $p->approval_note,
+                'approver_name' => $p->approver?->name,
+                'created_at' => $p->created_at?->format('d M Y H:i'),
+            ]);
+
+        $canManage = $user->isPrincipal() || $user->isSuperAdmin();
+        $pendingApprovals = [];
+        if ($canManage) {
+            $pendingApprovals = GtkPermit::pending()->with('user')
+                ->latest('created_at')
+                ->get()
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'user_name' => $p->user?->name ?? 'GTK',
+                    'user_position' => $p->user?->position ?? 'Guru/Staf',
+                    'permit_type' => $p->permission_type,
+                    'start_date' => $p->start_date?->format('d M Y'),
+                    'end_date' => $p->end_date?->format('d M Y'),
+                    'duration_days' => $p->duration_days,
+                    'reason' => $p->reason,
+                    'notes' => $p->notes,
+                    'created_at' => $p->created_at?->format('d M Y H:i'),
+                ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'can_manage' => $canManage,
+                'my_permits' => $myPermits,
+                'pending_approvals' => $pendingApprovals,
+                'types' => [
+                    ['key' => 'sakit', 'label' => 'Sakit (Surat Dokter)'],
+                    ['key' => 'izin', 'label' => 'Izin Kepentingan Pribadi'],
+                    ['key' => 'cuti', 'label' => 'Cuti Tahunan / Alasan Penting'],
+                    ['key' => 'dinas_luar', 'label' => 'Tugas Dinas / Luar Sekolah'],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Simpan pengajuan Izin/Cuti GTK dari Mobile.
+     */
+    public function storeGtkPermit(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $validated = $request->validate([
+            'permission_type' => ['required', 'in:sakit,izin,cuti,dinas_luar'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'reason' => ['required', 'string', 'max:500'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ]);
+
+        $startDate = Carbon::parse($validated['start_date']);
+        $endDate = ! empty($validated['end_date']) ? Carbon::parse($validated['end_date']) : $startDate->copy();
+        $durationDays = $startDate->diffInDays($endDate) + 1;
+
+        $documentPath = null;
+        if ($request->hasFile('document')) {
+            $documentPath = $request->file('document')->store('gtk_permits', 'local');
+        }
+
+        $isPrincipalOrAdmin = $user->isPrincipal() || $user->isSuperAdmin();
+        $status = $isPrincipalOrAdmin ? GtkPermit::STATUS_APPROVED : GtkPermit::STATUS_PENDING;
+
+        $permit = GtkPermit::create([
+            'user_id' => $user->id,
+            'permission_type' => $validated['permission_type'],
+            'status' => $status,
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'duration_days' => $durationDays,
+            'reason' => $validated['reason'],
+            'notes' => $validated['notes'] ?? null,
+            'document_path' => $documentPath,
+            'approved_by' => $isPrincipalOrAdmin ? $user->id : null,
+            'approved_at' => $isPrincipalOrAdmin ? now() : null,
+        ]);
+
+        try {
+            app(TelegramService::class)->notifyGtkPermit($permit, $user);
+        } catch (\Throwable) {
+            // Ignore notification failure
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $isPrincipalOrAdmin ? 'Pengajuan izin berhasil dicatat & disetujui.' : 'Pengajuan izin berhasil dikirimkan ke Kepala Sekolah.',
+            'data' => $permit,
+        ]);
+    }
+
+    /**
+     * Keputusan Persetujuan / Penolakan Izin GTK oleh KS.
+     */
+    public function actionGtkPermit(Request $request, int $id): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        if (! $user->isPrincipal() && ! $user->isSuperAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Hanya Kepala Sekolah yang berhak menyetujui/menolak perizinan.'], 403);
+        }
+
+        $validated = $request->validate([
+            'action' => ['required', 'in:approve,reject'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $permit = GtkPermit::findOrFail($id);
+        $newStatus = $validated['action'] === 'approve' ? GtkPermit::STATUS_APPROVED : GtkPermit::STATUS_REJECTED;
+
+        $permit->update([
+            'status' => $newStatus,
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+            'approval_note' => $validated['note'] ?? null,
+        ]);
+
+        try {
+            app(TelegramService::class)->notifyGtkPermitDecision($permit, $user);
+        } catch (\Throwable) {
+            // Ignore notification failure
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $newStatus === GtkPermit::STATUS_APPROVED ? 'Izin berhasil disetujui.' : 'Izin telah ditolak.',
+            'data' => [
+                'id' => $permit->id,
+                'status' => $permit->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Ambil data lengkap untuk Sub-halaman Visitasi Siswa Mobile.
+     */
+    public function getVisitationsData(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        if (! $user->canAccessVisitations($operationalAcademicYear)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki hak akses modul visitasi.'], 403);
+        }
+
+        $visitations = StudentVisitation::with(['student.classroom', 'primaryOfficer', 'secondaryOfficer', 'requester'])
+            ->where('academic_year', $operationalAcademicYear)
+            ->latest('planned_date')
+            ->take(30)
+            ->get()
+            ->map(fn ($v) => [
+                'id' => $v->id,
+                'student_name' => $v->student?->name ?? 'Siswa',
+                'classroom_name' => $v->student?->classroom?->name ?? '-',
+                'planned_date' => $v->planned_date?->format('d M Y'),
+                'visit_type' => $v->visit_type,
+                'status' => $v->status,
+                'reason' => $v->reason,
+                'result_summary' => $v->result_summary,
+                'primary_officer' => $v->primaryOfficer?->name ?? '-',
+                'secondary_officer' => $v->secondaryOfficer?->name,
+            ]);
+
+        // Daftar siswa aktif untuk form
+        $studentsQuery = Student::where('status', 'aktif');
+        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->canOperateBk($operationalAcademicYear) && ! $user->canManageDiscipline($operationalAcademicYear)) {
+            $myClassroomIds = $user->homeroomClassrooms()->pluck('id');
+            $studentsQuery->whereIn('classroom_id', $myClassroomIds);
+        }
+
+        $students = $studentsQuery->with('classroom')
+            ->orderBy('name')
+            ->take(150)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'nisn' => $s->nisn,
+                'classroom' => $s->classroom?->name ?? '-',
+            ]);
+
+        $officers = User::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'position']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'visitations' => $visitations,
+                'students' => $students,
+                'officers' => $officers,
+                'my_user_id' => $user->id,
+                'stats' => [
+                    'total' => $visitations->count(),
+                    'dijadwalkan' => $visitations->whereIn('status', ['diajukan', 'dijadwalkan'])->count(),
+                    'terlaksana' => $visitations->where('status', 'terlaksana')->count(),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Simpan jadwal visitasi siswa baru dari Mobile.
+     */
+    public function storeVisitation(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        if (! $user->canAccessVisitations($operationalAcademicYear)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki hak akses modul visitasi.'], 403);
+        }
+
+        $validated = $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'planned_date' => 'required|date',
+            'visit_type' => 'required|in:kunjungan_rumah,pemantauan_khusus,tindak_lanjut_absensi,komunikasi_ortu,tindak_lanjut_kasus,lainnya',
+            'reason' => 'required|string|max:1000',
+            'primary_officer_id' => 'required|exists:users,id',
+            'secondary_officer_id' => 'nullable|exists:users,id',
+        ]);
+
+        $visitation = StudentVisitation::create([
+            'student_id' => $validated['student_id'],
+            'academic_year' => $operationalAcademicYear,
+            'visit_type' => $validated['visit_type'],
+            'source_type' => 'mandiri',
+            'reason' => $validated['reason'],
+            'primary_officer_id' => $validated['primary_officer_id'],
+            'secondary_officer_id' => $validated['secondary_officer_id'] ?? null,
+            'requested_by' => $user->id,
+            'planned_date' => $validated['planned_date'],
+            'status' => 'dijadwalkan',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Jadwal visitasi siswa berhasil dibuat.',
+            'data' => $visitation,
+        ]);
+    }
+
+    /**
+     * Ambil data lengkap untuk Sub-halaman Tim Kedisiplinan Mobile.
+     */
+    public function getDisciplineData(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        $incidents = PiketIncident::with(['student.classroom', 'classroom', 'recordedBy', 'verifier', 'bkReferral'])
+            ->where(function ($q) use ($operationalAcademicYear) {
+                $q->where('academic_year', $operationalAcademicYear)
+                    ->orWhereHas('journal', fn ($j) => $j->where('academic_year', $operationalAcademicYear));
+            })
+            ->latest('incident_date')
+            ->latest('incident_time')
+            ->take(50)
+            ->get()
+            ->map(fn ($inc) => [
+                'id' => $inc->id,
+                'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
+                'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
+                'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
+                'incident_time' => $inc->incident_time ? substr($inc->incident_time, 0, 5) : '-',
+                'category' => $inc->category,
+                'category_label' => $inc->category_label ?? ucfirst($inc->category),
+                'penalty_points' => $inc->penalty_points ?? 0,
+                'description' => $inc->description,
+                'action_taken' => $inc->action_taken,
+                'verification_status' => $inc->verification_status ?? 'menunggu_verifikasi',
+                'verification_status_label' => $inc->verification_status_label ?? 'Menunggu',
+                'recorded_by_name' => $inc->recordedBy?->name ?? 'Piket',
+                'evidence_photo_url' => $inc->evidence_photo_url,
+                'follow_up_target' => $inc->follow_up_target,
+            ]);
+
+        $summary = [
+            'total' => $incidents->count(),
+            'menunggu' => $incidents->where('verification_status', 'menunggu_verifikasi')->count(),
+            'terverifikasi' => $incidents->where('verification_status', 'terverifikasi')->count(),
+            'rujukan_bk' => $incidents->where('follow_up_target', 'rujuk_bk')->count(),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'can_verify' => $user->canVerifyDiscipline($operationalAcademicYear),
+                'summary' => $summary,
+                'incidents' => $incidents,
+            ],
+        ]);
+    }
+
+    /**
+     * Ambil data lengkap untuk Sub-halaman Layanan BK Mobile.
+     */
+    public function getBkData(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        if (! $user->canOperateBk($operationalAcademicYear) && ! $user->canManageDiscipline($operationalAcademicYear)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki wewenang mengakses modul BK.'], 403);
+        }
+
+        $referrals = PiketIncident::with(['student.classroom', 'classroom', 'recordedBy', 'bkReferral.handler'])
+            ->where('follow_up_target', 'rujuk_bk')
+            ->latest('incident_date')
+            ->take(30)
+            ->get()
+            ->map(function ($inc) {
+                $refStatus = $inc->bkReferral?->status ?? 'menunggu';
+
+                return [
+                    'id' => $inc->id,
+                    'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
+                    'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
+                    'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
+                    'category_label' => $inc->category_label ?? ucfirst($inc->category),
+                    'description' => $inc->description,
+                    'action_taken' => $inc->action_taken,
+                    'referral_status' => $refStatus,
+                    'referral_status_label' => ucfirst($refStatus),
+                    'referral_notes' => $inc->bkReferral?->notes,
+                ];
+            });
+
+        $services = BkService::with(['student.classroom', 'counselor'])
+            ->where('academic_year', $operationalAcademicYear)
+            ->latest('service_date')
+            ->take(20)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'student_name' => $s->student?->name ?? 'Siswa',
+                'classroom_name' => $s->student?->classroom?->name ?? '-',
+                'service_date' => $s->service_date?->format('d M Y'),
+                'service_type' => ucfirst($s->service_type),
+                'summary' => $s->summary,
+                'result' => $s->result,
+                'follow_up_plan' => $s->follow_up_plan,
+                'counselor_name' => $s->counselor?->name ?? 'Guru BK',
+            ]);
+
+        $students = Student::where('status', 'aktif')
+            ->with('classroom')
+            ->orderBy('name')
+            ->take(150)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'nisn' => $s->nisn,
+                'classroom' => $s->classroom?->name ?? '-',
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'can_operate_bk' => $user->canOperateBk($operationalAcademicYear),
+                'referrals' => $referrals,
+                'services' => $services,
+                'students' => $students,
+                'academic_year' => $operationalAcademicYear,
+                'stats' => [
+                    'total_rujukan' => $referrals->count(),
+                    'menunggu' => $referrals->where('referral_status', 'menunggu')->count(),
+                    'diproses' => $referrals->where('referral_status', 'diproses')->count(),
+                    'selesai' => $referrals->where('referral_status', 'selesai')->count(),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Simpan sesi layanan konseling BK baru dari Mobile.
+     */
+    public function storeBkService(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        if (! $user->canOperateBk($operationalAcademicYear)) {
+            return response()->json(['success' => false, 'message' => 'Hanya Guru BK yang dapat mencatat sesi layanan.'], 403);
+        }
+
+        $validated = $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'service_date' => 'required|date',
+            'service_type' => 'required|in:pribadi,sosial,belajar,karier',
+            'summary' => 'required|string|max:2000',
+            'result' => 'required|string|max:2000',
+            'follow_up_plan' => 'nullable|string|max:1000',
+            'piket_incident_id' => 'nullable|exists:piket_incidents,id',
+        ]);
+
+        $service = BkService::create([
+            'student_id' => $validated['student_id'],
+            'piket_incident_id' => $validated['piket_incident_id'] ?? null,
+            'academic_year' => $operationalAcademicYear,
+            'service_date' => $validated['service_date'],
+            'service_type' => $validated['service_type'],
+            'summary' => $validated['summary'],
+            'result' => $validated['result'],
+            'follow_up_plan' => $validated['follow_up_plan'] ?? null,
+            'counselor_id' => $user->id,
+        ]);
+
+        if (! empty($validated['piket_incident_id'])) {
+            $ref = BkReferral::where('piket_incident_id', $validated['piket_incident_id'])->first();
+            if ($ref) {
+                $ref->update([
+                    'status' => 'selesai',
+                    'handled_by' => $user->id,
+                    'handled_at' => now(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesi konseling siswa berhasil dicatat.',
+            'data' => $service,
         ]);
     }
 }

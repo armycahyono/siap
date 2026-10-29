@@ -1408,7 +1408,7 @@
                                 <p class="text-[11px] text-slate-600 mb-1 leading-tight">${ref.description || 'Tidak ada deskripsi'}</p>
                                 ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-1.5">🎯 Piket: ${ref.action_taken}</p>` : ''}
                                 <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
-                                    <a href="/bk/rujukan/${ref.id}" class="text-indigo-600 font-bold hover:underline">Tinjau &raquo;</a>
+                                    <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/bk')" class="text-indigo-600 font-bold hover:underline">Tinjau &raquo;</button>
                                     <div class="flex items-center gap-1.5">
                                         ${isMenunggu ? `
                                             <button onclick="quickUpdateBkStatus(${ref.id}, 'diproses')" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-95 transition">
@@ -1456,7 +1456,7 @@
                             <p class="text-[11px] text-slate-600 mb-1.5 italic">"${p.reason || 'Izin'}"</p>
                             <div class="flex items-center justify-between pt-1 border-t border-slate-100 text-[10px]">
                                 <span class="text-slate-400 font-mono">${p.start_date} s/d ${p.end_date}</span>
-                                <a href="/presensi/izin-cuti-gtk" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700">Tinjau</a>
+                                <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700">Tinjau</button>
                             </div>
                         </div>
                     `).join('');
@@ -1958,7 +1958,630 @@
     }
 
     // ==========================================
-    // 6. INITIAL APP BOOTSTRAPPER
+    // 6. SUB-PAGE CONTROLLERS: TASKS MODULES
+    // ==========================================
+
+    // --- A. IZIN & CUTI GTK CONTROLLER ---
+    let currentPermitsContainer = null;
+    let permitsDataCache = null;
+
+    window.initTasksPermits = function(container) {
+        currentPermitsContainer = container;
+        const startDateInput = container.querySelector('#permit-start-date');
+        if (startDateInput) {
+            startDateInput.value = new Date().toISOString().split('T')[0];
+        }
+        loadTasksPermits();
+    };
+
+    window.switchPermitsTab = function(tab) {
+        if (!currentPermitsContainer) return;
+        const panelForm = currentPermitsContainer.querySelector('#panel-permits-form');
+        const panelHistory = currentPermitsContainer.querySelector('#panel-permits-history');
+        const panelApproval = currentPermitsContainer.querySelector('#panel-permits-approval');
+
+        const btnForm = currentPermitsContainer.querySelector('#tab-permits-form-btn');
+        const btnHistory = currentPermitsContainer.querySelector('#tab-permits-history-btn');
+        const btnApproval = currentPermitsContainer.querySelector('#tab-permits-approval-btn');
+
+        if (panelForm) panelForm.classList.add('hidden');
+        if (panelHistory) panelHistory.classList.add('hidden');
+        if (panelApproval) panelApproval.classList.add('hidden');
+
+        [btnForm, btnHistory, btnApproval].forEach(btn => {
+            if (btn) {
+                btn.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1';
+            }
+        });
+
+        if (tab === 'form') {
+            if (panelForm) panelForm.classList.remove('hidden');
+            if (btnForm) btnForm.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-blue-600 transition flex items-center justify-center gap-1';
+        } else if (tab === 'history') {
+            if (panelHistory) panelHistory.classList.remove('hidden');
+            if (btnHistory) btnHistory.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-blue-600 transition flex items-center justify-center gap-1';
+        } else if (tab === 'approval') {
+            if (panelApproval) panelApproval.classList.remove('hidden');
+            if (btnApproval) btnApproval.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-blue-600 transition flex items-center justify-center gap-1';
+        }
+    };
+
+    window.loadTasksPermits = async function() {
+        if (!currentPermitsContainer) return;
+        try {
+            const res = await SIAP_API.getPermits();
+            if (res.success && res.data) {
+                permitsDataCache = res.data;
+                renderPermitsUI(res.data);
+            }
+        } catch (err) {
+            showToast('Gagal memuat data izin: ' + err.message, 'error');
+        }
+    };
+
+    function renderPermitsUI(data) {
+        if (!currentPermitsContainer) return;
+        const listHistory = currentPermitsContainer.querySelector('#list-my-permits-container');
+        const listApproval = currentPermitsContainer.querySelector('#list-pending-approvals-container');
+        const btnApproval = currentPermitsContainer.querySelector('#tab-permits-approval-btn');
+        const badgePending = currentPermitsContainer.querySelector('#permits-pending-badge');
+
+        if (data.can_manage && btnApproval) {
+            btnApproval.classList.remove('hidden');
+            const pendingCount = (data.pending_approvals || []).length;
+            if (badgePending) badgePending.textContent = pendingCount;
+        }
+
+        // Render Riwayat Saya
+        if (listHistory) {
+            const myPermits = data.my_permits || [];
+            if (myPermits.length === 0) {
+                listHistory.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">Belum ada riwayat pengajuan izin.</div>';
+            } else {
+                listHistory.innerHTML = myPermits.map(p => {
+                    const isApproved = p.status === 'approved';
+                    const isRejected = p.status === 'rejected';
+                    const badgeClass = isApproved ? 'bg-emerald-100 text-emerald-800' : (isRejected ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800');
+                    const statusLabel = isApproved ? 'Disetujui' : (isRejected ? 'Ditolak' : 'Menunggu');
+
+                    return `
+                        <div class="card-elevated p-3 border-slate-200">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-100 text-blue-800">${p.permit_type} (${p.duration_days} Hari)</span>
+                                <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase ${badgeClass}">${statusLabel}</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 mb-1">${p.reason}</p>
+                            <div class="text-[10px] text-slate-400 font-mono mb-1">
+                                📅 ${p.start_date} ${p.end_date && p.end_date !== p.start_date ? 's/d ' + p.end_date : ''}
+                            </div>
+                            ${p.approval_note ? `<p class="text-[10px] text-slate-500 bg-slate-50 p-1.5 rounded-lg mt-1 border border-slate-100 italic">Catatan KS: "${p.approval_note}"</p>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Render Persetujuan KS
+        if (listApproval && data.can_manage) {
+            const pending = data.pending_approvals || [];
+            if (pending.length === 0) {
+                listApproval.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">Tidak ada pengajuan yang menunggu persetujuan.</div>';
+            } else {
+                listApproval.innerHTML = pending.map(p => `
+                    <div class="card-elevated p-3 border-amber-200 bg-amber-50/20">
+                        <div class="flex items-center justify-between mb-1">
+                            <div>
+                                <h4 class="text-xs font-black text-slate-900">${p.user_name}</h4>
+                                <span class="text-[9px] text-slate-500">${p.user_position}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase font-mono">${p.permit_type}</span>
+                        </div>
+                        <p class="text-xs text-slate-700 my-1 font-medium italic">"${p.reason}"</p>
+                        <div class="text-[10px] text-slate-400 font-mono mb-2">
+                            ${p.start_date} ${p.end_date && p.end_date !== p.start_date ? 's/d ' + p.end_date : ''} (${p.duration_days} Hari)
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60">
+                            <button type="button" onclick="handlePermitActionPrompt(${p.id}, 'reject')" class="py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-700 text-xs font-bold active:scale-95 transition">
+                                ✕ Tolak
+                            </button>
+                            <button type="button" onclick="handlePermitActionPrompt(${p.id}, 'approve')" class="py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs active:scale-95 transition">
+                                ✓ Setujui
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    window.handlePermitSubmit = async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('#btn-submit-permit');
+        btn.disabled = true;
+        btn.textContent = 'Mengirimkan...';
+
+        try {
+            const formData = new FormData(form);
+            const res = await SIAP_API.submitPermit(formData);
+            if (res.success) {
+                showToast(res.message || 'Pengajuan izin berhasil dikirimkan!', 'success');
+                form.reset();
+                await loadTasksPermits();
+                switchPermitsTab('history');
+            } else {
+                showToast(res.message || 'Gagal mengirim pengajuan.', 'error');
+            }
+        } catch (err) {
+            showToast('Gagal mengajukan izin: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Pengajuan Izin';
+        }
+    };
+
+    window.handlePermitActionPrompt = async function(id, action) {
+        let note = null;
+        if (action === 'reject') {
+            note = prompt('Masukkan alasan penolakan izin:');
+            if (note === null) return; // user batal
+            if (!note.trim()) {
+                showToast('Alasan penolakan wajib diisi.', 'warning');
+                return;
+            }
+        }
+        try {
+            showToast('Memproses keputusan...', 'info');
+            const res = await SIAP_API.actionPermit(id, action, note);
+            if (res.success) {
+                showToast(res.message || 'Keputusan berhasil disimpan.', 'success');
+                loadTasksPermits();
+            }
+        } catch (err) {
+            showToast('Gagal memproses izin: ' + err.message, 'error');
+        }
+    };
+
+    // --- B. VISITASI SISWA CONTROLLER ---
+    let currentVisitationsContainer = null;
+
+    window.initTasksVisitations = function(container) {
+        currentVisitationsContainer = container;
+        const dateInput = container.querySelector('#visitation-planned-date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        loadTasksVisitations();
+    };
+
+    window.switchVisitationTab = function(tab) {
+        if (!currentVisitationsContainer) return;
+        const panelList = currentVisitationsContainer.querySelector('#panel-visitation-list');
+        const panelForm = currentVisitationsContainer.querySelector('#panel-visitation-form');
+        const btnList = currentVisitationsContainer.querySelector('#tab-visitation-list-btn');
+        const btnForm = currentVisitationsContainer.querySelector('#tab-visitation-form-btn');
+
+        if (tab === 'list') {
+            if (panelList) panelList.classList.remove('hidden');
+            if (panelForm) panelForm.classList.add('hidden');
+            if (btnList) btnList.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-cyan-700 transition';
+            if (btnForm) btnForm.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+        } else {
+            if (panelList) panelList.classList.add('hidden');
+            if (panelForm) panelForm.classList.remove('hidden');
+            if (btnList) btnList.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+            if (btnForm) btnForm.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-cyan-700 transition';
+        }
+    };
+
+    window.loadTasksVisitations = async function() {
+        if (!currentVisitationsContainer) return;
+        try {
+            const res = await SIAP_API.getVisitations();
+            if (res.success && res.data) {
+                renderVisitationsUI(res.data);
+            }
+        } catch (err) {
+            showToast('Gagal memuat data visitasi: ' + err.message, 'error');
+        }
+    };
+
+    function renderVisitationsUI(data) {
+        if (!currentVisitationsContainer) return;
+        const listContainer = currentVisitationsContainer.querySelector('#list-visitations-container');
+        const studentSelect = currentVisitationsContainer.querySelector('#visitation-student-select');
+        const primarySelect = currentVisitationsContainer.querySelector('#visitation-primary-officer');
+        const secondarySelect = currentVisitationsContainer.querySelector('#visitation-secondary-officer');
+
+        // Populate Siswa Dropdown
+        if (studentSelect && data.students) {
+            studentSelect.innerHTML = '<option value="">-- Pilih Siswa Target --</option>' +
+                data.students.map(s => `<option value="${s.id}">${s.name} (${s.classroom})</option>`).join('');
+        }
+
+        // Populate Petugas Dropdown
+        if (primarySelect && data.officers) {
+            primarySelect.innerHTML = '<option value="">-- Pilih Petugas Utama --</option>' +
+                data.officers.map(o => `<option value="${o.id}" ${o.id === data.my_user_id ? 'selected' : ''}>${o.name} (${o.position || 'Petugas'})</option>`).join('');
+        }
+        if (secondarySelect && data.officers) {
+            secondarySelect.innerHTML = '<option value="">-- Tidak Ada / Sendiri --</option>' +
+                data.officers.map(o => `<option value="${o.id}">${o.name} (${o.position || 'Petugas'})</option>`).join('');
+        }
+
+        // Render List Visitasi
+        if (listContainer) {
+            const visitations = data.visitations || [];
+            if (visitations.length === 0) {
+                listContainer.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">Belum ada agenda visitasi siswa.</div>';
+            } else {
+                listContainer.innerHTML = visitations.map(v => {
+                    const isDone = v.status === 'terlaksana';
+                    const badgeClass = isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-cyan-100 text-cyan-800';
+                    return `
+                        <div class="card-elevated p-3 border-cyan-100">
+                            <div class="flex items-center justify-between mb-1">
+                                <h4 class="text-xs font-black text-slate-900">${v.student_name} <span class="text-[10px] text-slate-400 font-normal">(${v.classroom_name})</span></h4>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeClass}">${v.status}</span>
+                            </div>
+                            <p class="text-xs text-slate-700 my-1 font-medium">🎯 ${v.reason}</p>
+                            <div class="text-[10px] text-slate-500 font-mono flex items-center justify-between pt-1 border-t border-slate-100">
+                                <span>📅 ${v.planned_date}</span>
+                                <span>👤 ${v.primary_officer} ${v.secondary_officer ? '+ ' + v.secondary_officer : ''}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+    }
+
+    window.handleVisitationSubmit = async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('#btn-submit-visitation');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const payload = {
+                student_id: form.querySelector('#visitation-student-select').value,
+                planned_date: form.querySelector('#visitation-planned-date').value,
+                visit_type: form.querySelector('#visitation-type-select').value,
+                primary_officer_id: form.querySelector('#visitation-primary-officer').value,
+                secondary_officer_id: form.querySelector('#visitation-secondary-officer').value || null,
+                reason: form.querySelector('#visitation-reason').value,
+            };
+
+            const res = await SIAP_API.submitVisitation(payload);
+            if (res.success) {
+                showToast(res.message || 'Jadwal visitasi berhasil disimpan!', 'success');
+                form.reset();
+                await loadTasksVisitations();
+                switchVisitationTab('list');
+            } else {
+                showToast(res.message || 'Gagal menyimpan visitasi.', 'error');
+            }
+        } catch (err) {
+            showToast('Gagal membuat visitasi: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Jadwal Visitasi';
+        }
+    };
+
+    // --- C. TIM KEDISIPLINAN CONTROLLER ---
+    let currentDisciplineContainer = null;
+    let disciplineDataCache = null;
+    let currentDisciplineFilter = 'all';
+
+    window.initTasksDiscipline = function(container) {
+        currentDisciplineContainer = container;
+        loadTasksDiscipline();
+    };
+
+    window.loadTasksDiscipline = async function() {
+        if (!currentDisciplineContainer) return;
+        try {
+            const res = await SIAP_API.getDiscipline();
+            if (res.success && res.data) {
+                disciplineDataCache = res.data;
+                renderDisciplineUI();
+            }
+        } catch (err) {
+            showToast('Gagal memuat data kedisiplinan: ' + err.message, 'error');
+        }
+    };
+
+    window.filterDisciplineCategory = function(cat) {
+        currentDisciplineFilter = cat;
+        if (!currentDisciplineContainer) return;
+        ['all', 'menunggu_verifikasi', 'terverifikasi', 'rujuk_bk'].forEach(c => {
+            const btn = currentDisciplineContainer.querySelector('#filter-disc-' + c);
+            if (btn) {
+                if (c === cat) {
+                    btn.className = 'px-2.5 py-1 rounded-lg bg-slate-900 text-white shrink-0 shadow-xs';
+                } else {
+                    btn.className = 'px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 shrink-0';
+                }
+            }
+        });
+        renderDisciplineList();
+    };
+
+    function renderDisciplineUI() {
+        if (!currentDisciplineContainer || !disciplineDataCache) return;
+        const summary = disciplineDataCache.summary || {};
+        const statTotal = currentDisciplineContainer.querySelector('#stat-disc-total');
+        const statWaiting = currentDisciplineContainer.querySelector('#stat-disc-waiting');
+        const statVerified = currentDisciplineContainer.querySelector('#stat-disc-verified');
+        const statBk = currentDisciplineContainer.querySelector('#stat-disc-bk');
+
+        if (statTotal) statTotal.textContent = summary.total || 0;
+        if (statWaiting) statWaiting.textContent = summary.menunggu || 0;
+        if (statVerified) statVerified.textContent = summary.terverifikasi || 0;
+        if (statBk) statBk.textContent = summary.rujukan_bk || 0;
+
+        renderDisciplineList();
+    }
+
+    function renderDisciplineList() {
+        if (!currentDisciplineContainer || !disciplineDataCache) return;
+        const listContainer = currentDisciplineContainer.querySelector('#list-discipline-container');
+        if (!listContainer) return;
+
+        let incidents = disciplineDataCache.incidents || [];
+        if (currentDisciplineFilter === 'menunggu_verifikasi') {
+            incidents = incidents.filter(i => i.verification_status === 'menunggu_verifikasi');
+        } else if (currentDisciplineFilter === 'terverifikasi') {
+            incidents = incidents.filter(i => i.verification_status === 'terverifikasi');
+        } else if (currentDisciplineFilter === 'rujuk_bk') {
+            incidents = incidents.filter(i => i.follow_up_target === 'rujuk_bk');
+        }
+
+        if (incidents.length === 0) {
+            listContainer.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">Tidak ada kasus pada filter ini.</div>';
+            return;
+        }
+
+        const canVerify = disciplineDataCache.can_verify;
+
+        listContainer.innerHTML = incidents.map(inc => {
+            const isWaiting = inc.verification_status === 'menunggu_verifikasi';
+            const statusClass = isWaiting ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800';
+
+            return `
+                <div class="card-elevated p-3 border-rose-100">
+                    <div class="flex items-center justify-between mb-1">
+                        <h4 class="text-xs font-black text-slate-900">${inc.student_name} <span class="text-[10px] text-slate-400 font-normal">(${inc.classroom_name})</span></h4>
+                        <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${statusClass}">${inc.verification_status_label}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-800 uppercase">${inc.category_label}</span>
+                        <span class="text-[9px] font-mono text-slate-400">${inc.incident_date} ${inc.incident_time}</span>
+                        ${inc.penalty_points ? `<span class="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded">+${inc.penalty_points} Poin</span>` : ''}
+                    </div>
+                    <p class="text-xs text-slate-700 mb-1 leading-snug">${inc.description || 'Tidak ada deskripsi'}</p>
+                    ${inc.action_taken ? `<p class="text-[10px] text-slate-500 italic mb-2">Tindakan: "${inc.action_taken}"</p>` : ''}
+                    
+                    ${canVerify && isWaiting ? `
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                            <button type="button" onclick="quickVerifyFromDiscipline(${inc.id}, 'bukan_pelanggaran')" class="py-1 px-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold active:scale-95 transition">
+                                Bukan Pelanggaran
+                            </button>
+                            <button type="button" onclick="quickVerifyFromDiscipline(${inc.id}, 'terverifikasi')" class="py-1 px-2 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs active:scale-95 transition">
+                                ✓ Sahkan Pelanggaran
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.quickVerifyFromDiscipline = async function(id, status) {
+        try {
+            showToast('Memverifikasi...', 'info');
+            const res = await SIAP_API.verifyDisciplineIncident(id, status);
+            if (res.success) {
+                showToast(res.message || 'Berhasil diverifikasi!', 'success');
+                loadTasksDiscipline();
+            }
+        } catch (err) {
+            showToast('Gagal verifikasi: ' + err.message, 'error');
+        }
+    };
+
+    // --- D. LAYANAN BK CONTROLLER ---
+    let currentBkContainer = null;
+    let bkDataCache = null;
+
+    window.initTasksBk = function(container) {
+        currentBkContainer = container;
+        const dateInput = container.querySelector('#bk-service-date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        loadTasksBk();
+    };
+
+    window.switchBkTab = function(tab) {
+        if (!currentBkContainer) return;
+        const panelReferrals = currentBkContainer.querySelector('#panel-bk-referrals');
+        const panelForm = currentBkContainer.querySelector('#panel-bk-form');
+        const panelServices = currentBkContainer.querySelector('#panel-bk-services');
+
+        const btnReferrals = currentBkContainer.querySelector('#tab-bk-referrals-btn');
+        const btnForm = currentBkContainer.querySelector('#tab-bk-form-btn');
+        const btnServices = currentBkContainer.querySelector('#tab-bk-services-btn');
+
+        [panelReferrals, panelForm, panelServices].forEach(p => p && p.classList.add('hidden'));
+        [btnReferrals, btnForm, btnServices].forEach(b => {
+            if (b) b.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+        });
+
+        if (tab === 'referrals') {
+            if (panelReferrals) panelReferrals.classList.remove('hidden');
+            if (btnReferrals) btnReferrals.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 transition';
+        } else if (tab === 'form') {
+            if (panelForm) panelForm.classList.remove('hidden');
+            if (btnForm) btnForm.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 transition';
+        } else if (tab === 'services') {
+            if (panelServices) panelServices.classList.remove('hidden');
+            if (btnServices) btnServices.className = 'flex-1 py-1.5 rounded-lg bg-white shadow-xs text-indigo-700 transition';
+        }
+    };
+
+    window.loadTasksBk = async function() {
+        if (!currentBkContainer) return;
+        try {
+            const res = await SIAP_API.getBk();
+            if (res.success && res.data) {
+                bkDataCache = res.data;
+                renderBkUI(res.data);
+            }
+        } catch (err) {
+            showToast('Gagal memuat data BK: ' + err.message, 'error');
+        }
+    };
+
+    function renderBkUI(data) {
+        if (!currentBkContainer) return;
+        const stats = data.stats || {};
+        const statTotal = currentBkContainer.querySelector('#stat-bk-total');
+        const statWaiting = currentBkContainer.querySelector('#stat-bk-menunggu');
+        const statProcessing = currentBkContainer.querySelector('#stat-bk-diproses');
+        const statDone = currentBkContainer.querySelector('#stat-bk-selesai');
+
+        if (statTotal) statTotal.textContent = stats.total_rujukan || 0;
+        if (statWaiting) statWaiting.textContent = stats.menunggu || 0;
+        if (statProcessing) statProcessing.textContent = stats.diproses || 0;
+        if (statDone) statDone.textContent = stats.selesai || 0;
+
+        // Populate Siswa Select
+        const studentSelect = currentBkContainer.querySelector('#bk-student-select');
+        if (studentSelect && data.students) {
+            studentSelect.innerHTML = '<option value="">-- Pilih Siswa --</option>' +
+                data.students.map(s => `<option value="${s.id}">${s.name} (${s.classroom})</option>`).join('');
+        }
+
+        // Render Rujukan Meja Piket
+        const listRefContainer = currentBkContainer.querySelector('#list-bk-referrals-container');
+        if (listRefContainer) {
+            const referrals = data.referrals || [];
+            if (referrals.length === 0) {
+                listRefContainer.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">Tidak ada rujukan meja piket saat ini.</div>';
+            } else {
+                listRefContainer.innerHTML = referrals.map(ref => {
+                    const isMenunggu = ref.referral_status === 'menunggu';
+                    const isDiproses = ref.referral_status === 'diproses';
+                    const badgeClass = isMenunggu ? 'bg-amber-100 text-amber-800' : (isDiproses ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800');
+
+                    return `
+                        <div class="card-elevated p-3 border-indigo-100">
+                            <div class="flex items-center justify-between mb-1">
+                                <h4 class="text-xs font-black text-slate-900">${ref.student_name} <span class="text-[10px] text-slate-400 font-normal">(${ref.classroom_name})</span></h4>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeClass}">${ref.referral_status_label}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-100 text-indigo-800 uppercase">${ref.category_label}</span>
+                                <span class="text-[9px] font-mono text-slate-400">${ref.incident_date}</span>
+                            </div>
+                            <p class="text-xs text-slate-700 mb-1 leading-snug">${ref.description || 'Tidak ada deskripsi'}</p>
+                            ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-2">🎯 Piket: ${ref.action_taken}</p>` : ''}
+                            
+                            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 text-xs">
+                                ${isMenunggu ? `
+                                    <button type="button" onclick="quickUpdateBkStatusFromPage(${ref.id}, 'diproses')" class="py-1 px-3 rounded-lg bg-indigo-600 text-white font-bold shadow-xs active:scale-95 transition">
+                                        ⚡ Tangani Kasus
+                                    </button>
+                                ` : (isDiproses ? `
+                                    <button type="button" onclick="quickUpdateBkStatusFromPage(${ref.id}, 'selesai')" class="py-1 px-3 rounded-lg bg-emerald-600 text-white font-bold shadow-xs active:scale-95 transition">
+                                        ✓ Selesaikan
+                                    </button>
+                                ` : '')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Render Riwayat Sesi Layanan
+        const listServicesContainer = currentBkContainer.querySelector('#list-bk-services-container');
+        if (listServicesContainer) {
+            const services = data.services || [];
+            if (services.length === 0) {
+                listServicesContainer.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">Belum ada riwayat konseling tercatat.</div>';
+            } else {
+                listServicesContainer.innerHTML = services.map(s => `
+                    <div class="card-elevated p-3 border-indigo-100">
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="text-xs font-black text-slate-900">${s.student_name} <span class="text-[10px] text-slate-400 font-normal">(${s.classroom_name})</span></h4>
+                            <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase bg-indigo-100 text-indigo-800">${s.service_type}</span>
+                        </div>
+                        <p class="text-xs text-slate-800 font-medium my-1">💬 "${s.summary}"</p>
+                        <p class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">Hasil: ${s.result}</p>
+                        ${s.follow_up_plan ? `<p class="text-[10px] text-indigo-900 font-bold mt-1">RTL: ${s.follow_up_plan}</p>` : ''}
+                        <div class="text-[10px] text-slate-400 font-mono mt-1 pt-1 border-t border-slate-100 flex justify-between">
+                            <span>📅 ${s.service_date}</span>
+                            <span>👤 ${s.counselor_name}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    window.quickUpdateBkStatusFromPage = async function(id, status) {
+        try {
+            showToast('Memperbarui status...', 'info');
+            const res = await SIAP_API.updateBkReferralStatus(id, status);
+            if (res.success) {
+                showToast(res.message || 'Status berhasil diperbarui!', 'success');
+                loadTasksBk();
+            }
+        } catch (err) {
+            showToast('Gagal update status: ' + err.message, 'error');
+        }
+    };
+
+    window.handleBkServiceSubmit = async function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('#btn-submit-bk-service');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const payload = {
+                student_id: form.querySelector('#bk-student-select').value,
+                service_date: form.querySelector('#bk-service-date').value,
+                service_type: form.querySelector('#bk-service-type').value,
+                summary: form.querySelector('#bk-summary').value,
+                result: form.querySelector('#bk-result').value,
+                follow_up_plan: form.querySelector('#bk-follow-up-plan').value || null,
+            };
+
+            const res = await SIAP_API.submitBkService(payload);
+            if (res.success) {
+                showToast(res.message || 'Sesi konseling berhasil disimpan!', 'success');
+                form.reset();
+                await loadTasksBk();
+                switchBkTab('services');
+            } else {
+                showToast(res.message || 'Gagal menyimpan konseling.', 'error');
+            }
+        } catch (err) {
+            showToast('Gagal mencatat konseling: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Sesi Konseling';
+        }
+    };
+
+    // ==========================================
+    // 7. INITIAL APP BOOTSTRAPPER
     // ==========================================
     async function initApp() {
         // 1. Cek sesi user terlebih dahulu

@@ -1,0 +1,85 @@
+<div class="space-y-3 pb-8">
+    <!-- Header Sub-Halaman dengan Navigasi Kembali -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali ke Tugas">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Visitasi Siswa &amp; BK</h3>
+                <p class="text-[10px] text-slate-400">Home Visit &amp; Pemantauan Lapangan</p>
+            </div>
+        </div>
+        <button type="button" onclick="loadTasksVisitations()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-cyan-50 text-slate-500 hover:text-cyan-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+    </div>
+
+    <!-- Segmented Tab Bar -->
+    <div class="flex rounded-xl bg-slate-100 p-1 text-center font-bold text-xs gap-1">
+        <button type="button" id="tab-visitation-list-btn" onclick="switchVisitationTab('list')" class="flex-1 py-1.5 rounded-lg bg-white shadow-xs text-cyan-700 transition">
+            📋 Daftar Kunjungan
+        </button>
+        <button type="button" id="tab-visitation-form-btn" onclick="switchVisitationTab('form')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            ➕ Buat Jadwal
+        </button>
+    </div>
+
+    <!-- Panel 1: Daftar Visitasi Siswa -->
+    <div id="panel-visitation-list" class="space-y-2">
+        <div id="list-visitations-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat data visitasi...</div>
+        </div>
+    </div>
+
+    <!-- Panel 2: Formulir Jadwal Visitasi -->
+    <div id="panel-visitation-form" class="hidden card-elevated p-4">
+        <form id="form-submit-visitation" onsubmit="handleVisitationSubmit(event)" class="space-y-3">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Pilih Siswa Target <span class="text-rose-500">*</span></label>
+                <select id="visitation-student-select" name="student_id" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500 font-medium">
+                    <option value="">-- Pilih Siswa --</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Rencana <span class="text-rose-500">*</span></label>
+                    <input type="date" id="visitation-planned-date" name="planned_date" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Kunjungan <span class="text-rose-500">*</span></label>
+                    <select id="visitation-type-select" name="visit_type" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500">
+                        <option value="kunjungan_rumah">Home Visit (Rumah)</option>
+                        <option value="tindak_lanjut_absensi">Tindak Lanjut Absensi</option>
+                        <option value="pemantauan_khusus">Pemantauan Khusus</option>
+                        <option value="komunikasi_ortu">Pertemuan Wali/Ortu</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Petugas Utama <span class="text-rose-500">*</span></label>
+                <select id="visitation-primary-officer" name="primary_officer_id" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500">
+                    <option value="">-- Pilih Petugas Utama --</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Petugas Pendamping (Opsional)</label>
+                <select id="visitation-secondary-officer" name="secondary_officer_id" class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500">
+                    <option value="">-- Tidak Ada / Sendiri --</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Alasan / Latar Belakang Kunjungan <span class="text-rose-500">*</span></label>
+                <textarea id="visitation-reason" name="reason" rows="2" required placeholder="Jelaskan kendala siswa atau tujuan kunjungan ke rumah..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-cyan-500"></textarea>
+            </div>
+
+            <button type="submit" id="btn-submit-visitation" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-xs shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5">
+                <span>Simpan Jadwal Visitasi</span>
+            </button>
+        </form>
+    </div>
+</div>

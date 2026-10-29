@@ -1,0 +1,86 @@
+<div class="space-y-3 pb-8">
+    <!-- Header Sub-Halaman dengan Navigasi Kembali -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali ke Tugas">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Izin &amp; Cuti GTK</h3>
+                <p class="text-[10px] text-slate-400">Pengajuan Mandiri &amp; Riwayat Kehadiran</p>
+            </div>
+        </div>
+        <button type="button" onclick="loadTasksPermits()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+    </div>
+
+    <!-- Segmented Tab Bar (Cupertino Segmented Control) -->
+    <div class="flex rounded-xl bg-slate-100 p-1 text-center font-bold text-xs gap-1">
+        <button type="button" id="tab-permits-form-btn" onclick="switchPermitsTab('form')" class="flex-1 py-1.5 rounded-lg bg-white shadow-xs text-blue-600 transition">
+            ➕ Ajukan Baru
+        </button>
+        <button type="button" id="tab-permits-history-btn" onclick="switchPermitsTab('history')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            📋 Riwayat Saya
+        </button>
+        <button type="button" id="tab-permits-approval-btn" onclick="switchPermitsTab('approval')" class="hidden flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1">
+            <span>Persetujuan</span>
+            <span id="permits-pending-badge" class="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-500 text-white font-mono">0</span>
+        </button>
+    </div>
+
+    <!-- Panel 1: Formulir Ajukan Izin Baru -->
+    <div id="panel-permits-form" class="card-elevated p-4">
+        <form id="form-submit-permit" onsubmit="handlePermitSubmit(event)" class="space-y-3">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Izin / Cuti <span class="text-rose-500">*</span></label>
+                <select id="permit-type-select" name="permission_type" required class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500 font-medium">
+                    <option value="sakit">Sakit (Surat Dokter)</option>
+                    <option value="izin" selected>Izin Keperluan Pribadi</option>
+                    <option value="cuti">Cuti Tahunan / Alasan Penting</option>
+                    <option value="dinas_luar">Tugas Luar / Dinas Sekolah</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Mulai <span class="text-rose-500">*</span></label>
+                    <input type="date" id="permit-start-date" name="start_date" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Sampai</label>
+                    <input type="date" id="permit-end-date" name="end_date" class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Alasan / Kepentingan <span class="text-rose-500">*</span></label>
+                <textarea id="permit-reason" name="reason" rows="2" required placeholder="Tuliskan keterangan keperluan izin atau sakit..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">Foto Bukti / Surat (Opsional)</label>
+                <input type="file" id="permit-document" name="document" accept="image/*,application/pdf" class="w-full text-xs p-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white">
+                <span class="text-[9px] text-slate-400 mt-1 block">Bisa berupa foto surat dokter atau surat tugas.</span>
+            </div>
+
+            <button type="submit" id="btn-submit-permit" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5">
+                <span>Kirim Pengajuan Izin</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Panel 2: Riwayat Pengajuan Izin Saya -->
+    <div id="panel-permits-history" class="hidden space-y-2">
+        <div id="list-my-permits-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat riwayat izin...</div>
+        </div>
+    </div>
+
+    <!-- Panel 3: Persetujuan Izin KS (Hanya Kepala Sekolah / Admin) -->
+    <div id="panel-permits-approval" class="hidden space-y-2">
+        <div id="list-pending-approvals-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat pengajuan menunggu persetujuan...</div>
+        </div>
+    </div>
+</div>

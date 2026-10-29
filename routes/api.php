@@ -36,8 +36,21 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('dashboard', [MobileDashboardController::class, 'index']);
     Route::get('kbm', [MobileKbmController::class, 'index']);
     Route::get('tasks', [MobileTasksController::class, 'index']);
-    Route::post('tasks/bk/status', [MobileTasksController::class, 'updateBkReferralStatus']);
+
+    // Sub-modul Tugas Khusus Mobile (In-App Pages)
+    Route::get('tasks/permits', [MobileTasksController::class, 'getPermitsData']);
+    Route::post('tasks/permits/store', [MobileTasksController::class, 'storeGtkPermit']);
+    Route::post('tasks/permits/{id}/action', [MobileTasksController::class, 'actionGtkPermit']);
+
+    Route::get('tasks/visitations', [MobileTasksController::class, 'getVisitationsData']);
+    Route::post('tasks/visitations/store', [MobileTasksController::class, 'storeVisitation']);
+
+    Route::get('tasks/discipline', [MobileTasksController::class, 'getDisciplineData']);
     Route::post('tasks/discipline/verify', [MobileTasksController::class, 'verifyDisciplineIncident']);
+
+    Route::get('tasks/bk', [MobileTasksController::class, 'getBkData']);
+    Route::post('tasks/bk/services/store', [MobileTasksController::class, 'storeBkService']);
+    Route::post('tasks/bk/status', [MobileTasksController::class, 'updateBkReferralStatus']);
     Route::get('profile', [MobileProfileController::class, 'index']);
     Route::get('notifications', [MobileNotificationController::class, 'index']);
     Route::post('profile/update', [MobileAuthController::class, 'updateProfile']);
