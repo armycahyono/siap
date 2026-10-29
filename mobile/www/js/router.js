@@ -131,6 +131,11 @@ const SIAP_ROUTER = (function() {
             }
         }
 
+        // Hentikan pelacak GPS jika berpindah dari halaman attendance
+        if (cleanPath !== '/attendance' && typeof window.stopAttendanceTracker === 'function') {
+            window.stopAttendanceTracker();
+        }
+
         // Tampilkan atau Pasang View Baru
         let viewPane = mountedViews[cleanPath];
 

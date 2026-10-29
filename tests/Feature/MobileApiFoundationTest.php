@@ -181,6 +181,7 @@ class MobileApiFoundationTest extends TestCase
                 'longitude' => 111.97259400,
                 'accuracy' => 10,
                 'type' => 'check_in',
+                'notes' => 'Catatan presensi masuk pengujian',
             ]);
 
         $response->assertOk()

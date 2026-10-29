@@ -639,6 +639,160 @@
     // ==========================================
     // 3. ATTENDANCE VIEW CONTROLLER
     // ==========================================
+    let attendanceWatchId = null;
+    let attendanceUserLocation = null;
+
+    function calculateHaversine(lat1, lon1, lat2, lon2) {
+        const R = 6371000; // Radius bumi dalam meter
+        const toRad = (v) => (v * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return Math.round(R * c);
+    }
+
+    function stopAttendanceTracker() {
+        if (attendanceWatchId !== null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(attendanceWatchId);
+            attendanceWatchId = null;
+        }
+    }
+    window.stopAttendanceTracker = stopAttendanceTracker;
+
+    function updateAttendanceBadges(container, gpsState, radiusState, distance = null, radiusLimit = 100, errText = null) {
+        const badgeGps = container.querySelector('#badge-gps-status');
+        const dotGps = container.querySelector('#dot-gps-status');
+        const textGps = container.querySelector('#text-gps-status');
+
+        const badgeRadius = container.querySelector('#badge-radius-status');
+        const dotRadius = container.querySelector('#dot-radius-status');
+        const textRadius = container.querySelector('#text-radius-status');
+
+        const distanceTextEl = container.querySelector('#att-distance-text');
+
+        // 1. Update GPS Badge
+        if (badgeGps && dotGps && textGps) {
+            if (gpsState === 'ready') {
+                badgeGps.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold transition-all';
+                dotGps.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+                textGps.textContent = 'GPS Ready';
+            } else if (gpsState === 'loading') {
+                badgeGps.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold transition-all';
+                dotGps.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse';
+                textGps.textContent = 'Mencari GPS...';
+            } else {
+                badgeGps.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold transition-all';
+                dotGps.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+                textGps.textContent = 'GPS Not Ready';
+            }
+        }
+
+        // 2. Update Radius Badge
+        if (badgeRadius && dotRadius && textRadius) {
+            if (radiusState === 'ready') {
+                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold transition-all';
+                dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+                textRadius.textContent = 'Radius Ready';
+            } else if (radiusState === 'out') {
+                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold transition-all';
+                dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+                textRadius.textContent = 'Radius Not Ready';
+            } else if (radiusState === 'checking') {
+                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold transition-all';
+                dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse';
+                textRadius.textContent = 'Mengecek Radius...';
+            } else {
+                badgeRadius.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold transition-all';
+                dotRadius.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+                textRadius.textContent = 'Radius Not Ready';
+            }
+        }
+
+        // 3. Update Detail Jarak Text
+        if (distanceTextEl) {
+            if (distance !== null) {
+                if (radiusState === 'ready') {
+                    distanceTextEl.innerHTML = `Jarak: <span class="font-bold text-emerald-700">${distance}m</span> dari sekolah (Maks. ${radiusLimit}m)`;
+                } else if (radiusState === 'out') {
+                    distanceTextEl.innerHTML = `Jarak: <span class="font-bold text-rose-600">${distance}m</span> (Di luar batas ${radiusLimit}m)`;
+                } else {
+                    distanceTextEl.textContent = `Jarak: ${distance} meter`;
+                }
+            } else if (errText) {
+                distanceTextEl.textContent = errText;
+            } else {
+                distanceTextEl.textContent = 'Mencari lokasi perangkat...';
+            }
+        }
+    }
+
+    function initAttendanceTracker(container, schoolLocation) {
+        stopAttendanceTracker();
+
+        if (!navigator.geolocation) {
+            updateAttendanceBadges(container, 'not_ready', 'not_ready', null, 100, 'GPS tidak didukung perangkat/browser');
+            return;
+        }
+
+        updateAttendanceBadges(container, 'loading', 'checking');
+
+        const onPosSuccess = (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const acc = Math.round(pos.coords.accuracy);
+
+            attendanceUserLocation = {
+                latitude: lat,
+                longitude: lon,
+                accuracy: acc,
+                timestamp: Date.now(),
+            };
+
+            const schoolLat = schoolLocation?.latitude ?? -7.95590200;
+            const schoolLon = schoolLocation?.longitude ?? 111.97259400;
+            const radiusLimit = schoolLocation?.radius_meters ?? 100;
+
+            const dist = calculateHaversine(lat, lon, schoolLat, schoolLon);
+            attendanceUserLocation.distance = dist;
+
+            const isInside = dist <= radiusLimit;
+            updateAttendanceBadges(
+                container,
+                'ready',
+                isInside ? 'ready' : 'out',
+                dist,
+                radiusLimit
+            );
+        };
+
+        const onPosError = (err) => {
+            attendanceUserLocation = null;
+            let errMsg = 'Gagal membaca koordinat GPS';
+            if (err.code === 1) errMsg = 'Izin lokasi (GPS) belum diaktifkan/ditolak';
+            else if (err.code === 2) errMsg = 'Sinyal lokasi tidak dapat ditentukan';
+            else if (err.code === 3) errMsg = 'Waktu deteksi GPS habis (timeout)';
+
+            updateAttendanceBadges(container, 'not_ready', 'not_ready', null, 100, errMsg);
+        };
+
+        navigator.geolocation.getCurrentPosition(onPosSuccess, onPosError, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+        });
+
+        try {
+            attendanceWatchId = navigator.geolocation.watchPosition(onPosSuccess, onPosError, {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 5000,
+            });
+        } catch (e) {}
+    }
+
     window.initAttendance = async function(container) {
         async function fetchStatus() {
             try {
@@ -646,6 +800,7 @@
                 if (res.success && res.data) {
                     attendanceDataCache = res.data;
                     renderAttendanceContent(container, res.data);
+                    initAttendanceTracker(container, res.data.school_location);
                 }
             } catch (err) {
                 console.error('Error fetching attendance status:', err);
@@ -672,22 +827,44 @@
         const checkOutTimeEl = container.querySelector('#att-today-out');
         const btnCheckIn = container.querySelector('#btn-att-checkin');
         const btnCheckOut = container.querySelector('#btn-att-checkout');
+        const subCheckIn = container.querySelector('#sub-att-checkin');
+        const subCheckOut = container.querySelector('#sub-att-checkout');
 
         if (checkInTimeEl) checkInTimeEl.textContent = data.today?.check_in_time || '--:--';
         if (checkOutTimeEl) checkOutTimeEl.textContent = data.today?.check_out_time || '--:--';
 
+        // 1. Tombol Presensi Masuk (Logo di Tengah)
         if (btnCheckIn) {
-            btnCheckIn.disabled = !data.today?.can_check_in;
-            btnCheckIn.className = data.today?.can_check_in
-                ? 'w-full py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-blue-700 active:scale-95 transition'
-                : 'w-full py-3 bg-slate-200 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed';
+            const canIn = !!data.today?.can_check_in;
+            btnCheckIn.disabled = !canIn;
+            if (canIn) {
+                btnCheckIn.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all shadow-md active:scale-98 bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 cursor-pointer';
+                if (subCheckIn) subCheckIn.textContent = 'Ketuk untuk mencatat jam kehadiran masuk';
+            } else {
+                btnCheckIn.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed';
+                if (subCheckIn) {
+                    subCheckIn.textContent = data.today?.check_in_time 
+                        ? `Sudah tercatat masuk pukul ${data.today.check_in_time} WIB` 
+                        : 'Presensi masuk tidak tersedia';
+                }
+            }
         }
 
+        // 2. Tombol Presensi Pulang (Logo di Tengah)
         if (btnCheckOut) {
-            btnCheckOut.disabled = !data.today?.can_check_out;
-            btnCheckOut.className = data.today?.can_check_out
-                ? 'w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700 active:scale-95 transition'
-                : 'w-full py-3 bg-slate-200 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed';
+            const canOut = !!data.today?.can_check_out;
+            btnCheckOut.disabled = !canOut;
+            if (canOut) {
+                btnCheckOut.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all shadow-md active:scale-98 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 cursor-pointer';
+                if (subCheckOut) {
+                    subCheckOut.textContent = data.today?.has_check_out 
+                        ? `Sudah absen pulang pukul ${data.today.check_out_time} WIB (Ketuk untuk perbarui)`
+                        : 'Ketuk untuk mencatat jam kepulangan';
+                }
+            } else {
+                btnCheckOut.className = 'w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed';
+                if (subCheckOut) subCheckOut.textContent = 'Harap presensi masuk terlebih dahulu';
+            }
         }
 
         // Recent logs list
@@ -700,7 +877,7 @@
                 logList.innerHTML = logs.map(l => `
                     <div class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
                         <div class="flex items-center gap-2.5">
-                            <span class="w-2 h-2 rounded-full ${l.type === 'check_in' ? 'bg-blue-500' : 'bg-emerald-500'}"></span>
+                            <span class="w-2 h-2 rounded-full ${l.type === 'check_in' ? 'bg-emerald-500' : 'bg-blue-500'}"></span>
                             <div>
                                 <p class="text-xs font-bold text-slate-800">${l.status_label}</p>
                                 <p class="text-[10px] text-slate-400">${l.date} &bull; ${l.method}</p>
@@ -719,9 +896,67 @@
             return;
         }
 
-        const originalText = button.textContent;
+        // Ambil catatan opsional di bawah tombol pulang
+        const notesInput = container.querySelector('#att-notes-input');
+        const notesValue = notesInput ? notesInput.value.trim() : '';
+
+        // Cek jika strict radius diaktifkan dan posisi terdeteksi di luar radius
+        if (attendanceDataCache?.strict_radius && attendanceUserLocation) {
+            const limit = attendanceDataCache.school_location?.radius_meters || 100;
+            if (attendanceUserLocation.distance > limit) {
+                showToast(`Anda berada ${attendanceUserLocation.distance}m dari sekolah (Maksimal ${limit}m). Presensi harus dalam radius sekolah.`, 'error');
+                return;
+            }
+        }
+
+        const originalHtml = button.innerHTML;
         button.disabled = true;
-        button.innerHTML = '<span class="inline-block animate-spin mr-1">&#8635;</span> Membaca GPS...';
+        button.innerHTML = `
+            <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-1.5 shadow-inner">
+                <svg class="animate-spin h-6 w-6 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+            </div>
+            <span class="text-xs font-black tracking-tight uppercase">Membaca GPS &amp; Mengirim...</span>
+            <span class="text-[10px] text-white/80 font-medium mt-0.5">Memvalidasi koordinat presensi</span>
+        `;
+
+        const executeSubmit = async (lat, lon, acc) => {
+            try {
+                const payload = {
+                    latitude: lat,
+                    longitude: lon,
+                    accuracy: acc,
+                    type: type,
+                };
+                if (notesValue) {
+                    payload.notes = notesValue;
+                }
+
+                const res = await SIAP_API.submitAttendance(payload);
+
+                if (res.success) {
+                    showToast(res.message || 'Presensi berhasil dicatat!', 'success');
+                    if (notesInput) notesInput.value = '';
+                    window.initAttendance(container);
+                } else {
+                    showToast(res.message || 'Presensi ditolak.', 'error');
+                }
+            } catch (err) {
+                showToast(err.message || 'Gagal menyimpan presensi.', 'error');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+        };
+
+        // Jika lokasi sudah dicache kurang dari 10 detik lalu, langsung kirim
+        if (attendanceUserLocation && (Date.now() - attendanceUserLocation.timestamp < 10000)) {
+            await executeSubmit(
+                attendanceUserLocation.latitude,
+                attendanceUserLocation.longitude,
+                attendanceUserLocation.accuracy
+            );
+            return;
+        }
 
         navigator.geolocation.getCurrentPosition(
             async (pos) => {
@@ -729,35 +964,21 @@
                 const lon = pos.coords.longitude;
                 const acc = Math.round(pos.coords.accuracy);
 
-                button.innerHTML = '<span class="inline-block animate-spin mr-1">&#8635;</span> Mengirim...';
+                attendanceUserLocation = {
+                    latitude: lat,
+                    longitude: lon,
+                    accuracy: acc,
+                    timestamp: Date.now()
+                };
 
-                try {
-                    const res = await SIAP_API.submitAttendance({
-                        latitude: lat,
-                        longitude: lon,
-                        accuracy: acc,
-                        type: type,
-                    });
-
-                    if (res.success) {
-                        showToast(res.message || 'Presensi berhasil dicatat!', 'success');
-                        window.initAttendance(container);
-                    } else {
-                        showToast(res.message || 'Presensi ditolak.', 'error');
-                    }
-                } catch (err) {
-                    showToast(err.message || 'Gagal menyimpan presensi.', 'error');
-                } finally {
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }
+                await executeSubmit(lat, lon, acc);
             },
             (err) => {
                 button.disabled = false;
-                button.textContent = originalText;
+                button.innerHTML = originalHtml;
                 let msg = 'Gagal mendeteksi lokasi GPS.';
-                if (err.code === 1) msg = 'Izin akses lokasi (GPS) ditolak oleh browser/HP.';
-                else if (err.code === 2) msg = 'Lokasi tidak dapat ditentukan.';
+                if (err.code === 1) msg = 'Izin akses lokasi (GPS) ditolak oleh browser/HP. Mohon aktifkan izin lokasi.';
+                else if (err.code === 2) msg = 'Sinyal lokasi tidak dapat ditentukan.';
                 else if (err.code === 3) msg = 'Waktu deteksi GPS habis (timeout).';
                 showToast(msg, 'error');
             },
