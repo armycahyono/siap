@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\BkReferral;
 use App\Models\Classroom;
+use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketIncident;
@@ -705,6 +706,16 @@ class MobileTasksController extends Controller
 
             $periodTimes = LessonSchedule::periodTimes($date->dayOfWeekIso === 5 ? 'jumat' : 'senin');
 
+            // Agenda / Event Kurikulum yang aktif pada tanggal ini
+            $todayEvents = CurriculumEvent::with('users')
+                ->where(function ($q) use ($targetDateStr) {
+                    $q->whereDate('start_date', '<=', $targetDateStr)
+                        ->where(function ($sub) use ($targetDateStr) {
+                            $sub->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $targetDateStr);
+                        });
+                })->get();
+
             // Presensi Log GTK pada tanggal target
             $gtkScans = AttendanceLog::with('user')
                 ->where('user_type', 'teacher')
@@ -743,6 +754,9 @@ class MobileTasksController extends Controller
                 $isPiket = $u->isPiketOfficerToday($targetDateStr);
                 $hasSchedule = $teacherSchedules->isNotEmpty();
 
+                // Cari agenda / event kurikulum yang menugaskan personil ini hari ini
+                $assignedEvents = $todayEvents->filter(fn ($ev) => ! $ev->is_holiday && $ev->teacher_impact !== 'diliburkan_penuh' && $ev->users->contains('id', $u->id));
+
                 // Tentukan jam kewajiban masuk (Datang)
                 $expectedStartTimeStr = null;
                 $dutyLabel = 'Tugas';
@@ -753,16 +767,18 @@ class MobileTasksController extends Controller
                 } elseif ($isStaffTu) {
                     $expectedStartTimeStr = '07:00';
                     $dutyLabel = ($u->position ?: 'Staf TU').' (07:00)';
+                } elseif ($assignedEvents->isNotEmpty()) {
+                    $ev = $assignedEvents->first();
+                    $expectedStartTimeStr = $ev->gtk_checkin_time ?: '07:00';
+                    $dutyLabel = $ev->title." ({$expectedStartTimeStr})";
                 } elseif ($hasSchedule) {
                     $earliestSched = $teacherSchedules->first();
                     $periodNum = (int) $earliestSched->start_period;
                     $expectedStartTimeStr = $earliestSched->start_time ?: ($periodTimes[$periodNum]['start'] ?? '07:00');
                     $dutyLabel = "Jam ke-{$periodNum} ({$expectedStartTimeStr} WIB)";
-                }
-
-                // Jika bukan staf, bukan piket, dan tidak punya jam mengajar hari ini: TIDAK WAJIB MASUK
-                if (! $expectedStartTimeStr) {
-                    continue;
+                } else {
+                    $expectedStartTimeStr = '07:00';
+                    $dutyLabel = 'Tugas Sekolah (07:00)';
                 }
 
                 $obligatedGtkList->push($u);
