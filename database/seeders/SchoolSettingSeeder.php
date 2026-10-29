@@ -21,6 +21,7 @@ class SchoolSettingSeeder extends Seeder
                 'school_phone' => '(0354) 771234',
                 'school_email' => 'smkpgrikras@gmail.com',
                 'school_website' => 'https://smkpgrikras.sch.id',
+                'logo_path' => 'school/logo_smk_pgri_kras.png',
                 'principal_name' => 'Endang Patmowati, S.Pd.',
                 'principal_nip' => null,
                 'curriculum_head_name' => 'Waka Kurikulum',

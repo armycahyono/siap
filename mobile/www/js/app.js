@@ -808,6 +808,8 @@
         const formEditProfile = container.querySelector('#form-edit-profile');
         const formEditPassword = container.querySelector('#form-edit-password');
 
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+
         window.openEditProfileModal = function() {
             if (!modalEditProfile) return;
             const u = profileDataCache?.user || SIAP_ROUTER.getCurrentUser() || {};
@@ -819,21 +821,25 @@
             if (inputEmail) inputEmail.value = u.email || '';
             if (inputPhone) inputPhone.value = u.phone || '';
 
+            if (bottomNav) bottomNav.classList.add('hidden');
             modalEditProfile.classList.remove('hidden');
         };
 
         window.closeEditProfileModal = function() {
             if (modalEditProfile) modalEditProfile.classList.add('hidden');
+            if (bottomNav) bottomNav.classList.remove('hidden');
         };
 
         window.openEditPasswordModal = function() {
             if (!modalEditPassword) return;
             if (formEditPassword) formEditPassword.reset();
+            if (bottomNav) bottomNav.classList.add('hidden');
             modalEditPassword.classList.remove('hidden');
         };
 
         window.closeEditPasswordModal = function() {
             if (modalEditPassword) modalEditPassword.classList.add('hidden');
+            if (bottomNav) bottomNav.classList.remove('hidden');
         };
 
         // Form Submit: Edit Profil

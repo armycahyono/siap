@@ -675,7 +675,7 @@
                                 $appSchoolSetting = \App\Models\SchoolSetting::getSetting();
                                 $appSchoolLogo = $appSchoolSetting->logo_path;
                             @endphp
-                            @if($appSchoolLogo)
+                            @if($appSchoolLogo && file_exists(public_path('storage/' . $appSchoolLogo)))
                                 <img src="{{ asset('storage/' . $appSchoolLogo) }}" alt="Logo" class="flex-shrink-0" style="max-height: 35px; max-width: 35px; object-fit: contain;">
                             @else
                                 <img src="{{ asset('icons/icon-192x192.png') }}" alt="Logo" class="flex-shrink-0" style="max-height: 35px; max-width: 35px; object-fit: contain;" onerror="this.src='/favicon.ico'">

@@ -38,12 +38,10 @@
                 <div class="col-lg-5 hero-banner text-white p-5 d-flex flex-column justify-content-between">
                     <div>
                         <div class="d-flex align-items-center mb-4">
-                            @if($setting->logo_path)
+                            @if($setting->logo_path && file_exists(public_path('storage/' . $setting->logo_path)))
                                 <img src="{{ asset('storage/' . $setting->logo_path) }}" alt="Logo" class="me-3" style="max-height: 48px; max-width: 60px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));">
                             @else
-                                <div class="avatar avatar-md bg-warning text-dark rounded-3 fw-bold fs-3 me-3">
-                                    SIAP
-                                </div>
+                                <img src="{{ asset('icons/icon-192x192.png') }}" alt="Logo" class="me-3" style="max-height: 48px; max-width: 60px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));">
                             @endif
                             <div>
                                 <h3 class="mb-0 text-white fw-bold">SMK PGRI KRAS</h3>

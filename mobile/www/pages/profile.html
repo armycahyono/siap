@@ -64,8 +64,8 @@
     </div>
 
     <!-- 1. Cupertino Modal Sheet: Edit Data Profil -->
-    <div id="modal-edit-profile" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
-        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+    <div id="modal-edit-profile" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-8 sm:pb-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
             <!-- Modal Header & Handle Bar -->
             <div class="text-center relative pb-2 border-b border-slate-100">
                 <div class="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-3 sm:hidden"></div>
@@ -91,7 +91,7 @@
                     <input type="text" id="edit-prof-phone" placeholder="08xxxxxxxxxx" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                 </div>
 
-                <div class="pt-2 flex gap-2">
+                <div class="pt-3 pb-2 flex gap-2">
                     <button type="button" onclick="closeEditProfileModal()" class="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
                         Batal
                     </button>
@@ -104,8 +104,8 @@
     </div>
 
     <!-- 2. Cupertino Modal Sheet: Ganti Kata Sandi -->
-    <div id="modal-edit-password" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
-        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+    <div id="modal-edit-password" class="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden transition-opacity">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 pb-8 sm:pb-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
             <!-- Modal Header & Handle Bar -->
             <div class="text-center relative pb-2 border-b border-slate-100">
                 <div class="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-3 sm:hidden"></div>
@@ -131,7 +131,7 @@
                     <input type="password" id="edit-pwd-confirm" required minlength="6" placeholder="Ketik ulang kata sandi baru" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
                 </div>
 
-                <div class="pt-2 flex gap-2">
+                <div class="pt-3 pb-2 flex gap-2">
                     <button type="button" onclick="closeEditPasswordModal()" class="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
                         Batal
                     </button>

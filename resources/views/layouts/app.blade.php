@@ -536,12 +536,10 @@
                 @php $appSchoolLogo = \App\Models\SchoolSetting::getSetting()->logo_path; @endphp
                 <div class="d-flex align-items-center justify-content-between w-100 py-3 border-bottom border-white-subtle mb-2 sidebar-brand-container">
                     <a href="{{ route('dashboard') }}" class="d-flex align-items-center text-decoration-none text-reset overflow-hidden ps-2">
-                        @if($appSchoolLogo)
+                        @if($appSchoolLogo && file_exists(public_path('storage/' . $appSchoolLogo)))
                             <img src="{{ asset('storage/' . $appSchoolLogo) }}" alt="Logo" class="me-3 flex-shrink-0" style="max-height: 40px; max-width: 46px; object-fit: contain;">
                         @else
-                            <span class="avatar avatar-md bg-yellow text-dark rounded-3 me-3 fw-bold shadow-sm flex-shrink-0" style="background-color: var(--brand-gold) !important; color: #fff !important; font-size: 0.95rem; min-width: 40px; height: 40px;">
-                                SIAP
-                            </span>
+                            <img src="{{ asset('icons/icon-192x192.png') }}" alt="Logo" class="me-3 flex-shrink-0" style="max-height: 40px; max-width: 46px; object-fit: contain;">
                         @endif
                         <div class="text-start sidebar-brand-text">
                             <div class="text-uppercase tracking-wider fw-bold text-truncate" style="font-size: 0.76rem; letter-spacing: 0.08rem; color: #93c5fd !important;">SMK PGRI KRAS</div>
