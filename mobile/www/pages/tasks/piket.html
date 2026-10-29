@@ -1,4 +1,4 @@
-<div class="space-y-3 pb-12">
+<div class="space-y-3 pb-28">
     <!-- Header Sub-Halaman dengan Navigasi Kembali -->
     <div class="card-elevated p-3 flex items-center justify-between">
         <div class="flex items-center gap-2">
@@ -197,6 +197,15 @@
             </div>
         </div>
 
+        <!-- Daftar Guru Izin Hari Ini & Lampiran Tugas -->
+        <div id="piket-gtk-permits-wrap" class="hidden space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Guru Izin / Cuti Hari Ini</span>
+                <span id="piket-gtk-permits-badge" class="text-[9px] font-bold px-2 py-0.2 rounded-full bg-purple-100 text-purple-700 font-mono">0 Guru</span>
+            </div>
+            <div id="list-piket-gtk-permits-container" class="space-y-1.5"></div>
+        </div>
+
         <div id="list-piket-invals-container" class="space-y-2">
             <div class="text-center py-8 text-xs text-slate-400">Memuat data guru inval...</div>
         </div>
@@ -238,10 +247,10 @@
 <!-- ========================================================================= -->
 <!-- MODAL BOTTOM SHEET: TERBITKAN IZIN SISWA                                 -->
 <!-- ========================================================================= -->
-<div id="modal-piket-permit" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4">
+<div id="modal-piket-permit" onclick="if(event.target === this) closePiketPermitModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
         <!-- Header Modal -->
-        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
                 <span class="text-base">🎟️</span>
                 <h4 class="text-xs font-black text-slate-800">Terbitkan Surat Izin Siswa</h4>
@@ -250,7 +259,7 @@
         </div>
 
         <!-- Body Form -->
-        <div class="p-4 overflow-y-auto space-y-3">
+        <div class="p-4 pb-8 sm:pb-5 overflow-y-auto space-y-3">
             <form id="form-piket-permit" onsubmit="handlePiketPermitSubmit(event)" class="space-y-3">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jenis Izin *</label>
@@ -300,23 +309,14 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kelas Siswa *</label>
-                    <select id="permit-classroom-select" name="classroom_id" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500 font-medium">
-                        <option value="">-- Pilih Kelas --</option>
-                    </select>
-                </div>
+                <!-- Hidden input untuk ID kelas siswa terpilih (otomatis dari data siswa) -->
+                <input type="hidden" id="permit-classroom-id" name="classroom_id">
 
-                <!-- Jam Masuk & Jam KBM ke (Khusus Terlambat) -->
-                <div id="field-group-terlambat" class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Waktu Masuk</label>
-                        <input type="time" id="permit-entry-time" name="entry_time" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-purple-500">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jam Pelajaran Ke-</label>
-                        <input type="number" id="permit-period-assigned" name="period_assigned" min="1" max="15" placeholder="Contoh: 2" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-purple-500">
-                    </div>
+                <!-- Jam Masuk (Khusus Terlambat - Jam Pelajaran Ke otomatis mengikuti waktu masuk) -->
+                <div id="field-group-terlambat">
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Waktu Masuk</label>
+                    <input type="time" id="permit-entry-time" name="entry_time" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+                    <p class="text-[9.5px] text-slate-400 mt-1 italic">Jam pelajaran (JP) akan ditentukan otomatis dari jadwal aktif saat jam masuk.</p>
                 </div>
 
                 <!-- Jam Keluar & Kembali (Khusus Keluar Sementara) -->
@@ -354,9 +354,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL BOTTOM SHEET: CATAT KEJADIAN / KASUS PIKET                         -->
 <!-- ========================================================================= -->
-<div id="modal-piket-incident" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4">
+<div id="modal-piket-incident" onclick="if(event.target === this) closePiketIncidentModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
-        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
                 <span class="text-base">🚨</span>
                 <h4 class="text-xs font-black text-slate-800">Catat Kejadian &amp; Pelanggaran</h4>
@@ -364,36 +364,27 @@
             <button type="button" onclick="closePiketIncidentModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-base">&times;</button>
         </div>
 
-        <div class="p-4 overflow-y-auto space-y-3">
+        <div class="p-4 pb-8 sm:pb-5 overflow-y-auto space-y-3">
             <form id="form-piket-incident" onsubmit="handlePiketIncidentSubmit(event)" class="space-y-3">
-                <!-- Smart Student Picker -->
+                <!-- Smart Student Picker (Bisa Lebih Dari 1 Siswa) -->
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Siswa Terlibat *</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">Siswa Terlibat *</label>
+                        <span id="inc-selected-count-badge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 hidden">0 siswa terpilih</span>
+                    </div>
                     <div id="incident-student-picker" class="student-smart-picker relative" data-theme="rose">
-                        <input type="hidden" id="inc-student-id" name="student_id" required>
+                        <input type="hidden" id="inc-student-id" name="student_id">
                         <input type="hidden" id="inc-student-name" name="student_name">
+                        <input type="hidden" id="inc-classroom-id" name="classroom_id">
 
-                        <!-- Kartu Siswa Terpilih (Default Tersembunyi) -->
-                        <div class="selected-student-card hidden p-2.5 rounded-xl bg-rose-50/80 border border-rose-200 flex items-center justify-between">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <div class="w-8 h-8 rounded-lg bg-rose-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                                    <span class="student-avatar-initial">S</span>
-                                </div>
-                                <div class="min-w-0">
-                                    <div class="text-xs font-bold text-slate-800 truncate student-selected-name">Nama Siswa</div>
-                                    <div class="text-[10px] text-rose-700 font-medium truncate student-selected-meta">Kelas &bull; NISN: -</div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-clear-selection text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-white border border-rose-200 px-2 py-1 rounded-lg active:scale-95 transition shrink-0 ml-2">
-                                Ganti
-                            </button>
-                        </div>
+                        <!-- Daftar Siswa Terpilih (Chips Multi-Siswa) -->
+                        <div id="inc-selected-students-list" class="selected-students-list flex flex-wrap gap-1.5 mb-2 hidden"></div>
 
-                        <!-- Input Pencarian Pintar (Default Tampil) -->
+                        <!-- Input Pencarian Pintar (Tetap Tampil untuk Menambah Siswa) -->
                         <div class="search-input-wrapper relative">
                             <div class="relative flex items-center">
                                 <svg class="w-4 h-4 text-slate-400 absolute left-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                                <input type="text" autocomplete="off" placeholder="Ketik min. 3 huruf nama atau NISN siswa..." class="student-search-input w-full text-xs pl-8 pr-7 py-2 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium placeholder:text-slate-400">
+                                <input type="text" autocomplete="off" placeholder="Ketik min. 3 huruf nama/NISN untuk menambah siswa..." class="student-search-input w-full text-xs pl-8 pr-7 py-2 rounded-xl border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium placeholder:text-slate-400">
                                 <button type="button" class="btn-clear-input hidden absolute right-2 text-slate-400 hover:text-slate-600 text-xs p-1">✕</button>
                             </div>
 
@@ -404,25 +395,17 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kelas Siswa</label>
-                        <select id="inc-classroom-select" name="classroom_id" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium">
-                            <option value="">-- Pilih Kelas --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kategori Kasus *</label>
-                        <select id="inc-category-select" name="category" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium">
-                            <option value="kedisiplinan">Kedisiplinan</option>
-                            <option value="seragam">Seragam / Atribut</option>
-                            <option value="gadget_terlarang">HP / Gadget Saat KBM</option>
-                            <option value="rokok">Rokok / Vape</option>
-                            <option value="perkelahian">Perkelahian / Bertengkar</option>
-                            <option value="kesehatan_pingsan">Kesehatan / Pingsan</option>
-                            <option value="lainnya">Kejadian Lainnya</option>
-                        </select>
-                    </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kategori Kasus *</label>
+                    <select id="inc-category-select" name="category" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-rose-500 font-medium">
+                        <option value="kedisiplinan">Kedisiplinan</option>
+                        <option value="seragam">Seragam / Atribut</option>
+                        <option value="gadget_terlarang">HP / Gadget Saat KBM</option>
+                        <option value="rokok">Rokok / Vape</option>
+                        <option value="perkelahian">Perkelahian / Bertengkar</option>
+                        <option value="kesehatan_pingsan">Kesehatan / Pingsan</option>
+                        <option value="lainnya">Kejadian Lainnya</option>
+                    </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -485,9 +468,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL BOTTOM SHEET: TUGASKAN GURU INVAL                                  -->
 <!-- ========================================================================= -->
-<div id="modal-piket-inval" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4">
+<div id="modal-piket-inval" onclick="if(event.target === this) closePiketInvalModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
-        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
                 <span class="text-base">🔄</span>
                 <h4 class="text-xs font-black text-slate-800">Tugaskan Guru Inval (Jam Kosong)</h4>
@@ -495,30 +478,36 @@
             <button type="button" onclick="closePiketInvalModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-base">&times;</button>
         </div>
 
-        <div class="p-4 overflow-y-auto space-y-3">
+        <div class="p-4 pb-8 sm:pb-5 overflow-y-auto space-y-3">
             <form id="form-piket-inval" onsubmit="handlePiketInvalSubmit(event)" class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kelas Kosong *</label>
-                        <select id="inval-classroom-select" name="classroom_id" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
-                            <option value="">-- Pilih Kelas --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Mata Pelajaran</label>
-                        <select id="inval-subject-select" name="subject_id" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
-                            <option value="">-- Pilih Mapel --</option>
-                        </select>
-                    </div>
-                </div>
-
+                <!-- 1. Pilih Guru Yang Berhalangan / Izin -->
                 <div>
                     <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Guru Yang Berhalangan / Izin *</label>
-                    <select id="inval-absent-teacher-select" name="absent_teacher_id" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <select id="inval-absent-teacher-select" name="absent_teacher_id" onchange="handleAbsentTeacherChange(this.value)" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
                         <option value="">-- Pilih Guru Berhalangan --</option>
                     </select>
                 </div>
 
+                <!-- 2. Pilih Mata Pelajaran & Jam Pelajaran Hari Ini -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">Mata Pelajaran &amp; Jam KBM Hari Ini *</label>
+                        <span id="inval-schedule-count-badge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 hidden">0 Jadwal</span>
+                    </div>
+                    <select id="inval-schedule-select" name="schedule_id" onchange="handleInvalScheduleChange(this.value)" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
+                        <option value="">-- Pilih Guru Di Atas Terlebih Dahulu --</option>
+                    </select>
+                    <div id="inval-schedule-hint" class="text-[9.5px] text-slate-500 mt-1 italic hidden"></div>
+                </div>
+
+                <!-- Hidden data jadwal yang terpilih -->
+                <input type="hidden" id="inval-classroom-id" name="classroom_id">
+                <input type="hidden" id="inval-subject-id" name="subject_id">
+                <input type="hidden" id="inval-period-start" name="period_start" value="1">
+                <input type="hidden" id="inval-period-end" name="period_end" value="2">
+                <input type="hidden" id="inval-use-permit-attachment" name="use_permit_attachment" value="0">
+
+                <!-- 3. Tentukan Guru Inval / Pengganti -->
                 <div>
                     <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Guru Inval / Pengganti</label>
                     <select id="inval-teacher-select" name="inval_teacher_id" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
@@ -526,25 +515,40 @@
                     </select>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jam Ke Mulai *</label>
-                        <input type="number" id="inval-period-start" name="period_start" min="1" max="15" value="1" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jam Ke Selesai *</label>
-                        <input type="number" id="inval-period-end" name="period_end" min="1" max="15" value="2" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
-                    </div>
-                </div>
-
+                <!-- 4. Alasan Tidak Hadir -->
                 <div>
                     <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Alasan Tidak Hadir *</label>
                     <input type="text" id="inval-reason" name="reason" placeholder="Contoh: Izin Dinas Luar, Sakit, atau Cuti" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">
                 </div>
 
+                <!-- 5. Materi / Tugas Dari Guru Mapel -->
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Materi / Tugas Dari Guru Mapel</label>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Instruksi / Catatan Tugas</label>
                     <textarea id="inval-assignment" name="assignment_material" rows="2" placeholder="Contoh: Kerjakan LKS Hal. 42 no. 1-10 dikumpulkan di meja piket..." class="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"></textarea>
+                </div>
+
+                <!-- 6. Upload File Tugas -->
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Upload File Tugas (PDF, Word, Excel, Gambar)</label>
+                    <input type="file" id="inval-assignment-file" name="assignment_file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" class="w-full text-xs p-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/50 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-600 file:text-white">
+                    <span class="text-[9px] text-slate-400 mt-1 block">File materi atau lembar kerja untuk dikerjakan siswa di kelas kosong.</span>
+
+                    <!-- Preset File Tugas Dari Izin GTK (Jika Ada) -->
+                    <div id="inval-preset-permit-wrap" class="hidden mt-2 p-2 rounded-xl bg-purple-50 border border-purple-200">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="text-base">📎</span>
+                                <div class="min-w-0">
+                                    <div id="inval-preset-file-name" class="text-[11px] font-bold text-purple-900 truncate">Nama File Tugas</div>
+                                    <div class="text-[9px] text-purple-700">Lampiran dari pengajuan izin guru</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <a id="inval-preset-file-link" href="#" target="_blank" class="px-2 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] active:scale-95 transition">Lihat</a>
+                                <button type="button" id="btn-use-preset-file" onclick="toggleUsePresetFile()" class="px-2 py-0.5 rounded-lg bg-white border border-purple-300 text-purple-800 font-bold text-[10px] active:scale-95 transition">✓ Pakai Ini</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="pt-2">
@@ -560,9 +564,9 @@
 <!-- ========================================================================= -->
 <!-- MODAL BOTTOM SHEET: TAMBAH BUKU TAMU                                     -->
 <!-- ========================================================================= -->
-<div id="modal-piket-guest" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end justify-center p-0 sm:p-4">
+<div id="modal-piket-guest" onclick="if(event.target === this) closePiketGuestModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
-        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-2">
                 <span class="text-base">👥</span>
                 <h4 class="text-xs font-black text-slate-800">Catat Buku Tamu Sekolah</h4>
@@ -570,7 +574,7 @@
             <button type="button" onclick="closePiketGuestModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-base">&times;</button>
         </div>
 
-        <div class="p-4 overflow-y-auto space-y-3">
+        <div class="p-4 pb-8 sm:pb-5 overflow-y-auto space-y-3">
             <form id="form-piket-guest" onsubmit="handlePiketGuestSubmit(event)" class="space-y-3">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Nama Lengkap Tamu *</label>

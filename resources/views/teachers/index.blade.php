@@ -123,16 +123,12 @@
                     </td>
                     <td>
                         <div>
-                            @if($t->phone)
-                                @php
-                                    $cleanPhone = preg_replace('/[^0-9]/', '', $t->phone);
-                                    if (str_starts_with($cleanPhone, '0')) {
-                                        $cleanPhone = '62' . substr($cleanPhone, 1);
-                                    }
-                                @endphp
-                                <a href="https://wa.me/{{ $cleanPhone }}" target="_blank" class="text-success fw-bold text-decoration-none small" title="Hubungi via WhatsApp">
+                            @if($t->whatsapp_url)
+                                <a href="{{ $t->whatsapp_url }}" target="_blank" class="text-success fw-bold text-decoration-none small" title="Hubungi via WhatsApp ({{ $t->whatsapp_number }})">
                                     <i class="ti ti-brand-whatsapp me-1 fs-3 align-middle"></i>{{ $t->phone }}
                                 </a>
+                            @elseif($t->phone)
+                                <span class="text-muted small">{{ $t->phone }}</span>
                             @else
                                 <span class="text-muted small">-</span>
                             @endif
@@ -259,13 +255,7 @@
         ->filter()
         ->unique()
         ->values();
-    $cleanPhone = null;
-    if ($t->phone) {
-        $cleanPhone = preg_replace('/[^0-9]/', '', $t->phone);
-        if (str_starts_with($cleanPhone, '0')) {
-            $cleanPhone = '62' . substr($cleanPhone, 1);
-        }
-    }
+    $cleanPhone = $t->whatsapp_number;
 @endphp
 <div class="modal fade" id="modalDetailGuru{{ $t->id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">

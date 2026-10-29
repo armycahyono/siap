@@ -199,7 +199,15 @@
                                             </tr>
                                             <tr>
                                                 <td class="text-muted">No. Telepon Siswa</td>
-                                                <td class="text-dark">: {{ $student->phone_student ?? '-' }}</td>
+                                                <td class="text-dark">
+                                                    : @if($student->whatsapp_url_student)
+                                                        <a href="{{ $student->whatsapp_url_student }}" target="_blank" class="text-success fw-bold text-decoration-none" title="Chat WhatsApp Siswa">
+                                                            <i class="ti ti-brand-whatsapp me-1"></i>{{ $student->phone_student }}
+                                                        </a>
+                                                    @else
+                                                        {{ $student->phone_student ?? '-' }}
+                                                    @endif
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <td class="text-muted">Email Siswa</td>
@@ -249,7 +257,14 @@
                                                 <div class="small mb-1"><span class="text-muted">Pendidikan:</span> {{ $student->father_education ?? '-' }}</div>
                                                 <div class="small mb-1"><span class="text-muted">Pekerjaan:</span> {{ $student->father_job ?? '-' }}</div>
                                                 <div class="small mb-1"><span class="text-muted">Penghasilan:</span> {{ $student->father_income ?? '-' }}</div>
-                                                <div class="small"><span class="text-muted">No. Telepon:</span> {{ $student->father_phone ?? '-' }}</div>
+                                                <div class="small"><span class="text-muted">No. Telepon:</span>
+                                                    @php $waFather = \App\Support\PhoneNumberHelper::toWhatsappUrl($student->father_phone); @endphp
+                                                    @if($waFather)
+                                                        <a href="{{ $waFather }}" target="_blank" class="text-success text-decoration-none fw-semibold" title="Chat WhatsApp"><i class="ti ti-brand-whatsapp me-1"></i>{{ $student->father_phone }}</a>
+                                                    @else
+                                                        {{ $student->father_phone ?? '-' }}
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
 
@@ -265,7 +280,14 @@
                                                 <div class="small mb-1"><span class="text-muted">Pendidikan:</span> {{ $student->mother_education ?? '-' }}</div>
                                                 <div class="small mb-1"><span class="text-muted">Pekerjaan:</span> {{ $student->mother_job ?? '-' }}</div>
                                                 <div class="small mb-1"><span class="text-muted">Penghasilan:</span> {{ $student->mother_income ?? '-' }}</div>
-                                                <div class="small"><span class="text-muted">No. Telepon:</span> {{ $student->mother_phone ?? '-' }}</div>
+                                                <div class="small"><span class="text-muted">No. Telepon:</span>
+                                                    @php $waMother = \App\Support\PhoneNumberHelper::toWhatsappUrl($student->mother_phone); @endphp
+                                                    @if($waMother)
+                                                        <a href="{{ $waMother }}" target="_blank" class="text-success text-decoration-none fw-semibold" title="Chat WhatsApp"><i class="ti ti-brand-whatsapp me-1"></i>{{ $student->mother_phone }}</a>
+                                                    @else
+                                                        {{ $student->mother_phone ?? '-' }}
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
 
@@ -281,7 +303,14 @@
                                                 <div class="small mb-1"><span class="text-muted">Pendidikan:</span> {{ $student->guardian_education ?? '-' }}</div>
                                                 <div class="small mb-1"><span class="text-muted">Pekerjaan:</span> {{ $student->guardian_job ?? '-' }}</div>
                                                 <div class="small mb-1"><span class="text-muted">Penghasilan:</span> {{ $student->guardian_income ?? '-' }}</div>
-                                                <div class="small"><span class="text-muted">No. Telepon:</span> {{ $student->guardian_phone ?? '-' }}</div>
+                                                <div class="small"><span class="text-muted">No. Telepon:</span>
+                                                    @php $waGuardian = \App\Support\PhoneNumberHelper::toWhatsappUrl($student->guardian_phone); @endphp
+                                                    @if($waGuardian)
+                                                        <a href="{{ $waGuardian }}" target="_blank" class="text-success text-decoration-none fw-semibold" title="Chat WhatsApp"><i class="ti ti-brand-whatsapp me-1"></i>{{ $student->guardian_phone }}</a>
+                                                    @else
+                                                        {{ $student->guardian_phone ?? '-' }}
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -456,6 +456,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // 7. Guru Inval & Kelas Kosong
+        Route::get('inval/{inval}/tugas', [PiketInvalController::class, 'downloadAssignment'])->name('invals.assignment');
         Route::middleware('permission:operate_piket')->group(function () {
             Route::get('inval', [PiketInvalController::class, 'index'])->name('inval.index');
             Route::post('inval', [PiketInvalController::class, 'store'])->name('inval.store');
@@ -655,6 +656,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/izin-cuti-gtk', [GtkPermitController::class, 'index'])->name('gtk-permits.index');
         Route::post('/izin-cuti-gtk', [GtkPermitController::class, 'store'])->name('gtk-permits.store');
         Route::get('/izin-cuti-gtk/{gtkPermit}/dokumen', [GtkPermitController::class, 'downloadDocument'])->name('gtk-permits.document');
+        Route::get('/izin-cuti-gtk/{gtkPermit}/tugas', [GtkPermitController::class, 'downloadAssignment'])->name('gtk-permits.assignment');
         Route::post('/izin-cuti-gtk/sinkron-piket', [GtkPermitController::class, 'syncPiket'])->name('gtk-permits.sync-piket');
         Route::post('/izin-cuti-gtk/{gtkPermit}/setujui', [GtkPermitController::class, 'approve'])->name('gtk-permits.approve');
         Route::post('/izin-cuti-gtk/{gtkPermit}/tolak', [GtkPermitController::class, 'reject'])->name('gtk-permits.reject');

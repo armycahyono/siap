@@ -417,10 +417,12 @@
                                 @endif
                             </td>
                             <td>
-                                @if($s->phone_student)
-                                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $s->phone_student) }}" target="_blank" class="small text-decoration-none text-primary" onclick="event.stopPropagation()" title="Chat WhatsApp Siswa">
+                                @if($s->whatsapp_url_student)
+                                    <a href="{{ $s->whatsapp_url_student }}" target="_blank" class="small text-decoration-none text-primary" onclick="event.stopPropagation()" title="Chat WhatsApp Siswa">
                                         <i class="ti ti-brand-whatsapp text-success me-1"></i>{{ $s->phone_student }}
                                     </a>
+                                @elseif($s->phone_student)
+                                    <span class="small text-muted">{{ $s->phone_student }}</span>
                                 @else
                                     <span class="text-muted small">-</span>
                                 @endif
@@ -429,10 +431,12 @@
                                 <div class="small text-dark" title="{{ $s->primary_parent_name }}">
                                     {{ $s->primary_parent_name ?: '-' }}
                                 </div>
-                                @if($s->primary_parent_phone)
-                                    <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $s->primary_parent_phone) }}" target="_blank" class="small text-decoration-none text-success" onclick="event.stopPropagation()" title="Chat WhatsApp Orang Tua">
+                                @if($s->whatsapp_url_parent)
+                                    <a href="{{ $s->whatsapp_url_parent }}" target="_blank" class="small text-decoration-none text-success" onclick="event.stopPropagation()" title="Chat WhatsApp Orang Tua">
                                         <i class="ti ti-brand-whatsapp me-1"></i>{{ $s->primary_parent_phone }}
                                     </a>
+                                @elseif($s->primary_parent_phone && $s->primary_parent_phone !== '-')
+                                    <span class="small text-muted">{{ $s->primary_parent_phone }}</span>
                                 @endif
                             </td>
                             <td class="text-end" onclick="event.stopPropagation()">
@@ -1488,6 +1492,23 @@
 
 @push('scripts')
 <script>
+function formatWaNumber(phone) {
+    if (!phone) return '';
+    let clean = String(phone).replace(/\D/g, '');
+    if (!clean) return '';
+    if (clean.startsWith('0')) return '62' + clean.slice(1);
+    if (clean.startsWith('8')) return '62' + clean;
+    return clean;
+}
+function renderPhoneWaLink(phone, textColorClass) {
+    if (!phone || phone === '-') return '-';
+    const wa = formatWaNumber(phone);
+    if (wa) {
+        return `<a href="https://wa.me/${wa}" target="_blank" class="${textColorClass} text-decoration-none" title="Hubungi via WhatsApp (${wa})"><i class="ti ti-brand-whatsapp text-success me-1"></i>${phone}</a>`;
+    }
+    return phone;
+}
+
 function openStudentDetailModal(student, classroomName, homeroomName, statusLabel, statusBadge) {
     document.getElementById('dt-initial').textContent = (student.name || 'S').charAt(0).toUpperCase();
     document.getElementById('dt-name').textContent = student.name || '-';
@@ -1525,7 +1546,7 @@ function openStudentDetailModal(student, classroomName, homeroomName, statusLabe
 
     document.getElementById('dt-homeroom').textContent = homeroomName || '-';
     document.getElementById('dt-address').textContent = student.address || '-';
-    document.getElementById('dt-phone-student').textContent = student.phone_student || '-';
+    document.getElementById('dt-phone-student').innerHTML = renderPhoneWaLink(student.phone_student, 'text-primary');
     document.getElementById('dt-email').textContent = student.email || '-';
     document.getElementById('dt-entry-year').textContent = student.entry_year || '-';
 
@@ -1535,23 +1556,23 @@ function openStudentDetailModal(student, classroomName, homeroomName, statusLabe
     document.getElementById('dt-father-edu').textContent = [student.father_birth_year ? `Thn: ${student.father_birth_year}` : null, student.father_education].filter(Boolean).join(' | ') || '-';
     document.getElementById('dt-father-job').textContent = student.father_job || '-';
     document.getElementById('dt-father-income').textContent = student.father_income || '-';
-    document.getElementById('dt-father-phone').textContent = student.father_phone || '-';
+    document.getElementById('dt-father-phone').innerHTML = renderPhoneWaLink(student.father_phone, 'text-dark');
 
     document.getElementById('dt-mother-name').textContent = student.mother_name || '-';
     document.getElementById('dt-mother-nik').textContent = student.mother_nik || '-';
     document.getElementById('dt-mother-edu').textContent = [student.mother_birth_year ? `Thn: ${student.mother_birth_year}` : null, student.mother_education].filter(Boolean).join(' | ') || '-';
     document.getElementById('dt-mother-job').textContent = student.mother_job || '-';
     document.getElementById('dt-mother-income').textContent = student.mother_income || '-';
-    document.getElementById('dt-mother-phone').textContent = student.mother_phone || '-';
+    document.getElementById('dt-mother-phone').innerHTML = renderPhoneWaLink(student.mother_phone, 'text-dark');
 
     document.getElementById('dt-guardian-name').textContent = student.guardian_name || '-';
     document.getElementById('dt-guardian-nik').textContent = student.guardian_nik || '-';
     document.getElementById('dt-guardian-edu').textContent = [student.guardian_birth_year ? `Thn: ${student.guardian_birth_year}` : null, student.guardian_education].filter(Boolean).join(' | ') || '-';
     document.getElementById('dt-guardian-job').textContent = student.guardian_job || '-';
     document.getElementById('dt-guardian-income').textContent = student.guardian_income || '-';
-    document.getElementById('dt-guardian-phone').textContent = student.guardian_phone || '-';
+    document.getElementById('dt-guardian-phone').innerHTML = renderPhoneWaLink(student.guardian_phone, 'text-dark');
 
-    document.getElementById('dt-phone-parent').textContent = student.phone_parent || '-';
+    document.getElementById('dt-phone-parent').innerHTML = renderPhoneWaLink(student.phone_parent, 'text-success');
 
     // Dapodik Zonasi, Transportasi & Fisik
     document.getElementById('dt-distance').textContent = student.distance_to_school_km ? `${student.distance_to_school_km} km` : '-';

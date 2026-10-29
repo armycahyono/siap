@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNumberHelper;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -327,6 +328,26 @@ class Student extends Model
     public function getPrimaryParentPhoneAttribute(): string
     {
         return $this->phone_parent ?: ($this->father_phone ?: ($this->mother_phone ?: ($this->guardian_phone ?: '-')));
+    }
+
+    public function getWhatsappNumberStudentAttribute(): ?string
+    {
+        return PhoneNumberHelper::formatForWhatsapp($this->phone_student);
+    }
+
+    public function getWhatsappUrlStudentAttribute(): ?string
+    {
+        return PhoneNumberHelper::toWhatsappUrl($this->phone_student);
+    }
+
+    public function getWhatsappNumberParentAttribute(): ?string
+    {
+        return PhoneNumberHelper::formatForWhatsapp($this->primary_parent_phone);
+    }
+
+    public function getWhatsappUrlParentAttribute(): ?string
+    {
+        return PhoneNumberHelper::toWhatsappUrl($this->primary_parent_phone);
     }
 
     public function mutations(): HasMany

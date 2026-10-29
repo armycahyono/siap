@@ -21,8 +21,23 @@ class PiketInvalClass extends Model
         'period_end',
         'reason',
         'assignment_material',
+        'assignment_file_path',
+        'assignment_file_name',
         'notes',
     ];
+
+    protected $appends = [
+        'assignment_file_url',
+    ];
+
+    public function getAssignmentFileUrlAttribute(): ?string
+    {
+        if (! $this->assignment_file_path) {
+            return null;
+        }
+
+        return route('piket.invals.assignment', $this);
+    }
 
     public function journal(): BelongsTo
     {

@@ -17,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -228,5 +229,46 @@ class PiketInvalController extends Controller
         }
 
         return back()->with('success', 'Data kelas inval berhasil dihapus.');
+    }
+
+    /**
+     * Download or view assignment file attached to inval class with proper authorization.
+     */
+    public function downloadAssignment(PiketInvalClass $inval)
+    {
+        $currentUser = Auth::user();
+        if (! $currentUser) {
+            abort(401);
+        }
+
+        $isAuthorized = $currentUser->isSuperAdmin()
+            || $currentUser->isPrincipal()
+            || (method_exists($currentUser, 'isWakaKurikulum') && $currentUser->isWakaKurikulum())
+            || ($inval->absent_teacher_id === $currentUser->id)
+            || ($inval->inval_teacher_id === $currentUser->id)
+            || (method_exists($currentUser, 'canOperatePiket') && $currentUser->canOperatePiket())
+            || (method_exists($currentUser, 'isPiketOfficerToday') && $currentUser->isPiketOfficerToday());
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengunduh file tugas ini.');
+        }
+
+        $path = $inval->assignment_file_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'File tugas tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File tugas tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->download($path, $inval->assignment_file_name ?: basename($path));
     }
 }

@@ -68,7 +68,7 @@ const SIAP_ROUTER = (function() {
             requiresAuth: true,
             title: 'Layanan BK',
             init: 'initTasksBk',
-            tabKey: 'tasks',
+            tabKey: 'kbm',
             hasBack: true,
         },
         '/tasks/piket': {
@@ -100,6 +100,7 @@ const SIAP_ROUTER = (function() {
     const mountedViews = {}; // Map: path -> DOM Element (View Stacking)
     let currentUser = null;
     let currentPath = null;
+    let lastNavigatedHash = null;
 
     function setCurrentUser(user) {
         currentUser = user;
@@ -146,8 +147,18 @@ const SIAP_ROUTER = (function() {
     }
 
     async function navigate(path, params = {}) {
-        const cleanPath = path.split('?')[0];
+        const [cleanPath, queryString] = path.split('?');
         const route = ROUTES[cleanPath];
+
+        let mergedParams = { ...params };
+        if (queryString) {
+            const searchParams = new URLSearchParams(queryString);
+            for (const [key, value] of searchParams.entries()) {
+                if (mergedParams[key] === undefined) {
+                    mergedParams[key] = value;
+                }
+            }
+        }
 
         if (!route) {
             console.warn(`Rute tidak ditemukan: ${path}, dialihkan ke beranda.`);
@@ -214,8 +225,10 @@ const SIAP_ROUTER = (function() {
         currentPath = cleanPath;
 
         // Perbarui URL hash tanpa reload
-        if (window.location.hash !== `#${cleanPath}`) {
-            window.location.hash = `#${cleanPath}`;
+        const targetHash = `#${cleanPath}` + (queryString ? `?${queryString}` : '');
+        lastNavigatedHash = targetHash;
+        if (window.location.hash !== targetHash) {
+            window.location.hash = targetHash;
         }
 
         // Update Top Bar & Bottom Nav
@@ -224,7 +237,7 @@ const SIAP_ROUTER = (function() {
         // Jalankan lifecycle controller view
         if (route.init && typeof window[route.init] === 'function') {
             try {
-                window[route.init](viewPane, params);
+                window[route.init](viewPane, mergedParams);
             } catch (err) {
                 console.error(`Init error on [${route.init}]:`, err);
             }
@@ -299,7 +312,7 @@ const SIAP_ROUTER = (function() {
         // Tangani perubahan hash di browser (tombol back/forward)
         window.addEventListener('hashchange', () => {
             const rawHash = window.location.hash.replace(/^#/, '');
-            if (rawHash && rawHash !== currentPath) {
+            if (rawHash && '#' + rawHash !== lastNavigatedHash) {
                 navigate(rawHash);
             }
         });

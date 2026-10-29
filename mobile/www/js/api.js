@@ -170,14 +170,20 @@ const SIAP_API = (function() {
             method: 'POST',
             body: JSON.stringify(payload),
         }),
+        getPiketTeacherSchedules: (teacherId) => request(`tasks/piket/invals/teacher-schedules?teacher_id=${teacherId}`, {
+            method: 'GET',
+        }),
         submitPiketIncident: (payload) => request('tasks/piket/incidents/store', {
             method: 'POST',
             body: JSON.stringify(payload),
         }),
-        submitPiketInval: (payload) => request('tasks/piket/invals/store', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-        }),
+        submitPiketInval: (payload) => {
+            const isFormData = payload instanceof FormData;
+            return request('tasks/piket/invals/store', {
+                method: 'POST',
+                body: isFormData ? payload : JSON.stringify(payload),
+            });
+        },
         submitPiketGuest: (payload) => request('tasks/piket/guests/store', {
             method: 'POST',
             body: JSON.stringify(payload),

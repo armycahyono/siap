@@ -47,6 +47,24 @@
     }
     window.escapeHtml = escapeHtml;
 
+    function formatWhatsappNumber(phone) {
+        if (!phone) return '';
+        let clean = String(phone).replace(/\D/g, '');
+        if (!clean) return '';
+        if (clean.startsWith('0')) return '62' + clean.slice(1);
+        if (clean.startsWith('8')) return '62' + clean;
+        return clean;
+    }
+    window.formatWhatsappNumber = formatWhatsappNumber;
+
+    function getWhatsappUrl(phone, message = '') {
+        const clean = formatWhatsappNumber(phone);
+        if (!clean) return '';
+        const textParam = message ? `?text=${encodeURIComponent(message)}` : '';
+        return `https://wa.me/${clean}${textParam}`;
+    }
+    window.getWhatsappUrl = getWhatsappUrl;
+
     // Global Logout Handler
     async function handleLogout() {
         if (!confirm('Apakah Anda yakin ingin keluar dari SIAP Mobile?')) return;
@@ -427,6 +445,8 @@
             }
         }
 
+        window.refreshKbm = () => fetchKbmData();
+
         // Live Search Input Handler
         const searchInput = container.querySelector('#kbm-search-input');
         if (searchInput) {
@@ -458,6 +478,187 @@
             await fetchKbmData();
         }
     };
+
+    function renderUnifiedLiveMonitoring(container, lmData) {
+        const cardLm = container.querySelector('#card-unified-live-monitoring');
+        if (!cardLm) return;
+
+        if (lmData) {
+            cardLm.classList.remove('hidden');
+
+            const roleBadge = container.querySelector('#lm-role-badge');
+            const scopeSub = container.querySelector('#lm-scope-subtitle');
+            const siswaScope = container.querySelector('#lm-siswa-scope');
+            const siswaSummary = container.querySelector('#lm-siswa-summary-count');
+
+            if (roleBadge) roleBadge.textContent = lmData.role_label || 'Live Monitoring';
+            if (scopeSub) scopeSub.textContent = `Monitoring Terpadu: ${lmData.scope_label || 'KBM & Aktivitas'}`;
+            if (siswaScope) siswaScope.textContent = `(${lmData.scope_label || 'Sekolah'})`;
+
+            // Stat Siswa (8 Status)
+            const s = lmData.siswa || {};
+            const statHadir = container.querySelector('#lm-stat-hadir');
+            const statTelat = container.querySelector('#lm-stat-telat');
+            const statSakit = container.querySelector('#lm-stat-sakit');
+            const statIzin = container.querySelector('#lm-stat-izin');
+            const statDispen = container.querySelector('#lm-stat-dispen');
+            const statPulang = container.querySelector('#lm-stat-pulang');
+            const statAlfa = container.querySelector('#lm-stat-alfa');
+            const statBolos = container.querySelector('#lm-stat-bolos');
+
+            if (statHadir) statHadir.textContent = s.hadir || 0;
+            if (statTelat) statTelat.textContent = s.telat || 0;
+            if (statSakit) statSakit.textContent = s.sakit || 0;
+            if (statIzin) statIzin.textContent = s.izin || 0;
+            if (statDispen) statDispen.textContent = s.dispen || 0;
+            if (statPulang) statPulang.textContent = s.pulang || 0;
+            if (statAlfa) statAlfa.textContent = s.alfa || 0;
+            if (statBolos) statBolos.textContent = s.bolos || 0;
+
+            if (siswaSummary) {
+                const totalNonHadir = (s.telat || 0) + (s.sakit || 0) + (s.izin || 0) + (s.dispen || 0) + (s.pulang || 0) + (s.alfa || 0) + (s.bolos || 0);
+                siswaSummary.textContent = `${s.hadir || 0} Hadir • ${totalNonHadir} Catatan`;
+            }
+
+            // Stat GTK (Khusus Kurikulum & Kepala Sekolah)
+            const gtkSection = container.querySelector('#lm-gtk-section');
+            const g = lmData.gtk;
+
+            if (g && lmData.can_view_gtk) {
+                if (gtkSection) gtkSection.classList.remove('hidden');
+                const gtkTotalLabel = container.querySelector('#lm-gtk-total-label');
+                const statGtkHadir = container.querySelector('#lm-stat-gtk-hadir');
+                const statGtkTelat = container.querySelector('#lm-stat-gtk-telat');
+                const statGtkBelum = container.querySelector('#lm-stat-gtk-belum');
+                const statGtkIzin = container.querySelector('#lm-stat-gtk-izin');
+                const statInval = container.querySelector('#lm-stat-inval');
+                const statUnattended = container.querySelector('#lm-stat-unattended');
+
+                if (gtkTotalLabel) gtkTotalLabel.textContent = `Total Wajib: ${g.total_expected || 0} GTK`;
+                if (statGtkHadir) statGtkHadir.textContent = g.hadir || 0;
+                if (statGtkTelat) statGtkTelat.textContent = g.terlambat || 0;
+                if (statGtkBelum) statGtkBelum.textContent = g.belum_masuk || 0;
+                if (statGtkIzin) statGtkIzin.textContent = g.izin || 0;
+                if (statInval) statInval.textContent = g.inval || 0;
+                if (statUnattended) statUnattended.textContent = g.unattended_kbm || 0;
+            } else {
+                if (gtkSection) gtkSection.classList.add('hidden');
+            }
+
+            // Timeline Feed
+            const timelineList = container.querySelector('#lm-timeline-list');
+            const timelineCount = container.querySelector('#lm-timeline-count');
+            const events = lmData.timeline || [];
+
+            if (timelineCount) timelineCount.textContent = `${events.length} Peristiwa`;
+
+            if (timelineList) {
+                if (events.length === 0) {
+                    timelineList.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Belum ada peristiwa/kejadian pada tanggal ini.</div>';
+                } else {
+                    timelineList.innerHTML = events.map(ev => {
+                        const badgeColorMap = {
+                            rose: 'bg-rose-100 text-rose-800 border-rose-200',
+                            amber: 'bg-amber-100 text-amber-800 border-amber-200',
+                            purple: 'bg-purple-100 text-purple-800 border-purple-200',
+                            slate: 'bg-slate-900 text-white border-slate-900',
+                            indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                            blue: 'bg-blue-100 text-blue-800 border-blue-200',
+                            emerald: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        };
+                        const badgeColorClass = badgeColorMap[ev.badge_color] || 'bg-slate-100 text-slate-700 border-slate-200';
+
+                        return `
+                            <div class="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs hover:border-emerald-200 transition">
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="flex items-center gap-1.5 overflow-hidden">
+                                        <span class="font-bold text-slate-800 text-[11px] truncate">${escapeHtml(ev.person_name)}</span>
+                                        <span class="text-[9px] text-slate-400 font-mono flex-shrink-0">(${escapeHtml(ev.classroom_name)})</span>
+                                    </div>
+                                    <span class="px-1.5 py-0.2 rounded text-[8px] font-bold border ${badgeColorClass} uppercase font-mono flex-shrink-0">${escapeHtml(ev.badge)}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-[9px] text-slate-500 mb-1">
+                                    <span class="font-mono font-bold text-slate-700">⏱ ${escapeHtml(ev.time)}</span>
+                                    <span>•</span>
+                                    <span class="font-semibold text-slate-600">${escapeHtml(ev.title)}</span>
+                                </div>
+                                ${ev.description ? `<p class="text-[10px] text-slate-600 leading-snug mb-1">${escapeHtml(ev.description)}</p>` : ''}
+                                ${ev.action_taken ? `<div class="text-[9px] text-emerald-700 font-medium">✓ ${escapeHtml(ev.action_taken)}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        } else {
+            cardLm.classList.add('hidden');
+        }
+    }
+
+    function renderBkCard(container, bkData) {
+        const cardBk = container.querySelector('#card-bk-section');
+        if (!cardBk) return;
+
+        if (bkData && bkData.can_access) {
+            cardBk.classList.remove('hidden');
+            const summary = bkData.summary || {};
+            const badgeBk = container.querySelector('#badge-bk-waiting-count');
+            const statTotal = container.querySelector('#stat-bk-total');
+            const statMenunggu = container.querySelector('#stat-bk-menunggu');
+            const statDiproses = container.querySelector('#stat-bk-diproses');
+            const statSelesai = container.querySelector('#stat-bk-selesai');
+            const listBk = container.querySelector('#list-bk-referrals');
+
+            if (badgeBk) badgeBk.textContent = `${summary.menunggu || 0} Menunggu`;
+            if (statTotal) statTotal.textContent = summary.total_rujukan || 0;
+            if (statMenunggu) statMenunggu.textContent = summary.menunggu || 0;
+            if (statDiproses) statDiproses.textContent = summary.diproses || 0;
+            if (statSelesai) statSelesai.textContent = summary.selesai || 0;
+
+            if (listBk) {
+                const referrals = bkData.recent_referrals || [];
+                if (referrals.length === 0) {
+                    listBk.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Tidak ada rujukan meja piket yang menunggu.</div>';
+                } else {
+                    listBk.innerHTML = referrals.map(ref => {
+                        const isMenunggu = ref.referral_status === 'menunggu';
+                        const isDiproses = ref.referral_status === 'diproses';
+                        const statusBadgeClass = isMenunggu ? 'bg-amber-100 text-amber-800' : (isDiproses ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800');
+
+                        return `
+                            <div class="p-2.5 rounded-xl bg-white border border-indigo-200/80 text-xs shadow-xs">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="font-bold text-slate-800">${escapeHtml(ref.student_name)} <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(ref.classroom_name)})</span></span>
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusBadgeClass} uppercase">${escapeHtml(ref.referral_status_label)}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 mb-1.5">
+                                    <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-100 text-indigo-800 uppercase">${escapeHtml(ref.category_label)}</span>
+                                    <span class="text-[9px] text-slate-400 font-mono">${escapeHtml(ref.incident_date)}</span>
+                                </div>
+                                <p class="text-[11px] text-slate-600 mb-1 leading-tight">${escapeHtml(ref.description || 'Tidak ada deskripsi')}</p>
+                                ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-1.5">🎯 Piket: ${escapeHtml(ref.action_taken)}</p>` : ''}
+                                <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
+                                    <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/bk')" class="text-indigo-600 font-bold hover:underline">Tinjau &raquo;</button>
+                                    <div class="flex items-center gap-1.5">
+                                        ${isMenunggu ? `
+                                            <button onclick="quickUpdateBkStatus(${ref.id}, 'diproses')" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-95 transition">
+                                                ⚡ Tangani
+                                            </button>
+                                        ` : (isDiproses ? `
+                                            <button onclick="quickUpdateBkStatus(${ref.id}, 'selesai')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 active:scale-95 transition">
+                                                ✓ Selesai
+                                            </button>
+                                        ` : '')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        } else {
+            cardBk.classList.add('hidden');
+        }
+    }
 
     function renderKbmContent(container, data) {
         const dateInfo = data.date_info || {};
@@ -515,10 +716,14 @@
             }
         }
 
-        // 3. Render Schedules with Filter
+        // 3. Live Monitoring Hari Ini & Kartu Layanan BK
+        renderUnifiedLiveMonitoring(container, data.live_monitoring);
+        renderBkCard(container, data.bk);
+
+        // 4. Render Schedules with Filter
         applyKbmFilters(container, data);
 
-        // 4. Swap Sessions (Tukar Jam)
+        // 5. Swap Sessions (Tukar Jam)
         const swapSectionEl = container.querySelector('#kbm-swap-section');
         const swapListEl = container.querySelector('#kbm-swap-list');
         const swapSessions = data.swap_sessions || [];
@@ -1061,119 +1266,8 @@
                 : `${data.target_date?.day_name}, ${data.target_date?.current}`;
         }
 
-        // 1.5 KARTU UTAMA: UNIFIED LIVE MONITORING
-        const cardLm = container.querySelector('#card-unified-live-monitoring');
-        const lmData = data.live_monitoring;
-
-        if (lmData) {
-            if (cardLm) cardLm.classList.remove('hidden');
-
-            const roleBadge = container.querySelector('#lm-role-badge');
-            const scopeSub = container.querySelector('#lm-scope-subtitle');
-            const siswaScope = container.querySelector('#lm-siswa-scope');
-            const siswaSummary = container.querySelector('#lm-siswa-summary-count');
-
-            if (roleBadge) roleBadge.textContent = lmData.role_label || 'Live Monitoring';
-            if (scopeSub) scopeSub.textContent = `Monitoring Terpadu: ${lmData.scope_label || 'KBM & Aktivitas'}`;
-            if (siswaScope) siswaScope.textContent = `(${lmData.scope_label || 'Sekolah'})`;
-
-            // Stat Siswa (8 Status)
-            const s = lmData.siswa || {};
-            const statHadir = container.querySelector('#lm-stat-hadir');
-            const statTelat = container.querySelector('#lm-stat-telat');
-            const statSakit = container.querySelector('#lm-stat-sakit');
-            const statIzin = container.querySelector('#lm-stat-izin');
-            const statDispen = container.querySelector('#lm-stat-dispen');
-            const statPulang = container.querySelector('#lm-stat-pulang');
-            const statAlfa = container.querySelector('#lm-stat-alfa');
-            const statBolos = container.querySelector('#lm-stat-bolos');
-
-            if (statHadir) statHadir.textContent = s.hadir || 0;
-            if (statTelat) statTelat.textContent = s.telat || 0;
-            if (statSakit) statSakit.textContent = s.sakit || 0;
-            if (statIzin) statIzin.textContent = s.izin || 0;
-            if (statDispen) statDispen.textContent = s.dispen || 0;
-            if (statPulang) statPulang.textContent = s.pulang || 0;
-            if (statAlfa) statAlfa.textContent = s.alfa || 0;
-            if (statBolos) statBolos.textContent = s.bolos || 0;
-
-            if (siswaSummary) {
-                const totalNonHadir = (s.telat || 0) + (s.sakit || 0) + (s.izin || 0) + (s.dispen || 0) + (s.pulang || 0) + (s.alfa || 0) + (s.bolos || 0);
-                siswaSummary.textContent = `${s.hadir || 0} Hadir • ${totalNonHadir} Catatan`;
-            }
-
-            // Stat GTK (Khusus Kurikulum & Kepala Sekolah)
-            const gtkSection = container.querySelector('#lm-gtk-section');
-            const g = lmData.gtk;
-
-            if (g && lmData.can_view_gtk) {
-                if (gtkSection) gtkSection.classList.remove('hidden');
-                const gtkTotalLabel = container.querySelector('#lm-gtk-total-label');
-                const statGtkHadir = container.querySelector('#lm-stat-gtk-hadir');
-                const statGtkTelat = container.querySelector('#lm-stat-gtk-telat');
-                const statGtkBelum = container.querySelector('#lm-stat-gtk-belum');
-                const statGtkIzin = container.querySelector('#lm-stat-gtk-izin');
-                const statInval = container.querySelector('#lm-stat-inval');
-                const statUnattended = container.querySelector('#lm-stat-unattended');
-
-                if (gtkTotalLabel) gtkTotalLabel.textContent = `Total Wajib: ${g.total_expected || 0} GTK`;
-                if (statGtkHadir) statGtkHadir.textContent = g.hadir || 0;
-                if (statGtkTelat) statGtkTelat.textContent = g.terlambat || 0;
-                if (statGtkBelum) statGtkBelum.textContent = g.belum_masuk || 0;
-                if (statGtkIzin) statGtkIzin.textContent = g.izin || 0;
-                if (statInval) statInval.textContent = g.inval || 0;
-                if (statUnattended) statUnattended.textContent = g.unattended_kbm || 0;
-            } else {
-                if (gtkSection) gtkSection.classList.add('hidden');
-            }
-
-            // Timeline Feed
-            const timelineList = container.querySelector('#lm-timeline-list');
-            const timelineCount = container.querySelector('#lm-timeline-count');
-            const events = lmData.timeline || [];
-
-            if (timelineCount) timelineCount.textContent = `${events.length} Peristiwa`;
-
-            if (timelineList) {
-                if (events.length === 0) {
-                    timelineList.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Belum ada peristiwa/kejadian pada tanggal ini.</div>';
-                } else {
-                    timelineList.innerHTML = events.map(ev => {
-                        const badgeColorMap = {
-                            rose: 'bg-rose-100 text-rose-800 border-rose-200',
-                            amber: 'bg-amber-100 text-amber-800 border-amber-200',
-                            purple: 'bg-purple-100 text-purple-800 border-purple-200',
-                            slate: 'bg-slate-900 text-white border-slate-900',
-                            indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-                            blue: 'bg-blue-100 text-blue-800 border-blue-200',
-                            emerald: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                        };
-                        const badgeColorClass = badgeColorMap[ev.badge_color] || 'bg-slate-100 text-slate-700 border-slate-200';
-
-                        return `
-                            <div class="p-2 rounded-xl bg-white border border-slate-100 shadow-2xs hover:border-emerald-200 transition">
-                                <div class="flex items-center justify-between mb-1">
-                                    <div class="flex items-center gap-1.5 overflow-hidden">
-                                        <span class="font-bold text-slate-800 text-[11px] truncate">${ev.person_name}</span>
-                                        <span class="text-[9px] text-slate-400 font-mono flex-shrink-0">(${ev.classroom_name})</span>
-                                    </div>
-                                    <span class="px-1.5 py-0.2 rounded text-[8px] font-bold border ${badgeColorClass} uppercase font-mono flex-shrink-0">${ev.badge}</span>
-                                </div>
-                                <div class="flex items-center gap-1.5 text-[9px] text-slate-500 mb-1">
-                                    <span class="font-mono font-bold text-slate-700">⏱ ${ev.time}</span>
-                                    <span>•</span>
-                                    <span class="font-semibold text-slate-600">${ev.title}</span>
-                                </div>
-                                ${ev.description ? `<p class="text-[10px] text-slate-600 leading-snug mb-1">${ev.description}</p>` : ''}
-                                ${ev.action_taken ? `<div class="text-[9px] text-emerald-700 font-medium">✓ ${ev.action_taken}</div>` : ''}
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
-        } else {
-            if (cardLm) cardLm.classList.add('hidden');
-        }
+        // 1.5 KARTU UTAMA: UNIFIED LIVE MONITORING (if present)
+        renderUnifiedLiveMonitoring(container, data.live_monitoring);
 
         // 2. Kartu Izin & Cuti Saya
         const badgeMyPermit = container.querySelector('#badge-my-permit-status');
@@ -1400,70 +1494,8 @@
             if (cardDiscipline) cardDiscipline.classList.add('hidden');
         }
 
-        // 7. Kartu Tugas Layanan BK (Interactive Widget)
-        const cardBk = container.querySelector('#card-bk-section');
-        const bkData = data.bk;
-
-        if (bkData && bkData.can_access) {
-            if (cardBk) cardBk.classList.remove('hidden');
-            const summary = bkData.summary || {};
-            const badgeBk = container.querySelector('#badge-bk-waiting-count');
-            const statTotal = container.querySelector('#stat-bk-total');
-            const statMenunggu = container.querySelector('#stat-bk-menunggu');
-            const statDiproses = container.querySelector('#stat-bk-diproses');
-            const statSelesai = container.querySelector('#stat-bk-selesai');
-            const listBk = container.querySelector('#list-bk-referrals');
-
-            if (badgeBk) badgeBk.textContent = `${summary.menunggu || 0} Menunggu`;
-            if (statTotal) statTotal.textContent = summary.total_rujukan || 0;
-            if (statMenunggu) statMenunggu.textContent = summary.menunggu || 0;
-            if (statDiproses) statDiproses.textContent = summary.diproses || 0;
-            if (statSelesai) statSelesai.textContent = summary.selesai || 0;
-
-            if (listBk) {
-                const referrals = bkData.recent_referrals || [];
-                if (referrals.length === 0) {
-                    listBk.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Tidak ada rujukan meja piket yang menunggu.</div>';
-                } else {
-                    listBk.innerHTML = referrals.map(ref => {
-                        const isMenunggu = ref.referral_status === 'menunggu';
-                        const isDiproses = ref.referral_status === 'diproses';
-                        const statusBadgeClass = isMenunggu ? 'bg-amber-100 text-amber-800' : (isDiproses ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800');
-
-                        return `
-                            <div class="p-2.5 rounded-xl bg-white border border-indigo-200/80 text-xs shadow-xs">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="font-bold text-slate-800">${ref.student_name} <span class="text-[10px] text-slate-400 font-normal">(${ref.classroom_name})</span></span>
-                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusBadgeClass} uppercase">${ref.referral_status_label}</span>
-                                </div>
-                                <div class="flex items-center gap-1.5 mb-1.5">
-                                    <span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-indigo-100 text-indigo-800 uppercase">${ref.category_label}</span>
-                                    <span class="text-[9px] text-slate-400 font-mono">${ref.incident_date}</span>
-                                </div>
-                                <p class="text-[11px] text-slate-600 mb-1 leading-tight">${ref.description || 'Tidak ada deskripsi'}</p>
-                                ${ref.action_taken ? `<p class="text-[10px] text-indigo-900 font-medium mb-1.5">🎯 Piket: ${ref.action_taken}</p>` : ''}
-                                <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
-                                    <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/bk')" class="text-indigo-600 font-bold hover:underline">Tinjau &raquo;</button>
-                                    <div class="flex items-center gap-1.5">
-                                        ${isMenunggu ? `
-                                            <button onclick="quickUpdateBkStatus(${ref.id}, 'diproses')" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-95 transition">
-                                                ⚡ Tangani
-                                            </button>
-                                        ` : (isDiproses ? `
-                                            <button onclick="quickUpdateBkStatus(${ref.id}, 'selesai')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 active:scale-95 transition">
-                                                ✓ Selesai
-                                            </button>
-                                        ` : '')}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
-        } else {
-            if (cardBk) cardBk.classList.add('hidden');
-        }
+        // 7. Kartu Tugas Layanan BK (if present)
+        renderBkCard(container, data.bk);
 
         // 7. Kartu Persetujuan Izin GTK (Kepala Sekolah & Kurikulum)
         const cardAdminPermits = container.querySelector('#card-admin-gtk-permits');
@@ -1555,6 +1587,9 @@
                 if (window.refreshTasks) {
                     window.refreshTasks();
                 }
+                if (window.refreshKbm) {
+                    window.refreshKbm();
+                }
             } else {
                 showToast(res.message || 'Gagal memperbarui status rujukan BK.', 'error');
             }
@@ -1572,6 +1607,9 @@
                 if (window.refreshTasks) {
                     window.refreshTasks();
                 }
+                if (window.refreshKbm) {
+                    window.refreshKbm();
+                }
             } else {
                 showToast(res.message || 'Gagal memverifikasi insiden.', 'error');
             }
@@ -1586,8 +1624,8 @@
         const drawerList = document.getElementById('lm-drawer-list');
         if (!drawer || !drawerList) return;
 
-        if (!tasksDataCache?.live_monitoring) return;
-        const lm = tasksDataCache.live_monitoring;
+        const lm = kbmDataCache?.live_monitoring || tasksDataCache?.live_monitoring;
+        if (!lm) return;
 
         let items = [];
         let title = '';
@@ -1947,18 +1985,161 @@
         const u = data.user || {};
 
         const nameEl = container.querySelector('#prof-name');
+        const roleBadgeEl = container.querySelector('#prof-role-badge');
+        const gtkStatusEl = container.querySelector('#prof-gtk-status');
         const nipEl = container.querySelector('#prof-nip');
         const nigsEl = container.querySelector('#prof-nigs');
+        const nuptkEl = container.querySelector('#prof-nuptk');
+        const birthEl = container.querySelector('#prof-birth');
         const emailEl = container.querySelector('#prof-email');
-        const phoneEl = container.querySelector('#prof-phone');
+        const phoneWrap = container.querySelector('#prof-phone-wrap');
         const avatarEl = container.querySelector('#prof-avatar');
 
         if (nameEl) nameEl.textContent = u.name || '-';
+        if (roleBadgeEl) roleBadgeEl.textContent = u.role_name || u.position || 'Guru';
+        if (gtkStatusEl) gtkStatusEl.textContent = u.gtk_status || 'GTY / Tetap';
         if (nipEl) nipEl.textContent = u.nip || '-';
         if (nigsEl) nigsEl.textContent = u.nigs || '-';
+        if (nuptkEl) nuptkEl.textContent = u.nuptk || '-';
+        if (birthEl) {
+            birthEl.textContent = u.birth_info || '-';
+            birthEl.title = u.birth_info || '-';
+        }
         if (emailEl) emailEl.textContent = u.email || '-';
-        if (phoneEl) phoneEl.textContent = u.phone || '-';
         if (avatarEl && u.avatar_url) avatarEl.src = u.avatar_url;
+
+        // WhatsApp Phone with direct link
+        if (phoneWrap) {
+            if (u.phone) {
+                const waUrl = getWhatsappUrl(u.phone);
+                if (waUrl) {
+                    phoneWrap.innerHTML = `<a href="${waUrl}" target="_blank" class="text-xs font-bold text-emerald-700 font-mono hover:underline inline-flex items-center gap-1" title="Chat WhatsApp"><span>💬</span><span>${escapeHtml(u.phone)}</span></a>`;
+                } else {
+                    phoneWrap.innerHTML = `<p class="text-xs font-bold text-slate-800 font-mono">${escapeHtml(u.phone)}</p>`;
+                }
+            } else {
+                phoneWrap.innerHTML = '<p class="text-xs font-bold text-slate-400 font-mono">-</p>';
+            }
+        }
+
+        // Telegram Bot Status & ID Chat
+        const tgBox = container.querySelector('#prof-telegram-box');
+        const tgBadge = container.querySelector('#prof-telegram-status-badge');
+        const tgId = container.querySelector('#prof-telegram-id');
+        const tgAction = container.querySelector('#prof-telegram-action');
+
+        if (tgBox && tgBadge && tgId && tgAction) {
+            if (u.is_telegram_connected) {
+                tgBox.className = 'mt-2 p-2 rounded-xl border border-emerald-100 bg-emerald-50/30 flex items-center justify-between gap-2';
+                tgBadge.textContent = 'Terhubung';
+                tgBadge.className = 'px-1.5 py-0.2 rounded-full text-[8px] font-bold bg-emerald-100 text-emerald-800';
+                const unameStr = u.telegram_username ? ` <span class="text-slate-500 font-normal">(@${escapeHtml(u.telegram_username)})</span>` : '';
+                tgId.innerHTML = `ID: <span class="text-emerald-800 font-mono">${escapeHtml(u.telegram_chat_id)}</span>${unameStr}`;
+                tgAction.innerHTML = '<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5"><span>✅</span><span>Aktif</span></span>';
+            } else {
+                tgBox.className = 'mt-2 p-2 rounded-xl border border-amber-100 bg-amber-50/30 flex items-center justify-between gap-2';
+                tgBadge.textContent = 'Belum Terhubung';
+                tgBadge.className = 'px-1.5 py-0.2 rounded-full text-[8px] font-bold bg-amber-100 text-amber-800';
+                tgId.textContent = 'Notifikasi Telegram belum aktif';
+                if (u.telegram_connect_url) {
+                    tgAction.innerHTML = `<a href="${u.telegram_connect_url}" target="_blank" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] active:scale-95 transition flex items-center gap-1 shadow-2xs"><span>Hubungkan</span><span>↗</span></a>`;
+                } else {
+                    tgAction.innerHTML = '<span class="text-[9px] text-slate-400 font-medium">Belum Diatur</span>';
+                }
+            }
+        }
+
+        // Seluruh Penugasan Aktif (All Assignments)
+        const assignmentsContainer = container.querySelector('#prof-assignments-container');
+        const assignmentsCountBadge = container.querySelector('#prof-assignments-count');
+
+        if (assignmentsContainer) {
+            const assignmentCards = [];
+
+            // 1. Wali Kelas
+            if (data.homeroom_classrooms && data.homeroom_classrooms.length > 0) {
+                data.homeroom_classrooms.forEach(c => {
+                    assignmentCards.push(`
+                        <div class="p-2 rounded-xl bg-blue-50/70 border border-blue-100 flex items-center gap-2">
+                            <span class="text-sm shrink-0">🏫</span>
+                            <div class="min-w-0">
+                                <div class="text-[11px] font-bold text-blue-950 truncate">Wali Kelas ${escapeHtml(c.name)}</div>
+                                <div class="text-[9px] text-blue-700 font-medium">Perwalian Siswa Rombel TP ${escapeHtml(c.academic_year || '-')}</div>
+                            </div>
+                        </div>
+                    `);
+                });
+            }
+
+            // 2. Mata Pelajaran Diampu
+            if (data.subjects && data.subjects.length > 0) {
+                const subStr = data.subjects.join(', ');
+                assignmentCards.push(`
+                    <div class="p-2 rounded-xl bg-purple-50/70 border border-purple-100 flex items-center gap-2">
+                        <span class="text-sm shrink-0">📚</span>
+                        <div class="min-w-0">
+                            <div class="text-[11px] font-bold text-purple-950 truncate">Guru Mata Pelajaran</div>
+                            <div class="text-[9px] text-purple-700 font-medium leading-snug line-clamp-2">${escapeHtml(subStr)}</div>
+                        </div>
+                    </div>
+                `);
+            }
+
+            // 3. Tugas Tambahan / Struktural
+            if (data.structural_positions && data.structural_positions.length > 0) {
+                data.structural_positions.forEach(s => {
+                    assignmentCards.push(`
+                        <div class="p-2 rounded-xl bg-amber-50/70 border border-amber-100 flex items-center gap-2">
+                            <span class="text-sm shrink-0">💼</span>
+                            <div class="min-w-0">
+                                <div class="text-[11px] font-bold text-amber-950 truncate">${escapeHtml(s.position_name)}</div>
+                                <div class="text-[9px] text-amber-700 font-medium">Tugas Tambahan Struktural Resmi</div>
+                            </div>
+                        </div>
+                    `);
+                });
+            }
+
+            // 4. Jadwal Piket Rutin
+            if (data.piket_schedules && data.piket_schedules.length > 0) {
+                data.piket_schedules.forEach(p => {
+                    assignmentCards.push(`
+                        <div class="p-2 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-center gap-2">
+                            <span class="text-sm shrink-0">🛡️</span>
+                            <div class="min-w-0">
+                                <div class="text-[11px] font-bold text-emerald-950 truncate">Petugas Piket ${escapeHtml(p.day)}</div>
+                                <div class="text-[9px] text-emerald-700 font-medium">${escapeHtml(p.duty_location)} • Peran: ${escapeHtml(p.role)}</div>
+                            </div>
+                        </div>
+                    `);
+                });
+            }
+
+            // 5. Penugasan Khusus (Supervisor & BK)
+            if (data.special_assignments && data.special_assignments.length > 0) {
+                data.special_assignments.forEach(sp => {
+                    assignmentCards.push(`
+                        <div class="p-2 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center gap-2">
+                            <span class="text-sm shrink-0">⭐</span>
+                            <div class="min-w-0">
+                                <div class="text-[11px] font-bold text-indigo-950 truncate">${escapeHtml(sp.label)}</div>
+                                <div class="text-[9px] text-indigo-700 font-medium">Penugasan Fungsional Khusus</div>
+                            </div>
+                        </div>
+                    `);
+                });
+            }
+
+            if (assignmentCards.length === 0) {
+                assignmentsContainer.innerHTML = '<div class="text-center py-2 text-[10px] text-slate-400">Tidak ada penugasan tambahan aktif saat ini.</div>';
+            } else {
+                assignmentsContainer.innerHTML = assignmentCards.join('');
+            }
+
+            if (assignmentsCountBadge) {
+                assignmentsCountBadge.textContent = `${assignmentCards.length} Tugas`;
+            }
+        }
 
         // Active Decrees (SK GTK)
         const decreeList = container.querySelector('#prof-decrees-list');
@@ -2164,12 +2345,24 @@
     let currentPermitsContainer = null;
     let permitsDataCache = null;
 
-    window.initTasksPermits = function(container) {
+    window.initTasksPermits = function(container, params = {}) {
         currentPermitsContainer = container;
         const startDateInput = container.querySelector('#permit-start-date');
         if (startDateInput) {
             startDateInput.value = new Date().toISOString().split('T')[0];
         }
+
+        const hashQuery = (window.location.hash || '').split('?')[1] || '';
+        const searchParams = new URLSearchParams(hashQuery);
+        const tab = params?.tab || searchParams.get('tab');
+        if (tab === 'history') {
+            switchPermitsTab('history');
+        } else if (tab === 'approval') {
+            switchPermitsTab('approval');
+        } else {
+            switchPermitsTab('form');
+        }
+
         loadTasksPermits();
     };
 
@@ -2254,6 +2447,25 @@
                                 📅 ${p.start_date} ${p.end_date && p.end_date !== p.start_date ? 's/d ' + p.end_date : ''}
                             </div>
                             ${p.approval_note ? `<p class="text-[10px] text-slate-500 bg-slate-50 p-1.5 rounded-lg mt-1 border border-slate-100 italic">Catatan KS: "${p.approval_note}"</p>` : ''}
+                            ${p.assignment_document_url ? `
+                                <div class="mt-2 p-2 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="text-sm">📎</span>
+                                        <div class="min-w-0">
+                                            <div class="text-[11px] font-bold text-indigo-950 truncate">${escapeHtml(p.assignment_document_name || 'Lampiran Tugas KBM')}</div>
+                                            <div class="text-[9px] text-indigo-600 font-medium">Materi untuk Guru Inval</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <a href="${p.assignment_document_url}" target="_blank" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] active:scale-95 transition">
+                                            Unduh
+                                        </a>
+                                        <button type="button" onclick="sharePermitTaskWhatsApp('Saya', '${escapeHtml(p.permit_type)}', '${p.assignment_document_url}', '${escapeHtml(p.reason)}')" class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] active:scale-95 transition flex items-center gap-0.5">
+                                            <span>📲</span><span>WA</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 }).join('');
@@ -2279,6 +2491,23 @@
                         <div class="text-[10px] text-slate-400 font-mono mb-2">
                             ${p.start_date} ${p.end_date && p.end_date !== p.start_date ? 's/d ' + p.end_date : ''} (${p.duration_days} Hari)
                         </div>
+                        ${p.assignment_document_url ? `
+                            <div class="my-2 p-2 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <span class="text-sm">📎</span>
+                                    <div class="min-w-0">
+                                        <div class="text-[11px] font-bold text-indigo-950 truncate">${escapeHtml(p.assignment_document_name || 'Lampiran Tugas KBM')}</div>
+                                        <div class="text-[9px] text-indigo-600 font-medium">Materi untuk Guru Inval</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <a href="${p.assignment_document_url}" target="_blank" class="px-2 py-0.5 rounded-lg bg-indigo-600 text-white font-bold text-[10px]">Unduh</a>
+                                    <button type="button" onclick="sharePermitTaskWhatsApp('${escapeHtml(p.user_name)}', '${escapeHtml(p.permit_type)}', '${p.assignment_document_url}', '${escapeHtml(p.reason)}')" class="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-[10px] flex items-center gap-0.5">
+                                        <span>📲</span><span>WA</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ` : ''}
                         <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60">
                             <button type="button" onclick="handlePermitActionPrompt(${p.id}, 'reject')" class="py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-rose-50 text-rose-700 text-xs font-bold active:scale-95 transition">
                                 ✕ Tolak
@@ -2341,6 +2570,52 @@
         }
     };
 
+    window.sharePermitTaskWhatsApp = function(teacherName, permitType, fileUrl, notes) {
+        const fullUrl = fileUrl ? (fileUrl.startsWith('http') ? fileUrl : (window.location.origin + fileUrl)) : '';
+        const text = `*INFO TUGAS KELAS KOSONG (GTK IZIN)*\n\n` +
+            `*Guru Pengampu:* ${teacherName}\n` +
+            `*Keterangan:* Izin ${permitType}\n` +
+            (notes ? `*Alasan/Instruksi:* ${notes}\n\n` : '\n') +
+            (fullUrl ? `*Link Lampiran Tugas:*\n${fullUrl}\n\n` : '') +
+            `_Diteruskan dari Meja Piket SIAP Mobile_`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: `Tugas Kelas Kosong - ${teacherName}`,
+                text: text,
+                url: fullUrl || window.location.href,
+            }).catch(() => {
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+            });
+        } else {
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+        }
+    };
+
+    window.shareInvalTaskWhatsApp = function(absentTeacher, classroom, subject, periodLabel, notes, fileUrl) {
+        const fullUrl = fileUrl ? (fileUrl.startsWith('http') ? fileUrl : (window.location.origin + fileUrl)) : '';
+        const text = `*PENUGASAN KELAS KOSONG (GURU INVAL)*\n\n` +
+            `*Kelas:* ${classroom}\n` +
+            `*Mata Pelajaran:* ${subject}\n` +
+            `*Waktu:* ${periodLabel}\n` +
+            `*Guru Pengampu:* ${absentTeacher}\n` +
+            (notes ? `*Instruksi Tugas:*\n"${notes}"\n\n` : '\n') +
+            (fullUrl ? `*Link File Tugas:*\n${fullUrl}\n\n` : '') +
+            `_Pesan resmi Petugas Meja Piket SIAP Mobile_`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: `Tugas Inval ${classroom} - ${subject}`,
+                text: text,
+                url: fullUrl || window.location.href,
+            }).catch(() => {
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+            });
+        } else {
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+        }
+    };
+
     function escapeHtml(str) {
         if (!str) return '';
         return String(str)
@@ -2358,12 +2633,18 @@
     function setupStudentSmartPicker(pickerElement, options = {}) {
         if (!pickerElement) return null;
 
+        const isMultiple = Boolean(options.multiple);
+        let selectedStudents = [];
+
         const hiddenInput = pickerElement.querySelector('input[type="hidden"]');
         const selectedCard = pickerElement.querySelector('.selected-student-card');
         const selectedName = pickerElement.querySelector('.student-selected-name');
         const selectedMeta = pickerElement.querySelector('.student-selected-meta');
         const selectedInitial = pickerElement.querySelector('.student-avatar-initial');
         const btnClearSelection = pickerElement.querySelector('.btn-clear-selection');
+
+        const chipsContainer = options.chipsContainer || pickerElement.querySelector('.selected-students-list');
+        const countBadge = options.countBadge || pickerElement.querySelector('#inc-selected-count-badge');
 
         const searchWrapper = pickerElement.querySelector('.search-input-wrapper');
         const searchInput = pickerElement.querySelector('.student-search-input');
@@ -2372,6 +2653,69 @@
 
         let debounceTimer = null;
         let lastQuery = '';
+
+        function renderChips() {
+            if (!chipsContainer) return;
+            if (selectedStudents.length === 0) {
+                chipsContainer.innerHTML = '';
+                chipsContainer.classList.add('hidden');
+                if (countBadge) countBadge.classList.add('hidden');
+                return;
+            }
+
+            chipsContainer.classList.remove('hidden');
+            if (countBadge) {
+                countBadge.textContent = `${selectedStudents.length} siswa terpilih`;
+                countBadge.classList.remove('hidden');
+            }
+
+            chipsContainer.innerHTML = selectedStudents.map(s => `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 shadow-2xs">
+                    <span class="w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                        ${(s.name || 'S').trim().charAt(0).toUpperCase()}
+                    </span>
+                    <span class="truncate max-w-[130px]">${escapeHtml(s.name)}</span>
+                    <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white text-rose-700 border border-rose-200 shrink-0">
+                        ${escapeHtml(s.classroom_name || '-')}
+                    </span>
+                    <button type="button" class="btn-remove-chip hover:bg-rose-200 text-rose-600 rounded-full w-4 h-4 flex items-center justify-center font-bold text-xs leading-none ml-0.5 cursor-pointer" data-id="${s.id}">&times;</button>
+                </span>
+            `).join('');
+
+            chipsContainer.querySelectorAll('.btn-remove-chip').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const sid = parseInt(btn.getAttribute('data-id'), 10);
+                    removeStudent(sid);
+                });
+            });
+        }
+
+        function removeStudent(studentId) {
+            selectedStudents = selectedStudents.filter(s => s.id !== studentId);
+            renderChips();
+            updateHiddenValues();
+            if (typeof options.onChange === 'function') {
+                options.onChange(selectedStudents);
+            }
+        }
+
+        function updateHiddenValues() {
+            if (hiddenInput) {
+                hiddenInput.value = isMultiple
+                    ? selectedStudents.map(s => s.id).join(',')
+                    : (selectedStudents[0]?.id || '');
+                hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const hiddenName = pickerElement.querySelector('input[name="student_name"]');
+            if (hiddenName) {
+                hiddenName.value = selectedStudents.map(s => s.name).join(', ');
+            }
+            const hiddenClass = pickerElement.querySelector('input[name="classroom_id"]');
+            if (hiddenClass) {
+                hiddenClass.value = selectedStudents[0]?.classroom_id || '';
+            }
+        }
 
         function showSuggestions(html) {
             if (!suggestionsPanel) return;
@@ -2386,6 +2730,31 @@
 
         function selectStudent(student) {
             if (!student || !student.id) return;
+
+            if (isMultiple) {
+                if (!selectedStudents.some(s => s.id === student.id)) {
+                    selectedStudents.push(student);
+                    renderChips();
+                    updateHiddenValues();
+                }
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
+                if (btnClearInput) btnClearInput.classList.add('hidden');
+                hideSuggestions();
+
+                if (typeof options.onSelect === 'function') {
+                    options.onSelect(student, selectedStudents);
+                }
+                if (typeof options.onChange === 'function') {
+                    options.onChange(selectedStudents);
+                }
+                return;
+            }
+
+            // Single student selection mode
+            selectedStudents = [student];
             if (hiddenInput) hiddenInput.value = student.id;
             if (selectedName) selectedName.textContent = student.name;
             if (selectedMeta) {
@@ -2408,11 +2777,23 @@
             }
 
             if (typeof options.onSelect === 'function') {
-                options.onSelect(student);
+                options.onSelect(student, selectedStudents);
             }
         }
 
         function clearSelection() {
+            selectedStudents = [];
+            if (isMultiple) {
+                renderChips();
+                updateHiddenValues();
+                if (searchInput) searchInput.value = '';
+                if (btnClearInput) btnClearInput.classList.add('hidden');
+                hideSuggestions();
+                if (typeof options.onClear === 'function') options.onClear();
+                if (typeof options.onChange === 'function') options.onChange([]);
+                return;
+            }
+
             if (hiddenInput) hiddenInput.value = '';
             if (selectedCard) selectedCard.classList.add('hidden');
             if (searchWrapper) searchWrapper.classList.remove('hidden');
@@ -2480,17 +2861,23 @@
                             return;
                         }
 
-                        suggestionsPanel.innerHTML = students.map((s, idx) => `
-                            <div class="p-2.5 rounded-lg hover:bg-slate-50 active:bg-slate-100 cursor-pointer flex items-center justify-between transition group" data-idx="${idx}">
-                                <div class="min-w-0 pr-2">
-                                    <div class="text-xs font-bold text-slate-800 group-hover:text-cyan-700 truncate">${escapeHtml(s.name)}</div>
-                                    <div class="text-[10px] text-slate-400">NISN: ${escapeHtml(s.nisn || '-')} &bull; NIS: ${escapeHtml(s.nis || '-')}</div>
+                        suggestionsPanel.innerHTML = students.map((s, idx) => {
+                            const isAlreadySelected = isMultiple && selectedStudents.some(sel => sel.id === s.id);
+                            return `
+                                <div class="p-2.5 rounded-lg hover:bg-slate-50 active:bg-slate-100 cursor-pointer flex items-center justify-between transition group ${isAlreadySelected ? 'opacity-50 pointer-events-none bg-slate-50' : ''}" data-idx="${idx}">
+                                    <div class="min-w-0 pr-2">
+                                        <div class="text-xs font-bold text-slate-800 group-hover:text-cyan-700 truncate">
+                                            ${escapeHtml(s.name)}
+                                            ${isAlreadySelected ? '<span class="text-[9px] text-emerald-600 ml-1 font-bold">(Sudah dipilih)</span>' : ''}
+                                        </div>
+                                        <div class="text-[10px] text-slate-400">NISN: ${escapeHtml(s.nisn || '-')} &bull; NIS: ${escapeHtml(s.nis || '-')}</div>
+                                    </div>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 shrink-0 border border-slate-200">
+                                        ${escapeHtml(s.classroom_name || '-')}
+                                    </span>
                                 </div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 shrink-0 border border-slate-200">
-                                    ${escapeHtml(s.classroom_name || '-')}
-                                </span>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
 
                         suggestionsPanel.querySelectorAll('[data-idx]').forEach(item => {
                             item.addEventListener('click', () => {
@@ -2536,9 +2923,11 @@
 
         return {
             selectStudent,
+            removeStudent,
             clearSelection,
             reset: clearSelection,
-            getValue: () => (hiddenInput ? hiddenInput.value : ''),
+            getValue: () => (isMultiple ? selectedStudents.map(s => s.id) : (hiddenInput ? hiddenInput.value : '')),
+            getSelectedStudents: () => [...selectedStudents],
         };
     }
 
@@ -2546,13 +2935,23 @@
     let currentVisitationsContainer = null;
     let visitationStudentPicker = null;
 
-    window.initTasksVisitations = function(container) {
+    window.initTasksVisitations = function(container, params = {}) {
         currentVisitationsContainer = container;
         const dateInput = container.querySelector('#visitation-planned-date');
         if (dateInput) {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
         visitationStudentPicker = setupStudentSmartPicker(container.querySelector('#visitation-student-picker'));
+
+        const hashQuery = (window.location.hash || '').split('?')[1] || '';
+        const searchParams = new URLSearchParams(hashQuery);
+        const tab = params?.tab || searchParams.get('tab');
+        if (tab === 'form') {
+            switchVisitationTab('form');
+        } else {
+            switchVisitationTab('list');
+        }
+
         loadTasksVisitations();
     };
 
@@ -2800,13 +3199,25 @@
     let bkStudentPicker = null;
     let bkDataCache = null;
 
-    window.initTasksBk = function(container) {
+    window.initTasksBk = function(container, params = {}) {
         currentBkContainer = container;
         const dateInput = container.querySelector('#bk-service-date');
         if (dateInput) {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
         bkStudentPicker = setupStudentSmartPicker(container.querySelector('#bk-student-picker'));
+
+        const hashQuery = (window.location.hash || '').split('?')[1] || '';
+        const searchParams = new URLSearchParams(hashQuery);
+        const tab = params?.tab || searchParams.get('tab');
+        if (tab === 'form') {
+            switchBkTab('form');
+        } else if (tab === 'services') {
+            switchBkTab('services');
+        } else {
+            switchBkTab('referrals');
+        }
+
         loadTasksBk();
     };
 
@@ -3022,7 +3433,7 @@
     let piketSwapDataCache = null;
     let currentSwapTab = 'history';
 
-    window.initTasksPiket = function(container) {
+    window.initTasksPiket = function(container, params = {}) {
         currentPiketContainer = container;
         const now = new Date();
         const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -3038,30 +3449,43 @@
         // Initialize smart autocomplete pickers
         piketPermitPicker = setupStudentSmartPicker(container.querySelector('#permit-student-picker'), {
             onSelect: (student) => {
-                const clsSelect = container.querySelector('#permit-classroom-select');
-                if (clsSelect && student.classroom_id) clsSelect.value = student.classroom_id;
+                const clsHidden = container.querySelector('#permit-classroom-id');
+                if (clsHidden && student.classroom_id) clsHidden.value = student.classroom_id;
                 const nameHidden = container.querySelector('#permit-student-name');
                 if (nameHidden) nameHidden.value = student.name;
+            },
+            onClear: () => {
+                const clsHidden = container.querySelector('#permit-classroom-id');
+                if (clsHidden) clsHidden.value = '';
+                const nameHidden = container.querySelector('#permit-student-name');
+                if (nameHidden) nameHidden.value = '';
             }
         });
 
         piketIncidentPicker = setupStudentSmartPicker(container.querySelector('#incident-student-picker'), {
-            onSelect: (student) => {
-                const clsSelect = container.querySelector('#inc-classroom-select');
-                if (clsSelect && student.classroom_id) clsSelect.value = student.classroom_id;
-                const nameHidden = container.querySelector('#inc-student-name');
-                if (nameHidden) nameHidden.value = student.name;
+            multiple: true,
+            chipsContainer: container.querySelector('#inc-selected-students-list'),
+            countBadge: container.querySelector('#inc-selected-count-badge'),
+            onSelect: (student, allSelected) => {
+                const clsHidden = container.querySelector('#inc-classroom-id');
+                if (clsHidden && student.classroom_id) clsHidden.value = student.classroom_id;
+            },
+            onChange: (allSelected) => {
+                const clsHidden = container.querySelector('#inc-classroom-id');
+                if (clsHidden) clsHidden.value = allSelected[0]?.classroom_id || '';
             }
         });
 
-        // Check if tab parameter is passed in hash URL
-        const hash = window.location.hash || '';
-        if (hash.includes('?')) {
-            const params = new URLSearchParams(hash.split('?')[1]);
-            const requestedTab = params.get('tab');
-            if (['permits', 'incidents', 'invals', 'guests'].includes(requestedTab)) {
-                switchPiketTab(requestedTab);
-            }
+        // Check if action or tab parameter is passed
+        const hashQuery = (window.location.hash || '').split('?')[1] || '';
+        const searchParams = new URLSearchParams(hashQuery);
+        const action = params?.action || searchParams.get('action');
+        const tab = params?.tab || searchParams.get('tab');
+
+        if (action && ['permits', 'incidents', 'invals', 'guests'].includes(action)) {
+            openPiketAction(action);
+        } else if (tab && ['permits', 'incidents', 'invals', 'guests'].includes(tab)) {
+            switchPiketTab(tab);
         }
 
         loadTasksPiket();
@@ -3227,8 +3651,12 @@
 
         // 6. Populate Dropdowns Helpers
         const helpers = data.helpers || {};
-        populateSelect(currentPiketContainer.querySelector('#permit-classroom-select'), helpers.classrooms, 'id', 'name', '-- Pilih Kelas --');
-        populateSelect(currentPiketContainer.querySelector('#inc-classroom-select'), helpers.classrooms, 'id', 'name', '-- Pilih Kelas --');
+        if (currentPiketContainer.querySelector('#permit-classroom-select')) {
+            populateSelect(currentPiketContainer.querySelector('#permit-classroom-select'), helpers.classrooms, 'id', 'name', '-- Pilih Kelas --');
+        }
+        if (currentPiketContainer.querySelector('#inc-classroom-select')) {
+            populateSelect(currentPiketContainer.querySelector('#inc-classroom-select'), helpers.classrooms, 'id', 'name', '-- Pilih Kelas --');
+        }
         populateSelect(currentPiketContainer.querySelector('#inval-classroom-select'), helpers.classrooms, 'id', 'name', '-- Pilih Kelas --');
         populateSelect(currentPiketContainer.querySelector('#inval-absent-teacher-select'), helpers.teachers, 'id', 'name', '-- Pilih Guru Berhalangan --');
         populateSelect(currentPiketContainer.querySelector('#inval-teacher-select'), helpers.teachers, 'id', 'name', '-- Belum Ditugaskan / Cari Nanti --');
@@ -3237,6 +3665,7 @@
         // 7. Render Recent Lists
         renderPiketPermitsList(data.permits || []);
         renderPiketIncidentsList(data.incidents || []);
+        renderPiketGtkPermitsList(data.gtk_permits_today || []);
         renderPiketInvalsList(data.invals || []);
         renderPiketGuestsList(data.guests || []);
     }
@@ -3286,7 +3715,13 @@
                         ${p.period_assigned ? `<span>• Jam ke-${p.period_assigned}</span>` : ''}
                     </div>
                     <p class="text-xs text-slate-700 mb-1 leading-snug"><span class="font-bold text-slate-800">Alasan:</span> ${escapeHtml(p.reason || '-')}</p>
-                    ${p.action_taken ? `<p class="text-[10px] text-purple-900 font-medium italic">Pembinaan: "${escapeHtml(p.action_taken)}"</p>` : ''}
+                    ${p.action_taken ? `<p class="text-[10px] text-purple-900 font-medium italic mb-2">Pembinaan: "${escapeHtml(p.action_taken)}"</p>` : ''}
+                    <div class="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                        <span class="text-[9px] text-slate-400">Petugas: ${escapeHtml(p.given_by_name || 'Piket')}</span>
+                        <button type="button" onclick="printPermitSlip(${p.id})" class="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[10px] active:scale-95 transition flex items-center gap-1 border border-purple-200 cursor-pointer">
+                            <span>🖨️</span><span>Cetak Slip</span>
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -3341,6 +3776,65 @@
         }).join('');
     }
 
+    function renderPiketGtkPermitsList(permits) {
+        const wrap = currentPiketContainer?.querySelector('#piket-gtk-permits-wrap');
+        const badge = currentPiketContainer?.querySelector('#piket-gtk-permits-badge');
+        const container = currentPiketContainer?.querySelector('#list-piket-gtk-permits-container');
+        if (!wrap || !container) return;
+
+        if (!permits || permits.length === 0) {
+            wrap.classList.add('hidden');
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        if (badge) badge.textContent = `${permits.length} Guru`;
+
+        container.innerHTML = permits.map(p => {
+            const hasTask = Boolean(p.assignment_document_url);
+            const teacherName = p.user_name || p.teacher_name || 'Guru';
+            const teacherId = p.user_id || p.teacher_id;
+            const typeLabel = p.type_label || (p.permission_type ? p.permission_type.toUpperCase() : 'IZIN');
+            const dateRange = (p.start_date && p.end_date) ? `${escapeHtml(p.start_date)} - ${escapeHtml(p.end_date)}` : '';
+            return `
+                <div class="card-elevated p-2.5 border-purple-100 bg-white shadow-2xs">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-sm">👩‍🏫</span>
+                            <div class="min-w-0">
+                                <h4 class="text-xs font-bold text-slate-900 truncate">${escapeHtml(teacherName)}</h4>
+                                <div class="text-[9px] text-purple-700 font-semibold uppercase tracking-wider">${escapeHtml(typeLabel)}${dateRange ? ` • ${dateRange}` : ''}</div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="openPiketInvalModal(${teacherId})" class="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shrink-0 active:scale-95 transition flex items-center gap-1 shadow-2xs">
+                            <span>🔄</span><span>Tugaskan</span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-600 mb-1 leading-snug line-clamp-2"><span class="font-semibold text-slate-700">Alasan:</span> ${escapeHtml(p.reason || '-')}</p>
+                    ${hasTask ? `
+                        <div class="mt-1.5 p-1.5 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-between gap-1.5">
+                            <div class="flex items-center gap-1 min-w-0">
+                                <span class="text-xs">📎</span>
+                                <div class="min-w-0">
+                                    <div class="text-[10px] font-bold text-purple-950 truncate">${escapeHtml(p.assignment_document_name || 'Lampiran Tugas KBM')}</div>
+                                    <div class="text-[8px] text-purple-600">File tugas dari guru izin</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <a href="${p.assignment_document_url}" target="_blank" class="px-1.5 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[9px] active:scale-95 transition">
+                                    Unduh
+                                </a>
+                                <button type="button" onclick="sharePermitTaskWhatsApp('${p.assignment_document_url}', '${escapeHtml(p.assignment_document_name || 'Tugas Guru')}', '${escapeHtml(teacherName)}', '${escapeHtml(p.reason || '-')}')" class="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] active:scale-95 transition flex items-center gap-0.5">
+                                    <span>📲</span><span>WA</span>
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
     function renderPiketInvalsList(invals) {
         const container = currentPiketContainer?.querySelector('#list-piket-invals-container');
         if (!container) return;
@@ -3376,6 +3870,25 @@
                     ${inv.assignment_material ? `
                         <p class="text-[10px] text-indigo-900 font-medium">Tugas Mapel: "${escapeHtml(inv.assignment_material)}"</p>
                     ` : ''}
+                    ${inv.assignment_file_url ? `
+                        <div class="mt-2 p-2 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="text-sm">📎</span>
+                                <div class="min-w-0">
+                                    <div class="text-[11px] font-bold text-indigo-950 truncate">${escapeHtml(inv.assignment_file_name || 'File Tugas KBM')}</div>
+                                    <div class="text-[9px] text-indigo-600 font-medium">Lampiran Tugas Guru Mapel</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <a href="${inv.assignment_file_url}" target="_blank" class="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] active:scale-95 transition">
+                                    Unduh
+                                </a>
+                                <button type="button" onclick="shareInvalTaskWhatsApp('${escapeHtml(inv.absent_teacher_name)}', '${escapeHtml(inv.classroom_name)}', '${escapeHtml(inv.subject_name)}', '${escapeHtml(inv.period_label)}', '${escapeHtml(inv.assignment_material || inv.reason || '')}', '${inv.assignment_file_url}')" class="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] active:scale-95 transition flex items-center gap-0.5">
+                                    <span>📲</span><span>WA</span>
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
@@ -3396,12 +3909,19 @@
                 ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600">Selesai (${g.check_out_time})</span>`
                 : '<span class="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 animate-pulse">Sedang Bertemu</span>';
 
+            const guestWaUrl = getWhatsappUrl(g.phone);
+            const phoneDisplay = g.phone
+                ? (guestWaUrl
+                    ? `• <a href="${guestWaUrl}" target="_blank" class="text-emerald-700 font-bold inline-flex items-center gap-0.5 hover:underline" title="Chat WhatsApp Tamu"><span>📱</span><span>${escapeHtml(g.phone)}</span></a>`
+                    : `• ${escapeHtml(g.phone)}`)
+                : '';
+
             return `
                 <div class="card-elevated p-3 border-emerald-100">
                     <div class="flex items-center justify-between mb-1">
                         <div>
                             <h4 class="text-xs font-black text-slate-900">${escapeHtml(g.guest_name)}</h4>
-                            <p class="text-[10px] text-slate-500">${escapeHtml(g.institution)} ${g.phone ? '• ' + escapeHtml(g.phone) : ''}</p>
+                            <p class="text-[10px] text-slate-500">${escapeHtml(g.institution)} ${phoneDisplay}</p>
                         </div>
                         ${badge}
                     </div>
@@ -3424,20 +3944,55 @@
     }
 
     // Modal Sheet Handlers
+    window.printPermitSlip = function(permitId, printUrl = null) {
+        const url = printUrl || `/piket/perizinan/${permitId}/slip?autoprint=1`;
+        try {
+            const win = window.open(url, '_blank');
+            if (!win || win.closed || typeof win.closed === 'undefined') {
+                let iframe = document.getElementById('piket-print-iframe');
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'piket-print-iframe';
+                    iframe.style.position = 'fixed';
+                    iframe.style.right = '0';
+                    iframe.style.bottom = '0';
+                    iframe.style.width = '1px';
+                    iframe.style.height = '1px';
+                    iframe.style.border = '0';
+                    document.body.appendChild(iframe);
+                }
+                iframe.src = url;
+            }
+        } catch (err) {
+            window.open(url, '_blank');
+        }
+    };
+
     window.openPiketPermitModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-permit');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (bottomNav) bottomNav.classList.add('hidden');
         if (modal) {
             modal.classList.remove('hidden');
             const form = modal.querySelector('#form-piket-permit');
             if (form) form.reset();
             if (piketPermitPicker) piketPermitPicker.reset();
+
+            // Default waktu masuk ke jam sekarang
+            const now = new Date();
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const entryTime = modal.querySelector('#permit-entry-time');
+            if (entryTime) entryTime.value = currentTimeStr;
+
             togglePermitFields('terlambat');
         }
     };
 
     window.closePiketPermitModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-permit');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
     };
 
     window.togglePermitFields = function(type) {
@@ -3453,6 +4008,13 @@
         const form = e.target;
         const btn = form.querySelector('#btn-submit-piket-permit');
         const studentName = form.querySelector('#permit-student-name')?.value || form.querySelector('#permit-student-picker input[type="text"]')?.value;
+        const studentId = form.querySelector('#permit-student-id')?.value;
+        const classroomId = form.querySelector('#permit-classroom-id')?.value;
+
+        if (!studentId && !studentName) {
+            showToast('Silakan pilih siswa terlebih dahulu.', 'error');
+            return;
+        }
 
         btn.disabled = true;
         btn.textContent = 'Menerbitkan...';
@@ -3460,13 +4022,12 @@
         try {
             const payload = {
                 permit_type: form.querySelector('#permit-type-select').value,
-                student_id: form.querySelector('#permit-student-id').value || null,
-                student_name: studentName,
-                classroom_id: form.querySelector('#permit-classroom-select').value,
+                student_id: studentId || null,
+                student_name: studentName || null,
+                classroom_id: classroomId || null,
                 entry_time: form.querySelector('#permit-entry-time')?.value || null,
                 departure_time: form.querySelector('#permit-departure-time')?.value || null,
                 return_time: form.querySelector('#permit-return-time')?.value || null,
-                period_assigned: form.querySelector('#permit-period-assigned')?.value || null,
                 reason: form.querySelector('#permit-reason').value,
                 action_taken: form.querySelector('#permit-action-taken')?.value || null,
             };
@@ -3476,6 +4037,13 @@
                 showToast(res.message || 'Surat izin berhasil diterbitkan!', 'success');
                 closePiketPermitModal();
                 loadTasksPiket();
+
+                // Otomatis cetak slip izin masuk
+                const permitId = res.data?.id;
+                const printUrl = res.print_url || res.data?.print_url;
+                if (permitId) {
+                    window.printPermitSlip(permitId, printUrl);
+                }
             } else {
                 showToast(res.message || 'Gagal menerbitkan surat izin.', 'error');
             }
@@ -3489,18 +4057,28 @@
 
     window.openPiketIncidentModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-incident');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (bottomNav) bottomNav.classList.add('hidden');
         if (modal) {
             modal.classList.remove('hidden');
             const form = modal.querySelector('#form-piket-incident');
             if (form) form.reset();
             if (piketIncidentPicker) piketIncidentPicker.reset();
             clearIncidentPhoto();
+
+            // Default jam kejadian
+            const now = new Date();
+            const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const incTime = modal.querySelector('#inc-time');
+            if (incTime) incTime.value = currentTimeStr;
         }
     };
 
     window.closePiketIncidentModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-incident');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
     };
 
     window.previewIncidentPhoto = async function(input) {
@@ -3533,16 +4111,28 @@
         e.preventDefault();
         const form = e.target;
         const btn = form.querySelector('#btn-submit-piket-incident');
-        const studentName = form.querySelector('#inc-student-name')?.value || form.querySelector('#incident-student-picker input[type="text"]')?.value;
+
+        const selectedStudents = piketIncidentPicker ? piketIncidentPicker.getSelectedStudents() : [];
+        const studentIds = selectedStudents.map(s => s.id);
+        const studentNames = selectedStudents.map(s => s.name).join(', ');
+        const singleStudentId = form.querySelector('#inc-student-id')?.value;
+        const singleStudentName = form.querySelector('#inc-student-name')?.value;
+        const classroomId = form.querySelector('#inc-classroom-id')?.value || selectedStudents[0]?.classroom_id;
+
+        if (studentIds.length === 0 && !singleStudentId && !singleStudentName) {
+            showToast('Silakan pilih minimal 1 siswa yang terlibat.', 'error');
+            return;
+        }
 
         btn.disabled = true;
         btn.textContent = 'Menyimpan...';
 
         try {
             const payload = {
-                student_id: form.querySelector('#inc-student-id').value || null,
-                student_name: studentName,
-                classroom_id: form.querySelector('#inc-classroom-select').value || null,
+                student_ids: studentIds.length > 0 ? studentIds : (singleStudentId ? [singleStudentId] : []),
+                student_id: studentIds[0] || singleStudentId || null,
+                student_name: studentNames || singleStudentName || null,
+                classroom_id: classroomId || null,
                 category: form.querySelector('#inc-category-select').value,
                 incident_time: form.querySelector('#inc-time')?.value || null,
                 location: form.querySelector('#inc-location')?.value || null,
@@ -3570,18 +4160,207 @@
         }
     };
 
-    window.openPiketInvalModal = function() {
+    let currentInvalTeacherSchedules = [];
+    let currentInvalTeacherActivePermit = null;
+    let isUsingPresetPermitAttachment = false;
+
+    window.openPiketInvalModal = function(preselectedTeacherId = null) {
         const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (bottomNav) bottomNav.classList.add('hidden');
         if (modal) {
             modal.classList.remove('hidden');
             const form = modal.querySelector('#form-piket-inval');
             if (form) form.reset();
+
+            currentInvalTeacherSchedules = [];
+            currentInvalTeacherActivePermit = null;
+            isUsingPresetPermitAttachment = false;
+
+            const schedSelect = modal.querySelector('#inval-schedule-select');
+            const schedBadge = modal.querySelector('#inval-schedule-count-badge');
+            const schedHint = modal.querySelector('#inval-schedule-hint');
+            const presetWrap = modal.querySelector('#inval-preset-permit-wrap');
+            const btnUsePreset = modal.querySelector('#btn-use-preset-file');
+            const hiddenPreset = modal.querySelector('#inval-use-permit-attachment');
+
+            if (schedSelect) schedSelect.innerHTML = '<option value="">-- Pilih Guru Di Atas Terlebih Dahulu --</option>';
+            if (schedBadge) schedBadge.classList.add('hidden');
+            if (schedHint) {
+                schedHint.textContent = '';
+                schedHint.classList.add('hidden');
+            }
+            if (presetWrap) presetWrap.classList.add('hidden');
+            if (btnUsePreset) {
+                btnUsePreset.className = 'px-2 py-0.5 rounded-lg bg-white border border-purple-300 text-purple-800 font-bold text-[10px] active:scale-95 transition';
+                btnUsePreset.textContent = '✓ Pakai Ini';
+            }
+            if (hiddenPreset) hiddenPreset.value = '0';
+
+            if (preselectedTeacherId) {
+                const absentSelect = modal.querySelector('#inval-absent-teacher-select');
+                if (absentSelect) {
+                    absentSelect.value = preselectedTeacherId;
+                    handleAbsentTeacherChange(preselectedTeacherId);
+                }
+            }
         }
     };
 
     window.closePiketInvalModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
+    };
+
+    window.handleAbsentTeacherChange = async function(teacherId) {
+        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        if (!modal) return;
+
+        const schedSelect = modal.querySelector('#inval-schedule-select');
+        const schedBadge = modal.querySelector('#inval-schedule-count-badge');
+        const schedHint = modal.querySelector('#inval-schedule-hint');
+        const reasonInput = modal.querySelector('#inval-reason');
+        const presetWrap = modal.querySelector('#inval-preset-permit-wrap');
+        const presetName = modal.querySelector('#inval-preset-file-name');
+        const presetLink = modal.querySelector('#inval-preset-file-link');
+
+        if (!teacherId) {
+            if (schedSelect) schedSelect.innerHTML = '<option value="">-- Pilih Guru Di Atas Terlebih Dahulu --</option>';
+            if (schedBadge) schedBadge.classList.add('hidden');
+            if (schedHint) schedHint.classList.add('hidden');
+            if (presetWrap) presetWrap.classList.add('hidden');
+            return;
+        }
+
+        if (schedSelect) schedSelect.innerHTML = '<option value="">Sedang memuat jadwal KBM guru hari ini...</option>';
+
+        try {
+            const res = await SIAP_API.getPiketTeacherSchedules(teacherId);
+            if (res.success && res.data) {
+                currentInvalTeacherSchedules = res.data.schedules || [];
+                currentInvalTeacherActivePermit = res.data.active_permit || null;
+
+                // 1. Render dropdown jadwal
+                if (currentInvalTeacherSchedules.length === 0) {
+                    if (schedSelect) schedSelect.innerHTML = '<option value="">-- Guru Tidak Ada Jadwal KBM Hari Ini --</option>';
+                    if (schedBadge) {
+                        schedBadge.textContent = '0 Jadwal';
+                        schedBadge.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono';
+                        schedBadge.classList.remove('hidden');
+                    }
+                    if (schedHint) {
+                        schedHint.textContent = 'ℹ️ Guru ini tidak memiliki jadwal tatap muka kelas hari ini.';
+                        schedHint.className = 'text-[9.5px] text-amber-700 font-medium mt-1 block bg-amber-50 p-2 rounded-lg border border-amber-200';
+                        schedHint.classList.remove('hidden');
+                    }
+                } else {
+                    if (schedBadge) {
+                        schedBadge.textContent = `${currentInvalTeacherSchedules.length} Jadwal`;
+                        schedBadge.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-mono';
+                        schedBadge.classList.remove('hidden');
+                    }
+                    if (schedHint) schedHint.classList.add('hidden');
+
+                    let optionsHtml = '<option value="">-- Pilih Jadwal KBM --</option>';
+                    if (currentInvalTeacherSchedules.length > 1) {
+                        optionsHtml += `<option value="all">⭐ Semua Jadwal Hari Ini (${currentInvalTeacherSchedules.length} Rombel / 1 Hari Penuh)</option>`;
+                    }
+                    optionsHtml += currentInvalTeacherSchedules.map(s => `
+                        <option value="${s.id}">
+                            ${escapeHtml(s.label)} ${s.is_already_assigned ? '(Sudah ditugaskan: ' + escapeHtml(s.inval_teacher_name || 'Inval') + ')' : ''}
+                        </option>
+                    `).join('');
+
+                    if (schedSelect) schedSelect.innerHTML = optionsHtml;
+                }
+
+                // 2. Cek apakah ada pengajuan izin GTK aktif
+                if (currentInvalTeacherActivePermit) {
+                    if (reasonInput && !reasonInput.value.trim()) {
+                        reasonInput.value = `${currentInvalTeacherActivePermit.type_label}: ${currentInvalTeacherActivePermit.reason}`;
+                    }
+
+                    if (currentInvalTeacherActivePermit.assignment_document_url && presetWrap) {
+                        presetWrap.classList.remove('hidden');
+                        if (presetName) presetName.textContent = currentInvalTeacherActivePermit.assignment_document_name || 'Lampiran Tugas dari Izin Guru';
+                        if (presetLink) presetLink.href = currentInvalTeacherActivePermit.assignment_document_url;
+                        toggleUsePresetFile(true);
+                    } else if (presetWrap) {
+                        presetWrap.classList.add('hidden');
+                    }
+                } else {
+                    if (presetWrap) presetWrap.classList.add('hidden');
+                }
+            }
+        } catch (err) {
+            showToast('Gagal memuat jadwal guru: ' + err.message, 'error');
+            if (schedSelect) schedSelect.innerHTML = '<option value="">Gagal memuat jadwal</option>';
+        }
+    };
+
+    window.handleInvalScheduleChange = function(val) {
+        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        if (!modal) return;
+
+        const schedHint = modal.querySelector('#inval-schedule-hint');
+        const hiddenClass = modal.querySelector('#inval-classroom-id');
+        const hiddenSubj = modal.querySelector('#inval-subject-id');
+        const hiddenStart = modal.querySelector('#inval-period-start');
+        const hiddenEnd = modal.querySelector('#inval-period-end');
+
+        if (val === 'all') {
+            if (schedHint) {
+                schedHint.textContent = `✓ Menugaskan otomatis ke seluruh ${currentInvalTeacherSchedules.length} jadwal rombel kelas kosong hari ini.`;
+                schedHint.className = 'text-[9.5px] text-indigo-700 font-bold mt-1 block bg-indigo-50 p-2 rounded-lg border border-indigo-200';
+                schedHint.classList.remove('hidden');
+            }
+            if (hiddenClass && currentInvalTeacherSchedules[0]) hiddenClass.value = currentInvalTeacherSchedules[0].classroom_id;
+            if (hiddenSubj && currentInvalTeacherSchedules[0]) hiddenSubj.value = currentInvalTeacherSchedules[0].subject_id;
+            return;
+        }
+
+        const sch = currentInvalTeacherSchedules.find(s => String(s.id) === String(val));
+        if (sch) {
+            if (hiddenClass) hiddenClass.value = sch.classroom_id;
+            if (hiddenSubj) hiddenSubj.value = sch.subject_id;
+            if (hiddenStart) hiddenStart.value = sch.start_period;
+            if (hiddenEnd) hiddenEnd.value = sch.end_period;
+
+            if (schedHint) {
+                schedHint.textContent = `Ruang ${sch.classroom_name} • ${sch.subject_name} • ${sch.period_label}`;
+                schedHint.className = 'text-[9.5px] text-slate-600 font-semibold mt-1 block';
+                schedHint.classList.remove('hidden');
+            }
+        } else {
+            if (schedHint) schedHint.classList.add('hidden');
+        }
+    };
+
+    window.toggleUsePresetFile = function(forceValue = null) {
+        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        if (!modal) return;
+
+        if (forceValue !== null) {
+            isUsingPresetPermitAttachment = Boolean(forceValue);
+        } else {
+            isUsingPresetPermitAttachment = !isUsingPresetPermitAttachment;
+        }
+
+        const hiddenPreset = modal.querySelector('#inval-use-permit-attachment');
+        const btnUsePreset = modal.querySelector('#btn-use-preset-file');
+
+        if (hiddenPreset) hiddenPreset.value = isUsingPresetPermitAttachment ? '1' : '0';
+        if (btnUsePreset) {
+            if (isUsingPresetPermitAttachment) {
+                btnUsePreset.className = 'px-2 py-0.5 rounded-lg bg-purple-700 text-white font-bold text-[10px] active:scale-95 transition';
+                btnUsePreset.textContent = '✓ Terpakai';
+            } else {
+                btnUsePreset.className = 'px-2 py-0.5 rounded-lg bg-white border border-purple-300 text-purple-800 font-bold text-[10px] active:scale-95 transition';
+                btnUsePreset.textContent = 'Pakai Ini';
+            }
+        }
     };
 
     window.handlePiketInvalSubmit = async function(e) {
@@ -3589,22 +4368,25 @@
         const form = e.target;
         const btn = form.querySelector('#btn-submit-piket-inval');
 
+        const absentTeacherId = form.querySelector('#inval-absent-teacher-select')?.value;
+        const scheduleId = form.querySelector('#inval-schedule-select')?.value;
+
+        if (!absentTeacherId) {
+            showToast('Silakan pilih guru yang berhalangan.', 'error');
+            return;
+        }
+
+        if (!scheduleId && currentInvalTeacherSchedules.length > 0) {
+            showToast('Silakan pilih jadwal KBM hari ini atau pilih Semua Jadwal.', 'error');
+            return;
+        }
+
         btn.disabled = true;
-        btn.textContent = 'Menugaskan...';
+        btn.textContent = 'Menyimpan...';
 
         try {
-            const payload = {
-                classroom_id: form.querySelector('#inval-classroom-select').value,
-                subject_id: form.querySelector('#inval-subject-select').value || null,
-                absent_teacher_id: form.querySelector('#inval-absent-teacher-select').value,
-                inval_teacher_id: form.querySelector('#inval-teacher-select').value || null,
-                period_start: parseInt(form.querySelector('#inval-period-start').value, 10),
-                period_end: parseInt(form.querySelector('#inval-period-end').value, 10),
-                reason: form.querySelector('#inval-reason').value,
-                assignment_material: form.querySelector('#inval-assignment').value || null,
-            };
-
-            const res = await SIAP_API.submitPiketInval(payload);
+            const formData = new FormData(form);
+            const res = await SIAP_API.submitPiketInval(formData);
             if (res.success) {
                 showToast(res.message || 'Tugas guru inval berhasil disimpan!', 'success');
                 closePiketInvalModal();
@@ -3623,6 +4405,8 @@
 
     window.openPiketGuestModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-guest');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (bottomNav) bottomNav.classList.add('hidden');
         if (modal) {
             modal.classList.remove('hidden');
             const form = modal.querySelector('#form-piket-guest');
@@ -3632,7 +4416,9 @@
 
     window.closePiketGuestModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-guest');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
     };
 
     window.handlePiketGuestSubmit = async function(e) {
@@ -3706,13 +4492,23 @@
     // ==========================================
     // TUKAR JADWAL PIKET CONTROLLER
     // ==========================================
-    window.initTasksPiketSwap = function(container) {
+    window.initTasksPiketSwap = function(container, params = {}) {
         currentPiketSwapContainer = container;
         const dutyDateInput = container.querySelector('#swap-duty-date');
         if (dutyDateInput) {
             dutyDateInput.value = new Date().toISOString().split('T')[0];
             dutyDateInput.min = new Date().toISOString().split('T')[0];
         }
+
+        const hashQuery = (window.location.hash || '').split('?')[1] || '';
+        const searchParams = new URLSearchParams(hashQuery);
+        const tab = params?.tab || searchParams.get('tab');
+        if (tab === 'form') {
+            switchSwapTab('form');
+        } else {
+            switchSwapTab('history');
+        }
+
         loadTasksPiketSwap();
     };
 

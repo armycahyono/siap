@@ -418,67 +418,7 @@ class MobileTasksController extends Controller
         }
 
         // 7. Layanan Bimbingan Konseling (BK)
-        $bkData = null;
-        if ($user->canOperateBk($operationalAcademicYear)) {
-            $baseBkQuery = PiketIncident::where('follow_up_target', 'rujuk_bk')
-                ->where(function ($q) use ($operationalAcademicYear) {
-                    $q->where('academic_year', $operationalAcademicYear)
-                        ->orWhereHas('journal', fn ($j) => $j->where('academic_year', $operationalAcademicYear))
-                        ->orWhereHas('classroom', fn ($c) => $c->where('academic_year', $operationalAcademicYear)->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear)))
-                        ->orWhereHas('student.studentClassrooms', fn ($sc) => $sc->where('academic_year_name', $operationalAcademicYear)->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear)));
-                });
-
-            $totalRujukan = (clone $baseBkQuery)->count();
-            $totalMenunggu = (clone $baseBkQuery)->where(function ($q) {
-                $q->doesntHave('bkReferral')
-                    ->orWhereHas('bkReferral', fn ($r) => $r->where('status', 'menunggu'));
-            })->count();
-            $totalDiproses = (clone $baseBkQuery)->whereHas('bkReferral', fn ($r) => $r->where('status', 'diproses'))->count();
-            $totalSelesai = (clone $baseBkQuery)->whereHas('bkReferral', fn ($r) => $r->where('status', 'selesai'))->count();
-
-            $recentReferrals = (clone $baseBkQuery)
-                ->with(['student.classroom', 'classroom', 'recordedBy', 'bkReferral.handler'])
-                ->latest('incident_date')
-                ->latest('incident_time')
-                ->take(6)
-                ->get()
-                ->map(function ($inc) {
-                    $refStatus = $inc->bkReferral?->status ?? 'menunggu';
-                    $statusLabel = match ($refStatus) {
-                        'diproses' => 'Diproses',
-                        'selesai' => 'Selesai',
-                        default => 'Menunggu',
-                    };
-
-                    return [
-                        'id' => $inc->id,
-                        'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
-                        'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
-                        'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
-                        'incident_time' => $inc->incident_time ? substr($inc->incident_time, 0, 5) : '-',
-                        'category' => $inc->category,
-                        'category_label' => $inc->category_label ?? ucfirst($inc->category),
-                        'description' => $inc->description,
-                        'action_taken' => $inc->action_taken,
-                        'referral_status' => $refStatus,
-                        'referral_status_label' => $statusLabel,
-                        'referral_notes' => $inc->bkReferral?->notes,
-                        'recorded_by_name' => $inc->recordedBy?->name ?? 'Piket',
-                        'evidence_photo_url' => $inc->evidence_photo_url,
-                    ];
-                });
-
-            $bkData = [
-                'can_access' => true,
-                'summary' => [
-                    'total_rujukan' => $totalRujukan,
-                    'menunggu' => $totalMenunggu,
-                    'diproses' => $totalDiproses,
-                    'selesai' => $totalSelesai,
-                ],
-                'recent_referrals' => $recentReferrals->values(),
-            ];
-        }
+        $bkData = $this->buildBkSummaryData($user, $operationalAcademicYear);
 
         // 8. Tim Kedisiplinan Siswa
         $disciplineData = null;
@@ -601,9 +541,82 @@ class MobileTasksController extends Controller
     }
 
     /**
-     * Bangun payload Live Monitoring terpadu (1 kartu adaptif untuk semua peran).
+     * Bangun data ringkasan dan rujukan Layanan BK untuk kartu mobile.
+     *
+     * @return array<string, mixed>|null
      */
-    protected function buildLiveMonitoringData(
+    public function buildBkSummaryData(User $user, string $operationalAcademicYear): ?array
+    {
+        if (! $user->canOperateBk($operationalAcademicYear)) {
+            return null;
+        }
+
+        $baseBkQuery = PiketIncident::where('follow_up_target', 'rujuk_bk')
+            ->where(function ($q) use ($operationalAcademicYear) {
+                $q->where('academic_year', $operationalAcademicYear)
+                    ->orWhereHas('journal', fn ($j) => $j->where('academic_year', $operationalAcademicYear))
+                    ->orWhereHas('classroom', fn ($c) => $c->where('academic_year', $operationalAcademicYear)->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear)))
+                    ->orWhereHas('student.studentClassrooms', fn ($sc) => $sc->where('academic_year_name', $operationalAcademicYear)->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear)));
+            });
+
+        $totalRujukan = (clone $baseBkQuery)->count();
+        $totalMenunggu = (clone $baseBkQuery)->where(function ($q) {
+            $q->doesntHave('bkReferral')
+                ->orWhereHas('bkReferral', fn ($r) => $r->where('status', 'menunggu'));
+        })->count();
+        $totalDiproses = (clone $baseBkQuery)->whereHas('bkReferral', fn ($r) => $r->where('status', 'diproses'))->count();
+        $totalSelesai = (clone $baseBkQuery)->whereHas('bkReferral', fn ($r) => $r->where('status', 'selesai'))->count();
+
+        $recentReferrals = (clone $baseBkQuery)
+            ->with(['student.classroom', 'classroom', 'recordedBy', 'bkReferral.handler'])
+            ->latest('incident_date')
+            ->latest('incident_time')
+            ->take(6)
+            ->get()
+            ->map(function ($inc) {
+                $refStatus = $inc->bkReferral?->status ?? 'menunggu';
+                $statusLabel = match ($refStatus) {
+                    'diproses' => 'Diproses',
+                    'selesai' => 'Selesai',
+                    default => 'Menunggu',
+                };
+
+                return [
+                    'id' => $inc->id,
+                    'student_name' => $inc->student?->name ?? $inc->student_name ?? 'Siswa',
+                    'classroom_name' => $inc->classroom?->name ?? $inc->student?->classroom?->name ?? '-',
+                    'incident_date' => $inc->incident_date?->format('d M Y') ?? '-',
+                    'incident_time' => $inc->incident_time ? substr($inc->incident_time, 0, 5) : '-',
+                    'category' => $inc->category,
+                    'category_label' => $inc->category_label ?? ucfirst($inc->category),
+                    'description' => $inc->description,
+                    'action_taken' => $inc->action_taken,
+                    'referral_status' => $refStatus,
+                    'referral_status_label' => $statusLabel,
+                    'referral_notes' => $inc->bkReferral?->notes,
+                    'recorded_by_name' => $inc->recordedBy?->name ?? 'Piket',
+                    'evidence_photo_url' => $inc->evidence_photo_url,
+                ];
+            });
+
+        return [
+            'can_access' => true,
+            'summary' => [
+                'total_rujukan' => $totalRujukan,
+                'menunggu' => $totalMenunggu,
+                'diproses' => $totalDiproses,
+                'selesai' => $totalSelesai,
+            ],
+            'recent_referrals' => $recentReferrals->values(),
+        ];
+    }
+
+    /**
+     * Bangun payload Live Monitoring terpadu (1 kartu adaptif untuk semua peran).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function buildLiveMonitoringData(
         User $user,
         Carbon $date,
         string $operationalAcademicYear,
@@ -613,8 +626,9 @@ class MobileTasksController extends Controller
         $isKurikulum = $user->isWakaKurikulum();
         $isKesiswaan = $user->isWakaKesiswaan() || $user->canManageDiscipline($operationalAcademicYear);
         $isHomeroom = (bool) $myHomeroomClassroom;
+        $isBk = $user->canOperateBk($operationalAcademicYear);
 
-        if (! $isPrincipal && ! $isKurikulum && ! $isKesiswaan && ! $isHomeroom) {
+        if (! $isPrincipal && ! $isKurikulum && ! $isKesiswaan && ! $isHomeroom && ! $isBk) {
             return null;
         }
 
@@ -622,6 +636,7 @@ class MobileTasksController extends Controller
             $isPrincipal => 'principal',
             $isKurikulum => 'kurikulum',
             $isKesiswaan => 'kesiswaan',
+            $isBk => 'bk',
             default => 'homeroom',
         };
 
@@ -629,12 +644,13 @@ class MobileTasksController extends Controller
             'principal' => 'Kepala Sekolah',
             'kurikulum' => 'Waka Kurikulum',
             'kesiswaan' => 'Kedisiplinan & Kesiswaan',
+            'bk' => 'Guru BK',
             default => 'Wali Kelas ('.($myHomeroomClassroom?->name ?? 'Perwalian').')',
         };
 
-        $canViewStudentAll = $isPrincipal || $isKurikulum || $isKesiswaan;
+        $canViewStudentAll = $isPrincipal || $isKurikulum || $isKesiswaan || $isBk;
         $canViewGtk = $isPrincipal || $isKurikulum;
-        $canViewBk = $isPrincipal || $isKurikulum || $isKesiswaan || $user->canOperateBk($operationalAcademicYear);
+        $canViewBk = $isPrincipal || $isKurikulum || $isKesiswaan || $isBk;
 
         $targetDateStr = $date->toDateString();
         $isToday = $date->isToday();
@@ -1272,6 +1288,9 @@ class MobileTasksController extends Controller
                 'notes' => $p->notes,
                 'approval_note' => $p->approval_note,
                 'approver_name' => $p->approver?->name,
+                'document_url' => $p->document_url,
+                'assignment_document_url' => $p->assignment_document_url,
+                'assignment_document_name' => $p->assignment_document_name,
                 'created_at' => $p->created_at?->format('d M Y H:i'),
             ]);
 
@@ -1291,6 +1310,9 @@ class MobileTasksController extends Controller
                     'duration_days' => $p->duration_days,
                     'reason' => $p->reason,
                     'notes' => $p->notes,
+                    'document_url' => $p->document_url,
+                    'assignment_document_url' => $p->assignment_document_url,
+                    'assignment_document_name' => $p->assignment_document_name,
                     'created_at' => $p->created_at?->format('d M Y H:i'),
                 ]);
         }
@@ -1328,6 +1350,7 @@ class MobileTasksController extends Controller
             'reason' => ['required', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'assignment_document' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,webp', 'max:10240'],
         ]);
 
         $startDate = Carbon::parse($validated['start_date']);
@@ -1337,6 +1360,14 @@ class MobileTasksController extends Controller
         $documentPath = null;
         if ($request->hasFile('document')) {
             $documentPath = $request->file('document')->store('gtk_permits', 'local');
+        }
+
+        $assignmentDocPath = null;
+        $assignmentDocName = null;
+        if ($request->hasFile('assignment_document')) {
+            $file = $request->file('assignment_document');
+            $assignmentDocName = $file->getClientOriginalName();
+            $assignmentDocPath = $file->store('gtk_permits/assignments', 'local');
         }
 
         $isPrincipalOrAdmin = $user->isPrincipal() || $user->isSuperAdmin();
@@ -1352,6 +1383,8 @@ class MobileTasksController extends Controller
             'reason' => $validated['reason'],
             'notes' => $validated['notes'] ?? null,
             'document_path' => $documentPath,
+            'assignment_document_path' => $assignmentDocPath,
+            'assignment_document_name' => $assignmentDocName,
             'approved_by' => $isPrincipalOrAdmin ? $user->id : null,
             'approved_at' => $isPrincipalOrAdmin ? now() : null,
         ]);
@@ -1869,7 +1902,7 @@ class MobileTasksController extends Controller
         $journal = $this->getOrCreatePiketJournal($today, $user, $academicYear, $operationalYear->semester);
 
         // Scheduled officers today
-        $schedulesToday = PiketSchedule::with('teacher:id,name,role')
+        $schedulesToday = PiketSchedule::with('teacher:id,name')
             ->where('day', $todayDay)
             ->where('is_active', true)
             ->orderByRaw("CASE WHEN role = 'koordinator' THEN 0 ELSE 1 END")
@@ -1976,6 +2009,8 @@ class MobileTasksController extends Controller
                 'period_label' => "Jam ke {$inv->period_start}".($inv->period_end > $inv->period_start ? "-{$inv->period_end}" : ''),
                 'reason' => $inv->reason,
                 'assignment_material' => $inv->assignment_material,
+                'assignment_file_url' => $inv->assignment_file_url,
+                'assignment_file_name' => $inv->assignment_file_name,
                 'notes' => $inv->notes,
                 'is_handled' => (bool) $inv->inval_teacher_id,
             ]);
@@ -2011,6 +2046,26 @@ class MobileTasksController extends Controller
             ->pluck('day')
             ->toArray();
 
+        $gtkPermitsToday = GtkPermit::with('user:id,name,position')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->where('status', '!=', GtkPermit::STATUS_REJECTED)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'user_id' => $p->user_id,
+                'user_name' => $p->user?->name ?? 'Guru',
+                'user_position' => $p->user?->position ?? 'Guru',
+                'permission_type' => $p->permission_type,
+                'type_label' => $p->type_label,
+                'reason' => $p->reason,
+                'status' => $p->status,
+                'status_label' => $p->status_label,
+                'document_url' => $p->document_url,
+                'assignment_document_url' => $p->assignment_document_url,
+                'assignment_document_name' => $p->assignment_document_name,
+            ]);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -2035,6 +2090,7 @@ class MobileTasksController extends Controller
                 'incidents' => $incidentsList,
                 'invals' => $invalsList,
                 'guests' => $guestsList,
+                'gtk_permits_today' => $gtkPermitsToday,
                 'helpers' => [
                     'classrooms' => $classrooms,
                     'teachers' => $teachers,
@@ -2058,8 +2114,8 @@ class MobileTasksController extends Controller
             'permit_type' => 'required|in:terlambat,izin_keluar_sementara,izin_pulang_cepat,izin_tidak_masuk',
             'permit_date' => 'nullable|date',
             'student_id' => 'nullable|exists:students,id',
-            'student_name' => 'required|string|max:255',
-            'classroom_id' => 'required|exists:classrooms,id',
+            'student_name' => 'nullable|string|max:255',
+            'classroom_id' => 'nullable|exists:classrooms,id',
             'reason' => 'required|string|max:500',
             'permit_category' => 'nullable|in:sakit,izin,dispen,terlambat',
             'entry_time' => 'nullable|string',
@@ -2071,6 +2127,34 @@ class MobileTasksController extends Controller
 
         $permitDate = (! empty($validated['permit_date'])) ? $validated['permit_date'] : Carbon::today()->toDateString();
         $todayStr = Carbon::parse($permitDate)->toDateString();
+
+        // Otomatis ambil data siswa & kelas jika classroom_id atau student_name tidak diisi
+        $student = null;
+        if (! empty($validated['student_id'])) {
+            $student = Student::find($validated['student_id']);
+            if ($student) {
+                if (empty($validated['classroom_id'])) {
+                    $validated['classroom_id'] = $student->classroom_id;
+                }
+                if (empty($validated['student_name'])) {
+                    $validated['student_name'] = $student->name;
+                }
+            }
+        }
+
+        if (empty($validated['student_name'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nama siswa harus diisi atau dipilih dari data siswa.',
+            ], 422);
+        }
+
+        if (empty($validated['classroom_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kelas siswa tidak ditemukan. Pastikan siswa telah terdaftar pada suatu rombel kelas.',
+            ], 422);
+        }
 
         // Prevent duplicate input for same student, type, and day
         if (! empty($validated['student_id'])) {
@@ -2098,6 +2182,30 @@ class MobileTasksController extends Controller
             $departureTime = $validated['departure_time'] ?: Carbon::now()->format('H:i');
         }
 
+        // Otomatis hitung waktu masuk & jam pelajaran ke- bila izin terlambat
+        $entryTime = null;
+        $periodAssigned = null;
+        if ($validated['permit_type'] === 'terlambat') {
+            $entryTime = ! empty($validated['entry_time']) ? $validated['entry_time'] : Carbon::now()->format('H:i');
+            if (! empty($validated['period_assigned'])) {
+                $periodAssigned = $validated['period_assigned'];
+            } else {
+                $dayOfWeekIso = Carbon::parse($permitDate)->dayOfWeekIso;
+                $dayKey = $dayOfWeekIso === 5 ? 'jumat' : 'senin';
+                $periodTimes = LessonSchedule::periodTimes($dayKey);
+                $timeStr = substr($entryTime, 0, 5);
+                foreach ($periodTimes as $p => $times) {
+                    if ($timeStr <= $times['end']) {
+                        $periodAssigned = (string) $p;
+                        break;
+                    }
+                }
+                if (! $periodAssigned && ! empty($periodTimes)) {
+                    $periodAssigned = (string) array_key_last($periodTimes);
+                }
+            }
+        }
+
         $permit = PiketStudentPermit::create([
             'piket_journal_id' => $journal->id,
             'permit_number' => $permitNumber,
@@ -2108,10 +2216,10 @@ class MobileTasksController extends Controller
             'permit_type' => $validated['permit_type'],
             'permit_category' => $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin'),
             'reason' => $validated['reason'],
-            'entry_time' => ($validated['permit_type'] === 'terlambat') ? (($validated['entry_time'] ?? null) ?: Carbon::now()->format('H:i')) : null,
+            'entry_time' => $entryTime,
             'departure_time' => $departureTime,
             'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? null) : null,
-            'period_assigned' => ($validated['permit_type'] === 'terlambat') ? ($validated['period_assigned'] ?? null) : null,
+            'period_assigned' => $periodAssigned,
             'action_taken' => $validated['action_taken'] ?? null,
             'given_by' => $user->id,
             'status' => 'diberikan',
@@ -2159,10 +2267,15 @@ class MobileTasksController extends Controller
             // Silently continue if Telegram notification fails
         }
 
+        $printUrl = route('piket.permits.slip', ['permit' => $permit->id, 'autoprint' => 1]);
+
         return response()->json([
             'success' => true,
             'message' => "Surat izin {$permit->permit_number} berhasil diterbitkan.",
-            'data' => $permit,
+            'data' => array_merge($permit->toArray(), [
+                'print_url' => $printUrl,
+            ]),
+            'print_url' => $printUrl,
         ]);
     }
 
@@ -2180,7 +2293,9 @@ class MobileTasksController extends Controller
             'incident_date' => 'nullable|date',
             'incident_time' => 'nullable|string',
             'student_id' => 'nullable|exists:students,id',
-            'student_name' => 'required|string|max:255',
+            'student_ids' => 'nullable|array',
+            'student_ids.*' => 'exists:students,id',
+            'student_name' => 'nullable|string|max:255',
             'classroom_id' => 'nullable|exists:classrooms,id',
             'location' => 'nullable|string|max:255',
             'category' => 'required|in:kedisiplinan,seragam,gadget_terlarang,perkelahian,rokok,kesehatan_pingsan,lainnya',
@@ -2192,11 +2307,16 @@ class MobileTasksController extends Controller
             'evidence_photo_base64' => 'nullable|string',
         ]);
 
-        if (empty($validated['classroom_id']) && ! empty($validated['student_id'])) {
-            $student = Student::find($validated['student_id']);
-            if ($student) {
-                $validated['classroom_id'] = $student->classroom_id;
-            }
+        $studentIds = ! empty($validated['student_ids']) ? array_filter((array) $validated['student_ids']) : [];
+        if (! empty($validated['student_id']) && ! in_array($validated['student_id'], $studentIds)) {
+            $studentIds[] = $validated['student_id'];
+        }
+
+        if (empty($studentIds) && empty($validated['student_name'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pilih minimal satu siswa yang terlibat.',
+            ], 422);
         }
 
         $photoPath = null;
@@ -2224,49 +2344,200 @@ class MobileTasksController extends Controller
 
         $journal = $this->getOrCreatePiketJournal($incidentDate, $user, $operationalYear->name, $operationalYear->semester);
 
-        $incident = PiketIncident::create([
-            'piket_journal_id' => $journal->id,
-            'academic_year' => $operationalYear->name ?? $journal->academic_year,
-            'incident_date' => $incidentDate,
-            'incident_time' => $incidentTime,
-            'student_id' => $validated['student_id'] ?? null,
-            'student_name' => $validated['student_name'],
-            'classroom_id' => $validated['classroom_id'] ?? null,
-            'location' => $validated['location'] ?? null,
-            'category' => $validated['category'],
-            'description' => $validated['description'],
-            'action_taken' => $validated['action_taken'],
-            'follow_up_target' => $validated['follow_up_target'],
-            'confiscated_items' => $validated['confiscated_items'] ?? null,
-            'evidence_photo' => $photoPath,
-            'recorded_by' => $user->id,
-            'status' => $validated['follow_up_target'] === 'selesai_di_piket' ? 'selesai' : 'tercatat',
-        ]);
+        $createdIncidents = [];
 
-        if ($incident->follow_up_target === 'rujuk_bk' && $incident->student_id) {
-            BkReferral::firstOrCreate(
-                ['piket_incident_id' => $incident->id],
-                ['status' => 'menunggu']
-            );
+        if (! empty($studentIds)) {
+            $students = Student::with('classroom.homeroomTeacher')->whereIn('id', $studentIds)->get();
+            foreach ($students as $student) {
+                $incident = PiketIncident::create([
+                    'piket_journal_id' => $journal->id,
+                    'academic_year' => $operationalYear->name ?? $journal->academic_year,
+                    'incident_date' => $incidentDate,
+                    'incident_time' => $incidentTime,
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'classroom_id' => $student->classroom_id ?: ($validated['classroom_id'] ?? null),
+                    'location' => $validated['location'] ?? null,
+                    'category' => $validated['category'],
+                    'description' => $validated['description'],
+                    'action_taken' => $validated['action_taken'],
+                    'follow_up_target' => $validated['follow_up_target'],
+                    'confiscated_items' => $validated['confiscated_items'] ?? null,
+                    'evidence_photo' => $photoPath,
+                    'recorded_by' => $user->id,
+                    'status' => $validated['follow_up_target'] === 'selesai_di_piket' ? 'selesai' : 'tercatat',
+                ]);
+
+                if ($incident->follow_up_target === 'rujuk_bk' && $incident->student_id) {
+                    BkReferral::firstOrCreate(
+                        ['piket_incident_id' => $incident->id],
+                        ['status' => 'menunggu']
+                    );
+                }
+
+                ActivityLogger::log('create', "Mencatat kejadian piket: {$incident->student_name} - {$incident->category}", $incident, [
+                    'category' => $incident->category,
+                    'follow_up' => $incident->follow_up_target,
+                ]);
+
+                try {
+                    $homeroomTeacher = $student->classroom?->homeroomTeacher;
+                    $this->telegramService->notifyIncident($incident, $homeroomTeacher);
+                } catch (\Throwable $e) {
+                    // Silently continue
+                }
+
+                $createdIncidents[] = $incident;
+            }
+        } else {
+            $incident = PiketIncident::create([
+                'piket_journal_id' => $journal->id,
+                'academic_year' => $operationalYear->name ?? $journal->academic_year,
+                'incident_date' => $incidentDate,
+                'incident_time' => $incidentTime,
+                'student_id' => null,
+                'student_name' => $validated['student_name'] ?? 'Siswa',
+                'classroom_id' => $validated['classroom_id'] ?? null,
+                'location' => $validated['location'] ?? null,
+                'category' => $validated['category'],
+                'description' => $validated['description'],
+                'action_taken' => $validated['action_taken'],
+                'follow_up_target' => $validated['follow_up_target'],
+                'confiscated_items' => $validated['confiscated_items'] ?? null,
+                'evidence_photo' => $photoPath,
+                'recorded_by' => $user->id,
+                'status' => $validated['follow_up_target'] === 'selesai_di_piket' ? 'selesai' : 'tercatat',
+            ]);
+
+            ActivityLogger::log('create', "Mencatat kejadian piket: {$incident->student_name} - {$incident->category}", $incident, [
+                'category' => $incident->category,
+                'follow_up' => $incident->follow_up_target,
+            ]);
+
+            try {
+                $classroom = $incident->classroom_id ? Classroom::with('homeroomTeacher')->find($incident->classroom_id) : null;
+                $homeroomTeacher = $classroom?->homeroomTeacher;
+                $this->telegramService->notifyIncident($incident, $homeroomTeacher);
+            } catch (\Throwable $e) {
+                // Silently continue
+            }
+
+            $createdIncidents[] = $incident;
         }
 
-        ActivityLogger::log('create', "Mencatat kejadian piket: {$incident->student_name} - {$incident->category}", $incident, [
-            'category' => $incident->category,
-            'follow_up' => $incident->follow_up_target,
-        ]);
+        $count = count($createdIncidents);
+        $message = $count > 1
+            ? "Catatan kejadian untuk {$count} siswa berhasil disimpan."
+            : "Catatan kejadian {$createdIncidents[0]->student_name} berhasil disimpan.";
 
-        try {
-            $classroom = $incident->classroom_id ? Classroom::with('homeroomTeacher')->find($incident->classroom_id) : null;
-            $homeroomTeacher = $classroom?->homeroomTeacher;
-            $this->telegramService->notifyIncident($incident, $homeroomTeacher);
-        } catch (\Throwable $e) {
-            // Silently continue
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $createdIncidents[0] ?? null,
+            'incidents' => $createdIncidents,
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * Dapatkan jadwal KBM guru hari ini dan status izin aktif untuk penugasan inval.
+     */
+    public function getTeacherSchedulesForInval(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $teacherId = $request->query('teacher_id');
+        if (! $teacherId) {
+            return response()->json(['success' => false, 'message' => 'ID Guru harus disertakan.'], 422);
+        }
+
+        $today = Carbon::today()->toDateString();
+        $dayNames = [
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
+
+        $schedules = LessonSchedule::with(['classroom:id,name', 'subject:id,name'])
+            ->where('teacher_id', $teacherId)
+            ->where('day', $todayDay)
+            ->orderBy('start_period')
+            ->get();
+
+        $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
+        $journal = $this->getOrCreatePiketJournal($today, $user, $operationalYear->name, $operationalYear->semester);
+
+        $existingInvals = PiketInvalClass::where('piket_journal_id', $journal->id)
+            ->where('absent_teacher_id', $teacherId)
+            ->get();
+
+        $periodTimes = LessonSchedule::periodTimes($todayDay === 'Jumat' ? 'jumat' : 'senin');
+
+        $formattedSchedules = $schedules->map(function ($sch) use ($existingInvals, $periodTimes) {
+            $startStr = $periodTimes[$sch->start_period]['start'] ?? null;
+            $endStr = $periodTimes[$sch->end_period]['end'] ?? null;
+            $timeStr = ($startStr && $endStr) ? " ({$startStr} - {$endStr})" : '';
+
+            $alreadyInval = $existingInvals->first(function ($inv) use ($sch) {
+                return $inv->classroom_id == $sch->classroom_id &&
+                    $inv->period_start == $sch->start_period &&
+                    $inv->period_end == $sch->end_period;
+            });
+
+            return [
+                'id' => $sch->id,
+                'classroom_id' => $sch->classroom_id,
+                'classroom_name' => $sch->classroom?->name ?? 'Kelas',
+                'subject_id' => $sch->subject_id,
+                'subject_name' => $sch->subject?->name ?? 'Mapel',
+                'start_period' => $sch->start_period,
+                'end_period' => $sch->end_period,
+                'period_label' => "Jam ke-{$sch->start_period}".($sch->end_period > $sch->start_period ? "-{$sch->end_period}" : '').$timeStr,
+                'label' => ($sch->classroom?->name ?? 'Kelas').' • '.($sch->subject?->name ?? 'Mapel')." • Jam {$sch->start_period}-{$sch->end_period}".$timeStr,
+                'is_already_assigned' => (bool) $alreadyInval,
+                'inval_teacher_name' => $alreadyInval?->invalTeacher?->name,
+            ];
+        });
+
+        // Cek pengajuan Izin/Cuti GTK aktif
+        $activePermit = GtkPermit::where('user_id', $teacherId)
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->where('status', '!=', GtkPermit::STATUS_REJECTED)
+            ->latest('id')
+            ->first();
+
+        $permitData = null;
+        if ($activePermit) {
+            $permitData = [
+                'id' => $activePermit->id,
+                'permission_type' => $activePermit->permission_type,
+                'type_label' => $activePermit->type_label,
+                'reason' => $activePermit->reason,
+                'status' => $activePermit->status,
+                'status_label' => $activePermit->status_label,
+                'document_url' => $activePermit->document_url,
+                'assignment_document_url' => $activePermit->assignment_document_url,
+                'assignment_document_name' => $activePermit->assignment_document_name,
+            ];
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Laporan kejadian berhasil dicatat.',
-            'data' => $incident,
+            'data' => [
+                'teacher_id' => (int) $teacherId,
+                'schedules' => $formattedSchedules,
+                'total_schedules' => $formattedSchedules->count(),
+                'active_permit' => $permitData,
+            ],
         ]);
     }
 
@@ -2281,20 +2552,130 @@ class MobileTasksController extends Controller
         }
 
         $validated = $request->validate([
-            'classroom_id' => 'required|exists:classrooms,id',
             'absent_teacher_id' => 'required|exists:users,id',
+            'schedule_id' => 'nullable|string',
+            'classroom_id' => 'nullable|exists:classrooms,id',
             'subject_id' => 'nullable|exists:subjects,id',
             'inval_teacher_id' => 'nullable|exists:users,id',
-            'period_start' => 'required|integer|min:1|max:15',
-            'period_end' => 'required|integer|min:1|max:15|gte:period_start',
+            'period_start' => 'nullable|integer|min:1|max:15',
+            'period_end' => 'nullable|integer|min:1|max:15',
             'reason' => 'required|string|max:255',
             'assignment_material' => 'nullable|string',
+            'assignment_file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,webp|max:10240',
+            'use_permit_attachment' => 'nullable|boolean',
             'notes' => 'nullable|string',
         ]);
 
         $today = Carbon::today()->toDateString();
         $operationalYear = app(AcademicYearContext::class)->getOperationalYear();
         $journal = $this->getOrCreatePiketJournal($today, $user, $operationalYear->name, $operationalYear->semester);
+
+        $filePath = null;
+        $fileName = null;
+        if ($request->hasFile('assignment_file')) {
+            $file = $request->file('assignment_file');
+            $fileName = $file->getClientOriginalName();
+            $filePath = $file->store('piket/inval_tasks', 'local');
+        } elseif (! empty($validated['use_permit_attachment'])) {
+            $gtkPermit = GtkPermit::where('user_id', $validated['absent_teacher_id'])
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
+                ->whereNotNull('assignment_document_path')
+                ->latest('id')
+                ->first();
+            if ($gtkPermit) {
+                $filePath = $gtkPermit->assignment_document_path;
+                $fileName = $gtkPermit->assignment_document_name;
+            }
+        }
+
+        // Jika opsi 'all' (1 hari penuh) dipilih
+        if (($validated['schedule_id'] ?? null) === 'all') {
+            $dayNames = [
+                1 => 'Senin',
+                2 => 'Selasa',
+                3 => 'Rabu',
+                4 => 'Kamis',
+                5 => 'Jumat',
+                6 => 'Sabtu',
+                7 => 'Minggu',
+            ];
+            $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
+
+            $schedules = LessonSchedule::where('teacher_id', $validated['absent_teacher_id'])
+                ->where('day', $todayDay)
+                ->orderBy('start_period')
+                ->get();
+
+            if ($schedules->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Guru ini tidak memiliki jadwal KBM hari ini untuk ditugaskan secara 1 hari penuh.',
+                ], 422);
+            }
+
+            $createdInvals = [];
+            foreach ($schedules as $sch) {
+                $inval = PiketInvalClass::create([
+                    'piket_journal_id' => $journal->id,
+                    'classroom_id' => $sch->classroom_id,
+                    'absent_teacher_id' => $validated['absent_teacher_id'],
+                    'subject_id' => $sch->subject_id,
+                    'inval_teacher_id' => $validated['inval_teacher_id'] ?? null,
+                    'period_start' => $sch->start_period,
+                    'period_end' => $sch->end_period,
+                    'reason' => $validated['reason'],
+                    'assignment_material' => $validated['assignment_material'] ?? null,
+                    'assignment_file_path' => $filePath,
+                    'assignment_file_name' => $fileName,
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                ActivityLogger::log('create', "Menugaskan guru inval (1 Hari Penuh): {$inval->classroom?->name}", $inval, [
+                    'absent' => $inval->absent_teacher_id,
+                    'inval' => $inval->inval_teacher_id,
+                ]);
+
+                try {
+                    $this->telegramService->notifyInvalClassToWakaAndPiket($inval);
+                } catch (\Throwable $e) {
+                }
+
+                $createdInvals[] = $inval;
+            }
+
+            GtkPermit::syncFromPiketInvals();
+
+            $count = count($createdInvals);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Penugasan inval untuk seluruh ({$count}) jadwal kelas kosong 1 hari penuh berhasil disimpan.",
+                'data' => $createdInvals[0] ?? null,
+                'invals' => $createdInvals,
+                'count' => $count,
+            ]);
+        }
+
+        // Jika schedule spesifik dipilih
+        if (! empty($validated['schedule_id']) && is_numeric($validated['schedule_id'])) {
+            $sch = LessonSchedule::find($validated['schedule_id']);
+            if ($sch) {
+                $validated['classroom_id'] = $sch->classroom_id;
+                $validated['subject_id'] = $sch->subject_id;
+                $validated['period_start'] = $sch->start_period;
+                $validated['period_end'] = $sch->end_period;
+            }
+        }
+
+        if (empty($validated['classroom_id']) || empty($validated['period_start'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kelas dan jam pelajaran harus dipilih dari jadwal atau ditentukan secara manual.',
+            ], 422);
+        }
+
+        $periodEnd = $validated['period_end'] ?? $validated['period_start'];
 
         $inval = PiketInvalClass::create([
             'piket_journal_id' => $journal->id,
@@ -2303,9 +2684,11 @@ class MobileTasksController extends Controller
             'subject_id' => $validated['subject_id'] ?? null,
             'inval_teacher_id' => $validated['inval_teacher_id'] ?? null,
             'period_start' => $validated['period_start'],
-            'period_end' => $validated['period_end'],
+            'period_end' => $periodEnd,
             'reason' => $validated['reason'],
             'assignment_material' => $validated['assignment_material'] ?? null,
+            'assignment_file_path' => $filePath,
+            'assignment_file_name' => $fileName,
             'notes' => $validated['notes'] ?? null,
         ]);
 

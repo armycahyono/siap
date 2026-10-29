@@ -12,6 +12,7 @@ class GtkPermit extends Model
 
     protected $appends = [
         'document_url',
+        'assignment_document_url',
     ];
 
     protected $casts = [
@@ -182,6 +183,15 @@ class GtkPermit extends Model
         }
 
         return route('attendance.gtk-permits.document', $this);
+    }
+
+    public function getAssignmentDocumentUrlAttribute(): ?string
+    {
+        if (! $this->assignment_document_path) {
+            return null;
+        }
+
+        return route('attendance.gtk-permits.assignment', $this);
     }
 
     /**

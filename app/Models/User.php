@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNumberHelper;
 use App\Traits\LogsActivity;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -1300,26 +1301,12 @@ class User extends Authenticatable
 
     public function getWhatsappNumberAttribute(): ?string
     {
-        if (! $this->phone) {
-            return null;
-        }
-
-        $clean = preg_replace('/[^0-9]/', '', $this->phone);
-        if (str_starts_with($clean, '0')) {
-            return '62'.substr($clean, 1);
-        }
-
-        return $clean;
+        return PhoneNumberHelper::formatForWhatsapp($this->phone);
     }
 
     public function getWhatsappUrlAttribute(): ?string
     {
-        $wa = $this->whatsapp_number;
-        if (! $wa) {
-            return null;
-        }
-
-        return "https://wa.me/{$wa}";
+        return PhoneNumberHelper::toWhatsappUrl($this->phone);
     }
 
     /**

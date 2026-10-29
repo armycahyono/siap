@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNumberHelper;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,20 @@ class PiketGuest extends Model
     protected $casts = [
         'visit_date' => 'date',
     ];
+
+    protected $appends = [
+        'whatsapp_url',
+    ];
+
+    public function getWhatsappNumberAttribute(): ?string
+    {
+        return PhoneNumberHelper::formatForWhatsapp($this->phone);
+    }
+
+    public function getWhatsappUrlAttribute(): ?string
+    {
+        return PhoneNumberHelper::toWhatsappUrl($this->phone);
+    }
 
     public function journal(): BelongsTo
     {

@@ -6,14 +6,21 @@ use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\GradeLevel;
+use App\Models\GtkPermit;
+use App\Models\LessonSchedule;
 use App\Models\PiketIncident;
+use App\Models\PiketSchedule;
 use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\Subject;
 use App\Models\User;
 use App\Models\UserActivityLog;
 use App\Services\AcademicYearContext;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MobileApiFoundationTest extends TestCase
@@ -152,10 +159,23 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonStructure([
                 'success',
                 'data' => [
-                    'user' => ['id', 'name', 'username', 'email'],
+                    'user' => [
+                        'id',
+                        'name',
+                        'username',
+                        'email',
+                        'nigs',
+                        'nuptk',
+                        'nip',
+                        'birth_info',
+                        'telegram_chat_id',
+                        'is_telegram_connected',
+                    ],
                     'subjects',
                     'structural_positions',
                     'homeroom_classrooms',
+                    'piket_schedules',
+                    'special_assignments',
                     'active_decrees',
                 ],
             ]);
@@ -456,6 +476,22 @@ class MobileApiFoundationTest extends TestCase
                     ],
                 ],
             ]);
+
+        $resAdminKbm = $this->actingAs($admin)->getJson('/api/v1/mobile/kbm');
+        $resAdminKbm->assertOk()
+            ->assertJsonPath('data.live_monitoring.role_key', 'principal')
+            ->assertJsonPath('data.live_monitoring.can_view_student_all', true)
+            ->assertJsonPath('data.live_monitoring.can_view_gtk', true)
+            ->assertJsonStructure([
+                'data' => [
+                    'live_monitoring' => [
+                        'role_key',
+                        'role_label',
+                        'scope_label',
+                    ],
+                    'bk',
+                ],
+            ]);
     }
 
     public function test_mobile_students_smart_search_behavior(): void
@@ -613,10 +649,31 @@ class MobileApiFoundationTest extends TestCase
             'status' => 'aktif',
         ]);
 
+        $dayNames = [
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
+        PiketSchedule::create([
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+            'day' => $todayDay,
+            'teacher_id' => $this->teacher->id,
+            'role' => 'koordinator',
+            'duty_location' => 'Meja Piket Utama',
+            'is_active' => true,
+        ]);
+
         // 1. Get Piket Workspace Data
         $res = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks/piket');
         $res->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('data.scheduled_officers.0.teacher_name', $this->teacher->name)
             ->assertJsonStructure([
                 'success',
                 'data' => [
@@ -633,35 +690,67 @@ class MobileApiFoundationTest extends TestCase
                 ],
             ]);
 
-        // 2. Terbitkan Surat Izin Siswa
+        // 2. Terbitkan Surat Izin Siswa (classroom_id dan period_assigned otomatis dihitung backend)
         $permitPayload = [
             'permit_type' => 'terlambat',
             'student_id' => $student->id,
-            'student_name' => $student->name,
-            'classroom_id' => $classroom->id,
             'reason' => 'Rantai sepeda putus',
             'entry_time' => '07:35',
-            'period_assigned' => '1',
             'action_taken' => 'Dinasihati dan diberikan surat izin masuk',
         ];
         $permitRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/permits/store', $permitPayload);
         $permitRes->assertOk()
-            ->assertJsonPath('success', true);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.classroom_id', $classroom->id)
+            ->assertJsonPath('data.period_assigned', '1')
+            ->assertJsonStructure([
+                'success',
+                'message',
+                'data' => [
+                    'id',
+                    'permit_number',
+                    'classroom_id',
+                    'period_assigned',
+                    'print_url',
+                ],
+                'print_url',
+            ]);
 
-        // 3. Catat Kejadian Siswa
-        $incPayload = [
-            'student_id' => $student->id,
-            'student_name' => $student->name,
+        $this->assertStringContainsString('autoprint=1', $permitRes->json('print_url'));
+
+        // 3. Catat Kejadian Siswa (Bisa Lebih Dari 1 Siswa & kelas otomatis terisi)
+        $student2 = Student::create([
+            'name' => 'Siswa Tes Piket Kedua',
+            'nisn' => '9988776655',
             'classroom_id' => $classroom->id,
+            'status' => 'aktif',
+        ]);
+
+        $incPayload = [
+            'student_ids' => [$student->id, $student2->id],
             'category' => 'seragam',
             'incident_time' => '08:00',
-            'description' => 'Tidak mengenakan dasi dan kaos kaki putih',
+            'description' => 'Tidak mengenakan dasi dan ikat pinggang standar',
             'action_taken' => 'Diberikan pembinaan dan teguran',
             'follow_up_target' => 'selesai_di_piket',
         ];
         $incRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/tasks/piket/incidents/store', $incPayload);
         $incRes->assertOk()
-            ->assertJsonPath('success', true);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('count', 2)
+            ->assertJsonCount(2, 'incidents');
+
+        $this->assertDatabaseHas('piket_incidents', [
+            'student_id' => $student->id,
+            'classroom_id' => $classroom->id,
+            'category' => 'seragam',
+        ]);
+
+        $this->assertDatabaseHas('piket_incidents', [
+            'student_id' => $student2->id,
+            'classroom_id' => $classroom->id,
+            'category' => 'seragam',
+        ]);
 
         // 4. Catat Guru Inval
         $invalPayload = [
@@ -728,5 +817,146 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.is_management', true)
             ->assertJsonPath('data.can_operate', true);
+    }
+
+    public function test_mobile_gtk_permit_with_assignment_attachment_and_inval_schedules(): void
+    {
+        Storage::fake('local');
+
+        $activeYear = app(AcademicYearContext::class)->getOperationalYear();
+        $academicYearStr = $activeYear ? $activeYear->name : '2026/2027';
+        $semesterStr = $activeYear ? $activeYear->semester : 'Ganjil';
+
+        $dayNames = [
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today()->dayOfWeekIso] ?? 'Senin';
+
+        // Set teacher as piket officer today
+        PiketSchedule::create([
+            'academic_year' => $academicYearStr,
+            'semester' => $semesterStr,
+            'day' => $todayDay,
+            'teacher_id' => $this->teacher->id,
+            'role' => 'koordinator',
+            'duty_location' => 'Meja Piket Utama',
+            'is_active' => true,
+        ]);
+
+        $dept = Department::first() ?? Department::create(['code' => 'TKJ', 'name' => 'Teknik Komputer']);
+        $grade = GradeLevel::first() ?? GradeLevel::create(['name' => 'X', 'level' => 10]);
+        $classroom = Classroom::create([
+            'name' => 'X-TKJ-1',
+            'grade_level_id' => $grade->id,
+            'department_id' => $dept->id,
+            'academic_year' => $academicYearStr,
+            'is_active' => true,
+        ]);
+        $subject = Subject::first() ?? Subject::create([
+            'name' => 'Pemrograman Web',
+            'code' => 'WEB01',
+        ]);
+
+        // Buat jadwal mengajar untuk guru pada hari ini
+        LessonSchedule::create([
+            'academic_year' => $academicYearStr,
+            'semester' => $semesterStr,
+            'day' => $todayDay,
+            'teacher_id' => $this->teacher->id,
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'start_period' => 1,
+            'end_period' => 2,
+            'is_active' => true,
+        ]);
+
+        LessonSchedule::create([
+            'academic_year' => $academicYearStr,
+            'semester' => $semesterStr,
+            'day' => $todayDay,
+            'teacher_id' => $this->teacher->id,
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'start_period' => 3,
+            'end_period' => 4,
+            'is_active' => true,
+        ]);
+
+        // 1. Submit Permohonan Izin GTK dengan lampiran dokumen tugas
+        $assignmentFile = UploadedFile::fake()->create('tugas_kbm_mandiri.pdf', 300, 'application/pdf');
+        $permitRes = $this->actingAs($this->teacher)->post('/api/v1/mobile/tasks/permits/store', [
+            'permission_type' => 'izin',
+            'start_date' => Carbon::today()->toDateString(),
+            'end_date' => Carbon::today()->toDateString(),
+            'reason' => 'Menghadiri undangan dinas luar',
+            'assignment_document' => $assignmentFile,
+        ], ['Accept' => 'application/json']);
+
+        $permitRes->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('gtk_permits', [
+            'user_id' => $this->teacher->id,
+            'assignment_document_name' => 'tugas_kbm_mandiri.pdf',
+        ]);
+
+        $gtkPermit = GtkPermit::where('user_id', $this->teacher->id)->latest('id')->first();
+        $this->assertNotNull($gtkPermit->assignment_document_path);
+        Storage::disk('local')->assertExists($gtkPermit->assignment_document_path);
+
+        // Download attachment via download route
+        $downloadRes = $this->actingAs($this->teacher)->get(route('attendance.gtk-permits.assignment', $gtkPermit));
+        $downloadRes->assertOk();
+
+        // 2. Cek endpoint jadwal mengajar guru untuk inval (/tasks/piket/invals/teacher-schedules)
+        $schedRes = $this->actingAs($this->teacher)->getJson("/api/v1/mobile/tasks/piket/invals/teacher-schedules?teacher_id={$this->teacher->id}");
+        $schedRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_schedules', 2)
+            ->assertJsonPath('data.active_permit.assignment_document_name', 'tugas_kbm_mandiri.pdf')
+            ->assertJsonCount(2, 'data.schedules');
+
+        // 3. Simpan penugasan inval untuk 1 hari penuh (schedule_id = 'all') dengan file tugas
+        $invalFile = UploadedFile::fake()->create('panduan_inval.docx', 150);
+        $invalBatchRes = $this->actingAs($this->teacher)->post('/api/v1/mobile/tasks/piket/invals/store', [
+            'absent_teacher_id' => $this->teacher->id,
+            'schedule_id' => 'all',
+            'reason' => 'Izin dinas luar',
+            'assignment_material' => 'Mengerjakan modul di e-learning',
+            'assignment_file' => $invalFile,
+        ], ['Accept' => 'application/json']);
+
+        $invalBatchRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('count', 2);
+
+        $this->assertDatabaseHas('piket_inval_classes', [
+            'classroom_id' => $classroom->id,
+            'absent_teacher_id' => $this->teacher->id,
+            'period_start' => 1,
+            'period_end' => 2,
+            'assignment_file_name' => 'panduan_inval.docx',
+        ]);
+
+        $this->assertDatabaseHas('piket_inval_classes', [
+            'classroom_id' => $classroom->id,
+            'absent_teacher_id' => $this->teacher->id,
+            'period_start' => 3,
+            'period_end' => 4,
+            'assignment_file_name' => 'panduan_inval.docx',
+        ]);
+
+        // Cek data piket memuat url file tugas inval dan gtk_permits_today
+        $piketRes = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks/piket');
+        $piketRes->assertOk()
+            ->assertJsonPath('success', true);
+        $this->assertNotEmpty($piketRes->json('data.gtk_permits_today'));
+        $this->assertNotEmpty($piketRes->json('data.invals.0.assignment_file_url'));
     }
 }

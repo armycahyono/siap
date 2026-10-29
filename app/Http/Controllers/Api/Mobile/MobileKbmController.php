@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
 use App\Models\CurriculumEvent;
 use App\Models\LessonSchedule;
 use App\Models\SchoolSetting;
@@ -175,6 +176,22 @@ class MobileKbmController extends Controller
                 ];
             });
 
+        // 6. Live Monitoring Terpadu & Layanan BK untuk Halaman Menu KBM
+        $operationalAyModel = AcademicYear::where('name', $academicYear)->first();
+        $myHomeroomClassroom = $user->homeroomClassrooms()
+            ->where(function ($sub) use ($academicYear, $operationalAyModel) {
+                if ($operationalAyModel) {
+                    $sub->where('classrooms.academic_year_id', $operationalAyModel->id);
+                }
+                $sub->orWhere('classrooms.academic_year', $academicYear)
+                    ->orWhereNull('classrooms.academic_year');
+            })
+            ->first();
+
+        $tasksController = app(MobileTasksController::class);
+        $liveMonitoring = $tasksController->buildLiveMonitoringData($user, $date, $academicYear, $myHomeroomClassroom);
+        $bkData = $tasksController->buildBkSummaryData($user, $academicYear);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -194,6 +211,8 @@ class MobileKbmController extends Controller
                 'swap_sessions' => $swapSessions->values(),
                 'total_sessions' => $mySchedules->count(),
                 'attended_sessions_count' => $formattedMySchedules->where('is_attended', true)->count(),
+                'live_monitoring' => $liveMonitoring,
+                'bk' => $bkData,
             ],
         ]);
     }

@@ -398,8 +398,10 @@ class GtkPermitController extends Controller
 
         $isAuthorized = $currentUser->isSuperAdmin()
             || $currentUser->isPrincipal()
-            || $currentUser->isWakaKurikulum()
-            || ($gtkPermit->user_id === $currentUser->id);
+            || (method_exists($currentUser, 'isWakaKurikulum') && $currentUser->isWakaKurikulum())
+            || ($gtkPermit->user_id === $currentUser->id)
+            || (method_exists($currentUser, 'canOperatePiket') && $currentUser->canOperatePiket())
+            || (method_exists($currentUser, 'isPiketOfficerToday') && $currentUser->isPiketOfficerToday());
 
         if (! $isAuthorized) {
             abort(403, 'Anda tidak memiliki hak akses untuk melihat atau mengunduh dokumen ini.');
@@ -422,6 +424,46 @@ class GtkPermitController extends Controller
         }
 
         return Storage::disk($disk)->response($path);
+    }
+
+    /**
+     * Download / preview assignment document attached to GTK permit for replacement teachers / piket.
+     */
+    public function downloadAssignment(GtkPermit $gtkPermit)
+    {
+        $currentUser = Auth::user();
+        if (! $currentUser) {
+            abort(401);
+        }
+
+        $isAuthorized = $currentUser->isSuperAdmin()
+            || $currentUser->isPrincipal()
+            || (method_exists($currentUser, 'isWakaKurikulum') && $currentUser->isWakaKurikulum())
+            || ($gtkPermit->user_id === $currentUser->id)
+            || (method_exists($currentUser, 'canOperatePiket') && $currentUser->canOperatePiket())
+            || (method_exists($currentUser, 'isPiketOfficerToday') && $currentUser->isPiketOfficerToday());
+
+        if (! $isAuthorized) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengunduh lampiran tugas ini.');
+        }
+
+        $path = $gtkPermit->assignment_document_path;
+        if (! $path || str_contains($path, '..')) {
+            abort(404, 'Lampiran tugas tidak ditemukan.');
+        }
+
+        $disk = null;
+        if (Storage::disk('local')->exists($path)) {
+            $disk = 'local';
+        } elseif (Storage::disk('public')->exists($path)) {
+            $disk = 'public';
+        }
+
+        if (! $disk) {
+            abort(404, 'File lampiran tugas tidak ditemukan di penyimpanan.');
+        }
+
+        return Storage::disk($disk)->download($path, $gtkPermit->assignment_document_name ?: basename($path));
     }
 
     public function syncPiket(): RedirectResponse

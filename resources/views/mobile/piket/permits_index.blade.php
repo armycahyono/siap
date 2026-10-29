@@ -198,7 +198,7 @@
                         Piket: {{ $p->givenBy?->formatted_short_name ?? $p->givenBy?->name ?? 'Petugas' }}
                     </span>
                     <div class="d-flex align-items-center gap-1.5">
-                        <a href="{{ route('piket.permits.slip', $p) }}" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-2.5 py-0.5 shadow-xs d-flex align-items-center gap-1 external" style="font-size: 0.68rem;" title="Cetak Struk / Slip Izin Thermal">
+                        <a href="{{ route('piket.permits.slip', $p) }}" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-2.5 py-0.5 shadow-xs d-flex align-items-center gap-1 external" style="font-size: 0.68rem;" title="Cetak Slip Izin Thermal">
                             <i class="ti ti-printer fs-3"></i>
                             <span>Cetak Slip</span>
                         </a>

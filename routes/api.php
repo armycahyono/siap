@@ -55,6 +55,7 @@ Route::prefix('v1/mobile')->middleware([
 
     // Sub-modul Meja Piket Mobile (In-App Workspace & Operasional Cepat)
     Route::get('tasks/piket', [MobileTasksController::class, 'getPiketData']);
+    Route::get('tasks/piket/invals/teacher-schedules', [MobileTasksController::class, 'getTeacherSchedulesForInval']);
     Route::post('tasks/piket/permits/store', [MobileTasksController::class, 'storePiketStudentPermit']);
     Route::post('tasks/piket/incidents/store', [MobileTasksController::class, 'storePiketIncident']);
     Route::post('tasks/piket/invals/store', [MobileTasksController::class, 'storePiketInval']);

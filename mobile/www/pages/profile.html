@@ -1,42 +1,119 @@
 <div class="space-y-4">
-    <!-- Profile Biodata Card -->
-    <div class="card-elevated p-5 text-center">
-        <div class="relative w-20 h-20 mx-auto mb-3">
-            <img id="prof-avatar" src="assets/logo.png" alt="Avatar" class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md bg-slate-100">
-            <label for="prof-avatar-input" class="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center cursor-pointer shadow-md transition active:scale-95 border-2 border-white" title="Ganti Foto Profil">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            </label>
-            <input type="file" id="prof-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden">
-        </div>
-        <h3 id="prof-name" class="text-sm font-black text-slate-800 tracking-tight">Memuat nama...</h3>
-        <p class="text-[11px] font-mono text-slate-400 mt-0.5">NIP: <span id="prof-nip">-</span></p>
+    <!-- Profile Biodata Card: Digital Smart ID Card -->
+    <div class="card-elevated p-4 border-slate-200/80 shadow-sm relative overflow-hidden bg-white">
+        <!-- Accent Top Bar -->
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
 
-        <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 text-left">
-            <div class="p-2.5 bg-slate-50 rounded-xl">
-                <span class="text-[9px] font-bold text-slate-400 uppercase">NIGS</span>
-                <p id="prof-nigs" class="text-xs font-semibold text-slate-700 font-mono mt-0.5">-</p>
+        <!-- 1. Header Horizontal (Avatar + Nama & Badges + Quick Action Icons) -->
+        <div class="flex items-start justify-between gap-2.5 pt-1">
+            <div class="flex items-start gap-2.5 min-w-0 flex-1">
+                <!-- Avatar with edit trigger -->
+                <div class="relative w-14 h-14 shrink-0">
+                    <img id="prof-avatar" src="assets/logo.png" alt="Avatar" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md bg-slate-100">
+                    <label for="prof-avatar-input" class="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center cursor-pointer shadow-sm transition active:scale-95 border-2 border-white" title="Ganti Foto Profil">
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+                    </label>
+                    <input type="file" id="prof-avatar-input" accept="image/jpeg,image/png,image/webp" class="hidden">
+                </div>
+
+                <!-- Nama & Status -->
+                <div class="min-w-0 flex-1">
+                    <h3 id="prof-name" class="text-sm font-black text-slate-900 tracking-tight leading-snug truncate">Memuat nama...</h3>
+                    <div class="flex flex-wrap items-center gap-1 mt-1">
+                        <span id="prof-role-badge" class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">Guru</span>
+                        <span id="prof-gtk-status" class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200">GTY / Tetap</span>
+                    </div>
+                </div>
             </div>
-            <div class="p-2.5 bg-slate-50 rounded-xl">
-                <span class="text-[9px] font-bold text-slate-400 uppercase">No. WhatsApp</span>
-                <p id="prof-phone" class="text-xs font-semibold text-slate-700 font-mono mt-0.5">-</p>
+
+            <!-- Quick Action Icons -->
+            <div class="flex items-center gap-1 shrink-0 pt-0.5">
+                <button type="button" onclick="openEditProfileModal()" class="w-8 h-8 rounded-xl bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200/70 flex items-center justify-center transition active:scale-95 shadow-2xs" title="Edit Data Profil">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                <button type="button" onclick="openEditPasswordModal()" class="w-8 h-8 rounded-xl bg-slate-50 hover:bg-purple-50 text-slate-600 hover:text-purple-700 border border-slate-200/70 flex items-center justify-center transition active:scale-95 shadow-2xs" title="Ganti Kata Sandi">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </button>
             </div>
         </div>
 
-        <div class="mt-2.5 p-2.5 bg-slate-50 rounded-xl text-left">
-            <span class="text-[9px] font-bold text-slate-400 uppercase">Email Akun</span>
-            <p id="prof-email" class="text-xs font-semibold text-slate-700 mt-0.5">-</p>
+        <!-- 2. Strip Monospace Identitas (3 Kolom: NIGS, NUPTK, NIP) -->
+        <div class="mt-3 p-2 bg-slate-50/90 rounded-xl border border-slate-100 grid grid-cols-3 gap-1 text-center">
+            <div class="border-r border-slate-200/60 pr-1">
+                <span class="text-[8px] font-bold text-slate-400 block uppercase tracking-wider">NIGS</span>
+                <p id="prof-nigs" class="text-[11px] font-bold text-slate-800 font-mono truncate mt-0.5">-</p>
+            </div>
+            <div class="border-r border-slate-200/60 px-1">
+                <span class="text-[8px] font-bold text-slate-400 block uppercase tracking-wider">NUPTK</span>
+                <p id="prof-nuptk" class="text-[11px] font-bold text-slate-800 font-mono truncate mt-0.5">-</p>
+            </div>
+            <div class="pl-1">
+                <span class="text-[8px] font-bold text-slate-400 block uppercase tracking-wider">NIP</span>
+                <p id="prof-nip" class="text-[11px] font-bold text-slate-800 font-mono truncate mt-0.5">-</p>
+            </div>
         </div>
 
-        <!-- Tombol Aksi Edit Profil & Keamanan -->
-        <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
-            <button type="button" onclick="openEditProfileModal()" class="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                Edit Profil
-            </button>
-            <button type="button" onclick="openEditPasswordModal()" class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                Ganti Sandi
-            </button>
+        <!-- 3. Biodata & Kontak (Grid 2 Kolom Compact) -->
+        <div class="mt-2.5 grid grid-cols-2 gap-2 text-left">
+            <div class="p-2 bg-slate-50/70 rounded-xl border border-slate-100/80">
+                <div class="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span>📱</span> No. WhatsApp
+                </div>
+                <div id="prof-phone-wrap" class="mt-0.5">
+                    <p id="prof-phone" class="text-xs font-bold text-slate-800 font-mono truncate">-</p>
+                </div>
+            </div>
+
+            <div class="p-2 bg-slate-50/70 rounded-xl border border-slate-100/80">
+                <div class="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                    <span>🎂</span> Tempat, Tgl Lahir
+                </div>
+                <p id="prof-birth" class="text-xs font-semibold text-slate-800 truncate mt-0.5" title="">-</p>
+            </div>
+        </div>
+
+        <!-- 4. Baris Email Akun -->
+        <div class="mt-2 p-2 bg-slate-50/70 rounded-xl border border-slate-100/80 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-xs">✉️</span>
+                <div class="min-w-0">
+                    <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider block leading-none">Email Akun</span>
+                    <p id="prof-email" class="text-xs font-medium text-slate-800 truncate mt-0.5">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Status Bot Telegram & ID Chat -->
+        <div class="mt-2 p-2 rounded-xl border border-sky-100 bg-sky-50/30 flex items-center justify-between gap-2" id="prof-telegram-box">
+            <div class="flex items-center gap-2 min-w-0">
+                <div class="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[8px] font-bold uppercase tracking-wider text-slate-500">Bot Telegram</span>
+                        <span id="prof-telegram-status-badge" class="px-1.5 py-0.2 rounded-full text-[8px] font-bold bg-slate-100 text-slate-600">Memeriksa...</span>
+                    </div>
+                    <p id="prof-telegram-id" class="text-[11px] font-mono font-bold text-slate-800 truncate mt-0.5">-</p>
+                </div>
+            </div>
+            <div id="prof-telegram-action" class="shrink-0"></div>
+        </div>
+
+        <!-- 6. Blok Penugasan Terpadu (Unified All Assignments) -->
+        <div class="mt-3 pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs">📋</span>
+                    <h4 class="text-[11px] font-black text-slate-900 uppercase tracking-wider">Seluruh Penugasan Aktif</h4>
+                </div>
+                <span id="prof-assignments-count" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-mono">0 Tugas</span>
+            </div>
+
+            <!-- List Penugasan Chips / Badges -->
+            <div id="prof-assignments-container" class="space-y-1.5">
+                <div class="text-center py-2 text-[11px] text-slate-400">Memuat rincian penugasan...</div>
+            </div>
         </div>
     </div>
 

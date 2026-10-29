@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AttendanceLog;
 use App\Models\GtkDecree;
 use App\Models\LessonSchedule;
+use App\Models\SchoolSetting;
 use App\Models\SubjectAttendanceSession;
 use App\Models\User;
 use App\Models\UserActivityLog;
@@ -90,6 +91,34 @@ class MobileProfileController extends Controller
                 ];
             });
 
+        // 5. Jadwal Piket Rutin Aktif
+        $activePiketSchedules = $user->piketSchedules()
+            ->where('is_active', true)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'day' => $p->day,
+                'role' => ucfirst($p->role ?? 'anggota'),
+                'duty_location' => $p->duty_location ?? 'Meja Piket Utama',
+            ]);
+
+        // 6. Penugasan Khusus (Supervisor & BK)
+        $specialAssignments = [];
+        if ($user->isSupervisor()) {
+            $specialAssignments[] = [
+                'type' => 'supervisor',
+                'label' => 'Supervisor Akademik',
+            ];
+        }
+        if ($user->isCounselingBK()) {
+            $specialAssignments[] = [
+                'type' => 'bk',
+                'label' => 'Guru Bimbingan Konseling (BK)',
+            ];
+        }
+
+        $setting = SchoolSetting::getSetting();
+
         $avatarUrl = $user->avatar
             ? (str_starts_with($user->avatar, 'http') ? $user->avatar : asset('storage/'.$user->avatar))
             : asset('assets/images/avatar-default.png');
@@ -104,21 +133,32 @@ class MobileProfileController extends Controller
                     'username' => $user->username,
                     'email' => $user->email,
                     'phone' => $user->phone,
-                    'nip' => $user->nip,
-                    'nuptk' => $user->nuptk,
-                    'nigs' => $user->nigs,
-                    'nik' => $user->nik,
+                    'whatsapp_url' => $user->whatsapp_url,
+                    'nip' => $user->nip ?: '-',
+                    'nuptk' => $user->nuptk ?: '-',
+                    'nigs' => $user->nigs ?: '-',
+                    'nik' => $user->nik ?: '-',
+                    'birth_info' => $user->birth_info ?: '-',
+                    'birth_year' => $user->birth_year,
                     'position' => $user->position,
+                    'role_name' => $user->role?->name ?? 'Guru',
                     'gtk_status' => $user->gtk_status ?? 'GTY / Tetap',
                     'education_level' => $user->education_level,
                     'major' => $user->major,
                     'faculty' => $user->faculty,
                     'address' => $user->address,
                     'avatar_url' => $avatarUrl,
+                    'telegram_chat_id' => $user->telegram_chat_id,
+                    'telegram_username' => $user->telegram_username,
+                    'is_telegram_connected' => ! empty($user->telegram_chat_id),
+                    'telegram_bot_username' => $setting->telegram_bot_username,
+                    'telegram_connect_url' => $setting->telegram_bot_username ? "https://t.me/{$setting->telegram_bot_username}" : null,
                 ],
                 'subjects' => $userSubjects,
                 'structural_positions' => $activeStructuralPositions,
                 'homeroom_classrooms' => $activeHomeroom,
+                'piket_schedules' => $activePiketSchedules,
+                'special_assignments' => $specialAssignments,
                 'active_decrees' => $activeDecrees,
                 'activity_logs' => $this->getUserActivityLogs($user, 35),
             ],
