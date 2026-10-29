@@ -78,6 +78,14 @@ class MobileTasksController extends Controller
         $nextDate = $date->copy()->addDay()->toDateString();
 
         // 1. Data Piket Sekolah
+        $canAccessPiket = $user->canAccessPiket($operationalAcademicYear)
+            || $user->isSuperAdmin()
+            || $user->isPrincipal()
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum());
+        $isManagement = $user->isSuperAdmin()
+            || $user->isPrincipal()
+            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum());
+
         $isPiketToday = $user->isPiketOfficerToday();
         $todayPiketSchedule = PiketSchedule::where('teacher_id', $user->id)
             ->where('day', $dayName)
@@ -551,6 +559,8 @@ class MobileTasksController extends Controller
                     'is_today' => $targetDateStr === $todayStr,
                 ],
                 'piket' => [
+                    'can_access' => $canAccessPiket,
+                    'is_management' => $isManagement,
                     'is_piket_today' => $isPiketToday,
                     'today_schedule' => $todayPiketSchedule ? [
                         'day' => $todayPiketSchedule->day,

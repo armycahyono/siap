@@ -372,11 +372,23 @@
             }
         }
 
-        // Piket Today Badge
+        // Piket Today / Management Badge
         const piketCard = container.querySelector('#dash-piket-card');
+        const piketTitle = container.querySelector('#dash-piket-title');
+        const piketDesc = container.querySelector('#dash-piket-desc');
+        const piketInfo = data.piket_info;
+        const currentUser = SIAP_ROUTER.getCurrentUser();
+        const isSuperOrAdmin = currentUser?.role === 'admin' || currentUser?.is_superadmin || piketInfo?.is_management || piketInfo?.can_access;
+
         if (piketCard) {
-            if (data.piket_info?.is_piket_today) {
+            if (piketInfo?.is_piket_today) {
                 piketCard.classList.remove('hidden');
+                if (piketTitle) piketTitle.textContent = 'Petugas Piket Hari Ini';
+                if (piketDesc) piketDesc.textContent = 'Anda bertugas di Meja Piket & Gerbang hari ini.';
+            } else if (isSuperOrAdmin) {
+                piketCard.classList.remove('hidden');
+                if (piketTitle) piketTitle.textContent = 'Meja Piket Sekolah';
+                if (piketDesc) piketDesc.textContent = 'Monitoring operasional presensi, izin siswa & kejadian hari ini.';
             } else {
                 piketCard.classList.add('hidden');
             }
@@ -1186,8 +1198,12 @@
         const badgePiketToday = container.querySelector('#badge-piket-today');
         const isPiketToday = data.piket?.is_piket_today;
         const weeklyDays = data.piket?.weekly_days || [];
+        const isManagement = data.piket?.is_management;
+        const canAccessPiket = data.piket?.can_access;
+        const currentTasksUser = SIAP_ROUTER.getCurrentUser();
+        const isAdminOrManagement = isManagement || canAccessPiket || currentTasksUser?.role === 'admin' || currentTasksUser?.is_superadmin;
 
-        if (isPiketToday || weeklyDays.length > 0) {
+        if (isAdminOrManagement || isPiketToday || weeklyDays.length > 0) {
             if (cardPiket) cardPiket.classList.remove('hidden');
             if (isPiketToday) {
                 if (badgePiketToday) {
@@ -1196,6 +1212,14 @@
                 }
                 if (piketLocationSub) {
                     piketLocationSub.textContent = 'Bertugas Hari Ini di Meja Piket & Gerbang';
+                }
+            } else if (isAdminOrManagement) {
+                if (badgePiketToday) {
+                    badgePiketToday.textContent = 'Akses Manajemen';
+                    badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800';
+                }
+                if (piketLocationSub) {
+                    piketLocationSub.textContent = 'Akses Penuh Manajemen & Meja Piket';
                 }
             } else {
                 if (badgePiketToday) {
@@ -3100,6 +3124,10 @@
                 badgeShift.textContent = 'Bertugas Hari Ini';
                 badgeShift.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs';
                 detailShift.textContent = 'Anda aktif bertugas di Meja Piket & Gerbang hari ini.';
+            } else if (data.is_management) {
+                badgeShift.textContent = 'Supervisi Manajemen';
+                badgeShift.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs';
+                detailShift.textContent = 'Akses Penuh Manajemen: Hak supervisi, operasional, & penutupan jurnal.';
             } else {
                 badgeShift.textContent = 'Tidak Bertugas Hari Ini';
                 badgeShift.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800';

@@ -47,17 +47,17 @@
         </div>
     </div>
 
-    <!-- Piket Officer Card (Only shown if user is piket officer today) -->
-    <div id="dash-piket-card" class="hidden card-elevated p-3.5 bg-amber-50/70 border-amber-200/80">
+    <!-- Piket Officer / Management Card -->
+    <div id="dash-piket-card" class="hidden card-elevated p-3.5 bg-purple-50/70 border-purple-200/80">
         <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-2xl bg-amber-200/80 text-amber-800 flex items-center justify-center font-bold text-sm shadow-xs">
-                ⚠️
+            <div class="w-9 h-9 rounded-2xl bg-purple-200/80 text-purple-800 flex items-center justify-center font-bold text-sm shadow-xs">
+                🛡️
             </div>
             <div class="flex-1">
-                <h5 class="text-xs font-bold text-amber-900">Petugas Piket Hari Ini</h5>
-                <p class="text-[11px] text-amber-700 leading-tight">Anda bertugas menjaga ketertiban, izin siswa, dan log piket.</p>
+                <h5 id="dash-piket-title" class="text-xs font-bold text-purple-900">Meja Piket Sekolah</h5>
+                <p id="dash-piket-desc" class="text-[11px] text-purple-700 leading-tight">Monitoring ketertiban, izin siswa, guru inval & log piket.</p>
             </div>
-            <button onclick="SIAP_ROUTER.navigate('/tasks')" class="px-3 py-1.5 bg-amber-600 text-white rounded-xl text-[10px] font-bold shadow-xs">Tugas</button>
+            <button onclick="SIAP_ROUTER.navigate('/tasks/piket')" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-bold shadow-xs active:scale-95 transition">Meja Piket</button>
         </div>
     </div>
 

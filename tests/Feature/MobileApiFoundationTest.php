@@ -699,5 +699,34 @@ class MobileApiFoundationTest extends TestCase
         ]);
         $closeRes->assertOk()
             ->assertJsonPath('success', true);
+
+        // 7. Verifikasi Hak Akses Piket untuk Superadmin / Manajemen
+        $adminRole = Role::where('slug', 'super_admin')->first() ?? Role::create(['name' => 'Super Admin', 'slug' => 'super_admin']);
+        $adminUser = User::create([
+            'name' => 'Super Administrator',
+            'username' => 'superadmintes',
+            'email' => 'superadmin@example.com',
+            'password' => bcrypt('password123'),
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $tasksAdminRes = $this->actingAs($adminUser)->getJson('/api/v1/mobile/tasks');
+        $tasksAdminRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.piket.can_access', true)
+            ->assertJsonPath('data.piket.is_management', true);
+
+        $dashAdminRes = $this->actingAs($adminUser)->getJson('/api/v1/mobile/dashboard');
+        $dashAdminRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.piket_info.can_access', true)
+            ->assertJsonPath('data.piket_info.is_management', true);
+
+        $piketAdminRes = $this->actingAs($adminUser)->getJson('/api/v1/mobile/tasks/piket');
+        $piketAdminRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.is_management', true)
+            ->assertJsonPath('data.can_operate', true);
     }
 }
