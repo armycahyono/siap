@@ -53,6 +53,7 @@ Route::prefix('v1/mobile')->middleware([
     Route::post('tasks/bk/services/store', [MobileTasksController::class, 'storeBkService']);
     Route::post('tasks/bk/status', [MobileTasksController::class, 'updateBkReferralStatus']);
     Route::get('profile', [MobileProfileController::class, 'index']);
+    Route::get('profile/activity-logs', [MobileProfileController::class, 'getActivityLogs']);
     Route::get('notifications', [MobileNotificationController::class, 'index']);
     Route::post('profile/update', [MobileAuthController::class, 'updateProfile']);
     Route::post('profile/password', [MobileAuthController::class, 'updatePassword']);

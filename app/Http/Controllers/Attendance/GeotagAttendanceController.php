@@ -7,6 +7,7 @@ use App\Models\AttendanceLog;
 use App\Models\LessonSchedule;
 use App\Models\PiketSchedule;
 use App\Models\SchoolSetting;
+use App\Services\ActivityLogger;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
 use finfo;
@@ -287,6 +288,23 @@ class GeotagAttendanceController extends Controller
 
         $statusLabel = $type === 'check_in' ? 'Masuk' : 'Pulang';
         $successMsg = "Berhasil mencatat presensi {$statusLabel} pada pukul {$now->format('H:i')} WIB (Jarak: {$distance} m).";
+
+        try {
+            ActivityLogger::log(
+                action: 'attendance',
+                description: "Melakukan presensi {$statusLabel} pada pukul {$now->format('H:i')} WIB (Jarak: {$distance} m) via ".($isMobileDevice ? 'SIAP Mobile' : 'Web Desktop').'.',
+                subject: $log,
+                properties: [
+                    'source' => $isMobileDevice ? 'Mobile' : 'Web',
+                    'type' => $type,
+                    'distance' => $distance,
+                    'time' => $now->format('H:i:s'),
+                ],
+                user: $user
+            );
+        } catch (\Throwable) {
+            // Non-blocking log failure
+        }
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([

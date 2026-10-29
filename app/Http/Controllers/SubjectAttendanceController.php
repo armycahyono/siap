@@ -19,6 +19,7 @@ use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\User;
 use App\Services\AcademicYearContext;
+use App\Services\ActivityLogger;
 use App\Services\DailyKbmSnapshotService;
 use App\Services\DeviceDetector;
 use Carbon\Carbon;
@@ -1015,6 +1016,26 @@ class SubjectAttendanceController extends Controller
             }
 
             DB::commit();
+
+            try {
+                $clsName = $session->classroom?->name ?? 'Kelas';
+                $sbjName = $session->subject?->name ?? 'Mapel';
+                ActivityLogger::log(
+                    action: 'kbm_attendance',
+                    description: "Melakukan presensi KBM {$clsName} mata pelajaran {$sbjName} (Jam ke-{$validated['start_period']}-{$validated['end_period']}).",
+                    subject: $session,
+                    properties: [
+                        'classroom' => $clsName,
+                        'subject' => $sbjName,
+                        'start_period' => $validated['start_period'],
+                        'end_period' => $validated['end_period'],
+                        'date' => $date->toDateString(),
+                    ],
+                    user: $user
+                );
+            } catch (\Throwable) {
+                // Non-blocking log failure
+            }
 
             // Sinkronisasi status selesai pada tabel snapshot harian
             try {

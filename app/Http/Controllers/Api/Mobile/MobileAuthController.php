@@ -171,6 +171,17 @@ class MobileAuthController extends Controller
 
         $user->update($validated);
 
+        try {
+            ActivityLogger::log(
+                action: 'update_profile',
+                description: "Memperbarui data profil pengguna ({$user->name}) melalui SIAP Mobile.",
+                subject: $user,
+                properties: ['source' => 'Mobile', 'updated_fields' => array_keys($validated)],
+                user: $user
+            );
+        } catch (\Throwable) {
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui.',
@@ -202,6 +213,17 @@ class MobileAuthController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+
+        try {
+            ActivityLogger::log(
+                action: 'update_password',
+                description: 'Memperbarui kata sandi akun melalui SIAP Mobile.',
+                subject: $user,
+                properties: ['source' => 'Mobile'],
+                user: $user
+            );
+        } catch (\Throwable) {
+        }
 
         return response()->json([
             'success' => true,

@@ -36,6 +36,17 @@
     }
     window.showToast = showToast;
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    window.escapeHtml = escapeHtml;
+
     // Global Logout Handler
     async function handleLogout() {
         if (!confirm('Apakah Anda yakin ingin keluar dari SIAP Mobile?')) return;
@@ -1955,7 +1966,109 @@
                 `).join('');
             }
         }
+
+        // Render Riwayat Log Aktivitas Akun
+        if (data.activity_logs) {
+            renderProfileActivityLogs(data.activity_logs, container);
+        }
     }
+
+    let currentActivityLogs = [];
+    let currentActivityFilter = 'all';
+
+    function renderProfileActivityLogs(logs, container = null) {
+        const root = container || document;
+        const listEl = root.querySelector('#prof-activity-logs-list');
+        if (!listEl) return;
+
+        currentActivityLogs = logs || [];
+
+        const filtered = currentActivityFilter === 'all'
+            ? currentActivityLogs
+            : currentActivityLogs.filter(item => item.category === currentActivityFilter);
+
+        if (filtered.length === 0) {
+            listEl.innerHTML = `
+                <div class="p-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <span class="text-xl block mb-1">📋</span>
+                    Tidak ada catatan aktivitas untuk filter ini.
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = filtered.map(item => {
+            const badgeBg = {
+                emerald: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                blue: 'bg-blue-100 text-blue-800 border-blue-200',
+                indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                amber: 'bg-amber-100 text-amber-800 border-amber-200',
+                purple: 'bg-purple-100 text-purple-800 border-purple-200',
+                cyan: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+                teal: 'bg-teal-100 text-teal-800 border-teal-200',
+                rose: 'bg-rose-100 text-rose-800 border-rose-200',
+                slate: 'bg-slate-100 text-slate-800 border-slate-200',
+            }[item.badge_color] || 'bg-slate-100 text-slate-800 border-slate-200';
+
+            const channelBadge = item.channel === 'Mobile'
+                ? '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-50 border border-blue-200 text-blue-600 shrink-0 font-bold">📱 Mobile</span>'
+                : '<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200 text-slate-600 shrink-0 font-bold">💻 Web</span>';
+
+            return `
+                <div class="p-2.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition">
+                    <div class="flex items-center justify-between mb-1 gap-1">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider border ${badgeBg} shrink-0">
+                                ${escapeHtml(item.category_label || item.category)}
+                            </span>
+                            <h5 class="text-xs font-bold text-slate-800 truncate">${escapeHtml(item.title)}</h5>
+                        </div>
+                        ${channelBadge}
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug my-0.5">${escapeHtml(item.description)}</p>
+                    <div class="flex items-center justify-between mt-1 pt-1 border-t border-slate-200/50 text-[9px] text-slate-400 font-mono">
+                        <span>📅 ${escapeHtml(item.date_formatted)}</span>
+                        <span>${escapeHtml(item.time_human)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.filterActivityLogs = function(category) {
+        currentActivityFilter = category;
+
+        // Perbarui visual tombol chip filter
+        ['all', 'presensi', 'kbm', 'tugas', 'verifikasi', 'akun'].forEach(cat => {
+            const btn = document.getElementById(`btn-act-filter-${cat}`);
+            if (btn) {
+                if (cat === category) {
+                    btn.className = 'px-2.5 py-1 rounded-lg bg-slate-900 text-white shrink-0 shadow-xs transition';
+                } else {
+                    btn.className = 'px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 shrink-0 transition hover:bg-slate-50';
+                }
+            }
+        });
+
+        renderProfileActivityLogs(currentActivityLogs);
+    };
+
+    window.refreshProfileActivityLogs = async function() {
+        const listEl = document.querySelector('#prof-activity-logs-list');
+        if (listEl) {
+            listEl.innerHTML = '<div class="text-center py-6 text-xs text-slate-400 animate-pulse">Memuat ulang riwayat aktivitas...</div>';
+        }
+
+        try {
+            const res = await SIAP_API.getActivityLogs(40);
+            if (res.success && res.data) {
+                renderProfileActivityLogs(res.data);
+                showToast('Riwayat aktivitas berhasil diperbarui.', 'success');
+            }
+        } catch (err) {
+            showToast('Gagal memuat riwayat aktivitas: ' + err.message, 'error');
+        }
+    };
 
     // ==========================================
     // 6. SUB-PAGE CONTROLLERS: TASKS MODULES

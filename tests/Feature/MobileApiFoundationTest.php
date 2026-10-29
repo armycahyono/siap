@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\GradeLevel;
@@ -10,6 +11,7 @@ use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Services\AcademicYearContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -513,5 +515,69 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $student1->id);
+    }
+
+    public function test_mobile_profile_activity_logs_feed(): void
+    {
+        $unauth = $this->getJson('/api/v1/mobile/profile/activity-logs');
+        $unauth->assertStatus(401);
+
+        // Buat log aktivitas untuk guru penguji
+        UserActivityLog::create([
+            'user_id' => $this->teacher->id,
+            'user_name' => $this->teacher->name,
+            'user_username' => $this->teacher->username,
+            'role_name' => 'Guru',
+            'action' => 'update_profile',
+            'description' => 'Memperbarui data profil akun via SIAP Mobile.',
+            'user_agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) Mobile',
+            'properties' => ['source' => 'Mobile'],
+        ]);
+
+        AttendanceLog::create([
+            'device_sn' => 'MOBILE-PWA',
+            'pin' => $this->teacher->nigs ?: (string) $this->teacher->id,
+            'user_type' => 'teacher',
+            'user_id' => $this->teacher->id,
+            'name' => $this->teacher->name,
+            'scanned_at' => now(),
+            'status' => 'check_in',
+            'verify_type' => 'geotag',
+            'work_code' => 'IN_RADIUS',
+            'raw_payload' => json_encode(['source' => 'PWA_MOBILE', 'distance_to_school_meters' => 15]),
+        ]);
+
+        // 1. Cek endpoint profile utama memuat activity_logs
+        $profileRes = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/profile');
+        $profileRes->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'user',
+                    'activity_logs',
+                ],
+            ]);
+
+        // 2. Cek endpoint dedicated profile/activity-logs
+        $actRes = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/profile/activity-logs');
+        $actRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'id',
+                        'source_type',
+                        'action',
+                        'category',
+                        'badge_color',
+                        'title',
+                        'description',
+                        'channel',
+                        'timestamp',
+                        'date_formatted',
+                        'time_human',
+                    ],
+                ],
+            ]);
     }
 }

@@ -22,6 +22,7 @@ use App\Models\SubjectAttendanceSession;
 use App\Models\Supervision;
 use App\Models\User;
 use App\Services\AcademicYearContext;
+use App\Services\ActivityLogger;
 use App\Services\DailyKbmSnapshotService;
 use App\Services\TelegramService;
 use Carbon\Carbon;
@@ -1204,6 +1205,17 @@ class MobileTasksController extends Controller
             );
         }
 
+        try {
+            ActivityLogger::log(
+                action: 'verify_discipline',
+                description: 'Memverifikasi insiden ketertiban siswa: '.($incident->student?->name ?? 'Siswa').' ('.strtoupper($validated['verification_status']).') via SIAP Mobile.',
+                subject: $incident,
+                properties: ['source' => 'Mobile', 'status' => $validated['verification_status'], 'notes' => $validated['verification_notes'] ?? null],
+                user: $user
+            );
+        } catch (\Throwable) {
+        }
+
         return response()->json([
             'success' => true,
             'message' => "Insiden berhasil diperbarui menjadi '{$incident->verification_status_label}'.",
@@ -1331,6 +1343,17 @@ class MobileTasksController extends Controller
             // Ignore notification failure
         }
 
+        try {
+            ActivityLogger::log(
+                action: 'create_permit',
+                description: 'Mengajukan izin/cuti: '.ucfirst($permit->permission_type)." ({$permit->start_date?->format('d/m/Y')}) via SIAP Mobile.",
+                subject: $permit,
+                properties: ['source' => 'Mobile', 'duration_days' => $permit->duration_days],
+                user: $user
+            );
+        } catch (\Throwable) {
+        }
+
         return response()->json([
             'success' => true,
             'message' => $isPrincipalOrAdmin ? 'Pengajuan izin berhasil dicatat & disetujui.' : 'Pengajuan izin berhasil dikirimkan ke Kepala Sekolah.',
@@ -1371,6 +1394,17 @@ class MobileTasksController extends Controller
             app(TelegramService::class)->notifyGtkPermitDecision($permit, $user);
         } catch (\Throwable) {
             // Ignore notification failure
+        }
+
+        try {
+            ActivityLogger::log(
+                action: 'action_permit',
+                description: 'Menindaklanjuti permohonan izin GTK: '.strtoupper($validated['action'])." ({$permit->user?->name}) via SIAP Mobile.",
+                subject: $permit,
+                properties: ['source' => 'Mobile', 'action' => $validated['action'], 'note' => $validated['note'] ?? null],
+                user: $user
+            );
+        } catch (\Throwable) {
         }
 
         return response()->json([
@@ -1695,6 +1729,18 @@ class MobileTasksController extends Controller
                     'handled_at' => now(),
                 ]);
             }
+        }
+
+        try {
+            $studentName = $service->student?->name ?? 'Siswa';
+            ActivityLogger::log(
+                action: 'create_bk_service',
+                description: "Mencatat sesi konseling BK siswa: {$studentName} (Bidang: {$service->service_type}) via SIAP Mobile.",
+                subject: $service,
+                properties: ['source' => 'Mobile', 'service_type' => $service->service_type, 'service_date' => $service->service_date],
+                user: $user
+            );
+        } catch (\Throwable) {
         }
 
         return response()->json([
