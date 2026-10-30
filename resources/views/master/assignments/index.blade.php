@@ -729,7 +729,7 @@
                             </span>
                             <div>
                                 <div class="fw-bold text-dark">{{ $bk->user?->name ?? 'Guru BK' }}</div>
-                                <small class="text-muted">NIGS: {{ $bk->user?->nigs ?? '-' }} | NIP: {{ $bk->user?->nip ?? '-' }}</small>
+                                <small class="text-muted">NIGS: {{ $bk->user?->nigs ?? '-' }}</small>
                             </div>
                         </div>
                     </td>
@@ -743,7 +743,7 @@
                     <td class="text-center">
                         @if($bk->context_type && $bk->context)
                             @php
-                                $sCount = $bk->context->students_count ?? 0;
+                                $sCount = $classroomStudentCounts[$bk->context_id] ?? ($bk->context?->students()->where('status', 'aktif')->count() ?? 0);
                             @endphp
                             <span class="badge bg-azure-lt fs-6 fw-bold" title="Jumlah siswa aktif di kelas {{ $bk->context->name }}">
                                 <i class="ti ti-users me-1"></i> {{ $sCount }} Siswa

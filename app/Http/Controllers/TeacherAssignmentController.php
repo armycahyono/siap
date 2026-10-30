@@ -118,6 +118,7 @@ class TeacherAssignmentController extends Controller
         }
 
         $assignedClassroomBkMap = [];
+        $classroomStudentCounts = $classrooms->pluck('students_count', 'id')->all();
         foreach ($bkAssignments as $bk) {
             if ($bk->context_type === Classroom::class && $bk->context_id) {
                 $counselorUser = $bk->user;
@@ -270,6 +271,7 @@ class TeacherAssignmentController extends Controller
             'teacherRecap',
             'bkAssignments',
             'assignedClassroomBkMap',
+            'classroomStudentCounts',
             'supervisors',
             'candidateTeachers',
             'structuralPositions',
