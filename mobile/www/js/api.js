@@ -123,6 +123,11 @@ const SIAP_API = (function() {
         // Core Data
         getDashboard: () => request('dashboard', { method: 'GET' }),
         getKbm: (date = null) => request(date ? `kbm?date=${date}` : 'kbm', { method: 'GET' }),
+        getKbmTake: (scheduleId, date = null) => request(`kbm/take?schedule_id=${scheduleId}` + (date ? `&date=${date}` : ''), { method: 'GET' }),
+        submitKbmAttendance: (payload) => request('kbm/take/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
         getTasks: (date = null) => request(date ? `tasks?date=${date}` : 'tasks', { method: 'GET' }),
         
         // Modul Tugas Khusus Mobile

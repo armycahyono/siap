@@ -25,6 +25,15 @@ const SIAP_ROUTER = (function() {
             init: 'initKbm',
             tabKey: 'kbm',
         },
+        '/kbm/take': {
+            page: 'pages/kbm/take.html',
+            requiresAuth: true,
+            title: 'Presensi KBM & Jurnal',
+            init: 'initKbmTake',
+            tabKey: 'kbm',
+            hasBack: true,
+            hideNav: true,
+        },
         '/attendance': {
             page: 'pages/attendance.html',
             requiresAuth: true,

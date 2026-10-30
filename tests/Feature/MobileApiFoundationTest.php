@@ -270,11 +270,42 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_authenticated_user_can_fetch_mobile_kbm_schedules(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-10-30 08:00:00')); // Jumat
+
+        $activeYear = app(AcademicYearContext::class)->getOperationalYear();
+        $academicYearStr = $activeYear->name;
+        $semesterStr = $activeYear->semester ?? 'ganjil';
+
+        $dept = Department::first() ?? Department::create(['name' => 'Teknik', 'code' => 'TK']);
+        $grade = GradeLevel::first() ?? GradeLevel::create(['name' => 'X', 'numeric_level' => 10]);
+        $classroom = Classroom::create([
+            'name' => 'X TK 1',
+            'department_id' => $dept->id,
+            'grade_level_id' => $grade->id,
+            'is_active' => true,
+        ]);
+        $subject = Subject::first() ?? Subject::create(['name' => 'Matematika', 'code' => 'MTK']);
+
+        LessonSchedule::create([
+            'academic_year' => $academicYearStr,
+            'semester' => $semesterStr,
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'teacher_id' => $this->teacher->id,
+            'day' => 'Jumat',
+            'start_period' => 1,
+            'end_period' => 2,
+            'is_active' => true,
+        ]);
+
         $response = $this->actingAs($this->teacher)
             ->getJson('/api/v1/mobile/kbm');
 
         $response->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_sessions', 1)
+            ->assertJsonCount(1, 'data.my_schedules')
+            ->assertJsonPath('data.my_schedules.0.classroom_name', 'X TK 1')
             ->assertJsonStructure([
                 'success',
                 'data' => [
@@ -293,6 +324,8 @@ class MobileApiFoundationTest extends TestCase
                     'attended_sessions_count',
                 ],
             ]);
+
+        Carbon::setTestNow();
     }
 
     public function test_authenticated_user_can_fetch_mobile_notifications(): void
@@ -958,5 +991,123 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonPath('success', true);
         $this->assertNotEmpty($piketRes->json('data.gtk_permits_today'));
         $this->assertNotEmpty($piketRes->json('data.invals.0.assignment_file_url'));
+    }
+
+    public function test_can_get_and_store_kbm_take_attendance_via_mobile_api(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-30 08:00:00'));
+
+        $activeYear = app(AcademicYearContext::class)->getOperationalYear();
+        $academicYearStr = $activeYear->name;
+        $semesterStr = $activeYear->semester ?? 'ganjil';
+
+        $dept = Department::first() ?? Department::create(['name' => 'Teknik', 'code' => 'TK']);
+        $grade = GradeLevel::first() ?? GradeLevel::create(['name' => 'X', 'numeric_level' => 10]);
+        $classroom = Classroom::create([
+            'name' => 'X TK 2',
+            'department_id' => $dept->id,
+            'grade_level_id' => $grade->id,
+            'is_active' => true,
+        ]);
+
+        $subject = Subject::first() ?? Subject::create([
+            'name' => 'Matematika Teknik',
+            'code' => 'MTK-TK',
+        ]);
+
+        $student1 = Student::create([
+            'name' => 'Budi Santoso',
+            'nis' => '1001',
+            'gender' => 'L',
+            'classroom_id' => $classroom->id,
+            'is_active' => true,
+        ]);
+
+        $student2 = Student::create([
+            'name' => 'Siti Aisyah',
+            'nis' => '1002',
+            'gender' => 'P',
+            'classroom_id' => $classroom->id,
+            'is_active' => true,
+        ]);
+
+        $schedule = LessonSchedule::create([
+            'academic_year' => $academicYearStr,
+            'semester' => $semesterStr,
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'teacher_id' => $this->teacher->id,
+            'day' => 'Jumat',
+            'start_period' => 1,
+            'end_period' => 2,
+            'start_time' => '07:00:00',
+            'end_time' => '08:30:00',
+            'is_active' => true,
+        ]);
+
+        // 1. GET take attendance data
+        $getRes = $this->actingAs($this->teacher)->getJson("/api/v1/mobile/kbm/take?schedule_id={$schedule->id}");
+        $getRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.schedule.id', $schedule->id)
+            ->assertJsonPath('data.schedule.classroom_name', 'X TK 2')
+            ->assertJsonPath('data.session.is_attended', false)
+            ->assertJsonCount(2, 'data.students');
+
+        // 2. POST store attendance data
+        $storeRes = $this->actingAs($this->teacher)->postJson('/api/v1/mobile/kbm/take/store', [
+            'schedule_id' => $schedule->id,
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'start_period' => 1,
+            'end_period' => 2,
+            'date' => '2026-10-30',
+            'topic' => 'Persamaan Linear Satu Variabel',
+            'notes' => 'Siswa aktif bertanya dan mengerjakan latihan bab 1',
+            'attendance' => [
+                [
+                    'student_id' => $student1->id,
+                    'status' => 'h',
+                    'notes' => null,
+                ],
+                [
+                    'student_id' => $student2->id,
+                    'status' => 's',
+                    'notes' => 'Surat dokter',
+                ],
+            ],
+        ]);
+
+        $storeRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.is_attended', true);
+
+        $this->assertDatabaseHas('subject_attendance_sessions', [
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'teacher_id' => $this->teacher->id,
+            'topic' => 'Persamaan Linear Satu Variabel',
+        ]);
+
+        $this->assertDatabaseHas('subject_attendance_records', [
+            'student_id' => $student1->id,
+            'status' => 'h',
+        ]);
+
+        $this->assertDatabaseHas('subject_attendance_records', [
+            'student_id' => $student2->id,
+            'status' => 's',
+            'notes' => 'Surat dokter',
+        ]);
+
+        // 3. GET take data lagi untuk memastikan is_attended = true
+        $recheckRes = $this->actingAs($this->teacher)->getJson("/api/v1/mobile/kbm/take?schedule_id={$schedule->id}");
+        $recheckRes->assertOk()
+            ->assertJsonPath('data.session.is_attended', true)
+            ->assertJsonPath('data.session.topic', 'Persamaan Linear Satu Variabel')
+            ->assertJsonPath('data.summary.hadir', 1)
+            ->assertJsonPath('data.summary.sakit', 1);
+
+        Carbon::setTestNow();
     }
 }

@@ -1,7 +1,7 @@
 {
   "name": "SIAP Mobile - SMK PGRI KRAS",
   "short_name": "SIAP Mobile",
-  "description": "Sistem Informasi & Administrasi Presensi GTK Mandiri",
+  "description": "Sistem Informasi Administrasi & Pendidikan - SMK PGRI KRAS",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0f172a",

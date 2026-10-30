@@ -488,12 +488,10 @@
 
             const roleBadge = container.querySelector('#lm-role-badge');
             const scopeSub = container.querySelector('#lm-scope-subtitle');
-            const siswaScope = container.querySelector('#lm-siswa-scope');
             const siswaSummary = container.querySelector('#lm-siswa-summary-count');
 
             if (roleBadge) roleBadge.textContent = lmData.role_label || 'Live Monitoring';
-            if (scopeSub) scopeSub.textContent = `Monitoring Terpadu: ${lmData.scope_label || 'KBM & Aktivitas'}`;
-            if (siswaScope) siswaScope.textContent = `(${lmData.scope_label || 'Sekolah'})`;
+            if (scopeSub) scopeSub.textContent = lmData.scope_label || 'Seluruh Siswa (Tingkat Sekolah)';
 
             // Stat Siswa (8 Status)
             const s = lmData.siswa || {};
@@ -681,19 +679,10 @@
         const statAttendedEl = container.querySelector('#kbm-stat-attended');
         const statPendingEl = container.querySelector('#kbm-stat-pending');
         const statSwapEl = container.querySelector('#kbm-stat-swap');
-        const barAttendedEl = container.querySelector('#kbm-bar-attended');
-        const barPendingEl = container.querySelector('#kbm-bar-pending');
-
         if (statTotalEl) statTotalEl.textContent = total;
         if (statAttendedEl) statAttendedEl.textContent = attended;
         if (statPendingEl) statPendingEl.textContent = pending;
         if (statSwapEl) statSwapEl.textContent = swapCount;
-
-        const attendedPct = total > 0 ? Math.round((attended / total) * 100) : 0;
-        const pendingPct = total > 0 ? Math.round((pending / total) * 100) : 0;
-
-        if (barAttendedEl) barAttendedEl.style.width = `${attendedPct}%`;
-        if (barPendingEl) barPendingEl.style.width = `${pendingPct}%`;
 
         // 2. Holiday / Weekend Alert
         const alertHolidayEl = container.querySelector('#kbm-alert-holiday');
@@ -852,17 +841,371 @@
                         </div>
                     ` : ''}
 
-                    <!-- Tombol Aksi -->
+                    <!-- Tombol Aksi Masuk Kelas & Absen -->
                     <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                         <span class="text-[10px] text-slate-400 font-mono">${s.period_text}</span>
-                        <a href="${s.fill_url}" class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-xs ${s.is_attended ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-blue-600 hover:bg-blue-700 text-white'}">
-                            ${s.is_attended ? 'Edit Presensi & Jurnal' : 'Masuk Kelas & Absen →'}
-                        </a>
+                        ${s.is_attended ? `
+                            <button type="button" onclick="openKbmTake(${s.id})" class="px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-xs bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1.5 active:scale-95" title="Edit Presensi & Jurnal">
+                                <span>Edit Presensi &amp; Jurnal</span>
+                                <span class="text-xs">✏️</span>
+                            </button>
+                        ` : `
+                            <button type="button" onclick="openKbmTake(${s.id})" class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 active:scale-95" title="Masuk Kelas & Isi Presensi">
+                                <span>Masuk Kelas &amp; Absen</span>
+                                <span class="text-xs font-mono">→</span>
+                            </button>
+                        `}
                     </div>
                 </div>
             `;
         }).join('');
     }
+
+    // ==========================================
+    // 2.5 KBM TAKE ATTENDANCE & JOURNAL CONTROLLER
+    // ==========================================
+    window.openKbmTake = function(scheduleId) {
+        if (!scheduleId) return;
+        SIAP_ROUTER.navigate('/kbm/take?schedule_id=' + scheduleId);
+    };
+
+    window.initKbmTake = async function(container, params) {
+        let scheduleId = params?.schedule_id;
+        if (!scheduleId && window.location.hash.includes('schedule_id=')) {
+            const qs = window.location.hash.split('?')[1] || '';
+            const sp = new URLSearchParams(qs);
+            scheduleId = sp.get('schedule_id');
+        }
+
+        const loaderEl = container.querySelector('#kbm-take-loader');
+        const contentEl = container.querySelector('#kbm-take-content');
+        const errorEl = container.querySelector('#kbm-take-error');
+        const bottomBarEl = container.querySelector('#take-bottom-bar');
+
+        if (!scheduleId) {
+            if (loaderEl) loaderEl.classList.add('hidden');
+            if (contentEl) contentEl.classList.add('hidden');
+            if (bottomBarEl) bottomBarEl.classList.add('hidden');
+            if (errorEl) {
+                errorEl.classList.remove('hidden');
+                const errTitle = errorEl.querySelector('#kbm-take-error-title');
+                const errMsg = errorEl.querySelector('#kbm-take-error-msg');
+                if (errTitle) errTitle.textContent = 'Jadwal Tidak Ditemukan';
+                if (errMsg) errMsg.textContent = 'Parameter schedule_id tidak ditemukan.';
+            }
+            return;
+        }
+
+        // Show loader, hide content
+        if (loaderEl) loaderEl.classList.remove('hidden');
+        if (contentEl) contentEl.classList.add('hidden');
+        if (errorEl) errorEl.classList.add('hidden');
+        if (bottomBarEl) bottomBarEl.classList.add('hidden');
+
+        try {
+            const res = await SIAP_API.getKbmTake(scheduleId);
+            if (!res.success || !res.data) {
+                throw new Error(res.message || 'Gagal memuat rincian jadwal.');
+            }
+
+            const data = res.data;
+            const schedule = data.schedule || {};
+            const session = data.session || {};
+            const windowInfo = data.window || {};
+            let students = data.students || [];
+
+            // Populate Header Elements
+            const classroomBadge = container.querySelector('#take-badge-classroom');
+            const periodBadge = container.querySelector('#take-badge-period');
+            const statusBadge = container.querySelector('#take-status-badge');
+            const subjectNameEl = container.querySelector('#take-subject-name');
+            const metaInfoEl = container.querySelector('#take-meta-info');
+            const windowAlertEl = container.querySelector('#take-window-alert');
+            const windowMsgEl = container.querySelector('#take-window-msg');
+            const totalStudentsLabel = container.querySelector('#take-total-students-label');
+
+            if (classroomBadge) classroomBadge.textContent = schedule.classroom_name || 'Kelas';
+            if (periodBadge) periodBadge.textContent = `${schedule.period_text || ''} ${schedule.time_range ? '• ' + schedule.time_range : ''}`;
+            if (subjectNameEl) subjectNameEl.textContent = schedule.subject_name || 'Mata Pelajaran';
+            if (metaInfoEl) metaInfoEl.textContent = `Guru: ${schedule.teacher_name || '-'} • ${data.formatted_date || data.date}`;
+            if (totalStudentsLabel) totalStudentsLabel.textContent = `(${students.length} Siswa)`;
+
+            if (statusBadge) {
+                if (session.is_attended) {
+                    statusBadge.innerHTML = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen</span>';
+                } else {
+                    statusBadge.innerHTML = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>Belum Diabsen</span>';
+                }
+            }
+
+            if (windowAlertEl) {
+                if (!windowInfo.is_open && !windowInfo.can_submit) {
+                    windowAlertEl.classList.remove('hidden');
+                    if (windowMsgEl) windowMsgEl.textContent = windowInfo.message || 'Presensi dibuka 15 menit sebelum jam KBM dimulai.';
+                } else {
+                    windowAlertEl.classList.add('hidden');
+                }
+            }
+
+            // Populate Journal Inputs
+            const topicInput = container.querySelector('#take-topic-input');
+            const notesInput = container.querySelector('#take-notes-input');
+            if (topicInput) topicInput.value = session.topic || '';
+            if (notesInput) notesInput.value = session.notes || '';
+
+            // Students State & Render
+            let currentSearch = '';
+            const studentsContainer = container.querySelector('#take-students-list');
+            const emptySearchEl = container.querySelector('#take-empty-search');
+
+            function updateLiveCounters() {
+                let h = 0, s = 0, i = 0, a = 0, d = 0, t = 0;
+                students.forEach(st => {
+                    if (st.status === 'h') h++;
+                    else if (st.status === 's') s++;
+                    else if (st.status === 'i') i++;
+                    else if (st.status === 'a') a++;
+                    else if (st.status === 'd') d++;
+                    else if (st.status === 't') t++;
+                });
+
+                const statH = container.querySelector('#take-stat-h');
+                const statS = container.querySelector('#take-stat-s');
+                const statI = container.querySelector('#take-stat-i');
+                const statA = container.querySelector('#take-stat-a');
+                const statD = container.querySelector('#take-stat-d');
+                const statT = container.querySelector('#take-stat-t');
+
+                if (statH) statH.textContent = h;
+                if (statS) statS.textContent = s;
+                if (statI) statI.textContent = i;
+                if (statA) statA.textContent = a;
+                if (statD) statD.textContent = d;
+                if (statT) statT.textContent = t;
+
+                const bottomSummary = container.querySelector('#take-bottom-summary');
+                const bottomSub = container.querySelector('#take-bottom-sub');
+                const total = students.length;
+                const nonHadir = total - h;
+
+                if (bottomSummary) bottomSummary.textContent = `${h}/${total} Hadir`;
+                if (bottomSub) bottomSub.textContent = nonHadir > 0 ? `${nonHadir} Catatan Tidak Hadir` : 'Semua siswa hadir lengkap';
+            }
+
+            function renderStudentsList() {
+                if (!studentsContainer) return;
+
+                const filtered = students.filter(st => {
+                    if (!currentSearch) return true;
+                    const q = currentSearch.toLowerCase();
+                    return st.name.toLowerCase().includes(q) || (st.nis && st.nis.toLowerCase().includes(q));
+                });
+
+                if (filtered.length === 0) {
+                    studentsContainer.innerHTML = '';
+                    if (emptySearchEl) emptySearchEl.classList.remove('hidden');
+                    return;
+                }
+
+                if (emptySearchEl) emptySearchEl.classList.add('hidden');
+
+                studentsContainer.innerHTML = filtered.map(st => {
+                    const isL = (st.gender === 'L' || st.gender === 'l');
+                    const hasNote = Boolean(st.notes);
+
+                    return `
+                        <div class="card-elevated p-3 transition" id="row-student-${st.id}">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isL ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}">
+                                        ${st.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <h5 class="text-xs font-bold text-slate-800 truncate">${st.name}</h5>
+                                            <span class="text-[9px] font-mono px-1 rounded ${isL ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}">${st.gender || 'L'}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 font-mono">
+                                            <span>NIS: ${st.nis || '-'}</span>
+                                            ${st.permit_notice ? `<span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-800 uppercase font-sans">⚠️ ${st.permit_notice}</span>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="toggleStudentNoteInput(${st.id})" class="p-1.5 rounded-lg ${hasNote ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600'} transition shrink-0" title="Catatan Siswa">
+                                    <span class="text-xs">📝</span>
+                                </button>
+                            </div>
+
+                            <!-- Status Selector Chips -->
+                            <div class="grid grid-cols-6 gap-1 mt-2.5 pt-2 border-t border-slate-100">
+                                <button type="button" onclick="setStudentStatus(${st.id}, 'h')" class="py-1 rounded-lg text-[10px] font-bold transition flex items-center justify-center ${st.status === 'h' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                                    H
+                                </button>
+                                <button type="button" onclick="setStudentStatus(${st.id}, 's')" class="py-1 rounded-lg text-[10px] font-bold transition flex items-center justify-center ${st.status === 's' ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                                    S
+                                </button>
+                                <button type="button" onclick="setStudentStatus(${st.id}, 'i')" class="py-1 rounded-lg text-[10px] font-bold transition flex items-center justify-center ${st.status === 'i' ? 'bg-cyan-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                                    I
+                                </button>
+                                <button type="button" onclick="setStudentStatus(${st.id}, 'a')" class="py-1 rounded-lg text-[10px] font-bold transition flex items-center justify-center ${st.status === 'a' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                                    A
+                                </button>
+                                <button type="button" onclick="setStudentStatus(${st.id}, 'd')" class="py-1 rounded-lg text-[10px] font-bold transition flex items-center justify-center ${st.status === 'd' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                                    D
+                                </button>
+                                <button type="button" onclick="setStudentStatus(${st.id}, 't')" class="py-1 rounded-lg text-[10px] font-bold transition flex items-center justify-center ${st.status === 't' ? 'bg-slate-800 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                                    T
+                                </button>
+                            </div>
+
+                            <!-- Collapsible Inline Note Input -->
+                            <div id="note-box-${st.id}" class="${hasNote ? '' : 'hidden'} mt-2 pt-2 border-t border-dashed border-slate-200">
+                                <input type="text" value="${st.notes || ''}" placeholder="Catatan untuk siswa ini (opsional)..." oninput="updateStudentNote(${st.id}, this.value)" class="w-full px-2.5 py-1.5 text-[11px] rounded-lg border border-slate-200 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Expose helper functions globally for row event handlers
+            window.setStudentStatus = function(studentId, newStatus) {
+                const target = students.find(s => s.id === studentId);
+                if (target) {
+                    target.status = newStatus;
+                    renderStudentsList();
+                    updateLiveCounters();
+                }
+            };
+
+            window.toggleStudentNoteInput = function(studentId) {
+                const box = container.querySelector(`#note-box-${studentId}`);
+                if (box) {
+                    box.classList.toggle('hidden');
+                    const input = box.querySelector('input');
+                    if (!box.classList.contains('hidden') && input) {
+                        input.focus();
+                    }
+                }
+            };
+
+            window.updateStudentNote = function(studentId, noteVal) {
+                const target = students.find(s => s.id === studentId);
+                if (target) {
+                    target.notes = noteVal.trim() || null;
+                }
+            };
+
+            // Button: Tandai Semua Hadir
+            const btnMarkAll = container.querySelector('#btn-mark-all-present');
+            if (btnMarkAll) {
+                btnMarkAll.onclick = function() {
+                    students.forEach(st => {
+                        // Jangan ubah siswa yang sudah memiliki izin piket khusus (sakit/izin/dispen)
+                        if (!st.permit_notice) {
+                            st.status = 'h';
+                        }
+                    });
+                    renderStudentsList();
+                    updateLiveCounters();
+                    showToast(`Seluruh siswa ditandai Hadir (${students.length} Siswa).`, 'success');
+                };
+            }
+
+            // Search Filter Listener
+            const searchInput = container.querySelector('#take-search-input');
+            if (searchInput) {
+                searchInput.oninput = function() {
+                    currentSearch = this.value.trim();
+                    renderStudentsList();
+                };
+            }
+
+            // Submit Handler
+            const btnSubmit = container.querySelector('#btn-submit-kbm-attendance');
+            if (btnSubmit) {
+                btnSubmit.onclick = async function() {
+                    const topicVal = (topicInput ? topicInput.value.trim() : '');
+                    const notesVal = (notesInput ? notesInput.value.trim() : '');
+
+                    if (!topicVal) {
+                        showToast('Mohon isi materi atau topik pembelajaran hari ini.', 'warning');
+                        if (topicInput) topicInput.focus();
+                        return;
+                    }
+
+                    const spinner = btnSubmit.querySelector('#take-save-spinner');
+                    const btnText = btnSubmit.querySelector('#take-save-text');
+
+                    btnSubmit.disabled = true;
+                    if (spinner) spinner.classList.remove('hidden');
+                    if (btnText) btnText.textContent = 'Menyimpan...';
+
+                    try {
+                        const payload = {
+                            schedule_id: schedule.id,
+                            classroom_id: schedule.classroom_id,
+                            subject_id: schedule.subject_id,
+                            start_period: schedule.start_period,
+                            end_period: schedule.end_period,
+                            date: data.date,
+                            topic: topicVal,
+                            notes: notesVal,
+                            academic_year: data.academic_year,
+                            attendance: students.map(st => ({
+                                student_id: st.id,
+                                status: st.status,
+                                notes: st.notes || null,
+                            })),
+                        };
+
+                        const saveRes = await SIAP_API.submitKbmAttendance(payload);
+                        if (!saveRes.success) {
+                            throw new Error(saveRes.message || 'Gagal menyimpan presensi.');
+                        }
+
+                        showToast('Presensi KBM dan jurnal berhasil disimpan!', 'success');
+
+                        // Refresh KBM view when user goes back
+                        setTimeout(() => {
+                            history.back();
+                            if (typeof window.loadKbmData === 'function') {
+                                const kbmPane = document.getElementById('view-kbm');
+                                if (kbmPane) window.loadKbmData(kbmPane);
+                            }
+                        }, 500);
+                    } catch (saveErr) {
+                        console.error('Save attendance error:', saveErr);
+                        showToast(saveErr.message || 'Terjadi kesalahan saat menyimpan presensi.', 'error');
+                        btnSubmit.disabled = false;
+                        if (spinner) spinner.classList.add('hidden');
+                        if (btnText) btnText.textContent = 'Simpan Presensi & Jurnal';
+                    }
+                };
+            }
+
+            // Initial render of students and counters
+            renderStudentsList();
+            updateLiveCounters();
+
+            // Reveal content & bottom bar, hide loader
+            if (loaderEl) loaderEl.classList.add('hidden');
+            if (contentEl) contentEl.classList.remove('hidden');
+            if (bottomBarEl) bottomBarEl.classList.remove('hidden');
+
+        } catch (err) {
+            console.error('Load KBM Take Error:', err);
+            if (loaderEl) loaderEl.classList.add('hidden');
+            if (contentEl) contentEl.classList.add('hidden');
+            if (bottomBarEl) bottomBarEl.classList.add('hidden');
+            if (errorEl) {
+                errorEl.classList.remove('hidden');
+                const errTitle = errorEl.querySelector('#kbm-take-error-title');
+                const errMsg = errorEl.querySelector('#kbm-take-error-msg');
+                if (errTitle) errTitle.textContent = 'Gagal Memuat Jadwal';
+                if (errMsg) errMsg.textContent = err.message || 'Terjadi kesalahan saat memuat lembar presensi.';
+            }
+        }
+    };
 
     // ==========================================
     // 3. ATTENDANCE VIEW CONTROLLER

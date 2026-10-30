@@ -35,6 +35,8 @@ Route::prefix('v1/mobile')->middleware([
     // 2. Core Mobile Data Endpoints
     Route::get('dashboard', [MobileDashboardController::class, 'index']);
     Route::get('kbm', [MobileKbmController::class, 'index']);
+    Route::get('kbm/take', [MobileKbmController::class, 'getTakeData']);
+    Route::post('kbm/take/store', [MobileKbmController::class, 'storeAttendance']);
     Route::get('tasks', [MobileTasksController::class, 'index']);
     Route::get('students/search', [MobileTasksController::class, 'searchStudents']);
 
