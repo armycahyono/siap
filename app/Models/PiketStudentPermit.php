@@ -66,6 +66,11 @@ class PiketStudentPermit extends Model
         return $this->belongsTo(User::class, 'given_by');
     }
 
+    public function giver(): BelongsTo
+    {
+        return $this->givenBy();
+    }
+
     public function getPermitTypeLabelAttribute(): string
     {
         if ($this->permit_type === 'izin_tidak_masuk') {

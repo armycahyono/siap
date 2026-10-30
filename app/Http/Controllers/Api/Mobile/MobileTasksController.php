@@ -656,20 +656,31 @@ class MobileTasksController extends Controller
         $isToday = $date->isToday();
         $currentTimeStr = now()->format('H:i');
 
-        // 1. DATA SISWA (Presensi KBM & Perizinan Meja Piket)
-        $permitsQuery = PiketStudentPermit::with(['student.classroom', 'classroom'])
+        // 1. DATA SISWA (Presensi KBM, Perizinan Meja Piket & Gate Attendance)
+        $permitsQuery = PiketStudentPermit::with(['student.classroom', 'classroom', 'givenBy'])
             ->whereDate('permit_date', $targetDateStr)
             ->orderBy('created_at', 'desc');
 
         $sessionsQuery = SubjectAttendanceSession::whereDate('attendance_date', $targetDateStr);
 
+        $gateLogsQuery = AttendanceLog::with(['student.classroom'])
+            ->where('user_type', 'student')
+            ->whereDate('scanned_at', $targetDateStr)
+            ->orderBy('scanned_at', 'asc');
+
         if (! $canViewStudentAll && $myHomeroomClassroom) {
-            $permitsQuery->where('classroom_id', $myHomeroomClassroom->id);
+            $permitsQuery->where(function ($pq) use ($myHomeroomClassroom) {
+                $pq->where('classroom_id', $myHomeroomClassroom->id)
+                    ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+            });
             $sessionsQuery->where('classroom_id', $myHomeroomClassroom->id);
+            $gateLogsQuery->whereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
         }
 
         $studentPermits = $permitsQuery->get();
         $todaySessionIds = $sessionsQuery->pluck('id');
+        $studentGateLogs = $gateLogsQuery->get();
+        $gateLogsByStudent = $studentGateLogs->groupBy('student_id');
 
         $studentRecords = SubjectAttendanceRecord::with(['student.classroom', 'session.classroom', 'session.subject'])
             ->whereIn('subject_attendance_session_id', $todaySessionIds)
@@ -679,29 +690,39 @@ class MobileTasksController extends Controller
         $latePermits = $studentPermits->where('permit_type', 'terlambat')->unique('student_id')->values();
         $earlyLeavePermits = $studentPermits->where('permit_type', 'izin_pulang_cepat')->unique('student_id')->values();
         $izinPermits = $studentPermits->where('permit_type', 'izin_tidak_masuk')->unique('student_id')->values();
+        $dispenPermits = $studentPermits->filter(fn ($p) => strtolower($p->permit_category ?? '') === 'dispen' || str_contains(strtolower($p->reason ?? ''), 'dispen'))->unique('student_id')->values();
 
         $sakitPermits = $izinPermits->filter(fn ($p) => strtolower($p->permit_category ?? '') === 'sakit' || str_contains(strtolower($p->reason ?? ''), 'sakit'))->values();
         $murniIzinPermits = $izinPermits->reject(fn ($p) => strtolower($p->permit_category ?? '') === 'sakit' || str_contains(strtolower($p->reason ?? ''), 'sakit'))->values();
+
+        // Rekap Siswa Terlambat dari Berbagai Sumber: Piket, KBM (status = 't'), dan Gate Scan (> 07:00 atau status = 'terlambat')
+        $lateRecords = $studentRecords->where('status', 't')->values();
+        $lateGateLogs = collect();
+        foreach ($gateLogsByStudent as $sId => $logs) {
+            $firstScan = $logs->first();
+            if ($firstScan && ($firstScan->status === 'terlambat' || ($firstScan->scanned_at && $firstScan->scanned_at->format('H:i:s') > '07:00:00'))) {
+                $lateGateLogs->put($sId, $firstScan);
+            }
+        }
+
+        $allLateStudentIds = $latePermits->pluck('student_id')
+            ->concat($lateRecords->pluck('student_id'))
+            ->concat($lateGateLogs->keys())
+            ->filter()
+            ->unique()
+            ->values();
 
         $sakitRecords = $studentRecords->where('status', 's')->values();
         $murniIzinRecords = $studentRecords->where('status', 'i')->values();
         $dispenRecords = $studentRecords->where('status', 'd')->values();
         $alfaRecords = $studentRecords->where('status', 'a')->values();
 
-        $allSakitStudentIds = $sakitPermits->pluck('student_id')->concat($sakitRecords->pluck('student_id'))->filter()->unique();
-        $allMurniIzinStudentIds = $murniIzinPermits->pluck('student_id')->concat($murniIzinRecords->pluck('student_id'))->filter()->diff($allSakitStudentIds)->unique();
-        $allDispenStudentIds = $dispenRecords->pluck('student_id')->filter()->diff($allSakitStudentIds)->diff($allMurniIzinStudentIds)->unique();
-
-        $latestStatusPerStudent = $studentRecords->sortByDesc('subject_attendance_session_id')->unique('student_id');
-        $hadirStudents = $latestStatusPerStudent->where('status', 'h')->values();
+        $allSakitStudentIds = $sakitPermits->pluck('student_id')->concat($sakitRecords->pluck('student_id'))->filter()->unique()->values();
+        $allMurniIzinStudentIds = $murniIzinPermits->pluck('student_id')->concat($murniIzinRecords->pluck('student_id'))->filter()->diff($allSakitStudentIds)->unique()->values();
+        $allDispenStudentIds = $dispenPermits->pluck('student_id')->concat($dispenRecords->pluck('student_id'))->filter()->diff($allSakitStudentIds)->diff($allMurniIzinStudentIds)->unique()->values();
 
         // Indikasi Bolos KBM
-        $fingerprintLogs = AttendanceLog::where('user_type', 'student')
-            ->whereDate('scanned_at', $targetDateStr)
-            ->pluck('student_id')
-            ->filter()
-            ->unique();
-
+        $fingerprintLogs = $studentGateLogs->pluck('student_id')->filter()->unique();
         $earlyLeaveStudentIds = $earlyLeavePermits->pluck('student_id')->filter()->unique();
         $recordsByStudent = $studentRecords->groupBy('student_id');
         $truancyStudents = collect();
@@ -733,7 +754,17 @@ class MobileTasksController extends Controller
 
         $truancyStudentIds = $truancyStudents->pluck('student_id');
         $pureAlfaRecords = $alfaRecords->reject(fn ($r) => $truancyStudentIds->contains($r->student_id))->values();
-        $pureAlfaCount = $pureAlfaRecords->pluck('student_id')->unique()->count();
+        $allAlfaStudentIds = $pureAlfaRecords->pluck('student_id')->unique()->values();
+
+        // Hadir: Sesi KBM terakhir 'h' atau hadir di gerbang (tidak dalam kondisi izin/sakit/alfa)
+        $latestStatusPerStudent = $studentRecords->sortByDesc('subject_attendance_session_id')->unique('student_id');
+        $hadirRecords = $latestStatusPerStudent->where('status', 'h')->values();
+
+        $gatePresentStudentIds = $studentGateLogs->pluck('student_id')->filter()->unique();
+        $nonHadirStudentIds = $allSakitStudentIds->concat($allMurniIzinStudentIds)->concat($allDispenStudentIds)->concat($allAlfaStudentIds);
+        $validGatePresentIds = $gatePresentStudentIds->diff($nonHadirStudentIds);
+
+        $allHadirStudentIds = $hadirRecords->pluck('student_id')->concat($validGatePresentIds)->filter()->unique()->values();
 
         // 2. DATA GTK (Khusus Kurikulum & Kepala Sekolah)
         $gtkData = null;
@@ -888,17 +919,20 @@ class MobileTasksController extends Controller
                 'total_expected' => $obligatedGtkList->count(),
                 'hadir' => $gtkPresentList->count(),
                 'terlambat' => $gtkLateList->count(),
+                'telat' => $gtkLateList->count(),
                 'belum_masuk' => $gtkAwaitingList->count(),
                 'izin' => $gtkPermits->whereIn('user_id', $obligatedGtkList->pluck('id'))->count(),
                 'inval' => $todayInvals->count(),
                 'unattended_kbm' => $unattendedSchedules->count(),
+                'unattended' => $unattendedSchedules->count(),
                 'detail' => [
                     'hadir' => $gtkPresentList->values(),
                     'terlambat' => $gtkLateList->values(),
+                    'telat' => $gtkLateList->values(),
                     'belum_masuk' => $gtkAwaitingList->values(),
                     'izin' => $gtkPermits->whereIn('user_id', $obligatedGtkList->pluck('id'))->map(fn ($p) => [
                         'user_name' => $p->user?->name ?? 'GTK',
-                        'permit_type' => $p->permit_type,
+                        'duty_info' => ucfirst(str_replace('_', ' ', $p->permit_type)),
                         'reason' => $p->reason,
                     ])->values(),
                     'inval' => $todayInvals->map(fn ($inv) => [
@@ -909,6 +943,12 @@ class MobileTasksController extends Controller
                         'period' => "Jam {$inv->period_start}-{$inv->period_end}",
                     ])->values(),
                     'unattended_kbm' => $unattendedSchedules->map(fn ($sch) => [
+                        'teacher_name' => $sch->teacher?->name ?? 'Guru',
+                        'classroom' => $sch->classroom?->name ?? '-',
+                        'subject' => $sch->subject?->name ?? '-',
+                        'period' => "Jam {$sch->start_period}-{$sch->end_period}",
+                    ])->values(),
+                    'unattended' => $unattendedSchedules->map(fn ($sch) => [
                         'teacher_name' => $sch->teacher?->name ?? 'Guru',
                         'classroom' => $sch->classroom?->name ?? '-',
                         'subject' => $sch->subject?->name ?? '-',
@@ -944,19 +984,51 @@ class MobileTasksController extends Controller
             ]);
         }
 
-        // (b) Izin Siswa Terlambat Masuk
-        foreach ($latePermits as $lp) {
+        // (b) Siswa Terlambat Masuk (Piket, KBM, & Scan Gerbang)
+        foreach ($allLateStudentIds as $lateId) {
+            $lp = $latePermits->firstWhere('student_id', $lateId);
+            $lr = $lateRecords->firstWhere('student_id', $lateId);
+            $lg = $lateGateLogs->get($lateId);
+
+            $st = $lp?->student ?? $lr?->student ?? $lg?->student;
+            $cls = $lp?->classroom?->name ?? $st?->classroom?->name ?? $lr?->session?->classroom?->name ?? '-';
+
+            $time = match (true) {
+                ! empty($lp?->entry_time) => substr($lp->entry_time, 0, 5),
+                $lp?->created_at !== null => $lp->created_at->format('H:i'),
+                $lg?->scanned_at !== null => $lg->scanned_at->format('H:i'),
+                $lr?->created_at !== null => $lr->created_at->format('H:i'),
+                default => '-',
+            };
+
+            $desc = match (true) {
+                ! empty($lp?->reason) => $lp->reason,
+                ! empty($lr?->notes) => $lr->notes,
+                $lr !== null => 'Terlambat KBM ('.($lr->session?->subject?->name ?? 'Mapel').')',
+                $lg !== null => 'Terlambat Masuk Gerbang',
+                default => 'Terlambat Masuk',
+            };
+
+            $officer = match (true) {
+                ! empty($lp?->givenBy?->name) => $lp->givenBy->name,
+                ! empty($lp?->giver?->name) => $lp->giver->name,
+                $lp !== null => 'Piket',
+                $lr !== null => ($lr->session?->teacher?->name ?? 'Guru Mapel'),
+                $lg !== null => 'Scan Gerbang',
+                default => 'Sistem Presensi',
+            };
+
             $timelineEvents->push([
                 'type' => 'permit_late',
-                'time' => $lp->created_at ? $lp->created_at->format('H:i') : '-',
-                'title' => 'Terlambat Masuk Gerbang',
-                'badge' => 'Jam ke-'.($lp->period_assigned ?? '1'),
+                'time' => $time,
+                'title' => 'Siswa Terlambat Masuk',
+                'badge' => $lp ? ('Jam ke-'.($lp->period_assigned ?? '1')) : 'Terlambat',
                 'badge_color' => 'amber',
-                'person_name' => $lp->student?->name ?? 'Siswa',
-                'classroom_name' => $lp->classroom?->name ?? $lp->student?->classroom?->name ?? '-',
-                'description' => $lp->reason ?? 'Izin masuk terlambat',
-                'action_taken' => 'Diberikan surat izin piket',
-                'officer' => $lp->giver?->name ?? 'Piket',
+                'person_name' => $st?->name ?? 'Siswa',
+                'classroom_name' => $cls,
+                'description' => $desc,
+                'action_taken' => $lp ? 'Diberikan surat izin piket' : 'Dicatat dalam presensi',
+                'officer' => $officer,
             ]);
         }
 
@@ -1061,25 +1133,58 @@ class MobileTasksController extends Controller
             'can_view_gtk' => $canViewGtk,
             'can_view_bk' => $canViewBk,
             'siswa' => [
-                'hadir' => $hadirStudents->count(),
-                'telat' => $latePermits->count(),
+                'hadir' => $allHadirStudentIds->count(),
+                'telat' => $allLateStudentIds->count(),
                 'sakit' => $allSakitStudentIds->count(),
                 'izin' => $allMurniIzinStudentIds->count(),
                 'dispen' => $allDispenStudentIds->count(),
                 'pulang' => $earlyLeavePermits->count(),
-                'alfa' => $pureAlfaCount,
+                'alfa' => $allAlfaStudentIds->count(),
                 'bolos' => $truancyStudents->count(),
                 'detail' => [
-                    'hadir' => $hadirStudents->map(fn ($r) => [
-                        'name' => $r->student?->name ?? 'Siswa',
-                        'classroom' => $r->session?->classroom?->name ?? $r->student?->classroom?->name ?? '-',
-                    ])->take(50)->values(),
-                    'telat' => $latePermits->map(fn ($p) => [
-                        'name' => $p->student?->name ?? 'Siswa',
-                        'classroom' => $p->classroom?->name ?? '-',
-                        'reason' => $p->reason ?? 'Terlambat masuk',
-                        'time' => $p->created_at?->format('H:i') ?? '-',
-                    ])->values(),
+                    'hadir' => $allHadirStudentIds->map(function ($id) use ($hadirRecords, $studentGateLogs) {
+                        $r = $hadirRecords->firstWhere('student_id', $id);
+                        $g = $studentGateLogs->firstWhere('student_id', $id);
+                        $st = $r?->student ?? $g?->student;
+
+                        return [
+                            'name' => $st?->name ?? 'Siswa',
+                            'classroom' => $r?->session?->classroom?->name ?? $st?->classroom?->name ?? '-',
+                            'reason' => $r ? ('Hadir di '.($r->session?->subject?->name ?? 'KBM')) : 'Hadir Presensi Gerbang',
+                            'time' => $r?->created_at?->format('H:i') ?? ($g?->scanned_at?->format('H:i') ?? '-'),
+                        ];
+                    })->values(),
+                    'telat' => $allLateStudentIds->map(function ($id) use ($latePermits, $lateRecords, $lateGateLogs) {
+                        $p = $latePermits->firstWhere('student_id', $id);
+                        $r = $lateRecords->firstWhere('student_id', $id);
+                        $g = $lateGateLogs->get($id);
+
+                        $st = $p?->student ?? $r?->student ?? $g?->student;
+                        $classroom = $p?->classroom?->name ?? $st?->classroom?->name ?? $r?->session?->classroom?->name ?? '-';
+
+                        $reason = match (true) {
+                            ! empty($p?->reason) => $p->reason,
+                            ! empty($r?->notes) => $r->notes,
+                            $r !== null => 'Terlambat KBM ('.($r->session?->subject?->name ?? 'Mapel').')',
+                            $g !== null => 'Terlambat Masuk Gerbang',
+                            default => 'Terlambat Masuk',
+                        };
+
+                        $time = match (true) {
+                            ! empty($p?->entry_time) => substr($p->entry_time, 0, 5),
+                            $p?->created_at !== null => $p->created_at->format('H:i'),
+                            $g?->scanned_at !== null => $g->scanned_at->format('H:i'),
+                            $r?->created_at !== null => $r->created_at->format('H:i'),
+                            default => '-',
+                        };
+
+                        return [
+                            'name' => $st?->name ?? 'Siswa',
+                            'classroom' => $classroom,
+                            'reason' => $reason,
+                            'time' => $time,
+                        ];
+                    })->values(),
                     'sakit' => $allSakitStudentIds->map(function ($id) use ($studentRecords, $sakitPermits) {
                         $p = $sakitPermits->firstWhere('student_id', $id);
                         $r = $studentRecords->firstWhere('student_id', $id);
@@ -1087,8 +1192,9 @@ class MobileTasksController extends Controller
 
                         return [
                             'name' => $st?->name ?? 'Siswa',
-                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? '-',
-                            'reason' => $p?->reason ?? 'Sakit',
+                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? $r?->session?->classroom?->name ?? '-',
+                            'reason' => $p?->reason ?: ($r?->notes ?: 'Sakit'),
+                            'time' => $p?->created_at?->format('H:i') ?? ($r?->created_at?->format('H:i') ?? '-'),
                         ];
                     })->values(),
                     'izin' => $allMurniIzinStudentIds->map(function ($id) use ($studentRecords, $murniIzinPermits) {
@@ -1098,34 +1204,45 @@ class MobileTasksController extends Controller
 
                         return [
                             'name' => $st?->name ?? 'Siswa',
-                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? '-',
-                            'reason' => $p?->reason ?? 'Izin',
+                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? $r?->session?->classroom?->name ?? '-',
+                            'reason' => $p?->reason ?: ($r?->notes ?: 'Izin'),
+                            'time' => $p?->created_at?->format('H:i') ?? ($r?->created_at?->format('H:i') ?? '-'),
                         ];
                     })->values(),
-                    'dispen' => $allDispenStudentIds->map(function ($id) use ($studentRecords) {
+                    'dispen' => $allDispenStudentIds->map(function ($id) use ($studentRecords, $dispenPermits) {
+                        $p = $dispenPermits->firstWhere('student_id', $id);
                         $r = $studentRecords->firstWhere('student_id', $id);
+                        $st = $p?->student ?? $r?->student;
 
                         return [
-                            'name' => $r?->student?->name ?? 'Siswa',
-                            'classroom' => $r?->session?->classroom?->name ?? '-',
-                            'reason' => 'Dispensasi Kegiatan / Tugas',
+                            'name' => $st?->name ?? 'Siswa',
+                            'classroom' => $p?->classroom?->name ?? $st?->classroom?->name ?? $r?->session?->classroom?->name ?? '-',
+                            'reason' => $p?->reason ?: ($r?->notes ?: 'Dispensasi Kegiatan / Tugas'),
+                            'time' => $p?->created_at?->format('H:i') ?? ($r?->created_at?->format('H:i') ?? '-'),
                         ];
                     })->values(),
                     'pulang' => $earlyLeavePermits->map(fn ($p) => [
                         'name' => $p->student?->name ?? 'Siswa',
-                        'classroom' => $p->classroom?->name ?? '-',
-                        'reason' => $p->reason ?? 'Izin pulang awal',
-                        'time' => $p->created_at?->format('H:i') ?? '-',
+                        'classroom' => $p->classroom?->name ?? $p->student?->classroom?->name ?? '-',
+                        'reason' => $p->reason ?: 'Izin pulang awal',
+                        'time' => $p->departure_time ? substr($p->departure_time, 0, 5) : ($p->created_at?->format('H:i') ?? '-'),
                     ])->values(),
-                    'alfa' => $pureAlfaRecords->unique('student_id')->map(fn ($r) => [
-                        'name' => $r->student?->name ?? 'Siswa',
-                        'classroom' => $r->session?->classroom?->name ?? '-',
-                        'reason' => 'Tanpa Keterangan',
-                    ])->values(),
+                    'alfa' => $allAlfaStudentIds->map(function ($id) use ($pureAlfaRecords) {
+                        $r = $pureAlfaRecords->firstWhere('student_id', $id);
+                        $st = $r?->student;
+
+                        return [
+                            'name' => $st?->name ?? 'Siswa',
+                            'classroom' => $r?->session?->classroom?->name ?? $st?->classroom?->name ?? '-',
+                            'reason' => 'Tanpa Keterangan'.($r?->session?->subject?->name ? ' ('.$r->session->subject->name.')' : ''),
+                            'time' => $r?->created_at?->format('H:i') ?? '-',
+                        ];
+                    })->values(),
                     'bolos' => $truancyStudents->map(fn ($t) => [
                         'name' => $t->student_name,
                         'classroom' => $t->classroom_name,
                         'reason' => "Alfa di {$t->alfa_subjects} (Hadir di {$t->present_subjects})",
+                        'time' => '-',
                     ])->values(),
                 ],
             ],

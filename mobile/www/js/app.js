@@ -1991,14 +1991,38 @@
         }
     };
 
+    let currentLmDrawerState = { category: null, type: null };
+
     window.toggleLmDrawer = function(category, type) {
         const drawer = document.getElementById('lm-drawer-detail');
         const drawerTitle = document.getElementById('lm-drawer-title');
         const drawerList = document.getElementById('lm-drawer-list');
         if (!drawer || !drawerList) return;
 
+        // Jika chip yang sama diklik saat drawer terbuka, tutup drawer (toggle)
+        if (currentLmDrawerState.category === category && currentLmDrawerState.type === type && !drawer.classList.contains('hidden')) {
+            window.closeLmDrawer();
+            return;
+        }
+
+        currentLmDrawerState = { category, type };
+
+        // Highlight chip yang aktif
+        document.querySelectorAll('[data-lm-chip]').forEach(c => {
+            c.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+        });
+        const activeChip = document.querySelector(`[data-lm-chip="${category}-${type}"]`);
+        if (activeChip) {
+            activeChip.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+        }
+
         const lm = kbmDataCache?.live_monitoring || tasksDataCache?.live_monitoring;
-        if (!lm) return;
+        if (!lm) {
+            if (drawerTitle) drawerTitle.textContent = 'Detail Presensi';
+            drawerList.innerHTML = '<div class="text-center py-3 text-slate-400 text-[11px]">Memuat data live monitoring...</div>';
+            drawer.classList.remove('hidden');
+            return;
+        }
 
         let items = [];
         let title = '';
@@ -2019,7 +2043,7 @@
             title = typeTitles[type] || `Siswa (${type})`;
         } else if (category === 'gtk') {
             const detail = lm.gtk?.detail || {};
-            items = detail[type] || [];
+            items = detail[type] || (type === 'telat' ? detail.terlambat : null) || (type === 'unattended' ? detail.unattended_kbm : null) || [];
             const typeTitles = {
                 hadir: 'GTK Hadir Tepat Waktu',
                 telat: 'GTK Terlambat Masuk',
@@ -2031,50 +2055,60 @@
             title = typeTitles[type] || `GTK (${type})`;
         }
 
-        if (drawerTitle) drawerTitle.textContent = `${title} (${items.length})`;
+        if (drawerTitle) {
+            drawerTitle.innerHTML = `<span>📋 ${escapeHtml(title)}</span> <span class="text-slate-500 font-mono text-[10px]">(${items.length} Siswa/Personil)</span>`;
+        }
 
         if (items.length === 0) {
-            drawerList.innerHTML = `<div class="text-center py-2 text-slate-400 text-[11px]">Tidak ada data untuk ${title.toLowerCase()}.</div>`;
+            drawerList.innerHTML = `
+                <div class="text-center py-3 text-slate-400 text-[11px] bg-white rounded-lg border border-dashed border-slate-200">
+                    <span class="text-base block mb-0.5">ℹ️</span>
+                    Tidak ada catatan ${escapeHtml(title.toLowerCase())} untuk hari ini.
+                </div>
+            `;
         } else {
             if (category === 'siswa') {
                 drawerList.innerHTML = items.map(item => `
-                    <div class="p-1.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
-                        <div>
-                            <span class="font-bold text-slate-800 text-[11px] block">${item.name}</span>
-                            <span class="text-[9px] text-slate-500">${item.classroom} ${item.reason ? `• ${item.reason}` : ''}</span>
+                    <div class="p-2 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2">
+                        <div class="min-w-0 flex-1">
+                            <span class="font-bold text-slate-800 text-[11px] block truncate">${escapeHtml(item.name || 'Siswa')}</span>
+                            <span class="text-[9px] text-slate-500 block truncate">
+                                <span class="font-semibold text-slate-700">${escapeHtml(item.classroom || '-')}</span>
+                                ${item.reason ? ` &bull; <span>${escapeHtml(item.reason)}</span>` : ''}
+                            </span>
                         </div>
-                        ${item.time ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded">${item.time}</span>` : ''}
+                        ${item.time && item.time !== '-' ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">${escapeHtml(item.time)}</span>` : ''}
                     </div>
                 `).join('');
             } else if (category === 'gtk') {
                 if (type === 'inval') {
                     drawerList.innerHTML = items.map(item => `
-                        <div class="p-1.5 rounded-lg bg-white border border-indigo-200">
+                        <div class="p-2 rounded-lg bg-white border border-indigo-200">
                             <div class="flex items-center justify-between mb-0.5">
-                                <span class="font-bold text-indigo-950 text-[11px]">${item.classroom} &bull; ${item.subject}</span>
-                                <span class="text-[9px] font-mono font-bold text-indigo-700 bg-indigo-50 px-1 rounded">${item.period}</span>
+                                <span class="font-bold text-indigo-950 text-[11px]">${escapeHtml(item.classroom || '-')} &bull; ${escapeHtml(item.subject || '-')}</span>
+                                <span class="text-[9px] font-mono font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">${escapeHtml(item.period || '-')}</span>
                             </div>
-                            <p class="text-[10px] text-slate-600">Pengganti: <strong>${item.inval_teacher}</strong> (Asli: ${item.absent_teacher})</p>
+                            <p class="text-[10px] text-slate-600">Pengganti: <strong>${escapeHtml(item.inval_teacher || 'Guru Pengganti')}</strong> (Asli: ${escapeHtml(item.absent_teacher || '-')})</p>
                         </div>
                     `).join('');
                 } else if (type === 'unattended') {
                     drawerList.innerHTML = items.map(item => `
-                        <div class="p-1.5 rounded-lg bg-white border border-rose-200">
+                        <div class="p-2 rounded-lg bg-white border border-rose-200">
                             <div class="flex items-center justify-between mb-0.5">
-                                <span class="font-bold text-slate-800 text-[11px]">${item.teacher_name}</span>
-                                <span class="text-[9px] font-mono font-bold text-rose-700 bg-rose-50 px-1 rounded">${item.period}</span>
+                                <span class="font-bold text-slate-800 text-[11px]">${escapeHtml(item.teacher_name || 'Guru')}</span>
+                                <span class="text-[9px] font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">${escapeHtml(item.period || '-')}</span>
                             </div>
-                            <p class="text-[10px] text-slate-500">${item.classroom} &bull; ${item.subject}</p>
+                            <p class="text-[10px] text-slate-500">${escapeHtml(item.classroom || '-')} &bull; ${escapeHtml(item.subject || '-')}</p>
                         </div>
                     `).join('');
                 } else {
                     drawerList.innerHTML = items.map(item => `
-                        <div class="p-1.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
-                            <div>
-                                <span class="font-bold text-slate-800 text-[11px] block">${item.user_name}</span>
-                                <span class="text-[9px] text-slate-500">${item.duty_info || item.position || item.reason || item.permit_type || '-'}</span>
+                        <div class="p-2 rounded-lg bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <span class="font-bold text-slate-800 text-[11px] block truncate">${escapeHtml(item.user_name || 'GTK')}</span>
+                                <span class="text-[9px] text-slate-500 block truncate">${escapeHtml(item.duty_info || item.position || item.reason || item.permit_type || '-')}</span>
                             </div>
-                            ${item.time ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded">${item.time}</span>` : ''}
+                            ${item.time && item.time !== '-' ? `<span class="text-[9px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">${escapeHtml(item.time)}</span>` : ''}
                         </div>
                     `).join('');
                 }
@@ -2088,6 +2122,10 @@
     window.closeLmDrawer = function() {
         const drawer = document.getElementById('lm-drawer-detail');
         if (drawer) drawer.classList.add('hidden');
+        currentLmDrawerState = { category: null, type: null };
+        document.querySelectorAll('[data-lm-chip]').forEach(c => {
+            c.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+        });
     };
 
     // ==========================================

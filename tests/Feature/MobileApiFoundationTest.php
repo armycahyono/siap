@@ -14,6 +14,8 @@ use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\SubjectAttendanceRecord;
+use App\Models\SubjectAttendanceSession;
 use App\Models\User;
 use App\Models\UserActivityLog;
 use App\Services\AcademicYearContext;
@@ -503,7 +505,7 @@ class MobileApiFoundationTest extends TestCase
                             'izin',
                             'inval',
                             'unattended_kbm',
-                            'detail' => ['hadir', 'terlambat', 'belum_masuk', 'izin', 'inval', 'unattended_kbm'],
+                            'detail' => ['hadir', 'terlambat', 'telat', 'belum_masuk', 'izin', 'inval', 'unattended_kbm', 'unattended'],
                         ],
                         'timeline',
                     ],
@@ -525,6 +527,61 @@ class MobileApiFoundationTest extends TestCase
                     'bk',
                 ],
             ]);
+    }
+
+    public function test_live_monitoring_aggregates_kbm_late_records_and_details(): void
+    {
+        $adminRole = Role::where('slug', 'super_admin')->first() ?? Role::create(['name' => 'Super Admin', 'slug' => 'super_admin']);
+        $admin = User::create([
+            'name' => 'Kepala Sekolah Monitoring',
+            'username' => 'ks_monitoring',
+            'email' => 'ks_monitoring@example.com',
+            'password' => bcrypt('password123'),
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $grade = GradeLevel::firstOrCreate(['name' => 'X'], ['level' => 10]);
+        $dept = Department::firstOrCreate(['code' => 'TKR'], ['name' => 'Teknik Kendaraan Ringan']);
+        $classroom = Classroom::firstOrCreate(
+            ['name' => 'X TKR 1', 'academic_year' => '2024/2025'],
+            ['grade_level_id' => $grade->id, 'department_id' => $dept->id, 'is_active' => true]
+        );
+
+        $studentLate = Student::create([
+            'nis' => '11111',
+            'name' => 'Budi Terlambat KBM',
+            'classroom_id' => $classroom->id,
+            'status' => 'active',
+            'academic_year' => '2024/2025',
+        ]);
+
+        $subject = Subject::firstOrCreate(['code' => 'MTK01'], ['name' => 'Matematika Terapan']);
+
+        $session = SubjectAttendanceSession::create([
+            'classroom_id' => $classroom->id,
+            'subject_id' => $subject->id,
+            'teacher_id' => $this->teacher->id,
+            'attendance_date' => now()->toDateString(),
+            'start_period' => 1,
+            'end_period' => 2,
+            'status' => 'completed',
+        ]);
+
+        SubjectAttendanceRecord::create([
+            'subject_attendance_session_id' => $session->id,
+            'student_id' => $studentLate->id,
+            'status' => 't',
+            'notes' => 'Terlambat 15 menit',
+        ]);
+
+        $res = $this->actingAs($admin)->getJson('/api/v1/mobile/kbm');
+        $res->assertOk();
+
+        $siswa = $res->json('data.live_monitoring.siswa');
+        $this->assertGreaterThanOrEqual(1, $siswa['telat']);
+        $telatNames = collect($siswa['detail']['telat'])->pluck('name')->map(fn ($n) => strtoupper($n));
+        $this->assertTrue($telatNames->contains('BUDI TERLAMBAT KBM'));
     }
 
     public function test_mobile_students_smart_search_behavior(): void
