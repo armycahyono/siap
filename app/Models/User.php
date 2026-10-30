@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -68,6 +69,47 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        if ($this->avatar) {
+            if (str_starts_with($this->avatar, 'http')) {
+                return $this->avatar;
+            }
+            if (Storage::disk('public')->exists($this->avatar)) {
+                return asset('storage/'.$this->avatar);
+            }
+        }
+
+        return $this->getDefaultAvatarUrl();
+    }
+
+    public function getDefaultAvatarUrl(): string
+    {
+        $name = trim($this->name ?: $this->username ?: 'User');
+        $initial = strtoupper(mb_substr($name, 0, 1));
+        $colors = [
+            ['#2563eb', '#1d4ed8'],
+            ['#7c3aed', '#6d28d9'],
+            ['#059669', '#047857'],
+            ['#d97706', '#b45309'],
+            ['#0891b2', '#0e7490'],
+            ['#e11d48', '#be123c'],
+            ['#4f46e5', '#3730a3'],
+        ];
+        $colorPair = $colors[ord($initial) % count($colors)];
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">'
+            .'<defs><linearGradient id="av_'.md5($name).'" x1="0%" y1="0%" x2="100%" y2="100%">'
+            .'<stop offset="0%" stop-color="'.$colorPair[0].'"/>'
+            .'<stop offset="100%" stop-color="'.$colorPair[1].'"/>'
+            .'</linearGradient></defs>'
+            .'<rect width="128" height="128" rx="64" fill="url(#av_'.md5($name).')"/>'
+            .'<text x="50%" y="54%" font-family="-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif" font-size="56" font-weight="800" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">'.$initial.'</text>'
+            .'</svg>';
+
+        return 'data:image/svg+xml;utf8,'.rawurlencode($svg);
     }
 
     public function supervisionsAsTeacher(): HasMany

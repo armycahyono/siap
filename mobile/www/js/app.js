@@ -81,16 +81,46 @@
     window.handleLogout = handleLogout;
 
     // ==========================================
+    // USER AVATAR GENERATOR & RESOLVER
+    // ==========================================
+    function getUserAvatar(user, fallbackName = '') {
+        if (user && typeof user === 'object' && user.avatar_url && !user.avatar_url.includes('logo.png') && !user.avatar_url.includes('avatar-default.png')) {
+            return user.avatar_url;
+        }
+        const name = (typeof user === 'string' ? user : (user?.name || user?.username || fallbackName || '')).trim();
+        if (name) {
+            const initial = name.charAt(0).toUpperCase();
+            const colors = [
+                ['#2563eb', '#1d4ed8'],
+                ['#7c3aed', '#6d28d9'],
+                ['#059669', '#047857'],
+                ['#d97706', '#b45309'],
+                ['#0891b2', '#0e7490'],
+                ['#e11d48', '#be123c'],
+                ['#4f46e5', '#3730a3'],
+            ];
+            const colorPair = colors[name.charCodeAt(0) % colors.length];
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">`
+                + `<defs><linearGradient id="av_${encodeURIComponent(initial)}" x1="0%" y1="0%" x2="100%" y2="100%">`
+                + `<stop offset="0%" stop-color="${colorPair[0]}"/>`
+                + `<stop offset="100%" stop-color="${colorPair[1]}"/>`
+                + `</linearGradient></defs>`
+                + `<rect width="128" height="128" rx="64" fill="url(#av_${encodeURIComponent(initial)})"/>`
+                + `<text x="50%" y="54%" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initial}</text>`
+                + `</svg>`;
+            return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+        }
+        return 'assets/default-avatar.svg';
+    }
+    window.getUserAvatar = getUserAvatar;
+
+    // ==========================================
     // TOP BAR & NOTIFICATION HANDLERS
     // ==========================================
     function updateTopBarUser(user) {
         const avatarEl = document.getElementById('top-user-avatar');
         if (!avatarEl) return;
-        if (user && user.avatar_url) {
-            avatarEl.src = user.avatar_url;
-        } else {
-            avatarEl.src = 'assets/logo.png';
-        }
+        avatarEl.src = getUserAvatar(user);
     }
     window.updateTopBarUser = updateTopBarUser;
 
@@ -346,7 +376,7 @@
         if (userRoleEl) userRoleEl.textContent = user.role || 'GTK';
 
         const userAvatarEl = container.querySelector('#dash-user-avatar');
-        if (userAvatarEl && user.avatar_url) userAvatarEl.src = user.avatar_url;
+        if (userAvatarEl) userAvatarEl.src = getUserAvatar(user);
 
         // Attendance Today
         const attStatusEl = container.querySelector('#dash-att-status');
@@ -2349,7 +2379,7 @@
             birthEl.title = u.birth_info || '-';
         }
         if (emailEl) emailEl.textContent = u.email || '-';
-        if (avatarEl && u.avatar_url) avatarEl.src = u.avatar_url;
+        if (avatarEl) avatarEl.src = getUserAvatar(u);
 
         // WhatsApp Phone with direct link
         if (phoneWrap) {

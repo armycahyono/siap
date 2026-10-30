@@ -119,9 +119,7 @@ class MobileProfileController extends Controller
 
         $setting = SchoolSetting::getSetting();
 
-        $avatarUrl = $user->avatar
-            ? (str_starts_with($user->avatar, 'http') ? $user->avatar : asset('storage/'.$user->avatar))
-            : asset('assets/images/avatar-default.png');
+        $avatarUrl = $user->avatar_url;
 
         return response()->json([
             'success' => true,
