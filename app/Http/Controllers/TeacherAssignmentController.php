@@ -124,7 +124,9 @@ class TeacherAssignmentController extends Controller
                         ->orWhereNull('academic_year');
                 })
                 ->latest('id')
-                ->get();
+                ->get()
+                ->sortBy(fn ($b) => $b->context?->name ?? 'ZZZ')
+                ->values();
         }
 
         $assignedClassroomBkMap = [];

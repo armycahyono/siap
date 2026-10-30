@@ -716,8 +716,8 @@
             <thead>
                 <tr class="text-muted small">
                     <th class="w-1 text-center">No</th>
+                    <th style="width: 170px;">Rombel / Kelas Asuhan</th>
                     <th>Nama Guru BK</th>
-                    <th>Rombel / Kelas Asuhan</th>
                     <th class="text-center">Beban Binaan</th>
                     <th>Nomor SK &amp; TMT</th>
                     <th>Catatan</th>
@@ -730,6 +730,15 @@
                 <tr>
                     <td class="text-center text-muted fw-bold">{{ $idx + 1 }}</td>
                     <td>
+                        @if($bk->context_type && $bk->context)
+                            <div class="fw-bold text-dark fs-3">{{ $bk->context->name }}</div>
+                            <small class="text-muted">TP. {{ $bk->academic_year ?? $academicYear }}</small>
+                        @else
+                            <div class="fw-bold text-primary fs-3">Seluruh Rombel</div>
+                            <small class="text-muted">TP. {{ $bk->academic_year ?? $academicYear }} (Umum)</small>
+                        @endif
+                    </td>
+                    <td>
                         <div class="d-flex align-items-center">
                             <span class="avatar avatar-sm bg-primary-lt text-primary rounded-circle me-2 fw-bold">
                                 {{ strtoupper(substr($bk->user?->name ?? 'B', 0, 1)) }}
@@ -739,13 +748,6 @@
                                 <small class="text-muted">NIGS: {{ $bk->user?->nigs ?? '-' }}</small>
                             </div>
                         </div>
-                    </td>
-                    <td>
-                        @if($bk->context_type && $bk->context)
-                            <span class="badge bg-teal-lt fs-5"><i class="ti ti-school me-1"></i> {{ $bk->context->name }}</span>
-                        @else
-                            <span class="badge bg-blue-lt fs-5"><i class="ti ti-world me-1"></i> Seluruh Rombel (Umum)</span>
-                        @endif
                     </td>
                     <td class="text-center">
                         @if($bk->context_type && $bk->context)
