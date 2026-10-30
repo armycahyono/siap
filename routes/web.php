@@ -13,8 +13,10 @@ use App\Http\Controllers\Attendance\GeotagAttendanceController;
 use App\Http\Controllers\Attendance\GtkPermitController;
 use App\Http\Controllers\Attendance\ManualGtkAttendanceController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Bk\BkCareerAnalyticsController;
 use App\Http\Controllers\Bk\BkCareerProfileController;
 use App\Http\Controllers\Bk\BkDashboardController;
+use App\Http\Controllers\Bk\BkGroupController;
 use App\Http\Controllers\Bk\BkReferralController;
 use App\Http\Controllers\Bk\BkServiceController;
 use App\Http\Controllers\Bk\BkStudentHistoryController;
@@ -524,6 +526,18 @@ Route::middleware('auth')->group(function () {
         Route::get('rujukan', [BkReferralController::class, 'index'])->name('referrals.index');
         Route::get('rujukan/{incident}', [BkReferralController::class, 'show'])->name('referrals.show');
         Route::post('rujukan/{incident}/status', [BkReferralController::class, 'updateStatus'])->name('referrals.status');
+
+        // 1.1 Kelompok Binaan BK (Career & Counseling Cohorts)
+        Route::get('kelompok', [BkGroupController::class, 'index'])->name('groups.index');
+        Route::get('kelompok/buat', [BkGroupController::class, 'create'])->name('groups.create');
+        Route::post('kelompok', [BkGroupController::class, 'store'])->name('groups.store');
+        Route::get('kelompok/{group}', [BkGroupController::class, 'show'])->name('groups.show');
+        Route::post('kelompok/{group}/tambah-siswa', [BkGroupController::class, 'addStudents'])->name('groups.add-students');
+        Route::delete('kelompok/{group}/siswa/{student}', [BkGroupController::class, 'removeStudent'])->name('groups.remove-student');
+        Route::delete('kelompok/{group}', [BkGroupController::class, 'destroy'])->name('groups.destroy');
+
+        // 1.2 Dashboard Analisis Karir & Penyaluran Kerja BKK
+        Route::get('analisis-karir', [BkCareerAnalyticsController::class, 'index'])->name('career.analytics');
 
         // 2. Pencatatan & Pengelolaan Layanan BK
         Route::get('layanan', [BkServiceController::class, 'index'])->name('services.index');

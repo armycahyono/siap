@@ -59,6 +59,7 @@ class TeacherAssignmentController extends Controller
         $subjects = Subject::where('is_active', true)->orderBy('name')->get();
         $classrooms = Classroom::where('academic_year', $academicYear)
             ->with(['gradeLevel', 'department', 'homeroomTeacher'])
+            ->withCount(['students' => fn ($q) => $q->where('status', 'aktif')])
             ->orderBy('name')
             ->get();
         $departments = Department::where('is_active', true)->orderBy('code')->get();
@@ -105,7 +106,14 @@ class TeacherAssignmentController extends Controller
         $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->first();
         $bkAssignments = collect();
         if ($bkRole) {
-            $bkAssignments = UserRoleAssignment::with(['user', 'context'])
+            $bkAssignments = UserRoleAssignment::with([
+                'user',
+                'context' => function ($morphTo) {
+                    $morphTo->morphWith([
+                        Classroom::class => fn ($q) => $q->withCount(['students' => fn ($sq) => $sq->where('status', 'aktif')]),
+                    ]);
+                },
+            ])
                 ->where('role_id', $bkRole->id)
                 ->where('status', true)
                 ->where(function ($q) use ($academicYear) {

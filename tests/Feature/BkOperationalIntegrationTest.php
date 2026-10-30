@@ -177,11 +177,11 @@ class BkOperationalIntegrationTest extends TestCase
         // Guru biasa
         $regularTeacher = User::factory()->create(['role_id' => $guruRole->id, 'position' => 'guru']);
 
-        // Akses rujukan BK harus 403 Forbidden
-        $this->actingAs($tatibUser)->get(route('bk.referrals.index', ['academic_year' => $academicYear]))->assertForbidden();
+        // Akses rujukan BK: tim tatib diizinkan memantau rujukan kasus piket, guru reguler dilarang (403)
+        $this->actingAs($tatibUser)->get(route('bk.referrals.index', ['academic_year' => $academicYear]))->assertOk();
         $this->actingAs($regularTeacher)->get(route('bk.referrals.index', ['academic_year' => $academicYear]))->assertForbidden();
 
-        // Akses layanan BK harus 403 Forbidden
+        // Akses layanan konseling BK: khusus Guru BK murni (tatib dan guru reguler dilarang / 403 Forbidden)
         $this->actingAs($tatibUser)->get(route('bk.services.index', ['academic_year' => $academicYear]))->assertForbidden();
         $this->actingAs($regularTeacher)->get(route('bk.services.index', ['academic_year' => $academicYear]))->assertForbidden();
     }

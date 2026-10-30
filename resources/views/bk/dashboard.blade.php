@@ -43,6 +43,12 @@
                 <a href="{{ route('bk.services.create') }}" class="btn btn-sm btn-primary shadow-xs fw-bold">
                     <i class="ti ti-plus me-1"></i> Catat Sesi Layanan
                 </a>
+                <a href="{{ route('bk.groups.index', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-teal shadow-xs fw-bold">
+                    <i class="ti ti-users-group me-1"></i> Kelompok Binaan
+                </a>
+                <a href="{{ route('bk.career.analytics', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-primary shadow-xs fw-bold">
+                    <i class="ti ti-chart-pie me-1"></i> Analisis Karir &amp; BKK
+                </a>
                 <a href="{{ route('bk.referrals.index') }}" class="btn btn-sm btn-outline-secondary shadow-xs">
                     <i class="ti ti-bell-ringing me-1"></i> Rujukan Piket
                 </a>

@@ -115,8 +115,11 @@ class BkStudentHistoryController extends Controller
         $currentClassroom = $student->classroomForAcademicYear($academicYear) ?? $student->classroom;
 
         // 2. Sesi Layanan Bimbingan & Konseling
-        $servicesQuery = BkService::with(['counselor', 'incident'])
-            ->where('student_id', $student->id)
+        $servicesQuery = BkService::with(['counselor', 'incident', 'group', 'classroom'])
+            ->where(function ($q) use ($student) {
+                $q->where('student_id', $student->id)
+                    ->orWhereHas('participants', fn ($pq) => $pq->where('student_id', $student->id));
+            })
             ->when($request->filled('academic_year'), fn ($q) => $q->where('academic_year', $academicYear))
             ->latest('service_date');
 

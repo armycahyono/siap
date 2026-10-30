@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Bk;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\BkConfidentialNote;
+use App\Models\BkGroup;
 use App\Models\BkReferral;
 use App\Models\BkService;
+use App\Models\BkServiceParticipant;
 use App\Models\Classroom;
 use App\Models\PiketIncident;
 use App\Models\Student;
@@ -160,12 +162,19 @@ class BkServiceController extends Controller
         $officers = User::orderBy('name')->get(['id', 'name']);
         $canAccessConfidential = $user->canAccessCounselingNotes($academicYear);
 
+        $bkGroups = BkGroup::active()
+            ->forAcademicYear($academicYear)
+            ->with(['students' => fn ($q) => $q->with('classroom')])
+            ->withCount('students')
+            ->get();
+
         return view('bk.services.create', compact(
             'academicYear',
             'incident',
             'selectedStudent',
             'students',
             'classrooms',
+            'bkGroups',
             'officers',
             'canAccessConfidential'
         ));
@@ -188,7 +197,12 @@ class BkServiceController extends Controller
         }
 
         $validated = $request->validate([
-            'student_id' => 'required|exists:students,id',
+            'service_mode' => 'nullable|in:individual,kelompok,klasikal',
+            'student_id' => 'required_if:service_mode,individual|nullable|exists:students,id',
+            'bk_group_id' => 'required_if:service_mode,kelompok|nullable|exists:bk_groups,id',
+            'classroom_id' => 'required_if:service_mode,klasikal|nullable|exists:classrooms,id',
+            'participant_ids' => 'nullable|array',
+            'participant_ids.*' => 'exists:students,id',
             'piket_incident_id' => 'nullable|exists:piket_incidents,id',
             'academic_year' => 'required|string|max:20',
             'service_date' => 'required|date',
@@ -202,6 +216,8 @@ class BkServiceController extends Controller
             'confidential_notes' => 'nullable|string',
         ]);
 
+        $serviceMode = $validated['service_mode'] ?? 'individual';
+
         $incident = null;
         if (! empty($validated['piket_incident_id'])) {
             $incident = PiketIncident::findOrFail($validated['piket_incident_id']);
@@ -210,8 +226,17 @@ class BkServiceController extends Controller
             }
         }
 
+        // Tentukan perwakilan siswa utama untuk student_id jika kelompok/klasikal
+        $primaryStudentId = $validated['student_id'] ?? null;
+        if (! $primaryStudentId && ! empty($validated['participant_ids'])) {
+            $primaryStudentId = $validated['participant_ids'][0];
+        }
+
         $service = BkService::create([
-            'student_id' => $validated['student_id'],
+            'student_id' => $primaryStudentId,
+            'service_mode' => $serviceMode,
+            'bk_group_id' => $validated['bk_group_id'] ?? null,
+            'classroom_id' => $validated['classroom_id'] ?? null,
             'piket_incident_id' => $validated['piket_incident_id'] ?? null,
             'academic_year' => $validated['academic_year'],
             'service_date' => $validated['service_date'],
@@ -224,6 +249,30 @@ class BkServiceController extends Controller
             'follow_up_status' => $validated['follow_up_status'] ?? 'belum_dilaksanakan',
             'counselor_id' => $user->id,
         ]);
+
+        // Simpan peserta layanan ke tabel bk_service_participants
+        $participantsToAttach = [];
+        if ($serviceMode === 'individual' && ! empty($validated['student_id'])) {
+            $participantsToAttach[] = $validated['student_id'];
+        } elseif (! empty($validated['participant_ids'])) {
+            $participantsToAttach = $validated['participant_ids'];
+        } elseif ($serviceMode === 'kelompok' && ! empty($validated['bk_group_id'])) {
+            $group = BkGroup::with('students')->find($validated['bk_group_id']);
+            $participantsToAttach = $group ? $group->students->pluck('id')->all() : [];
+        } elseif ($serviceMode === 'klasikal' && ! empty($validated['classroom_id'])) {
+            $participantsToAttach = Student::where('classroom_id', $validated['classroom_id'])
+                ->where('status', 'aktif')
+                ->pluck('id')
+                ->all();
+        }
+
+        foreach (array_unique($participantsToAttach) as $stId) {
+            BkServiceParticipant::create([
+                'bk_service_id' => $service->id,
+                'student_id' => $stId,
+                'attendance_status' => 'hadir',
+            ]);
+        }
 
         // Simpan catatan rahasia hanya jika pengguna memiliki wewenang canAccessCounselingNotes
         if (! empty($validated['confidential_notes'])) {
@@ -264,7 +313,15 @@ class BkServiceController extends Controller
             abort(403, 'Anda tidak memiliki kewenangan sebagai Guru BK untuk tahun ajaran ini.');
         }
 
-        $service->load(['student.classroom', 'counselor', 'incident.classroom', 'followUpAssignee']);
+        $service->load([
+            'student.classroom',
+            'counselor',
+            'incident.classroom',
+            'followUpAssignee',
+            'group',
+            'classroom',
+            'participants.student.classroom',
+        ]);
 
         $canAccessConfidential = $user->canAccessCounselingNotes($service->academic_year);
 

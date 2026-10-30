@@ -251,6 +251,18 @@ class Student extends Model
         return $this->hasMany(BkService::class);
     }
 
+    public function bkGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(BkGroup::class, 'bk_group_students')
+            ->withPivot(['joined_at', 'notes'])
+            ->withTimestamps();
+    }
+
+    public function bkServiceParticipations(): HasMany
+    {
+        return $this->hasMany(BkServiceParticipant::class, 'student_id');
+    }
+
     public function careerProfiles(): HasMany
     {
         return $this->hasMany(BkStudentCareerProfile::class);

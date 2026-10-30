@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BkService extends Model
@@ -15,6 +16,9 @@ class BkService extends Model
         'piket_incident_id',
         'student_id',
         'academic_year',
+        'service_mode',
+        'bk_group_id',
+        'classroom_id',
         'service_date',
         'service_type',
         'summary',
@@ -37,6 +41,21 @@ class BkService extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(BkGroup::class, 'bk_group_id');
+    }
+
+    public function classroom(): BelongsTo
+    {
+        return $this->belongsTo(Classroom::class, 'classroom_id');
+    }
+
+    public function participants(): HasMany
+    {
+        return $this->hasMany(BkServiceParticipant::class, 'bk_service_id');
     }
 
     public function counselor(): BelongsTo

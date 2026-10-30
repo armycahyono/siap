@@ -711,6 +711,7 @@
                     <th class="w-1 text-center">No</th>
                     <th>Nama Guru BK</th>
                     <th>Rombel / Kelas Asuhan</th>
+                    <th class="text-center">Beban Binaan</th>
                     <th>Nomor SK &amp; TMT</th>
                     <th>Catatan</th>
                     <th class="text-center" style="width: 100px;">Status</th>
@@ -737,6 +738,20 @@
                             <span class="badge bg-teal-lt fs-5"><i class="ti ti-school me-1"></i> {{ $bk->context->name }}</span>
                         @else
                             <span class="badge bg-blue-lt fs-5"><i class="ti ti-world me-1"></i> Seluruh Rombel (Umum)</span>
+                        @endif
+                    </td>
+                    <td class="text-center">
+                        @if($bk->context_type && $bk->context)
+                            @php
+                                $sCount = $bk->context->students_count ?? 0;
+                            @endphp
+                            <span class="badge bg-azure-lt fs-6 fw-bold" title="Jumlah siswa aktif di kelas {{ $bk->context->name }}">
+                                <i class="ti ti-users me-1"></i> {{ $sCount }} Siswa
+                            </span>
+                        @else
+                            <span class="badge bg-purple-lt fs-6 fw-bold" title="Membina seluruh siswa sekolah secara global">
+                                <i class="ti ti-world me-1"></i> Seluruh Siswa
+                            </span>
                         @endif
                     </td>
                     <td>
@@ -770,7 +785,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center py-4 text-muted">
+                    <td colspan="8" class="text-center py-4 text-muted">
                         <i class="ti ti-mood-empty fs-1 mb-2 d-block text-secondary"></i>
                         Belum ada penetapan Guru BK untuk TP. {{ $academicYear }}.
                     </td>
@@ -813,14 +828,35 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Pilih Rombel / Kelas Bimbingan</label>
-                        <select name="classroom_ids[]" class="form-select" multiple size="5">
+                        <select name="classroom_ids[]" id="bkClassroomSelect" class="form-select" multiple size="6">
                             @foreach($classrooms as $cls)
-                                <option value="{{ $cls->id }}">{{ $cls->name }} ({{ $cls->department?->code ?? 'Umum' }})</option>
+                                <option value="{{ $cls->id }}" data-students="{{ $cls->students_count ?? 0 }}">
+                                    {{ $cls->name }} ({{ $cls->department?->code ?? 'Umum' }}) — {{ $cls->students_count ?? 0 }} Siswa
+                                </option>
                             @endforeach
                         </select>
                         <small class="text-muted d-block mt-1">
                             <em>Tekan Ctrl (atau Cmd di Mac) untuk memilih lebih dari satu kelas. Biarkan kosong jika bertugas untuk <strong>Seluruh Rombel (Umum)</strong>.</em>
                         </small>
+
+                        <!-- Indikator Live Beban Binaan (Rasio 1:150) -->
+                        <div id="bkWorkloadBox" class="card card-sm bg-light-subtle border mt-2">
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small fw-bold text-dark">
+                                        <i class="ti ti-scale me-1 text-primary"></i> Estimasi Beban Binaan:
+                                    </span>
+                                    <span id="bkWorkloadBadge" class="badge bg-secondary-lt">0 Siswa (0 Rombel)</span>
+                                </div>
+                                <div class="progress progress-sm mb-1" style="height: 6px;">
+                                    <div id="bkWorkloadProgress" class="progress-bar bg-primary" style="width: 0%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center text-muted" style="font-size: 11px;">
+                                    <span>Target Standar: 150 Siswa (1:150)</span>
+                                    <span id="bkWorkloadStatus" class="fw-semibold text-muted">Seluruh Rombel (Umum)</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row g-2 mb-3">
@@ -2855,6 +2891,62 @@ document.addEventListener('DOMContentLoaded', function () {
         if (opSelect.value) {
             updateOpCapacityAlert();
         }
+    }
+
+    // Live Workload Calculator for BK Assignments (Target 1:150)
+    const bkSelect = document.getElementById('bkClassroomSelect');
+    const bkWorkloadBadge = document.getElementById('bkWorkloadBadge');
+    const bkWorkloadProgress = document.getElementById('bkWorkloadProgress');
+    const bkWorkloadStatus = document.getElementById('bkWorkloadStatus');
+
+    if (bkSelect && bkWorkloadBadge && bkWorkloadProgress && bkWorkloadStatus) {
+        function updateBkWorkload() {
+            let totalStudents = 0;
+            let selectedCount = 0;
+
+            for (let i = 0; i < bkSelect.options.length; i++) {
+                const opt = bkSelect.options[i];
+                if (opt.selected) {
+                    selectedCount++;
+                    totalStudents += parseInt(opt.getAttribute('data-students') || '0', 10);
+                }
+            }
+
+            if (selectedCount === 0) {
+                bkWorkloadBadge.className = 'badge bg-purple-lt';
+                bkWorkloadBadge.textContent = 'Seluruh Rombel (Umum)';
+                bkWorkloadProgress.style.width = '100%';
+                bkWorkloadProgress.className = 'progress-bar bg-purple';
+                bkWorkloadStatus.className = 'fw-semibold text-purple';
+                bkWorkloadStatus.textContent = 'Membina Seluruh Siswa Sekolah';
+                return;
+            }
+
+            const percentage = Math.min(Math.round((totalStudents / 150) * 100), 100);
+            bkWorkloadProgress.style.width = percentage + '%';
+
+            if (totalStudents >= 130 && totalStudents <= 165) {
+                bkWorkloadBadge.className = 'badge bg-success text-white fw-bold';
+                bkWorkloadProgress.className = 'progress-bar bg-success';
+                bkWorkloadStatus.className = 'fw-bold text-success';
+                bkWorkloadStatus.textContent = 'Beban Ideal (' + percentage + '% dari target 150)';
+            } else if (totalStudents < 130) {
+                bkWorkloadBadge.className = 'badge bg-warning-lt fw-bold';
+                bkWorkloadProgress.className = 'progress-bar bg-warning';
+                bkWorkloadStatus.className = 'fw-semibold text-warning';
+                bkWorkloadStatus.textContent = 'Di Bawah Standar (' + percentage + '% dari target 150)';
+            } else {
+                bkWorkloadBadge.className = 'badge bg-danger text-white fw-bold';
+                bkWorkloadProgress.className = 'progress-bar bg-danger';
+                bkWorkloadStatus.className = 'fw-bold text-danger';
+                bkWorkloadStatus.textContent = 'Beban Berlebih / Overload (' + totalStudents + '/150 Siswa)';
+            }
+
+            bkWorkloadBadge.textContent = totalStudents + ' Siswa (' + selectedCount + ' Rombel)';
+        }
+
+        bkSelect.addEventListener('change', updateBkWorkload);
+        updateBkWorkload();
     }
 });
 </script>

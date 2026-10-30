@@ -49,9 +49,55 @@
                             </div>
                         @endif
 
+                        <!-- Pilihan Moda Layanan BK -->
+                        <div class="mb-4 pb-3 border-bottom">
+                            <label class="form-label required fw-bold mb-2">Moda Layanan Bimbingan</label>
+                            @php
+                                $defaultMode = request('service_mode', request('bk_group_id') ? 'kelompok' : (old('service_mode', 'individual')));
+                            @endphp
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-selectgroup-item w-100">
+                                        <input type="radio" name="service_mode" value="individual" class="form-selectgroup-input" {{ $defaultMode === 'individual' ? 'checked' : '' }} onchange="toggleServiceMode('individual')">
+                                        <span class="form-selectgroup-label d-flex align-items-center p-2">
+                                            <i class="ti ti-user fs-2 text-primary me-2"></i>
+                                            <div class="text-start">
+                                                <div class="fw-bold text-dark">Individual</div>
+                                                <small class="text-muted">1 Siswa Konseling</small>
+                                            </div>
+                                        </span>
+                                    </label>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-selectgroup-item w-100">
+                                        <input type="radio" name="service_mode" value="kelompok" class="form-selectgroup-input" {{ $defaultMode === 'kelompok' ? 'checked' : '' }} onchange="toggleServiceMode('kelompok')">
+                                        <span class="form-selectgroup-label d-flex align-items-center p-2">
+                                            <i class="ti ti-users-group fs-2 text-teal me-2"></i>
+                                            <div class="text-start">
+                                                <div class="fw-bold text-dark">Kelompok Binaan</div>
+                                                <small class="text-muted">Kelompok Karir / Binaan</small>
+                                            </div>
+                                        </span>
+                                    </label>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-selectgroup-item w-100">
+                                        <input type="radio" name="service_mode" value="klasikal" class="form-selectgroup-input" {{ $defaultMode === 'klasikal' ? 'checked' : '' }} onchange="toggleServiceMode('klasikal')">
+                                        <span class="form-selectgroup-label d-flex align-items-center p-2">
+                                            <i class="ti ti-school fs-2 text-purple me-2"></i>
+                                            <div class="text-start">
+                                                <div class="fw-bold text-dark">Klasikal (Kelas)</div>
+                                                <small class="text-muted">1 Rombel Penuh</small>
+                                            </div>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="row g-3">
-                            <!-- Siswa yang dibimbing -->
-                            <div class="col-md-8">
+                            <!-- Moda 1: Siswa Individual -->
+                            <div class="col-md-8" id="modeIndividualBox">
                                 <label class="form-label required fw-bold">Siswa yang Dibimbing</label>
                                 @if($selectedStudent)
                                     @php
@@ -63,7 +109,7 @@
                                         <span class="badge bg-blue-lt">{{ $selectedClass?->name ?? 'Kelas -' }} &bull; NISN: {{ $selectedStudent->nisn ?? '-' }}</span>
                                     </div>
                                 @else
-                                    <select name="student_id" id="student_select" class="form-select" required>
+                                    <select name="student_id" id="student_select" class="form-select">
                                         <option value="">-- Cari / Pilih Siswa --</option>
                                         @foreach($students as $st)
                                             @php
@@ -74,8 +120,39 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <span class="text-muted small">Pilih siswa aktif untuk sesi bimbingan konseling ini.</span>
+                                    <span class="text-muted small">Pilih siswa aktif untuk sesi konseling individual ini.</span>
                                 @endif
+                            </div>
+
+                            <!-- Moda 2: Kelompok Binaan -->
+                            <div class="col-md-8 d-none" id="modeKelompokBox">
+                                <label class="form-label required fw-bold">Pilih Kelompok Binaan</label>
+                                @php
+                                    $reqGroupId = request('bk_group_id', old('bk_group_id'));
+                                @endphp
+                                <select name="bk_group_id" id="group_select" class="form-select">
+                                    <option value="">-- Pilih Kelompok Binaan --</option>
+                                    @foreach($bkGroups as $grp)
+                                        <option value="{{ $grp->id }}" {{ $reqGroupId == $grp->id ? 'selected' : '' }}>
+                                            {{ $grp->name }} ({{ $grp->category_label }} &bull; {{ $grp->students_count }} Siswa)
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <span class="text-muted small">Materi bimbingan akan tercatat ke buku pribadi semua anggota kelompok ini.</span>
+                            </div>
+
+                            <!-- Moda 3: Bimbingan Klasikal (1 Kelas) -->
+                            <div class="col-md-8 d-none" id="modeKlasikalBox">
+                                <label class="form-label required fw-bold">Pilih Kelas / Rombel</label>
+                                <select name="classroom_id" id="classroom_select" class="form-select">
+                                    <option value="">-- Pilih Rombel --</option>
+                                    @foreach($classrooms as $cls)
+                                        <option value="{{ $cls->id }}" {{ old('classroom_id') == $cls->id ? 'selected' : '' }}>
+                                            {{ $cls->name }} ({{ $cls->department?->code ?? 'Umum' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <span class="text-muted small">Bimbingan klasikal akan otomatis terhubung ke seluruh siswa di kelas ini.</span>
                             </div>
 
                             <!-- Tahun Ajaran -->
@@ -170,4 +247,48 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function toggleServiceMode(mode) {
+    const indBox = document.getElementById('modeIndividualBox');
+    const grpBox = document.getElementById('modeKelompokBox');
+    const clsBox = document.getElementById('modeKlasikalBox');
+
+    const stSelect = document.getElementById('student_select');
+    const grpSelect = document.getElementById('group_select');
+    const clsSelect = document.getElementById('classroom_select');
+
+    if (mode === 'kelompok') {
+        indBox.classList.add('d-none');
+        grpBox.classList.remove('d-none');
+        clsBox.classList.add('d-none');
+        if (stSelect) stSelect.removeAttribute('required');
+        if (grpSelect) grpSelect.setAttribute('required', 'required');
+        if (clsSelect) clsSelect.removeAttribute('required');
+    } else if (mode === 'klasikal') {
+        indBox.classList.add('d-none');
+        grpBox.classList.add('d-none');
+        clsBox.classList.remove('d-none');
+        if (stSelect) stSelect.removeAttribute('required');
+        if (grpSelect) grpSelect.removeAttribute('required');
+        if (clsSelect) clsSelect.setAttribute('required', 'required');
+    } else {
+        indBox.classList.remove('d-none');
+        grpBox.classList.add('d-none');
+        clsBox.classList.add('d-none');
+        if (stSelect) stSelect.setAttribute('required', 'required');
+        if (grpSelect) grpSelect.removeAttribute('required');
+        if (clsSelect) clsSelect.removeAttribute('required');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const checkedMode = document.querySelector('input[name="service_mode"]:checked');
+    if (checkedMode) {
+        toggleServiceMode(checkedMode.value);
+    }
+});
+</script>
+@endpush
 @endsection
