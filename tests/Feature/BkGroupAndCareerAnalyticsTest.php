@@ -235,7 +235,45 @@ class BkGroupAndCareerAnalyticsTest extends TestCase
             ->get(route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $this->academicYear]));
 
         $response->assertOk()
-            ->assertSee('Dibina: Bu Hebat')
+            ->assertSee('Bu Hebat')
+            ->assertDontSee('Dibina: Bu Hebat')
             ->assertSee('disabled');
+    }
+
+    public function test_admin_can_store_bk_assignment(): void
+    {
+        $adminRole = Role::firstOrCreate(['slug' => 'super_admin'], ['name' => 'Super Admin']);
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $dept = Department::first() ?? Department::create(['name' => 'Rekayasa Perangkat Lunak', 'code' => 'RPL']);
+        $grade = GradeLevel::first() ?? GradeLevel::create(['name' => 'XI', 'level' => 11]);
+
+        $newClass = Classroom::create([
+            'name' => 'XI RPL 2',
+            'academic_year' => $this->academicYear,
+            'department_id' => $dept->id,
+            'grade_level_id' => $grade->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('teacher-assignments.store-bk'), [
+                'teacher_id' => $this->counselor->id,
+                'academic_year' => $this->academicYear,
+                'classroom_ids' => [$newClass->id],
+                'notes' => 'Penugasan BK Baru',
+            ]);
+
+        $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $this->academicYear]));
+        $this->assertDatabaseHas('user_role_assignments', [
+            'user_id' => $this->counselor->id,
+            'academic_year' => $this->academicYear,
+            'context_type' => Classroom::class,
+            'context_id' => $newClass->id,
+            'notes' => 'Penugasan BK Baru',
+        ]);
     }
 }

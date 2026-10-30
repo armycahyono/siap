@@ -1164,7 +1164,11 @@ class TeacherAssignmentController extends Controller
         }
 
         $teacher = User::findOrFail($data['teacher_id']);
-        $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->firstOrFail();
+        $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->first()
+            ?? Role::firstOrCreate(
+                ['slug' => 'guru_bk'],
+                ['name' => 'Guru BK', 'description' => 'Guru Bimbingan dan Konseling siswa']
+            );
         $ayId = AcademicYear::where('name', $data['academic_year'])->value('id');
 
         $classroomIds = ! empty($data['classroom_ids']) ? array_filter($data['classroom_ids']) : [];
