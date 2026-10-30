@@ -827,19 +827,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label fw-bold m-0">Pilih Rombel / Kelas Bimbingan</label>
-                            <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-outline-secondary py-0 px-2 fs-6" id="btnSelectAllBkClass">
-                                    <i class="ti ti-check me-1"></i> Pilih Semua Tersedia
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary py-0 px-2 fs-6" id="btnUnselectAllBkClass">
-                                    <i class="ti ti-x me-1"></i> Kosongkan
-                                </button>
-                            </div>
-                        </div>
+                        <label class="form-label fw-bold mb-1">Pilih Rombel / Kelas Bimbingan</label>
                         <small class="text-muted d-block mb-2">
-                            Centang kelas yang akan diasuh. Kelas yang sudah dibina Guru BK lain terkunci (tidak dapat dipilih). Biarkan semua tidak dicentang jika bertugas untuk <strong>Seluruh Rombel (Umum / Koordinator)</strong>.
+                            Centang kelas yang akan diasuh.
                         </small>
 
                         <!-- Checklist Rombel Interaktif -->
@@ -2946,8 +2936,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const bkWorkloadBadge = document.getElementById('bkWorkloadBadge');
     const bkWorkloadProgress = document.getElementById('bkWorkloadProgress');
     const bkWorkloadStatus = document.getElementById('bkWorkloadStatus');
-    const btnSelectAllBk = document.getElementById('btnSelectAllBkClass');
-    const btnUnselectAllBk = document.getElementById('btnUnselectAllBkClass');
 
     if (bkCheckboxes.length > 0 && bkWorkloadBadge && bkWorkloadProgress && bkWorkloadStatus) {
         function updateBkWorkload() {
@@ -2997,26 +2985,6 @@ document.addEventListener('DOMContentLoaded', function () {
         bkCheckboxes.forEach(cb => {
             cb.addEventListener('change', updateBkWorkload);
         });
-
-        if (btnSelectAllBk) {
-            btnSelectAllBk.addEventListener('click', function() {
-                bkCheckboxes.forEach(cb => {
-                    if (!cb.disabled) {
-                        cb.checked = true;
-                    }
-                });
-                updateBkWorkload();
-            });
-        }
-
-        if (btnUnselectAllBk) {
-            btnUnselectAllBk.addEventListener('click', function() {
-                bkCheckboxes.forEach(cb => {
-                    cb.checked = false;
-                });
-                updateBkWorkload();
-            });
-        }
 
         updateBkWorkload();
     }
