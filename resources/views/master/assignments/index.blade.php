@@ -827,17 +827,65 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Pilih Rombel / Kelas Bimbingan</label>
-                        <select name="classroom_ids[]" id="bkClassroomSelect" class="form-select" multiple size="6">
-                            @foreach($classrooms as $cls)
-                                <option value="{{ $cls->id }}" data-students="{{ $cls->students_count ?? 0 }}">
-                                    {{ $cls->name }} ({{ $cls->department?->code ?? 'Umum' }}) — {{ $cls->students_count ?? 0 }} Siswa
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted d-block mt-1">
-                            <em>Tekan Ctrl (atau Cmd di Mac) untuk memilih lebih dari satu kelas. Biarkan kosong jika bertugas untuk <strong>Seluruh Rombel (Umum)</strong>.</em>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-bold m-0">Pilih Rombel / Kelas Bimbingan</label>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary py-0 px-2 fs-6" id="btnSelectAllBkClass">
+                                    <i class="ti ti-check me-1"></i> Pilih Semua Tersedia
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary py-0 px-2 fs-6" id="btnUnselectAllBkClass">
+                                    <i class="ti ti-x me-1"></i> Kosongkan
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mb-2">
+                            Centang kelas yang akan diasuh. Kelas yang sudah dibina Guru BK lain terkunci (tidak dapat dipilih). Biarkan semua tidak dicentang jika bertugas untuk <strong>Seluruh Rombel (Umum / Koordinator)</strong>.
                         </small>
+
+                        <!-- Checklist Rombel Interaktif -->
+                        <div class="border rounded bg-white p-2" style="max-height: 270px; overflow-y: auto;">
+                            <div class="row g-2">
+                                @foreach($classrooms as $cls)
+                                    @php
+                                        $assignedBk = $assignedClassroomBkMap[$cls->id] ?? null;
+                                        $isTaken = (bool) $assignedBk;
+                                    @endphp
+                                    <div class="col-md-6">
+                                        <div class="card card-sm border {{ $isTaken ? 'bg-light-subtle text-muted' : 'bg-white hover-shadow' }} p-2">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <input type="checkbox"
+                                                           name="classroom_ids[]"
+                                                           value="{{ $cls->id }}"
+                                                           class="form-check-input bk-class-checkbox"
+                                                           data-students="{{ $cls->students_count ?? 0 }}"
+                                                           {{ $isTaken ? 'disabled' : '' }}>
+                                                    <div>
+                                                        <div class="fw-bold {{ $isTaken ? 'text-secondary text-decoration-line-through' : 'text-dark' }}">
+                                                            {{ $cls->name }}
+                                                        </div>
+                                                        <div class="text-muted" style="font-size: 11px;">
+                                                            {{ $cls->department?->code ?? 'Umum' }} &bull; {{ $cls->students_count ?? 0 }} Siswa
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    @if($isTaken)
+                                                        <span class="badge bg-secondary-lt fs-7" title="Kelas ini sudah dibina oleh {{ $assignedBk['user_name'] }}">
+                                                            <i class="ti ti-lock me-1"></i> Dibina: {{ Str::limit($assignedBk['user_name'], 22) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-teal-lt fs-7">
+                                                            Tersedia
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
 
                         <!-- Indikator Live Beban Binaan (Rasio 1:150) -->
                         <div id="bkWorkloadBox" class="card card-sm bg-light-subtle border mt-2">
@@ -2894,23 +2942,24 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Live Workload Calculator for BK Assignments (Target 1:150)
-    const bkSelect = document.getElementById('bkClassroomSelect');
+    const bkCheckboxes = document.querySelectorAll('.bk-class-checkbox');
     const bkWorkloadBadge = document.getElementById('bkWorkloadBadge');
     const bkWorkloadProgress = document.getElementById('bkWorkloadProgress');
     const bkWorkloadStatus = document.getElementById('bkWorkloadStatus');
+    const btnSelectAllBk = document.getElementById('btnSelectAllBkClass');
+    const btnUnselectAllBk = document.getElementById('btnUnselectAllBkClass');
 
-    if (bkSelect && bkWorkloadBadge && bkWorkloadProgress && bkWorkloadStatus) {
+    if (bkCheckboxes.length > 0 && bkWorkloadBadge && bkWorkloadProgress && bkWorkloadStatus) {
         function updateBkWorkload() {
             let totalStudents = 0;
             let selectedCount = 0;
 
-            for (let i = 0; i < bkSelect.options.length; i++) {
-                const opt = bkSelect.options[i];
-                if (opt.selected) {
+            bkCheckboxes.forEach(cb => {
+                if (cb.checked) {
                     selectedCount++;
-                    totalStudents += parseInt(opt.getAttribute('data-students') || '0', 10);
+                    totalStudents += parseInt(cb.getAttribute('data-students') || '0', 10);
                 }
-            }
+            });
 
             if (selectedCount === 0) {
                 bkWorkloadBadge.className = 'badge bg-purple-lt';
@@ -2945,7 +2994,30 @@ document.addEventListener('DOMContentLoaded', function () {
             bkWorkloadBadge.textContent = totalStudents + ' Siswa (' + selectedCount + ' Rombel)';
         }
 
-        bkSelect.addEventListener('change', updateBkWorkload);
+        bkCheckboxes.forEach(cb => {
+            cb.addEventListener('change', updateBkWorkload);
+        });
+
+        if (btnSelectAllBk) {
+            btnSelectAllBk.addEventListener('click', function() {
+                bkCheckboxes.forEach(cb => {
+                    if (!cb.disabled) {
+                        cb.checked = true;
+                    }
+                });
+                updateBkWorkload();
+            });
+        }
+
+        if (btnUnselectAllBk) {
+            btnUnselectAllBk.addEventListener('click', function() {
+                bkCheckboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+                updateBkWorkload();
+            });
+        }
+
         updateBkWorkload();
     }
 });

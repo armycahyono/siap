@@ -178,4 +178,62 @@ class BkGroupAndCareerAnalyticsTest extends TestCase
             ->assertSee('Bekerja (DUDI / Industri)')
             ->assertSee('Melanjutkan Kuliah (PTN/PTS)');
     }
+
+    public function test_admin_cannot_assign_classroom_already_assigned_to_another_bk_counselor(): void
+    {
+        $admin = User::factory()->create([
+            'role_id' => Role::where('slug', 'super_admin')->value('id'),
+            'is_active' => true,
+        ]);
+
+        $otherCounselor = User::factory()->create([
+            'name' => 'Guru BK Kedua',
+            'role_id' => Role::whereIn('slug', ['guru_bk', 'bk'])->value('id'),
+            'is_active' => true,
+        ]);
+
+        // Kelas XII TKJ 1 sudah di-assign ke $this->counselor
+        UserRoleAssignment::create([
+            'user_id' => $this->counselor->id,
+            'role_id' => Role::whereIn('slug', ['guru_bk', 'bk'])->value('id'),
+            'academic_year' => $this->academicYear,
+            'context_type' => Classroom::class,
+            'context_id' => $this->classroom->id,
+            'status' => true,
+        ]);
+
+        // Coba assign kelas yang sama ke $otherCounselor
+        $response = $this->actingAs($admin)
+            ->post(route('teacher-assignments.store-bk'), [
+                'teacher_id' => $otherCounselor->id,
+                'academic_year' => $this->academicYear,
+                'classroom_ids' => [$this->classroom->id],
+            ]);
+
+        $response->assertSessionHas('error');
+    }
+
+    public function test_admin_sees_locked_classroom_in_assignment_page(): void
+    {
+        $admin = User::factory()->create([
+            'role_id' => Role::where('slug', 'super_admin')->value('id'),
+            'is_active' => true,
+        ]);
+
+        UserRoleAssignment::create([
+            'user_id' => $this->counselor->id,
+            'role_id' => Role::whereIn('slug', ['guru_bk', 'bk'])->value('id'),
+            'academic_year' => $this->academicYear,
+            'context_type' => Classroom::class,
+            'context_id' => $this->classroom->id,
+            'status' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $this->academicYear]));
+
+        $response->assertOk()
+            ->assertSee('Dibina: Guru BK Hebat')
+            ->assertSee('disabled');
+    }
 }

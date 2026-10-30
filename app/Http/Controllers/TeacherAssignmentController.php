@@ -106,14 +106,7 @@ class TeacherAssignmentController extends Controller
         $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->first();
         $bkAssignments = collect();
         if ($bkRole) {
-            $bkAssignments = UserRoleAssignment::with([
-                'user',
-                'context' => function ($morphTo) {
-                    $morphTo->morphWith([
-                        Classroom::class => fn ($q) => $q->withCount(['students' => fn ($sq) => $sq->where('status', 'aktif')]),
-                    ]);
-                },
-            ])
+            $bkAssignments = UserRoleAssignment::with(['user', 'context'])
                 ->where('role_id', $bkRole->id)
                 ->where('status', true)
                 ->where(function ($q) use ($academicYear) {
@@ -122,6 +115,16 @@ class TeacherAssignmentController extends Controller
                 })
                 ->latest('id')
                 ->get();
+        }
+
+        $assignedClassroomBkMap = [];
+        foreach ($bkAssignments as $bk) {
+            if ($bk->context_type === Classroom::class && $bk->context_id) {
+                $assignedClassroomBkMap[$bk->context_id] = [
+                    'user_id' => $bk->user_id,
+                    'user_name' => $bk->user?->name ?? 'Guru BK',
+                ];
+            }
         }
 
         // 3. Data Tim Supervisor Sekolah (Berdasarkan Tahun Pelajaran)
@@ -264,6 +267,7 @@ class TeacherAssignmentController extends Controller
             'assignments',
             'teacherRecap',
             'bkAssignments',
+            'assignedClassroomBkMap',
             'supervisors',
             'candidateTeachers',
             'structuralPositions',
@@ -1159,9 +1163,28 @@ class TeacherAssignmentController extends Controller
         $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->firstOrFail();
         $ayId = AcademicYear::where('name', $data['academic_year'])->value('id');
 
-        DB::transaction(function () use ($data, $teacher, $bkRole, $ayId) {
-            $classroomIds = ! empty($data['classroom_ids']) ? array_filter($data['classroom_ids']) : [];
+        $classroomIds = ! empty($data['classroom_ids']) ? array_filter($data['classroom_ids']) : [];
 
+        // Cek konflik: apakah ada rombel yang sudah dipilih oleh Guru BK lain?
+        if (! empty($classroomIds)) {
+            $conflictAssignments = UserRoleAssignment::where('role_id', $bkRole->id)
+                ->where('status', true)
+                ->where('academic_year', $data['academic_year'])
+                ->where('context_type', Classroom::class)
+                ->whereIn('context_id', $classroomIds)
+                ->where('user_id', '!=', $teacher->id)
+                ->with(['context', 'user'])
+                ->get();
+
+            if ($conflictAssignments->isNotEmpty()) {
+                $conflictList = $conflictAssignments->map(fn ($ca) => ($ca->context?->name ?? 'Kelas').' (Dibina oleh: '.($ca->user?->name ?? 'Guru BK lain').')')->implode(', ');
+
+                return redirect()->route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $data['academic_year']])
+                    ->with('error', "Gagal menyimpan penugasan BK! Rombel berikut sudah dipilih oleh Guru BK lain: {$conflictList}.");
+            }
+        }
+
+        DB::transaction(function () use ($data, $teacher, $bkRole, $ayId, $classroomIds) {
             if (empty($classroomIds)) {
                 // Penugasan BK Umum / Seluruh Rombel
                 UserRoleAssignment::updateOrCreate(
