@@ -109,8 +109,19 @@ class MobileApiFoundationTest extends TestCase
             'password' => 'wrongpassword',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonPath('success', false);
+        $response->assertStatus(401)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Identitas akun atau kata sandi tidak sesuai.');
+
+        // 4. Login with unknown user
+        $response = $this->postJson('/api/v1/mobile/auth/login', [
+            'login' => 'unknownuser_9999',
+            'password' => 'anypassword',
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Identitas akun atau kata sandi tidak sesuai.');
     }
 
     public function test_authenticated_user_can_fetch_mobile_dashboard(): void

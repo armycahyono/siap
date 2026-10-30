@@ -36,11 +36,11 @@ class MobileAuthController extends Controller
             ->orWhere('nik', $loginInput)
             ->first();
 
-        if (! $user) {
+        if (! $user || ! Hash::check($password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Username, Email, NIP, atau NIGS tidak ditemukan.',
-            ], 404);
+                'message' => 'Identitas akun atau kata sandi tidak sesuai.',
+            ], 401);
         }
 
         if (! $user->is_active) {
@@ -48,13 +48,6 @@ class MobileAuthController extends Controller
                 'success' => false,
                 'message' => 'Akun Anda dinonaktifkan. Silakan hubungi Administrator.',
             ], 403);
-        }
-
-        if (! Hash::check($password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kata sandi tidak sesuai.',
-            ], 422);
         }
 
         Auth::login($user, $request->boolean('remember'));

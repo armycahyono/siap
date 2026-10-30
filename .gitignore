@@ -28,3 +28,4 @@ Thumbs.db
 scratch_*.php
 test_tabler.html
 *.sql
+__pycache__/

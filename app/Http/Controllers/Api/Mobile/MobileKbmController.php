@@ -16,6 +16,7 @@ use App\Models\SubjectAttendanceSession;
 use App\Services\AcademicYearContext;
 use App\Services\ActivityLogger;
 use App\Services\DailyKbmSnapshotService;
+use App\Services\LiveMonitoringService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,10 @@ use Illuminate\Support\Facades\DB;
 
 class MobileKbmController extends Controller
 {
+    public function __construct(
+        protected LiveMonitoringService $liveMonitoringService
+    ) {}
+
     /**
      * Get KBM teaching schedules, attendance sessions, and journal data for SIAP Mobile.
      */
@@ -196,7 +201,7 @@ class MobileKbmController extends Controller
             ->first();
 
         $tasksController = app(MobileTasksController::class);
-        $liveMonitoring = $tasksController->buildLiveMonitoringData($user, $date, $academicYear, $myHomeroomClassroom);
+        $liveMonitoring = $this->liveMonitoringService->buildLiveMonitoringData($user, $date, $academicYear, $myHomeroomClassroom);
         $bkData = $tasksController->buildBkSummaryData($user, $academicYear);
 
         return response()->json([

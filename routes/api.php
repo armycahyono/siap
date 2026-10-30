@@ -28,7 +28,7 @@ Route::prefix('v1/mobile')->middleware([
     StartSession::class,
 ])->group(function () {
     // 1. Auth & Session Management
-    Route::post('auth/login', [MobileAuthController::class, 'login']);
+    Route::post('auth/login', [MobileAuthController::class, 'login'])->middleware('throttle:10,1');
     Route::get('auth/me', [MobileAuthController::class, 'me']);
     Route::post('auth/logout', [MobileAuthController::class, 'logout']);
 
