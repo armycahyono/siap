@@ -120,9 +120,11 @@ class TeacherAssignmentController extends Controller
         $assignedClassroomBkMap = [];
         foreach ($bkAssignments as $bk) {
             if ($bk->context_type === Classroom::class && $bk->context_id) {
+                $counselorUser = $bk->user;
                 $assignedClassroomBkMap[$bk->context_id] = [
                     'user_id' => $bk->user_id,
-                    'user_name' => $bk->user?->name ?? 'Guru BK',
+                    'user_name' => $counselorUser?->name ?? 'Guru BK',
+                    'short_name' => $counselorUser?->formatted_short_name ?: ($counselorUser?->short_name ?: ($counselorUser?->name ?? 'Guru BK')),
                 ];
             }
         }

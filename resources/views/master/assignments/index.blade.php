@@ -862,7 +862,7 @@
                                                 <div>
                                                     @if($isTaken)
                                                         <span class="badge bg-secondary-lt fs-7" title="Kelas ini sudah dibina oleh {{ $assignedBk['user_name'] }}">
-                                                            <i class="ti ti-lock me-1"></i> Dibina: {{ Str::limit($assignedBk['user_name'], 22) }}
+                                                            <i class="ti ti-lock me-1"></i> Dibina: {{ $assignedBk['short_name'] ?? $assignedBk['user_name'] }}
                                                         </span>
                                                     @else
                                                         <span class="badge bg-teal-lt fs-7">

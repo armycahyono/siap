@@ -220,6 +220,8 @@ class BkGroupAndCareerAnalyticsTest extends TestCase
             'is_active' => true,
         ]);
 
+        $this->counselor->update(['short_name' => 'Bu Hebat']);
+
         UserRoleAssignment::create([
             'user_id' => $this->counselor->id,
             'role_id' => Role::whereIn('slug', ['guru_bk', 'bk'])->value('id'),
@@ -233,7 +235,7 @@ class BkGroupAndCareerAnalyticsTest extends TestCase
             ->get(route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $this->academicYear]));
 
         $response->assertOk()
-            ->assertSee('Dibina: Guru BK Hebat')
+            ->assertSee('Dibina: Bu Hebat')
             ->assertSee('disabled');
     }
 }
