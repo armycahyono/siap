@@ -49,6 +49,30 @@ class Subject extends Model
             ->distinct();
     }
 
+    /**
+     * Cek apakah mata pelajaran ini merupakan Bimbingan dan Konseling (BK).
+     */
+    public function isBk(): bool
+    {
+        return strcasecmp((string) $this->code, 'BK') === 0
+            || str_contains(strtolower((string) $this->category), 'bimbingan')
+            || str_contains(strtolower((string) $this->name), 'bimbingan')
+            || str_contains(strtolower((string) $this->name), 'konseling');
+    }
+
+    /**
+     * Scope query untuk mata pelajaran BK.
+     */
+    public function scopeBk($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('code', 'BK')
+                ->orWhere('category', 'like', '%bimbingan%')
+                ->orWhere('name', 'like', '%bimbingan%')
+                ->orWhere('name', 'like', '%konseling%');
+        });
+    }
+
     public function getActivityLogTitle(): string
     {
         return "Mata Pelajaran '{$this->name}' ({$this->code})";

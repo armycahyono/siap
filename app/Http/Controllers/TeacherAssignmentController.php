@@ -15,6 +15,7 @@ use App\Models\TeacherSupervisorAssignment;
 use App\Models\User;
 use App\Models\UserRoleAssignment;
 use App\Services\AcademicYearContext;
+use App\Services\BkAssignmentSyncService;
 use App\Services\HomeroomAssignmentService;
 use App\Services\HomeroomImportService;
 use App\Services\StructuralImportService;
@@ -103,7 +104,16 @@ class TeacherAssignmentController extends Controller
             ->values();
 
         // 2. Data Penugasan BK (Bimbingan Konseling)
-        $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->first();
+        $bkRole = Role::whereIn('slug', ['guru_bk', 'bk'])->first()
+            ?? Role::firstOrCreate(
+                ['slug' => 'guru_bk'],
+                ['name' => 'Guru BK', 'description' => 'Guru Bimbingan dan Konseling siswa']
+            );
+
+        if ($tab === 'walikelas') {
+            app(BkAssignmentSyncService::class)->syncFromSubjectAssignments($academicYear);
+        }
+
         $bkAssignments = collect();
         if ($bkRole) {
             $bkAssignments = UserRoleAssignment::with(['user', 'context'])
@@ -1249,6 +1259,26 @@ class TeacherAssignmentController extends Controller
 
         return redirect()->route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $academicYear])
             ->with('success', "Penugasan Guru BK untuk {$teacherName} berhasil dicabut.");
+    }
+
+    /**
+     * Sinkronkan penugasan kelas binaan Guru BK secara massal dari penugasan jam mapel BK.
+     */
+    public function syncBkFromSubjects(Request $request, BkAssignmentSyncService $syncService): RedirectResponse
+    {
+        $academicYear = $request->input('academic_year');
+        if (empty($academicYear)) {
+            try {
+                $academicYear = app(AcademicYearContext::class)->getOperationalYear()->name;
+            } catch (\Throwable) {
+                $academicYear = SchoolSetting::getMasterYear();
+            }
+        }
+
+        $count = $syncService->syncFromSubjectAssignments($academicYear);
+
+        return redirect()->route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $academicYear])
+            ->with('success', "Berhasil menyinkronkan {$count} kelas binaan Guru BK dari penugasan mata pelajaran BK.");
     }
 
     /**

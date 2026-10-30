@@ -12,6 +12,8 @@ use App\Models\GradeLevel;
 use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\Subject;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\User;
 use App\Models\UserRoleAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -275,5 +277,74 @@ class BkGroupAndCareerAnalyticsTest extends TestCase
             'context_id' => $newClass->id,
             'notes' => 'Penugasan BK Baru',
         ]);
+    }
+
+    public function test_auto_sync_bk_when_teacher_subject_assignment_created(): void
+    {
+        $dept = Department::first() ?? Department::create(['name' => 'Akuntansi', 'code' => 'AKL']);
+        $grade = GradeLevel::first() ?? GradeLevel::create(['name' => 'X', 'level' => 10]);
+
+        $classX = Classroom::create([
+            'name' => 'X AKL 99',
+            'academic_year' => $this->academicYear,
+            'department_id' => $dept->id,
+            'grade_level_id' => $grade->id,
+            'is_active' => true,
+        ]);
+
+        $bkSubject = Subject::firstOrCreate(['code' => 'BK'], [
+            'name' => 'Bimbingan dan Konseling',
+            'category' => 'Bimbingan Konseling',
+            'is_active' => true,
+        ]);
+
+        // Simpan penugasan mapel BK
+        $tsa = TeacherSubjectAssignment::create([
+            'teacher_id' => $this->counselor->id,
+            'subject_id' => $bkSubject->id,
+            'classroom_id' => $classX->id,
+            'academic_year' => $this->academicYear,
+            'semester' => 'Ganjil',
+            'hours_per_week' => 2,
+            'notes' => 'Tatap Muka BK',
+        ]);
+
+        // Cek bahwa UserRoleAssignment otomatis tercipta
+        $this->assertDatabaseHas('user_role_assignments', [
+            'user_id' => $this->counselor->id,
+            'academic_year' => $this->academicYear,
+            'context_type' => Classroom::class,
+            'context_id' => $classX->id,
+            'notes' => 'Otomatis dari Mapel BK (2 JTM)',
+            'status' => true,
+        ]);
+
+        // Hapus penugasan mapel BK
+        $tsa->delete();
+
+        // Cek bahwa UserRoleAssignment otomatis terhapus
+        $this->assertDatabaseMissing('user_role_assignments', [
+            'user_id' => $this->counselor->id,
+            'academic_year' => $this->academicYear,
+            'context_type' => Classroom::class,
+            'context_id' => $classX->id,
+        ]);
+    }
+
+    public function test_sync_bk_from_subjects_action(): void
+    {
+        $adminRole = Role::firstOrCreate(['slug' => 'super_admin'], ['name' => 'Super Admin']);
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post(route('teacher-assignments.sync-bk'), [
+                'academic_year' => $this->academicYear,
+            ]);
+
+        $response->assertRedirect(route('teacher-assignments.index', ['tab' => 'walikelas', 'academic_year' => $this->academicYear]))
+            ->assertSessionHas('success');
     }
 }

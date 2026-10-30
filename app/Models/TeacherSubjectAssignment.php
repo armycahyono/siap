@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BkAssignmentSyncService;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,17 @@ class TeacherSubjectAssignment extends Model
         return [
             'hours_per_week' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (TeacherSubjectAssignment $assignment) {
+            app(BkAssignmentSyncService::class)->syncOnSubjectAssignmentSaved($assignment);
+        });
+
+        static::deleted(function (TeacherSubjectAssignment $assignment) {
+            app(BkAssignmentSyncService::class)->syncOnSubjectAssignmentDeleted($assignment);
+        });
     }
 
     public function teacher(): BelongsTo

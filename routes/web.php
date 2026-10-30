@@ -178,6 +178,7 @@ Route::middleware('auth')->group(function () {
         Route::post('penugasan-guru/struktural/{assignment}/deactivate', [TeacherAssignmentController::class, 'deactivateStructuralAssignment'])->name('teacher-assignments.deactivate-structural');
         Route::delete('penugasan-guru/struktural/{assignment}', [TeacherAssignmentController::class, 'destroyStructuralAssignment'])->name('teacher-assignments.destroy-structural');
         Route::post('penugasan-guru/bk', [TeacherAssignmentController::class, 'storeBkAssignment'])->name('teacher-assignments.store-bk');
+        Route::post('penugasan-guru/bk/sync', [TeacherAssignmentController::class, 'syncBkFromSubjects'])->name('teacher-assignments.sync-bk');
         Route::delete('penugasan-guru/bk/{assignment}', [TeacherAssignmentController::class, 'destroyBkAssignment'])->name('teacher-assignments.destroy-bk');
         Route::post('penugasan-guru/operasional', [TeacherAssignmentController::class, 'storeOperationalAssignment'])->name('teacher-assignments.store-operational');
         Route::post('penugasan-guru/operasional/{assignment}/deactivate', [TeacherAssignmentController::class, 'deactivateOperationalAssignment'])->name('teacher-assignments.deactivate-operational');

@@ -698,9 +698,16 @@
                 Guru BK dapat mendampingi satu atau beberapa rombel kelas secara fleksibel dan terisolasi dari wewenang Tim Kedisiplinan.
             </div>
         </div>
-        <div class="card-actions">
+        <div class="card-actions d-flex align-items-center gap-2">
+            <form action="{{ route('teacher-assignments.sync-bk') }}" method="POST" class="d-inline">
+                @csrf
+                <input type="hidden" name="academic_year" value="{{ $academicYear }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary" title="Sinkronkan penugasan kelas binaan otomatis dari jadwal mata pelajaran BK">
+                    <i class="ti ti-refresh me-1"></i> Sinkronkan dari Mapel BK
+                </button>
+            </form>
             <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAssignBk">
-                <i class="ti ti-plus me-1"></i> Tugaskan Guru BK
+                <i class="ti ti-plus me-1"></i> Tugaskan Guru BK (Manual)
             </button>
         </div>
     </div>
@@ -768,7 +775,13 @@
                         </div>
                     </td>
                     <td>
-                        <small class="text-muted">{{ $bk->notes ?? '-' }}</small>
+                        @if($bk->notes && str_contains($bk->notes, 'Otomatis dari Mapel BK'))
+                            <span class="badge bg-blue-lt text-blue" title="{{ $bk->notes }}">
+                                <i class="ti ti-clock me-1"></i> {{ $bk->notes }}
+                            </span>
+                        @else
+                            <small class="text-muted">{{ $bk->notes ?? 'Penetapan Manual' }}</small>
+                        @endif
                     </td>
                     <td class="text-center">
                         <span class="badge bg-success-lt">Aktif</span>
