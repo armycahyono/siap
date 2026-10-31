@@ -392,6 +392,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/saluran-grup/{channel}', [TelegramBotController::class, 'updateChannel'])->name('telegram.channel.update');
         Route::delete('/saluran-grup/{channel}', [TelegramBotController::class, 'destroyChannel'])->name('telegram.channel.destroy');
         Route::post('/saluran-grup/{channel}/sync-commands', [TelegramBotController::class, 'syncChannelCommands'])->name('telegram.channel.sync-commands');
+        Route::post('/saluran-grup/sync-all', [TelegramBotController::class, 'syncAllCommands'])->name('telegram.channel.sync-all');
         Route::post('/saluran-grup/{channel}/invite', [TelegramBotController::class, 'inviteChannelMembers'])->name('telegram.channel.invite');
     });
 

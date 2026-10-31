@@ -1392,15 +1392,32 @@ class TelegramService
         }
 
         $commandDescriptions = [
-            'piket' => 'Daftar tim piket hari ini',
-            'jadwal' => 'Jadwal KBM jam sekarang',
-            'inval' => 'Cek kelas kosong & penugasan inval',
-            'lapor' => 'Lapor kasus / pelanggaran siswa',
-            'rekap' => 'Rekapitulasi cepat harian sekolah',
-            'tamu' => 'Daftar buku tamu kunjungan',
-            'agenda' => 'Agenda kegiatan & kaldik sekolah',
-            'poin' => 'Cek rekam kasus & kedisiplinan siswa',
+            'piket' => 'Daftar tim piket bertugas hari ini',
+            'jadwal' => 'Jadwal KBM rombel jam sekarang',
+            'inval' => 'Cek kelas kosong & guru pengganti (inval)',
+            'lapor' => 'Lapor kasus / pelanggaran siswa (foto bukti)',
+            'poin' => 'Cek poin & rekam kedisiplinan siswa',
+            'rekap' => 'Rekapitulasi cepat operasional sekolah',
+            'tamu' => 'Daftar buku tamu kunjungan sekolah',
+            'agenda' => 'Agenda kegiatan sekolah 7 hari ke depan',
+            'terlambat' => 'Daftar siswa terlambat masuk gerbang hari ini',
+            'bolos' => 'Daftar siswa terindikasi bolos / alpa KBM',
+            'top_kasus' => 'Statistik tren pelanggaran teratas bulan ini',
+            'guru_izin' => 'Daftar GTK yang izin / dinas luar hari ini',
+            'izin_keluar' => 'Daftar siswa yang izin keluar kelas / gerbang',
+            'serah_terima' => 'Catatan serah terima jaga piket harian',
+            'kaldik' => 'Kalender pendidikan & hari efektif KBM',
+            'asesmen' => 'Jadwal asesmen, ujian & sumatif KBM',
+            'supervisi' => 'Jadwal & pantauan supervisi guru',
+            'ultah' => 'Daftar GTK yang berulang tahun bulan ini',
+            'info_sekolah' => 'Informasi profil, alamat & kontak sekolah',
+            'pengumuman' => 'Pengumuman resmi terbaru sekolah',
+            'presensi' => 'Cek status presensi scan GTK saya hari ini',
+            'jadwalsaya' => 'Jadwal mengajar KBM pribadi saya hari ini',
+            'ajukan_izin' => 'Form pengajuan izin mandiri guru & titip tugas',
+            'tukar' => 'Permohonan tukar jadwal piket rekan guru',
             'bantuan' => 'Panduan bantuan penggunaan bot',
+            'help' => 'Panduan bantuan penggunaan bot',
             'id' => 'Cek nomor Chat ID Telegram unik',
         ];
 
@@ -1448,6 +1465,74 @@ class TelegramService
         } catch (Throwable $e) {
             return ['success' => false, 'message' => 'Koneksi gagal: '.$e->getMessage()];
         }
+    }
+
+    /**
+     * Daftarkan perintah bawaan untuk chat pribadi (DM) bot Telegram (BotCommandScopeDefault).
+     */
+    public function setDefaultBotCommands(): array
+    {
+        if (empty($this->botToken)) {
+            return ['success' => false, 'message' => 'Token Bot belum dikonfigurasi.'];
+        }
+
+        $defaultCommands = [
+            ['command' => 'start', 'description' => 'Mulai bot & cek status akun'],
+            ['command' => 'presensi', 'description' => 'Cek presensi saya hari ini'],
+            ['command' => 'jadwalsaya', 'description' => 'Jadwal mengajar KBM pribadi saya'],
+            ['command' => 'ajukan_izin', 'description' => 'Ajukan izin mandiri & titip materi'],
+            ['command' => 'piket', 'description' => 'Tim piket sekolah hari ini'],
+            ['command' => 'jadwal', 'description' => 'KBM rombel jam sekarang'],
+            ['command' => 'agenda', 'description' => 'Agenda & kaldik 7 hari ke depan'],
+            ['command' => 'rekap', 'description' => 'Rekapitulasi cepat harian sekolah'],
+            ['command' => 'bantuan', 'description' => 'Panduan lengkap fitur bot'],
+            ['command' => 'id', 'description' => 'Cek Chat ID unik Telegram'],
+        ];
+
+        $url = "https://api.telegram.org/bot{$this->botToken}/setMyCommands";
+
+        try {
+            $response = Http::timeout(6)->post($url, [
+                'commands' => $defaultCommands,
+                'scope' => [
+                    'type' => 'default',
+                ],
+            ]);
+
+            return [
+                'success' => $response->successful() && $response->json('ok') === true,
+                'message' => $response->successful() ? 'Perintah default bot berhasil disinkronkan ke Telegram!' : ($response->json('description') ?? 'Gagal.'),
+            ];
+        } catch (Throwable $e) {
+            return ['success' => false, 'message' => 'Koneksi gagal: '.$e->getMessage()];
+        }
+    }
+
+    /**
+     * Sinkronkan perintah default dan seluruh grup aktif ke Telegram API.
+     */
+    public function syncAllChannelCommands(): array
+    {
+        $this->setDefaultBotCommands();
+
+        $channels = TelegramChannel::where('is_active', true)
+            ->whereNotNull('chat_id')
+            ->where('chat_id', '!=', '')
+            ->get();
+
+        $synced = 0;
+        foreach ($channels as $channel) {
+            if (! empty($channel->enabled_commands)) {
+                $this->setChatCommands($channel->chat_id, $channel->enabled_commands);
+                $synced++;
+            }
+        }
+
+        return [
+            'success' => true,
+            'synced_channels' => $synced,
+            'message' => "Perintah default dan {$synced} grup aktif berhasil disinkronkan ke Telegram!",
+        ];
     }
 
     /**

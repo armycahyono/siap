@@ -153,6 +153,7 @@ class TelegramBotWebhookController extends Controller
         }
 
         // 2. Filter izin perintah per grup (sesuai konfigurasi menu saluran grup)
+        $channel = null;
         if ($isGroup) {
             $channel = TelegramChannel::where('chat_id', $chatId)->where('is_active', true)->first();
             if ($channel && ! empty($channel->enabled_commands)) {
@@ -174,7 +175,7 @@ class TelegramBotWebhookController extends Controller
                 break;
 
             case $cmd === '/help' || $cmd === 'bantuan' || $cmd === '/panduan' || $cmd === 'panduan' || $cmd === 'ℹ️ panduan bantuan' || $cmd === 'panduan bantuan':
-                $this->commandHelp($chatId, $user, $senderName);
+                $this->commandHelp($chatId, $user, $senderName, $channel);
                 break;
 
             case $cmd === '/izin_siswa' || $cmd === '/izinsiswa' || $cmd === '/izin' || $cmd === '🎫 perizinan siswa' || $cmd === 'perizinan siswa' || $cmd === '🎫 izin siswa (wali kelas)' || $cmd === 'izin siswa (wali kelas)' || $cmd === 'izin siswa wali kelas':
@@ -439,8 +440,99 @@ class TelegramBotWebhookController extends Controller
     /**
      * Command: /help (Buku Panduan Lengkap Pengguna)
      */
-    protected function commandHelp(string $chatId, ?User $user, string $senderName): void
+    protected function commandHelp(string $chatId, ?User $user, string $senderName, ?TelegramChannel $channel = null): void
     {
+        $isGroup = str_starts_with($chatId, '-');
+
+        // Jika dipanggil di dalam grup sekolah yang terkonfigurasi di SIAP
+        if ($isGroup) {
+            $channelName = $channel ? $channel->name : 'Grup Sekolah SIAP';
+            $enabledCommands = $channel?->enabled_commands ?? [];
+
+            $commandDescriptions = [
+                '/piket' => 'Daftar tim piket bertugas hari ini',
+                '/jadwal' => 'Pantau guru & rombel KBM jam pelajaran sekarang',
+                '/inval' => 'Cek kelas kosong & guru pengganti (inval)',
+                '/lapor' => 'Lapor kasus / pelanggaran siswa (sertakan foto bukti)',
+                '/poin' => 'Cek akumulasi poin & riwayat kedisiplinan siswa',
+                '/terlambat' => 'Rekap daftar siswa yang terlambat masuk gerbang hari ini',
+                '/bolos' => 'Daftar siswa terindikasi bolos / alpa jam KBM',
+                '/top_kasus' => 'Statistik tren kasus & jenis pelanggaran teratas',
+                '/guru_izin' => 'Daftar GTK yang izin / dinas luar hari ini',
+                '/izin_keluar' => 'Daftar siswa yang izin keluar kelas / gerbang',
+                '/tamu' => 'Daftar buku tamu kunjungan sekolah hari ini',
+                '/serah_terima' => 'Catatan & serah terima jaga meja piket harian',
+                '/agenda' => 'Agenda kegiatan sekolah 7 hari ke depan',
+                '/kaldik' => 'Kalender pendidikan & hari efektif sekolah',
+                '/asesmen' => 'Jadwal asesmen, ujian & sumatif KBM',
+                '/supervisi' => 'Jadwal & pantauan supervisi guru',
+                '/ultah' => 'Daftar GTK yang berulang tahun bulan ini',
+                '/info_sekolah' => 'Informasi profil, alamat & kontak sekolah',
+                '/pengumuman' => 'Pengumuman resmi terbaru sekolah',
+                '/rekap' => 'Rekapitulasi cepat operasional harian sekolah',
+                '/id' => 'Cek nomor Chat ID grup Telegram ini',
+                '/bantuan' => 'Panduan menu & perintah grup ini',
+            ];
+
+            $roleBadges = [];
+            if ($channel && ! empty($channel->allowed_roles)) {
+                $rolesMap = [
+                    'guru' => 'Guru',
+                    'guru_piket' => 'Guru Piket',
+                    'tim_kedisiplinan' => 'Tim Kedisiplinan',
+                    'koordinator_kedisiplinan' => 'Koordinator Kedisiplinan',
+                    'guru_bk' => 'Guru BK',
+                    'wali_kelas' => 'Wali Kelas',
+                    'staf' => 'Staf',
+                    'kepala_tu' => 'Kepala TU',
+                    'operator' => 'Operator SIM',
+                    'waka_kurikulum' => 'Waka Kurikulum',
+                    'waka_kesiswaan' => 'Waka Kesiswaan',
+                    'waka_sarpras' => 'Waka Sarpras',
+                    'waka_humas' => 'Waka Humas',
+                    'kepala_sekolah' => 'Kepala Sekolah',
+                    'super_admin' => 'Administrator',
+                ];
+                foreach ($channel->allowed_roles as $r) {
+                    $roleBadges[] = $rolesMap[$r] ?? ucfirst($r);
+                }
+            }
+            $rolesText = ! empty($roleBadges) ? implode(', ', $roleBadges) : 'Seluruh GTK';
+
+            $cmdListText = '';
+            if (! empty($enabledCommands)) {
+                foreach ($enabledCommands as $c) {
+                    $desc = $commandDescriptions[$c] ?? 'Perintah operasional sekolah';
+                    $cmdListText .= "• <code>{$c}</code> — {$desc}\n";
+                }
+            } else {
+                $cmdListText = "• <code>/bantuan</code> — Panduan bantuan bot\n• <code>/id</code> — Cek Chat ID grup\n";
+            }
+
+            $userStatus = $user
+                ? "👤 <b>Pengirim:</b> {$user->name} (".($user->role?->name ?? 'GTK').')'
+                : '⚠️ <b>Pengirim:</b> Belum terhubung di SIAP';
+
+            $groupMsg = "🤖 <b>PANDUAN BOT: {$channelName}</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."{$userStatus}\n"
+                ."🎯 <b>Peran yang Diizinkan:</b> {$rolesText}\n\n"
+                ."<b>Daftar perintah yang aktif di grup ini:</b>\n"
+                ."{$cmdListText}\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                .'💡 <i>Catatan: Perintah di atas hanya merespons GTK yang akunnya sudah terhubung di SIAP dan memiliki peran yang sesuai di grup ini. Untuk menu pribadi (Presensi Saya, Jadwal KBM Saya, Pengajuan Izin Mandiri), silakan kirim pesan langsung (japri) ke bot @smkpgrikras_bot.</i>';
+
+            $this->telegramService->sendMessage(
+                $chatId,
+                $groupMsg,
+                'bot_reply',
+                $senderName,
+                'HTML'
+            );
+
+            return;
+        }
+
         $roleName = $user?->role?->name ?? 'Guru/Staf';
         $isPiket = $user && $user->canOperatePiket();
         $isHomeroom = $user && $user->isHomeroomTeacher();

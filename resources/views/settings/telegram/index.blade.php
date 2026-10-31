@@ -230,7 +230,13 @@
                         Kelola grup resmi sekolah, tentukan kelompok/peran GTK yang berhak bergabung, atur perintah menu yang aktif, dan kirimkan tautan undangan langsung ke japri guru.
                     </div>
                 </div>
-                <div class="card-actions">
+                <div class="card-actions d-flex gap-2">
+                    <form action="{{ route('telegram.channel.sync-all') }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-info shadow-sm" title="Sinkronkan perintah bawaan pribadi & seluruh grup ke Telegram">
+                            <i class="ti ti-refresh me-1"></i> Sinkronkan Menu ke Telegram
+                        </button>
+                    </form>
                     <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-tambah-saluran">
                         <i class="ti ti-plus me-1"></i> Tambah Saluran Grup
                     </button>
