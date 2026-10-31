@@ -1906,29 +1906,43 @@
             if (cardAdminPermits) cardAdminPermits.classList.add('hidden');
         }
 
-        // 8. Kartu Pengesahan Supervisi Akademik (Kepala Sekolah & Kurikulum)
+        // 8. Kartu Supervisi Akademik (Guru, Supervisor & Kepala Sekolah)
         const cardSupervision = container.querySelector('#card-supervision-section');
         const badgeSupervisionCount = container.querySelector('#badge-supervision-count');
         const listSupervisions = container.querySelector('#list-pending-supervisions');
-        const pendingSupervisions = data.supervisions?.pending || [];
+        const spvData = data.supervisions || {};
+        const pendingSupervisions = spvData.pending || [];
+        const totalActive = (spvData.my_teacher_active_count || 0) + (spvData.my_supervisor_active_count || 0) + (pendingSupervisions.length || 0);
+        const hasAnySpv = spvData.has_any_supervision || totalActive > 0;
 
-        if (pendingSupervisions.length > 0) {
+        if (hasAnySpv) {
             if (cardSupervision) cardSupervision.classList.remove('hidden');
-            if (badgeSupervisionCount) badgeSupervisionCount.textContent = `${pendingSupervisions.length} Berkas`;
+            if (badgeSupervisionCount) badgeSupervisionCount.textContent = `${totalActive} Agenda`;
             if (listSupervisions) {
-                listSupervisions.innerHTML = pendingSupervisions.map(s => `
-                    <div class="p-2.5 rounded-xl bg-white border border-indigo-200/80 text-xs">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="font-bold text-slate-800">${s.teacher_name}</span>
-                            <span class="px-2 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800">Menunggu</span>
+                if (pendingSupervisions.length > 0) {
+                    listSupervisions.innerHTML = pendingSupervisions.map(s => `
+                        <div class="p-2.5 rounded-xl bg-white border border-indigo-200/80 text-xs">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-slate-800">${s.teacher_name}</span>
+                                <span class="px-2 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800">Menunggu KS</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[10px] text-slate-500 mb-2">
+                                <span>Supervisor: ${s.supervisor_name}</span>
+                                <span class="font-mono text-slate-400">${s.obs_date || '-'}</span>
+                            </div>
+                            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/supervisions?id=${s.id}')" class="w-full py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-center block text-[10px] hover:bg-indigo-700 active:scale-95 transition">Tinjau &amp; Sahkan Supervisi</button>
                         </div>
-                        <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1.5">
-                            <span>Supervisor: ${s.supervisor_name}</span>
-                            <span class="font-mono text-slate-400">${s.obs_date}</span>
+                    `).join('');
+                } else if (totalActive > 0) {
+                    listSupervisions.innerHTML = `
+                        <div class="p-2 rounded-xl bg-indigo-100/60 border border-indigo-200 text-[11px] text-indigo-950 flex items-center justify-between">
+                            <span>Ada <strong>${totalActive} sesi supervisi</strong> yang sedang aktif / terjadwal.</span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-600 text-white">Aktif</span>
                         </div>
-                        <a href="/persetujuan" class="w-full py-1 rounded bg-indigo-600 text-white font-bold text-center block text-[10px] hover:bg-indigo-700">Buka &amp; Sahkan Supervisi</a>
-                    </div>
-                `).join('');
+                    `;
+                } else {
+                    listSupervisions.innerHTML = '<div class="text-center py-2 text-xs text-slate-400">Semua berkas supervisi telah selesai atau belum ada jadwal baru.</div>';
+                }
             }
         } else {
             if (cardSupervision) cardSupervision.classList.add('hidden');
@@ -5084,6 +5098,844 @@
             }
         } catch (err) {
             showToast('Gagal proses: ' + err.message, 'error');
+        }
+    };
+
+    // ==========================================
+    // SUPERVISI AKADEMIK GURU CONTROLLER
+    // ==========================================
+    let currentSupervisionContainer = null;
+    let supervisionDataCache = null;
+    let activeSupervisionTab = 'teacher';
+    let currentSupervisionDetail = null;
+    let currentRubricScores = {}; // indicator_id -> score (1-4)
+    let currentRubricNotes = {};  // indicator_id -> note
+
+    window.initTasksSupervisions = async function(container, params = {}) {
+        currentSupervisionContainer = container;
+        await loadTasksSupervisions();
+
+        if (params.id) {
+            openSupervisionModal(params.id);
+        }
+    };
+
+    window.loadTasksSupervisions = async function() {
+        if (!currentSupervisionContainer) return;
+        try {
+            const res = await SIAP_API.getSupervisions();
+            if (res.success && res.data) {
+                supervisionDataCache = res.data;
+                renderSupervisionDashboardUI(res.data);
+            }
+        } catch (err) {
+            showToast('Gagal memuat data supervisi: ' + err.message, 'error');
+        }
+    };
+
+    function renderSupervisionDashboardUI(data) {
+        if (!currentSupervisionContainer) return;
+
+        // Label Tahun Ajaran
+        const ayLabel = currentSupervisionContainer.querySelector('#spv-academic-year-label');
+        if (ayLabel) {
+            ayLabel.textContent = `T.A. ${data.academic_year || '-'} (${data.semester || '-'})`;
+        }
+
+        // Metrik Counters
+        const statTeacher = currentSupervisionContainer.querySelector('#stat-spv-teacher-count');
+        const statSupervisor = currentSupervisionContainer.querySelector('#stat-spv-supervisor-count');
+        const statApproval = currentSupervisionContainer.querySelector('#stat-spv-approval-count');
+        const approvalBox = currentSupervisionContainer.querySelector('#stat-spv-approval-box');
+
+        if (statTeacher) statTeacher.textContent = data.counts?.as_teacher_total || 0;
+        if (statSupervisor) statSupervisor.textContent = data.counts?.as_supervisor_total || 0;
+        if (statApproval) statApproval.textContent = data.counts?.pending_approval || 0;
+
+        // Badges in Tabs
+        const badgeTeacher = currentSupervisionContainer.querySelector('#badge-tab-teacher');
+        const badgeSupervisor = currentSupervisionContainer.querySelector('#badge-tab-supervisor');
+        const badgeApproval = currentSupervisionContainer.querySelector('#badge-tab-approval');
+        const tabBtnApproval = currentSupervisionContainer.querySelector('#tab-spv-btn-approval');
+
+        if (badgeTeacher) badgeTeacher.textContent = data.as_teacher?.length || 0;
+        if (badgeSupervisor) badgeSupervisor.textContent = data.as_supervisor?.length || 0;
+        if (badgeApproval) badgeApproval.textContent = data.pending_approvals?.length || 0;
+
+        if (data.can_approve) {
+            if (tabBtnApproval) tabBtnApproval.classList.remove('hidden');
+            if (approvalBox) approvalBox.classList.remove('hidden');
+        } else {
+            if (tabBtnApproval) tabBtnApproval.classList.add('hidden');
+            if (approvalBox) approvalBox.classList.add('hidden');
+        }
+
+        if (activeSupervisionTab === 'approval' && !data.can_approve) {
+            activeSupervisionTab = 'teacher';
+        }
+
+        // Default smart selection
+        if (activeSupervisionTab === 'teacher' && (data.as_teacher?.length || 0) === 0 && (data.as_supervisor?.length || 0) > 0) {
+            activeSupervisionTab = 'supervisor';
+        }
+
+        switchSupervisionTab(activeSupervisionTab, false);
+    }
+
+    window.switchSupervisionTab = function(tab, reload = true) {
+        activeSupervisionTab = tab;
+        if (!currentSupervisionContainer) return;
+
+        ['teacher', 'supervisor', 'approval'].forEach(t => {
+            const btn = currentSupervisionContainer.querySelector('#tab-spv-btn-' + t);
+            if (btn) {
+                if (t === tab) {
+                    btn.className = 'px-3 py-1.5 rounded-xl bg-slate-900 text-white shrink-0 shadow-xs flex items-center gap-1.5 transition';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 shrink-0 flex items-center gap-1.5 transition';
+                }
+            }
+        });
+
+        const listContainer = currentSupervisionContainer.querySelector('#list-supervision-container');
+        if (!listContainer || !supervisionDataCache) return;
+
+        let items = [];
+        let emptyMessage = '';
+
+        if (tab === 'teacher') {
+            items = supervisionDataCache.as_teacher || [];
+            emptyMessage = 'Belum ada jadwal supervisi mengajar untuk Anda.';
+        } else if (tab === 'supervisor') {
+            items = supervisionDataCache.as_supervisor || [];
+            emptyMessage = 'Belum ada penugasan guru yang perlu Anda supervisi.';
+        } else if (tab === 'approval') {
+            items = supervisionDataCache.pending_approvals || [];
+            emptyMessage = 'Tidak ada laporan supervisi yang menunggu pengesahan Kepala Sekolah.';
+        }
+
+        if (items.length === 0) {
+            listContainer.innerHTML = `
+                <div class="card-elevated p-8 text-center space-y-2">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 mx-auto flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">${emptyMessage}</p>
+                    <p class="text-[10px] text-slate-400">Jadwal supervisi akan tampil setelah diagendakan oleh Waka Kurikulum.</p>
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = items.map(s => {
+            const isApproved = s.status === 'disetujui' || s.status === 'selesai';
+            const statusBg = isApproved ? 'bg-emerald-100 text-emerald-800' :
+                             s.status === 'menunggu_persetujuan' ? 'bg-amber-100 text-amber-800' :
+                             s.status === 'observasi' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700';
+
+            return `
+                <div class="card-elevated p-3 border-slate-200/90 hover:border-indigo-300 transition space-y-2">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusBg} uppercase tracking-wider">${s.status_label || s.status}</span>
+                                ${s.percentage > 0 ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 font-mono">${s.percentage}% (${s.predicate || '-'})</span>` : ''}
+                            </div>
+                            <h4 class="text-xs font-black text-slate-800 leading-snug">${escapeHtml(s.subject)} &bull; ${escapeHtml(s.class_name)}</h4>
+                        </div>
+                        <button type="button" onclick="openSupervisionModal(${s.id})" class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] shrink-0 active:scale-95 transition shadow-xs">
+                            Buka Berkas &raquo;
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 p-2 rounded-lg bg-slate-50 text-[10px] text-slate-600">
+                        <div>
+                            <span class="text-slate-400 block text-[9px]">Guru:</span>
+                            <strong class="text-slate-800">${escapeHtml(s.teacher_name)}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[9px]">Supervisor:</span>
+                            <strong class="text-indigo-800">${escapeHtml(s.supervisor_name)}</strong>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                        <span class="flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>${s.schedule_date_formatted || '-'} ${s.schedule_time ? '(' + s.schedule_time + ')' : ''}</span>
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                            ${s.has_rpp ? '<span class="text-emerald-600 font-bold text-[9px]">✓ RPP</span>' : '<span class="text-slate-400 text-[9px]">- RPP</span>'}
+                            ${s.has_photos ? '<span class="text-indigo-600 font-bold text-[9px]">📷 Foto</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // --- DETAIL & WORKSPACE MODAL ---
+
+    window.openSupervisionModal = async function(id) {
+        const modal = document.getElementById('modal-supervision-workspace');
+        if (!modal) return;
+
+        showToast('Memuat berkas supervisi...', 'info');
+        try {
+            const res = await SIAP_API.getSupervisionDetail(id);
+            if (!res.success || !res.data) {
+                showToast('Berkas tidak ditemukan.', 'error');
+                return;
+            }
+
+            currentSupervisionDetail = res.data;
+            populateSupervisionModal(res.data);
+            modal.classList.remove('hidden');
+
+            // Default step based on status
+            if (res.data.status === 'menunggu_persetujuan' && res.data.permissions?.can_approve) {
+                switchModalStep(4);
+            } else if (res.data.status === 'observasi') {
+                switchModalStep(2);
+            } else {
+                switchModalStep(1);
+            }
+        } catch (err) {
+            showToast('Gagal membuka supervisi: ' + err.message, 'error');
+        }
+    };
+
+    window.closeSupervisionModal = function() {
+        const modal = document.getElementById('modal-supervision-workspace');
+        if (modal) modal.classList.add('hidden');
+        currentSupervisionDetail = null;
+    };
+
+    window.switchModalStep = function(step) {
+        [1, 2, 3, 4].forEach(s => {
+            const btn = document.getElementById('step-btn-' + s);
+            const content = document.getElementById('step-content-' + s);
+
+            if (s === step) {
+                if (btn) {
+                    btn.className = 'py-2.5 px-3 border-b-2 border-indigo-600 text-indigo-700 whitespace-nowrap flex items-center gap-1';
+                }
+                if (content) content.classList.remove('hidden');
+            } else {
+                if (btn) {
+                    btn.className = 'py-2.5 px-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap flex items-center gap-1';
+                }
+                if (content) content.classList.add('hidden');
+            }
+        });
+    };
+
+    function populateSupervisionModal(data) {
+        // Modal Header
+        const badgeStatus = document.getElementById('modal-spv-badge-status');
+        const scoreTag = document.getElementById('modal-spv-score-tag');
+        const title = document.getElementById('modal-spv-title');
+        const subtitle = document.getElementById('modal-spv-subtitle');
+
+        if (badgeStatus) {
+            badgeStatus.textContent = data.status_label || data.status;
+            badgeStatus.className = `px-2 py-0.2 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/20 text-white`;
+        }
+        if (scoreTag) {
+            if (data.observasi?.percentage > 0) {
+                scoreTag.textContent = `${data.observasi.percentage}% (${data.observasi.predicate})`;
+                scoreTag.classList.remove('hidden');
+            } else {
+                scoreTag.classList.add('hidden');
+            }
+        }
+        if (title) title.textContent = `${data.subject} - ${data.class_name}`;
+        if (subtitle) subtitle.textContent = `Guru: ${data.teacher?.name} | SPV: ${data.supervisor?.name}`;
+
+        // STEP 1: PRAOBSERVASI & RPP
+        const s1Teacher = document.getElementById('step1-teacher-name');
+        const s1Spv = document.getElementById('step1-supervisor-name');
+        const s1Schedule = document.getElementById('step1-schedule-time');
+        const s1RppName = document.getElementById('step1-rpp-filename');
+        const s1RppActions = document.getElementById('step1-rpp-actions');
+        const s1RppUploadBox = document.getElementById('step1-rpp-upload-box');
+
+        if (s1Teacher) s1Teacher.textContent = `${data.teacher?.name} (${data.teacher?.formatted_id || '-'})`;
+        if (s1Spv) s1Spv.textContent = `${data.supervisor?.name} (${data.supervisor?.formatted_id || '-'})`;
+        if (s1Schedule) s1Schedule.textContent = `${data.schedule_date_formatted || '-'} ${data.schedule_time ? '(' + data.schedule_time + ')' : ''}`;
+
+        if (s1RppName) {
+            s1RppName.textContent = data.rpp?.has_file ? (data.rpp.original_name || 'Modul_Ajar.pdf') : 'Belum ada modul ajar yang diunggah';
+        }
+        if (s1RppActions) {
+            if (data.rpp?.has_file && data.rpp?.download_url) {
+                s1RppActions.innerHTML = `
+                    <a href="${data.rpp.download_url}" target="_blank" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-bold hover:bg-indigo-700 active:scale-95 transition flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Unduh RPP</span>
+                    </a>
+                `;
+            } else {
+                s1RppActions.innerHTML = '';
+            }
+        }
+
+        if (s1RppUploadBox) {
+            if (data.permissions?.can_upload_rpp) {
+                s1RppUploadBox.classList.remove('hidden');
+            } else {
+                s1RppUploadBox.classList.add('hidden');
+            }
+        }
+
+        // Form Praobservasi Inputs
+        const pre = data.praobservasi || {};
+        const matInput = document.getElementById('step1-material');
+        const objInput = document.getElementById('step1-objectives');
+        const methInput = document.getElementById('step1-method');
+        const medInput = document.getElementById('step1-media');
+        const focInput = document.getElementById('step1-focus');
+        const spvNotesInput = document.getElementById('step1-supervisor-notes');
+        const btnS1 = document.getElementById('step1-btn-container');
+
+        if (matInput) matInput.value = pre.material || '';
+        if (objInput) objInput.value = pre.objectives || '';
+        if (methInput) methInput.value = pre.method || '';
+        if (medInput) medInput.value = pre.media || '';
+        if (focInput) focInput.value = pre.focus || '';
+        if (spvNotesInput) spvNotesInput.value = pre.supervisor_notes || '';
+
+        const canEditPreobs = data.permissions?.can_edit_preobs;
+        [matInput, objInput, methInput, medInput, focInput, spvNotesInput].forEach(el => {
+            if (el) el.disabled = !canEditPreobs;
+        });
+        if (btnS1) {
+            if (canEditPreobs) btnS1.classList.remove('hidden');
+            else btnS1.classList.add('hidden');
+        }
+
+        // STEP 2: OBSERVASI KELAS (RUBRIK)
+        populateObservationStep(data);
+
+        // STEP 3: FOTO KBM
+        populatePhotosStep(data);
+
+        // STEP 4: PASCAOBSERVASI & PENGESAHAN
+        populatePostObservationStep(data);
+    }
+
+    function populateObservationStep(data) {
+        const obs = data.observasi || {};
+        const dateInput = document.getElementById('step2-obs-date');
+        const timeInput = document.getElementById('step2-obs-time');
+        const rubricContainer = document.getElementById('step2-rubric-phases');
+        const btnS2 = document.getElementById('step2-btn-container');
+
+        if (dateInput) dateInput.value = obs.obs_date || '';
+        if (timeInput) timeInput.value = obs.obs_time || '';
+
+        const canEditObs = data.permissions?.can_conduct_obs;
+        if (dateInput) dateInput.disabled = !canEditObs;
+        if (timeInput) timeInput.disabled = !canEditObs;
+        if (btnS2) {
+            if (canEditObs) btnS2.classList.remove('hidden');
+            else btnS2.classList.add('hidden');
+        }
+
+        // Reset memory rubrics
+        currentRubricScores = {};
+        currentRubricNotes = {};
+
+        const phases = data.rubrics || [];
+        if (!rubricContainer) return;
+
+        if (phases.length === 0) {
+            rubricContainer.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Instrumen rubrik belum dikonfigurasi di sistem.</div>';
+            return;
+        }
+
+        rubricContainer.innerHTML = phases.map(phase => {
+            const indicatorsHtml = (phase.indicators || []).map(ind => {
+                currentRubricScores[ind.id] = ind.score;
+                currentRubricNotes[ind.id] = ind.notes || '';
+
+                const score = ind.score;
+
+                return `
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2" id="ind-card-${ind.id}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-200 text-slate-700 font-mono">${escapeHtml(ind.code || '')}</span>
+                                <h5 class="text-xs font-bold text-slate-800 mt-0.5">${escapeHtml(ind.title)}</h5>
+                                ${ind.description ? `<p class="text-[10px] text-slate-500 leading-tight mt-0.5">${escapeHtml(ind.description)}</p>` : ''}
+                            </div>
+                            <span id="ind-score-badge-${ind.id}" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold ${score ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}">
+                                ${score ? 'Skor ' + score : 'Belum'}
+                            </span>
+                        </div>
+
+                        <!-- 4 Tombol Pilihan Skor Ramah Jempol -->
+                        <div class="grid grid-cols-4 gap-1.5 pt-1">
+                            ${[1, 2, 3, 4].map(val => {
+                                const isSelected = score === val;
+                                const activeClass = isSelected
+                                    ? (val === 4 ? 'bg-emerald-600 text-white shadow-xs border-emerald-600 font-black' :
+                                       val === 3 ? 'bg-indigo-600 text-white shadow-xs border-indigo-600 font-black' :
+                                       val === 2 ? 'bg-amber-500 text-white shadow-xs border-amber-500 font-black' :
+                                                   'bg-rose-600 text-white shadow-xs border-rose-600 font-black')
+                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100';
+
+                                const disabledAttr = !canEditObs ? 'disabled' : '';
+
+                                return `
+                                    <button type="button" ${disabledAttr} onclick="selectIndicatorScore(${ind.id}, ${val})" id="btn-score-${ind.id}-${val}" class="py-2 rounded-xl border text-xs font-mono font-bold transition active:scale-95 text-center flex flex-col items-center justify-center ${activeClass}">
+                                        <span>${val}</span>
+                                        <span class="text-[8px] font-sans font-normal opacity-80">${val === 4 ? 'Amat Baik' : val === 3 ? 'Baik' : val === 2 ? 'Cukup' : 'Kurang'}</span>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <!-- Catatan Butir (Opsional) -->
+                        <input type="text" ${!canEditObs ? 'disabled' : ''} onchange="currentRubricNotes[${ind.id}] = this.value" value="${escapeHtml(ind.notes || '')}" placeholder="Catatan bukti teramati (opsional)" class="w-full px-2.5 py-1 text-[10px] rounded-lg border border-slate-200 bg-white placeholder-slate-400">
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="space-y-2">
+                    <div class="px-1 flex items-center justify-between">
+                        <h4 class="text-xs font-black text-slate-800 uppercase tracking-wider">${escapeHtml(phase.name)}</h4>
+                        <span class="text-[10px] text-slate-400 font-medium">${phase.indicators?.length || 0} Butir</span>
+                    </div>
+                    ${indicatorsHtml}
+                </div>
+            `;
+        }).join('');
+
+        recalculateLiveScore();
+    }
+
+    window.selectIndicatorScore = function(indicatorId, val) {
+        currentRubricScores[indicatorId] = val;
+
+        // Update UI tombol
+        [1, 2, 3, 4].forEach(v => {
+            const btn = document.getElementById(`btn-score-${indicatorId}-${v}`);
+            if (btn) {
+                if (v === val) {
+                    btn.className = `py-2 rounded-xl border text-xs font-mono font-bold transition active:scale-95 text-center flex flex-col items-center justify-center ${
+                        val === 4 ? 'bg-emerald-600 text-white shadow-xs border-emerald-600 font-black' :
+                        val === 3 ? 'bg-indigo-600 text-white shadow-xs border-indigo-600 font-black' :
+                        val === 2 ? 'bg-amber-500 text-white shadow-xs border-amber-500 font-black' :
+                                    'bg-rose-600 text-white shadow-xs border-rose-600 font-black'
+                    }`;
+                } else {
+                    btn.className = 'py-2 rounded-xl border text-xs font-mono font-bold transition active:scale-95 text-center flex flex-col items-center justify-center bg-white text-slate-700 border-slate-200 hover:bg-slate-100';
+                }
+            }
+        });
+
+        // Update score badge on indicator card
+        const badge = document.getElementById(`ind-score-badge-${indicatorId}`);
+        if (badge) {
+            badge.textContent = 'Skor ' + val;
+            badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-600 text-white';
+        }
+
+        recalculateLiveScore();
+    };
+
+    window.recalculateLiveScore = function() {
+        if (!currentSupervisionDetail) return;
+
+        let total = 0;
+        let countFilled = 0;
+        let totalIndicators = 0;
+        let maxScore = 0;
+
+        (currentSupervisionDetail.rubrics || []).forEach(phase => {
+            (phase.indicators || []).forEach(ind => {
+                totalIndicators++;
+                const max = ind.max_score || 4;
+                maxScore += max;
+                const sc = currentRubricScores[ind.id];
+                if (sc && sc > 0) {
+                    total += parseInt(sc);
+                    countFilled++;
+                }
+            });
+        });
+
+        const percentage = maxScore > 0 ? ((total / maxScore) * 100).toFixed(1) : '0.0';
+        let predicate = 'Belum Dinilai';
+        const numP = parseFloat(percentage);
+
+        if (countFilled > 0) {
+            if (numP >= 86) predicate = 'Sangat Baik';
+            else if (numP >= 76) predicate = 'Baik';
+            else if (numP >= 61) predicate = 'Cukup';
+            else predicate = 'Perlu Bimbingan';
+        }
+
+        const pctEl = document.getElementById('step2-live-percentage');
+        const predEl = document.getElementById('step2-live-predicate');
+        const fracEl = document.getElementById('step2-live-score-fraction');
+
+        if (pctEl) pctEl.textContent = `${percentage}%`;
+        if (predEl) predEl.textContent = `${predicate} (${countFilled}/${totalIndicators} Butir)`;
+        if (fracEl) fracEl.textContent = `${total} / ${maxScore}`;
+    };
+
+    function populatePhotosStep(data) {
+        const uploadCard = document.getElementById('step3-upload-card');
+        const photosGrid = document.getElementById('step3-photos-grid');
+
+        if (uploadCard) {
+            if (data.permissions?.can_upload_photo) {
+                uploadCard.classList.remove('hidden');
+            } else {
+                uploadCard.classList.add('hidden');
+            }
+        }
+
+        if (!photosGrid) return;
+        const photos = data.photos || [];
+
+        if (photos.length === 0) {
+            photosGrid.innerHTML = '<div class="col-span-2 text-center py-6 text-xs text-slate-400">Belum ada foto kegiatan KBM yang diunggah.</div>';
+            return;
+        }
+
+        const canDelete = data.permissions?.can_upload_photo;
+        photosGrid.innerHTML = photos.map(p => `
+            <div class="card-elevated p-1.5 border-slate-200 relative group overflow-hidden">
+                <img src="${p.url}" alt="${escapeHtml(p.caption || 'Foto KBM')}" class="w-full h-28 object-cover rounded-lg bg-slate-100" loading="lazy">
+                <div class="p-1 space-y-0.5">
+                    <p class="text-[10px] font-bold text-slate-800 truncate">${escapeHtml(p.caption || 'Dokumentasi KBM')}</p>
+                    <span class="text-[8px] text-slate-400 block">${p.taken_at || '-'}</span>
+                </div>
+                ${canDelete ? `
+                    <button type="button" onclick="deleteSupervisionPhoto(${p.id})" class="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-xs active:scale-95 transition" title="Hapus Foto">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    function populatePostObservationStep(data) {
+        const post = data.pascaobservasi || {};
+        const posInput = document.getElementById('step4-positive');
+        const impInput = document.getElementById('step4-improvement');
+        const recInput = document.getElementById('step4-recommendation');
+        const folInput = document.getElementById('step4-followup');
+        const saveBtnBox = document.getElementById('step4-save-btn-box');
+
+        if (posInput) posInput.value = post.positive || '';
+        if (impInput) impInput.value = post.improvement || '';
+        if (recInput) recInput.value = post.recommendation || '';
+        if (folInput) folInput.value = post.followup || '';
+
+        const canEditPost = data.permissions?.can_edit_postobs;
+        [posInput, impInput, recInput, folInput].forEach(el => {
+            if (el) el.disabled = !canEditPost;
+        });
+        if (saveBtnBox) {
+            if (canEditPost) saveBtnBox.classList.remove('hidden');
+            else saveBtnBox.classList.add('hidden');
+        }
+
+        // Supervisor Finalize Card
+        const finalizeCard = document.getElementById('step4-supervisor-finalize-card');
+        if (finalizeCard) {
+            if (data.permissions?.can_finalize) {
+                finalizeCard.classList.remove('hidden');
+            } else {
+                finalizeCard.classList.add('hidden');
+            }
+        }
+
+        // Principal Approval Card
+        const approvalCard = document.getElementById('step4-principal-approval-card');
+        if (approvalCard) {
+            if (data.permissions?.can_approve) {
+                approvalCard.classList.remove('hidden');
+            } else {
+                approvalCard.classList.add('hidden');
+            }
+        }
+
+        // Approved Official Badge Card
+        const approvedBadgeCard = document.getElementById('step4-approved-badge-card');
+        const approvedInfo = document.getElementById('step4-approved-info');
+        const approvedRepNo = document.getElementById('step4-report-number');
+
+        const isApproved = data.status === 'disetujui' || data.status === 'selesai';
+        if (approvedBadgeCard) {
+            if (isApproved) {
+                approvedBadgeCard.classList.remove('hidden');
+                if (approvedInfo) approvedInfo.textContent = `Disahkan oleh ${data.principal?.name || 'Kepala Sekolah'} (${data.finalisasi?.principal_approved_at || '-'})`;
+                if (approvedRepNo) approvedRepNo.textContent = `No. Laporan: ${data.report_number || '-'}`;
+            } else {
+                approvedBadgeCard.classList.add('hidden');
+            }
+        }
+    }
+
+    // --- FORM ACTIONS ---
+
+    window.submitSupervisionRpp = async function() {
+        if (!currentSupervisionDetail) return;
+        const fileInput = document.getElementById('step1-rpp-file-input');
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+            showToast('Silakan pilih berkas Modul Ajar / RPP terlebih dahulu.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('rpp_file', fileInput.files[0]);
+
+        showToast('Mengunggah Modul Ajar...', 'info');
+        try {
+            const res = await SIAP_API.uploadSupervisionRpp(currentSupervisionDetail.id, formData);
+            if (res.success) {
+                showToast(res.message || 'Modul Ajar berhasil diunggah!', 'success');
+                openSupervisionModal(currentSupervisionDetail.id);
+                loadTasksSupervisions();
+            }
+        } catch (err) {
+            showToast('Gagal unggah RPP: ' + err.message, 'error');
+        }
+    };
+
+    window.submitSupervisionPreObs = async function(e) {
+        if (e) e.preventDefault();
+        if (!currentSupervisionDetail) return;
+
+        const payload = {
+            pre_material: document.getElementById('step1-material')?.value || '',
+            pre_objectives: document.getElementById('step1-objectives')?.value || '',
+            pre_method: document.getElementById('step1-method')?.value || '',
+            pre_media: document.getElementById('step1-media')?.value || '',
+            pre_focus: document.getElementById('step1-focus')?.value || '',
+            pre_supervisor_notes: document.getElementById('step1-supervisor-notes')?.value || '',
+        };
+
+        if (!payload.pre_material || !payload.pre_objectives || !payload.pre_method) {
+            showToast('Mohon lengkapi materi, tujuan, dan metode pembelajaran.', 'warning');
+            return;
+        }
+
+        showToast('Menyimpan praobservasi...', 'info');
+        try {
+            const res = await SIAP_API.saveSupervisionPreObservation(currentSupervisionDetail.id, payload);
+            if (res.success) {
+                showToast(res.message || 'Catatan praobservasi berhasil disimpan!', 'success');
+                openSupervisionModal(currentSupervisionDetail.id);
+                loadTasksSupervisions();
+                switchModalStep(2); // Lanjut ke observasi
+            }
+        } catch (err) {
+            showToast('Gagal simpan praobservasi: ' + err.message, 'error');
+        }
+    };
+
+    window.submitSupervisionObservation = async function() {
+        if (!currentSupervisionDetail) return;
+
+        const obsDate = document.getElementById('step2-obs-date')?.value || '';
+        const obsTime = document.getElementById('step2-obs-time')?.value || '';
+
+        const payload = {
+            obs_date: obsDate,
+            obs_time: obsTime,
+            scores: currentRubricScores,
+            notes: currentRubricNotes,
+        };
+
+        showToast('Menyimpan nilai observasi...', 'info');
+        try {
+            const res = await SIAP_API.saveSupervisionObservation(currentSupervisionDetail.id, payload);
+            if (res.success) {
+                showToast(res.message || 'Penilaian observasi berhasil disimpan!', 'success');
+                openSupervisionModal(currentSupervisionDetail.id);
+                loadTasksSupervisions();
+            }
+        } catch (err) {
+            showToast('Gagal simpan nilai: ' + err.message, 'error');
+        }
+    };
+
+    window.previewSelectedPhoto = function(input) {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+        const previewBox = document.getElementById('step3-preview-box');
+        const previewImg = document.getElementById('step3-preview-img');
+        const label = document.getElementById('step3-photo-label');
+
+        if (previewImg && previewBox) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewBox.classList.remove('hidden');
+                if (label) label.textContent = 'Ganti Foto';
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    window.cancelPhotoPreview = function() {
+        const input = document.getElementById('step3-camera-input');
+        const previewBox = document.getElementById('step3-preview-box');
+        const previewImg = document.getElementById('step3-preview-img');
+        const label = document.getElementById('step3-photo-label');
+
+        if (input) input.value = '';
+        if (previewImg) previewImg.src = '';
+        if (previewBox) previewBox.classList.add('hidden');
+        if (label) label.textContent = 'Buka Kamera / Pilih Foto';
+    };
+
+    window.submitSupervisionPhoto = async function(e) {
+        if (e) e.preventDefault();
+        if (!currentSupervisionDetail) return;
+
+        const input = document.getElementById('step3-camera-input');
+        const captionInput = document.getElementById('step3-caption-input');
+
+        if (!input || !input.files || input.files.length === 0) {
+            showToast('Pilih foto terlebih dahulu.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('photo', input.files[0]);
+        formData.append('caption', captionInput?.value || 'Foto Kegiatan Pembelajaran');
+        formData.append('category', 'Kegiatan Pembelajaran');
+
+        showToast('Mengunggah foto...', 'info');
+        try {
+            const res = await SIAP_API.uploadSupervisionPhoto(currentSupervisionDetail.id, formData);
+            if (res.success) {
+                showToast(res.message || 'Foto berhasil ditambahkan!', 'success');
+                cancelPhotoPreview();
+                if (captionInput) captionInput.value = '';
+                openSupervisionModal(currentSupervisionDetail.id);
+                switchModalStep(3);
+            }
+        } catch (err) {
+            showToast('Gagal unggah foto: ' + err.message, 'error');
+        }
+    };
+
+    window.deleteSupervisionPhoto = async function(photoId) {
+        if (!window.confirm('Hapus foto dokumentasi ini?')) return;
+
+        showToast('Menghapus foto...', 'info');
+        try {
+            const res = await SIAP_API.deleteSupervisionPhoto(photoId);
+            if (res.success) {
+                showToast(res.message || 'Foto berhasil dihapus.', 'success');
+                if (currentSupervisionDetail) {
+                    openSupervisionModal(currentSupervisionDetail.id);
+                    switchModalStep(3);
+                }
+            }
+        } catch (err) {
+            showToast('Gagal hapus foto: ' + err.message, 'error');
+        }
+    };
+
+    window.submitSupervisionPostObs = async function(e) {
+        if (e) e.preventDefault();
+        if (!currentSupervisionDetail) return;
+
+        const payload = {
+            post_positive: document.getElementById('step4-positive')?.value || '',
+            post_improvement: document.getElementById('step4-improvement')?.value || '',
+            post_recommendation: document.getElementById('step4-recommendation')?.value || '',
+            post_followup: document.getElementById('step4-followup')?.value || '',
+        };
+
+        if (!payload.post_positive || !payload.post_improvement || !payload.post_recommendation || !payload.post_followup) {
+            showToast('Mohon lengkapi seluruh catatan umpan balik pascaobservasi.', 'warning');
+            return;
+        }
+
+        showToast('Menyimpan umpan balik...', 'info');
+        try {
+            const res = await SIAP_API.saveSupervisionPostObservation(currentSupervisionDetail.id, payload);
+            if (res.success) {
+                showToast(res.message || 'Catatan pascaobservasi berhasil disimpan!', 'success');
+                openSupervisionModal(currentSupervisionDetail.id);
+                loadTasksSupervisions();
+                switchModalStep(4);
+            }
+        } catch (err) {
+            showToast('Gagal simpan umpan balik: ' + err.message, 'error');
+        }
+    };
+
+    window.submitFinalizeSupervision = async function() {
+        if (!currentSupervisionDetail) return;
+        if (!window.confirm('Apakah Anda yakin ingin memfinalisasi penilaian supervisi ini? Laporan akan ditandatangani secara digital dan diteruskan ke Kepala Sekolah.')) return;
+
+        showToast('Memfinalisasi berkas...', 'info');
+        try {
+            const res = await SIAP_API.finalizeSupervision(currentSupervisionDetail.id);
+            if (res.success) {
+                showToast(res.message || 'Supervisi berhasil difinalisasi!', 'success');
+                openSupervisionModal(currentSupervisionDetail.id);
+                loadTasksSupervisions();
+            }
+        } catch (err) {
+            showToast('Gagal finalisasi: ' + err.message, 'error');
+        }
+    };
+
+    window.submitApprovalAction = async function(action) {
+        if (!currentSupervisionDetail) return;
+
+        const notes = document.getElementById('step4-principal-notes')?.value || '';
+
+        if (action === 'reject') {
+            const revPrompt = window.prompt('Masukkan catatan perbaikan/revisi untuk supervisor & guru:', notes || 'Mohon lengkapi bukti observasi.');
+            if (!revPrompt) return;
+
+            showToast('Mengembalikan berkas...', 'info');
+            try {
+                const res = await SIAP_API.approveSupervision(currentSupervisionDetail.id, {
+                    action: 'reject',
+                    revision_notes: revPrompt,
+                });
+                if (res.success) {
+                    showToast(res.message || 'Berkas dikembalikan untuk revisi.', 'success');
+                    openSupervisionModal(currentSupervisionDetail.id);
+                    loadTasksSupervisions();
+                }
+            } catch (err) {
+                showToast('Gagal: ' + err.message, 'error');
+            }
+            return;
+        }
+
+        // Approve
+        if (!window.confirm('Sahkan dan setujui laporan supervisi ini secara resmi?')) return;
+
+        showToast('Mengesahkan laporan...', 'info');
+        try {
+            const res = await SIAP_API.approveSupervision(currentSupervisionDetail.id, {
+                action: 'approve',
+                principal_notes: notes,
+            });
+            if (res.success) {
+                showToast(res.message || 'Laporan supervisi resmi disahkan!', 'success');
+                openSupervisionModal(currentSupervisionDetail.id);
+                loadTasksSupervisions();
+            }
+        } catch (err) {
+            showToast('Gagal mengesahkan: ' + err.message, 'error');
         }
     };
 

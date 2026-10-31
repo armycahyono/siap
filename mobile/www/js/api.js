@@ -236,6 +236,40 @@ const SIAP_API = (function() {
             method: 'POST',
             body: JSON.stringify(payload),
         }),
+
+        // Supervisi Akademik Guru Mobile
+        getSupervisions: () => request('tasks/supervisions', { method: 'GET' }),
+        getSupervisionDetail: (id) => request(`tasks/supervisions/${id}`, { method: 'GET' }),
+        uploadSupervisionRpp: (id, formData) => request(`tasks/supervisions/${id}/rpp`, {
+            method: 'POST',
+            body: formData,
+        }),
+        saveSupervisionPreObservation: (id, payload) => request(`tasks/supervisions/${id}/praobservasi`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        saveSupervisionObservation: (id, payload) => request(`tasks/supervisions/${id}/observasi`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        saveSupervisionPostObservation: (id, payload) => request(`tasks/supervisions/${id}/pascaobservasi`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+        uploadSupervisionPhoto: (id, formData) => request(`tasks/supervisions/${id}/photos`, {
+            method: 'POST',
+            body: formData,
+        }),
+        deleteSupervisionPhoto: (photoId) => request(`tasks/supervisions/photos/${photoId}`, {
+            method: 'DELETE',
+        }),
+        finalizeSupervision: (id) => request(`tasks/supervisions/${id}/finalize`, {
+            method: 'POST',
+        }),
+        approveSupervision: (id, payload) => request(`tasks/supervisions/${id}/approve`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
     };
 })();
 

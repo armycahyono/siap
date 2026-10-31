@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Mobile\MobileDashboardController;
 use App\Http\Controllers\Api\Mobile\MobileKbmController;
 use App\Http\Controllers\Api\Mobile\MobileNotificationController;
 use App\Http\Controllers\Api\Mobile\MobileProfileController;
+use App\Http\Controllers\Api\Mobile\MobileSupervisionController;
 use App\Http\Controllers\Api\Mobile\MobileTasksController;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -67,6 +68,20 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('tasks/piket/swaps', [MobileTasksController::class, 'getPiketDutySwaps']);
     Route::post('tasks/piket/swaps/store', [MobileTasksController::class, 'storePiketDutySwap']);
     Route::post('tasks/piket/swaps/{id}/action', [MobileTasksController::class, 'actionPiketDutySwap']);
+
+    // Sub-modul Supervisi Guru Mobile (Praobservasi, Observasi Cepat, Foto Kamera, Pascaobservasi & Approval)
+    Route::get('tasks/supervisions', [MobileSupervisionController::class, 'index']);
+    Route::get('tasks/supervisions/{id}', [MobileSupervisionController::class, 'show']);
+    Route::post('tasks/supervisions/{id}/rpp', [MobileSupervisionController::class, 'uploadRpp']);
+    Route::post('tasks/supervisions/{id}/praobservasi', [MobileSupervisionController::class, 'savePreObservation']);
+    Route::post('tasks/supervisions/{id}/observasi', [MobileSupervisionController::class, 'saveObservation']);
+    Route::post('tasks/supervisions/{id}/pascaobservasi', [MobileSupervisionController::class, 'savePostObservation']);
+    Route::post('tasks/supervisions/{id}/photos', [MobileSupervisionController::class, 'uploadPhoto']);
+    Route::delete('tasks/supervisions/photos/{photoId}', [MobileSupervisionController::class, 'deletePhoto']);
+    Route::post('tasks/supervisions/{id}/finalize', [MobileSupervisionController::class, 'finalize']);
+    Route::post('tasks/supervisions/{id}/approve', [MobileSupervisionController::class, 'approve']);
+    Route::get('tasks/supervisions/photos/{photoId}/view', [MobileSupervisionController::class, 'viewPhoto'])->name('api.mobile.tasks.supervisions.photo');
+    Route::get('tasks/supervisions/{id}/rpp/download', [MobileSupervisionController::class, 'downloadRpp'])->name('api.mobile.tasks.supervisions.rpp');
 
     Route::get('profile', [MobileProfileController::class, 'index']);
     Route::get('profile/activity-logs', [MobileProfileController::class, 'getActivityLogs']);

@@ -371,8 +371,9 @@ class MobileTasksController extends Controller
         }
 
         // 5. Supervisi Akademik
+        $canApproveSupervision = $user->isPrincipal() || $user->isWakaKurikulum() || $user->isSuperAdmin() || $user->hasPermission('approve_supervision');
         $pendingSupervisions = collect();
-        if ($user->isPrincipal() || $user->isWakaKurikulum() || $user->isSuperAdmin() || $user->hasPermission('approve_supervision')) {
+        if ($canApproveSupervision) {
             $pendingSupervisions = Supervision::with(['teacher', 'supervisor'])
                 ->where('status', 'menunggu_persetujuan')
                 ->orderBy('obs_date', 'desc')
@@ -386,6 +387,13 @@ class MobileTasksController extends Controller
                     'status' => $s->status,
                 ]);
         }
+        $myTeacherActiveCount = Supervision::where('teacher_id', $user->id)
+            ->whereIn('status', ['terjadwal', 'praobservasi', 'observasi'])
+            ->count();
+        $mySupervisorActiveCount = Supervision::where('supervisor_id', $user->id)
+            ->whereIn('status', ['terjadwal', 'praobservasi', 'observasi', 'pascaobservasi'])
+            ->count();
+        $hasAnySupervision = $canApproveSupervision || $myTeacherActiveCount > 0 || $mySupervisorActiveCount > 0 || Supervision::where('teacher_id', $user->id)->orWhere('supervisor_id', $user->id)->exists();
 
         // 6. Visitasi Siswa
         $canAccessVisitations = $user->canAccessVisitations($operationalAcademicYear);
@@ -522,6 +530,10 @@ class MobileTasksController extends Controller
                 ],
                 'supervisions' => [
                     'pending' => $pendingSupervisions->values(),
+                    'can_approve' => $canApproveSupervision,
+                    'my_teacher_active_count' => $myTeacherActiveCount,
+                    'my_supervisor_active_count' => $mySupervisorActiveCount,
+                    'has_any_supervision' => $hasAnySupervision,
                 ],
                 'visitations' => [
                     'can_access' => $canAccessVisitations,

@@ -302,23 +302,28 @@
         </div>
     </div>
 
-    <!-- 8. Kartu Pengesahan Supervisi Akademik (Kepala Sekolah & Kurikulum) -->
-    <div id="card-supervision-section" class="hidden card-elevated p-3.5 border-indigo-200 bg-indigo-50/30">
+    <!-- 8. Kartu Supervisi Akademik (Guru, Supervisor & Kepala Sekolah) -->
+    <div id="card-supervision-section" class="card-elevated p-3.5 border-indigo-200 bg-indigo-50/30">
         <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-indigo-100">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                 </div>
                 <div>
-                    <h4 class="text-xs font-black text-slate-800">Pengesahan Supervisi</h4>
-                    <p class="text-[10px] text-indigo-800 font-medium">Observasi Mengajar Menunggu Pengesahan</p>
+                    <h3 class="text-xs font-black text-slate-800">Supervisi Akademik</h3>
+                    <p id="supervision-subtext" class="text-[10px] text-indigo-800 font-medium">Praobservasi, Observasi Kelas &amp; Evaluasi</p>
                 </div>
             </div>
-            <span id="badge-supervision-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white">0 Berkas</span>
+            <span id="badge-supervision-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-600 text-white shadow-xs">0 Berkas</span>
         </div>
 
-        <div id="list-pending-supervisions" class="space-y-2">
-            <div class="text-center py-3 text-xs text-slate-400">Tidak ada berkas supervisi menunggu pengesahan.</div>
+        <div id="list-pending-supervisions" class="space-y-2 mb-2.5">
+            <div class="text-center py-2 text-xs text-slate-400">Tidak ada berkas supervisi yang memerlukan tindakan saat ini.</div>
         </div>
+
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/supervisions')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span>Buka Ruang Supervisi Guru &raquo;</span>
+        </button>
     </div>
 </div>

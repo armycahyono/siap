@@ -56,6 +56,14 @@ const SIAP_ROUTER = (function() {
             tabKey: 'tasks',
             hasBack: true,
         },
+        '/tasks/supervisions': {
+            page: 'pages/tasks/supervisions.html',
+            requiresAuth: true,
+            title: 'Supervisi Akademik',
+            init: 'initTasksSupervisions',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
         '/tasks/visitations': {
             page: 'pages/tasks/visitations.html',
             requiresAuth: true,

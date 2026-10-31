@@ -922,6 +922,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_mobile_gtk_permit_with_assignment_attachment_and_inval_schedules(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-10-28 08:00:00')); // Rabu (Weekday)
         Storage::fake('local');
 
         $activeYear = app(AcademicYearContext::class)->getOperationalYear();
