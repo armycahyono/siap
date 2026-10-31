@@ -121,6 +121,7 @@ class TelegramBotWebhookController extends Controller
         }
 
         $isGroup = str_starts_with($chatId, '-');
+        $chatTitle = (string) ($message['chat']['title'] ?? '');
         $senderName = $message['from']['first_name'] ?? 'Petugas';
         $senderId = (string) ($message['from']['id'] ?? '');
         $text = trim($message['text'] ?? '');
@@ -211,7 +212,7 @@ class TelegramBotWebhookController extends Controller
                 break;
 
             case $cmd === '/id' || $cmd === '/chatid' || $cmd === '🆔 cek chat id' || $cmd === 'cek chat id':
-                $this->commandCheckId($chatId, $user, $senderName);
+                $this->commandCheckId($chatId, $user, $senderName, $isGroup, $chatTitle, $senderId);
                 break;
 
             case str_starts_with($cmd, '/hubungkan') || str_starts_with($cmd, '/link') || str_starts_with($cmd, '/tautkan'):
@@ -835,19 +836,51 @@ class TelegramBotWebhookController extends Controller
     }
 
     /**
-     * Command: /id (Cek ID Telegram Pengirim)
+     * Command: /id (Cek ID Telegram Pengirim atau Grup)
      */
-    protected function commandCheckId(string $chatId, ?User $user, string $senderName): void
+    protected function commandCheckId(string $chatId, ?User $user, string $senderName, bool $isGroup = false, string $chatTitle = '', string $senderId = ''): void
     {
+        if ($isGroup) {
+            $groupTitle = ! empty($chatTitle) ? $chatTitle : 'Grup Telegram';
+            $channel = TelegramChannel::where('chat_id', $chatId)->first();
+            $channelStatus = $channel
+                ? "✅ Terdaftar di SIAP: <b>{$channel->name}</b>"
+                : '⚪ <b>Belum terdaftar</b> di SIAP (Grup Baru)';
+
+            $senderRole = $user?->role?->name ?? 'GTK';
+            $senderStatus = $user
+                ? "✅ Terhubung ({$user->name} - {$senderRole})"
+                : '⚪ Belum terhubung di SIAP';
+
+            $text = "👥 <b>INFORMASI ID GRUP TELEGRAM</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."🏷️ <b>Nama Grup:</b> <b>{$groupTitle}</b>\n"
+                ."🆔 <b>Chat ID Grup:</b> <code>{$chatId}</code>\n"
+                ."📌 <b>Status Saluran:</b> {$channelStatus}\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."👤 <b>Pengirim:</b> {$senderName} (ID User: <code>{$senderId}</code>)\n"
+                ."📊 <b>Status Akun Pengirim:</b> {$senderStatus}\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."💡 <b>Cara Menghubungkan Grup Ini ke SIAP:</b>\n"
+                ."1. Salin nomor Chat ID di atas: <code>{$chatId}</code> <i>(pastikan tanda minus '<code>-</code>' ikut tersalin)</i>.\n"
+                ."2. Login ke Web SIAP sebagai Admin &rarr; <b>Pengaturan</b> &rarr; <b>Bot Telegram</b> &rarr; Tab <b>Konfigurasi & Grup</b>.\n"
+                ."3. Cari saluran grup yang sesuai (misal: <i>Grup Piket Harian</i>), klik tombol <b>Edit (ikon pensil)</b>.\n"
+                ."4. Masukkan Chat ID <code>{$chatId}</code> pada kolom <b>ID Chat Telegram</b>, lalu klik <b>Simpan</b>.";
+
+            $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $senderName, 'HTML', ['remove_keyboard' => true]);
+
+            return;
+        }
+
         $roleName = $user?->role?->name ?? 'Guru/Staf';
         $status = $user
             ? "✅ Akun Anda sudah terhubung dengan: <b>{$user->name}</b> ({$roleName})"
             : '⚪ Akun Anda <b>belum terhubung</b> ke SIM Kurikulum.';
 
-        $text = "🆔 <b>INFORMASI AKUN TELEGRAM ANDA</b>\n"
+        $text = "👤 <b>INFORMASI AKUN PRIBADI TELEGRAM ANDA</b>\n"
             ."━━━━━━━━━━━━━━━━━━━━\n"
             ."Nama: <b>{$senderName}</b>\n"
-            ."Chat ID Telegram: <code>{$chatId}</code>\n"
+            ."🆔 <b>User ID Telegram Pribadi:</b> <code>{$chatId}</code>\n"
             ."Status: {$status}\n"
             ."━━━━━━━━━━━━━━━━━━━━\n"
             ."<b>Cara Menghubungkan Akun Guru:</b>\n"

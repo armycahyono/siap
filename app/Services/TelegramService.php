@@ -115,6 +115,10 @@ class TelegramService
             ];
 
             if ($replyMarkup !== null) {
+                // Jangan kirim persistent reply keyboard ke grup Telegram agar tidak mengotori antarmuka anggota grup
+                if (str_starts_with($chatId, '-') && isset($replyMarkup['keyboard'])) {
+                    $replyMarkup = ['remove_keyboard' => true];
+                }
                 $payload['reply_markup'] = json_encode($replyMarkup);
             }
 
