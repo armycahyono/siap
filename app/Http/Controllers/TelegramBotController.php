@@ -51,6 +51,8 @@ class TelegramBotController extends Controller
         $channels = TelegramChannel::orderBy('id')->get();
         $availableRoles = Role::orderBy('name')->get();
         $commandDefinitions = TelegramChannel::getDefaultCommandDefinitions();
+        $commandCategories = TelegramChannel::getCommandCategories();
+        $commandPresets = TelegramChannel::getCommandPresets();
 
         return view('settings.telegram.index', compact(
             'setting',
@@ -63,7 +65,9 @@ class TelegramBotController extends Controller
             'webhookInfo',
             'channels',
             'availableRoles',
-            'commandDefinitions'
+            'commandDefinitions',
+            'commandCategories',
+            'commandPresets'
         ));
     }
 

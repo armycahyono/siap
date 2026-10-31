@@ -757,6 +757,12 @@
     </div>
 </div>
 
+@php
+    $defs = $commandDefinitions ?? \App\Models\TelegramChannel::getDefaultCommandDefinitions();
+    $categories = $commandCategories ?? \App\Models\TelegramChannel::getCommandCategories();
+    $presets = $commandPresets ?? \App\Models\TelegramChannel::getCommandPresets();
+@endphp
+
 <!-- ========================================================================= -->
 <!-- MODAL: TAMBAH SALURAN GRUP -->
 <!-- ========================================================================= -->
@@ -818,7 +824,7 @@
                                             <i class="ti ti-keyboard me-2 text-primary"></i>
                                             Konfigurasi Menu Perintah & Tombol Keyboard Grup
                                         </h4>
-                                        <small class="text-muted">Pilih perintah yang aktif, tentukan perintah mana saja yang dijadikan tombol cepat di bawah chat, serta kustomisasi teks labelnya.</small>
+                                        <small class="text-muted">Pilih paket kelompok perintah siap pakai di bawah, atau atur perintah & label tombol secara manual.</small>
                                     </div>
                                     <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="add_show_reply_keyboard" checked>
@@ -826,17 +832,39 @@
                                     </div>
                                 </div>
                                 <div class="card-body p-0">
-                                    <div class="p-2 bg-azure-lt small border-bottom d-flex align-items-center justify-content-between">
-                                        <div>
-                                            <i class="ti ti-info-circle me-1"></i>
-                                            <b>Tips:</b> Hilangkan centang pada <i>Tombol Reply</i> jika perintah tersebut hanya ingin diketik manual (tidak menjadi tombol di bawah chat).
+                                    <!-- Preset Kelompok Perintah Siap Pakai -->
+                                    <div class="p-3 bg-light border-bottom">
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                            <span class="fw-bold small text-dark d-flex align-items-center">
+                                                <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
+                                                Pilih Cepat Kelompok Perintah (Preset Paket Grup):
+                                            </span>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="add">
+                                                    <i class="ti ti-check-all me-1"></i> Pilih Semua
+                                                </button>
+                                                <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="add">
+                                                    <i class="ti ti-trash me-1"></i> Kosongkan
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @foreach($presets as $pKey => $p)
+                                                <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
+                                                    data-target="add" 
+                                                    data-commands='@json($p['commands'])'
+                                                    title="Pilih kelompok perintah {{ $p['name'] }}">
+                                                    <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
+                                                </button>
+                                            @endforeach
                                         </div>
                                     </div>
-                                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+
+                                    <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
                                         <table class="table table-vcenter table-sm table-striped mb-0">
                                             <thead class="table-light sticky-top">
                                                 <tr>
-                                                    <th style="width: 140px;">Perintah Bot</th>
+                                                    <th style="width: 150px;">Perintah Bot</th>
                                                     <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
                                                     <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
                                                     <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
@@ -844,27 +872,55 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach($commandDefinitions as $cmd => $def)
-                                                    <tr>
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
-                                                                <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <input class="form-check-input add-cmd-cb" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" checked>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <input class="form-check-input add-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
-                                                        </td>
-                                                        <td>
-                                                            <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm" placeholder="{{ $def['label'] }}">
-                                                        </td>
-                                                        <td>
-                                                            <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm" placeholder="{{ $def['description'] }}">
-                                                        </td>
-                                                    </tr>
+                                                @foreach($categories as $catKey => $cat)
+                                                    @php
+                                                        $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
+                                                    @endphp
+                                                    @if($catDefs->isNotEmpty())
+                                                        <tr class="table-light border-top border-bottom border-2">
+                                                            <td colspan="5" class="py-2 px-3 bg-light">
+                                                                <div class="d-flex align-items-center justify-content-between">
+                                                                    <div class="fw-bold text-dark d-flex align-items-center">
+                                                                        <span class="badge {{ $cat['badge'] }} p-2 me-2">
+                                                                            <i class="ti {{ $cat['icon'] }}"></i>
+                                                                        </span>
+                                                                        <span class="fs-4">{{ $cat['name'] }}</span>
+                                                                        <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
+                                                                    </div>
+                                                                    <div class="d-flex gap-1">
+                                                                        <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="add">
+                                                                            <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="add">
+                                                                            <i class="ti ti-x me-1"></i> Batal
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        @foreach($catDefs as $cmd => $def)
+                                                            <tr class="add-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
+                                                                        <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <input class="form-check-input add-cmd-cb" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" checked>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <input class="form-check-input add-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm" placeholder="{{ $def['label'] }}">
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm" placeholder="{{ $def['description'] }}">
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    @endif
                                                 @endforeach
                                             </tbody>
                                         </table>
@@ -953,7 +1009,7 @@
                                             <i class="ti ti-keyboard me-2 text-primary"></i>
                                             Konfigurasi Menu Perintah & Tombol Keyboard Grup
                                         </h4>
-                                        <small class="text-muted">Pilih perintah yang aktif di grup, atur mana yang muncul sebagai tombol cepat, dan sesuaikan teks labelnya.</small>
+                                        <small class="text-muted">Pilih paket kelompok perintah siap pakai di bawah, atau atur perintah & label tombol secara manual.</small>
                                     </div>
                                     <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="edit_show_reply_keyboard" checked>
@@ -961,21 +1017,39 @@
                                     </div>
                                 </div>
                                 <div class="card-body p-0">
-                                    <div class="p-2 bg-azure-lt small border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                        <div>
-                                            <i class="ti ti-info-circle me-1"></i>
-                                            <b>Tips:</b> Hilangkan centang pada <i>Tombol Reply</i> jika perintah tersebut hanya ingin diketik manual (tidak menjadi tombol di bawah chat).
+                                    <!-- Preset Kelompok Perintah Siap Pakai -->
+                                    <div class="p-3 bg-light border-bottom">
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                            <span class="fw-bold small text-dark d-flex align-items-center">
+                                                <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
+                                                Pilih Cepat Kelompok Perintah (Preset Paket Grup):
+                                            </span>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="edit">
+                                                    <i class="ti ti-check-all me-1"></i> Pilih Semua
+                                                </button>
+                                                <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="edit">
+                                                    <i class="ti ti-trash me-1"></i> Kosongkan
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="d-flex gap-1">
-                                            <button type="button" class="btn btn-xs btn-outline-primary" id="btn-check-all-edit-cmd">Centang Semua Perintah</button>
-                                            <button type="button" class="btn btn-xs btn-outline-secondary" id="btn-uncheck-all-edit-btn">Nonaktifkan Semua Tombol</button>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @foreach($presets as $pKey => $p)
+                                                <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
+                                                    data-target="edit" 
+                                                    data-commands='@json($p['commands'])'
+                                                    title="Pilih kelompok perintah {{ $p['name'] }}">
+                                                    <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
+                                                </button>
+                                            @endforeach
                                         </div>
                                     </div>
-                                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+
+                                    <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
                                         <table class="table table-vcenter table-sm table-striped mb-0">
                                             <thead class="table-light sticky-top">
                                                 <tr>
-                                                    <th style="width: 140px;">Perintah Bot</th>
+                                                    <th style="width: 150px;">Perintah Bot</th>
                                                     <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
                                                     <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
                                                     <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
@@ -983,27 +1057,55 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach($commandDefinitions as $cmd => $def)
-                                                    <tr class="edit-cmd-row" data-cmd="{{ $cmd }}">
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
-                                                                <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" id="edit_cmd_{{ ltrim(str_replace('/', '', $cmd), '_') }}">
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <input class="form-check-input edit-show-btn-checkbox" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
-                                                        </td>
-                                                        <td>
-                                                            <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" placeholder="{{ $def['label'] }}">
-                                                        </td>
-                                                        <td>
-                                                            <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" placeholder="{{ $def['description'] }}">
-                                                        </td>
-                                                    </tr>
+                                                @foreach($categories as $catKey => $cat)
+                                                    @php
+                                                        $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
+                                                    @endphp
+                                                    @if($catDefs->isNotEmpty())
+                                                        <tr class="table-light border-top border-bottom border-2">
+                                                            <td colspan="5" class="py-2 px-3 bg-light">
+                                                                <div class="d-flex align-items-center justify-content-between">
+                                                                    <div class="fw-bold text-dark d-flex align-items-center">
+                                                                        <span class="badge {{ $cat['badge'] }} p-2 me-2">
+                                                                            <i class="ti {{ $cat['icon'] }}"></i>
+                                                                        </span>
+                                                                        <span class="fs-4">{{ $cat['name'] }}</span>
+                                                                        <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
+                                                                    </div>
+                                                                    <div class="d-flex gap-1">
+                                                                        <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="edit">
+                                                                            <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="edit">
+                                                                            <i class="ti ti-x me-1"></i> Batal
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        @foreach($catDefs as $cmd => $def)
+                                                            <tr class="edit-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
+                                                                        <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" id="edit_cmd_{{ ltrim(str_replace('/', '', $cmd), '_') }}">
+                                                                </td>
+                                                                <td class="text-center">
+                                                                    <input class="form-check-input edit-show-btn-checkbox" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" placeholder="{{ $def['label'] }}">
+                                                                </td>
+                                                                <td>
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" placeholder="{{ $def['description'] }}">
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    @endif
                                                 @endforeach
                                             </tbody>
                                         </table>
@@ -1158,6 +1260,80 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const modal = new bootstrap.Modal(document.getElementById('modal-edit-teacher-chat'));
             modal.show();
+        });
+    });
+
+    // -------------------------------------------------------------
+    // Preset & Category Batch Selection Handlers
+    // -------------------------------------------------------------
+    document.querySelectorAll('.btn-apply-preset').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const target = this.dataset.target; // 'add' or 'edit'
+            let selectedCmds = [];
+            try {
+                selectedCmds = JSON.parse(this.dataset.commands || '[]');
+            } catch (e) {
+                selectedCmds = [];
+            }
+
+            const prefix = target === 'add' ? '.add-' : '.edit-';
+            document.querySelectorAll(prefix + 'cmd-row').forEach(function (row) {
+                const cmd = row.dataset.cmd;
+                const isSelected = selectedCmds.includes(cmd);
+
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                if (cmdCb) {
+                    cmdCb.checked = isSelected;
+                }
+
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                if (btnCb) {
+                    btnCb.checked = isSelected;
+                }
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-preset-all').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const target = this.dataset.target;
+            const prefix = target === 'add' ? '.add-' : '.edit-';
+            document.querySelectorAll(prefix + 'cmd-row').forEach(function (row) {
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                if (cmdCb) cmdCb.checked = true;
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                if (btnCb) btnCb.checked = true;
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-preset-clear').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const target = this.dataset.target;
+            const prefix = target === 'add' ? '.add-' : '.edit-';
+            document.querySelectorAll(prefix + 'cmd-row').forEach(function (row) {
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                if (cmdCb) cmdCb.checked = false;
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                if (btnCb) btnCb.checked = false;
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-group-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const cat = this.dataset.cat;
+            const action = this.dataset.action;
+            const target = this.dataset.target;
+            const prefix = target === 'add' ? '.add-' : '.edit-';
+            const shouldCheck = (action === 'check');
+
+            document.querySelectorAll(prefix + 'cmd-row.cat-' + cat).forEach(function (row) {
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                if (cmdCb) cmdCb.checked = shouldCheck;
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                if (btnCb) btnCb.checked = shouldCheck;
+            });
         });
     });
 

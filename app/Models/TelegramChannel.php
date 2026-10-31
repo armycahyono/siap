@@ -95,7 +95,7 @@ class TelegramChannel extends Model
     }
 
     /**
-     * Definisi lengkap seluruh perintah bot dengan teks label dan deskripsi default.
+     * Definisi lengkap seluruh perintah bot dengan teks label, deskripsi, icon, dan kategori.
      */
     public static function getDefaultCommandDefinitions(): array
     {
@@ -106,6 +106,7 @@ class TelegramChannel extends Model
                 'label' => '📋 Tim Piket Hari Ini',
                 'description' => 'Daftar guru & tim piket bertugas hari ini',
                 'icon' => 'ti-clipboard-check',
+                'category' => 'piket',
             ],
             '/jadwal' => [
                 'command' => '/jadwal',
@@ -113,6 +114,7 @@ class TelegramChannel extends Model
                 'label' => '🏫 Jadwal Jam Sekarang',
                 'description' => 'Jadwal guru & mapel KBM jam sekarang',
                 'icon' => 'ti-clock',
+                'category' => 'piket',
             ],
             '/inval' => [
                 'command' => '/inval',
@@ -120,41 +122,7 @@ class TelegramChannel extends Model
                 'label' => '🚨 Cek Inval / Kelas Kosong',
                 'description' => 'Cek kelas kosong & guru pengganti (inval)',
                 'icon' => 'ti-user-exclamation',
-            ],
-            '/lapor' => [
-                'command' => '/lapor',
-                'name' => 'lapor',
-                'label' => '⚠️ Lapor Kasus Siswa',
-                'description' => 'Lapor kasus / pelanggaran siswa (foto bukti)',
-                'icon' => 'ti-alert-triangle',
-            ],
-            '/poin' => [
-                'command' => '/poin',
-                'name' => 'poin',
-                'label' => '🔍 Cek Poin & Kasus Siswa',
-                'description' => 'Cek poin & rekam kedisiplinan siswa',
-                'icon' => 'ti-search',
-            ],
-            '/terlambat' => [
-                'command' => '/terlambat',
-                'name' => 'terlambat',
-                'label' => '⏰ Siswa Terlambat Hari Ini',
-                'description' => 'Daftar siswa terlambat masuk gerbang hari ini',
-                'icon' => 'ti-clock-exclamation',
-            ],
-            '/bolos' => [
-                'command' => '/bolos',
-                'name' => 'bolos',
-                'label' => '🏃 Pantau Siswa Bolos',
-                'description' => 'Daftar siswa terindikasi bolos / alpa KBM',
-                'icon' => 'ti-run',
-            ],
-            '/top_kasus' => [
-                'command' => '/top_kasus',
-                'name' => 'top_kasus',
-                'label' => '📊 Top Kasus Siswa',
-                'description' => 'Statistik & tren pelanggaran siswa teratas',
-                'icon' => 'ti-chart-bar',
+                'category' => 'piket',
             ],
             '/guru_izin' => [
                 'command' => '/guru_izin',
@@ -162,6 +130,7 @@ class TelegramChannel extends Model
                 'label' => '📝 Guru Izin Hari Ini',
                 'description' => 'Daftar GTK yang izin / dinas luar hari ini',
                 'icon' => 'ti-calendar-off',
+                'category' => 'piket',
             ],
             '/izin_keluar' => [
                 'command' => '/izin_keluar',
@@ -169,6 +138,7 @@ class TelegramChannel extends Model
                 'label' => '🎫 Izin Keluar Gerbang',
                 'description' => 'Daftar siswa izin keluar kelas / gerbang',
                 'icon' => 'ti-ticket',
+                'category' => 'piket',
             ],
             '/tamu' => [
                 'command' => '/tamu',
@@ -176,6 +146,7 @@ class TelegramChannel extends Model
                 'label' => '👥 Buku Tamu Hari Ini',
                 'description' => 'Daftar buku tamu kunjungan sekolah',
                 'icon' => 'ti-users',
+                'category' => 'piket',
             ],
             '/serah_terima' => [
                 'command' => '/serah_terima',
@@ -183,6 +154,47 @@ class TelegramChannel extends Model
                 'label' => '🤝 Serah Terima Piket',
                 'description' => 'Catatan serah terima jaga piket harian',
                 'icon' => 'ti-notebook',
+                'category' => 'piket',
+            ],
+            '/lapor' => [
+                'command' => '/lapor',
+                'name' => 'lapor',
+                'label' => '⚠️ Lapor Kasus Siswa',
+                'description' => 'Lapor kasus / pelanggaran siswa (foto bukti)',
+                'icon' => 'ti-alert-triangle',
+                'category' => 'disiplin',
+            ],
+            '/poin' => [
+                'command' => '/poin',
+                'name' => 'poin',
+                'label' => '🔍 Cek Poin & Kasus Siswa',
+                'description' => 'Cek poin & rekam kedisiplinan siswa',
+                'icon' => 'ti-search',
+                'category' => 'disiplin',
+            ],
+            '/terlambat' => [
+                'command' => '/terlambat',
+                'name' => 'terlambat',
+                'label' => '⏰ Siswa Terlambat Hari Ini',
+                'description' => 'Daftar siswa terlambat masuk gerbang hari ini',
+                'icon' => 'ti-clock-exclamation',
+                'category' => 'disiplin',
+            ],
+            '/bolos' => [
+                'command' => '/bolos',
+                'name' => 'bolos',
+                'label' => '🏃 Pantau Siswa Bolos',
+                'description' => 'Daftar siswa terindikasi bolos / alpa KBM',
+                'icon' => 'ti-run',
+                'category' => 'disiplin',
+            ],
+            '/top_kasus' => [
+                'command' => '/top_kasus',
+                'name' => 'top_kasus',
+                'label' => '📊 Top Kasus Siswa',
+                'description' => 'Statistik & tren pelanggaran siswa teratas',
+                'icon' => 'ti-chart-bar',
+                'category' => 'disiplin',
             ],
             '/agenda' => [
                 'command' => '/agenda',
@@ -190,6 +202,7 @@ class TelegramChannel extends Model
                 'label' => '🗓️ Agenda Sekolah',
                 'description' => 'Agenda kegiatan sekolah 7 hari ke depan',
                 'icon' => 'ti-calendar-event',
+                'category' => 'akademik',
             ],
             '/kaldik' => [
                 'command' => '/kaldik',
@@ -197,6 +210,7 @@ class TelegramChannel extends Model
                 'label' => '📅 Kalender Pendidikan',
                 'description' => 'Kalender pendidikan & hari efektif sekolah',
                 'icon' => 'ti-calendar',
+                'category' => 'akademik',
             ],
             '/asesmen' => [
                 'command' => '/asesmen',
@@ -204,6 +218,7 @@ class TelegramChannel extends Model
                 'label' => '📝 Jadwal Asesmen / Ujian',
                 'description' => 'Jadwal asesmen, ujian & sumatif KBM',
                 'icon' => 'ti-file-text',
+                'category' => 'akademik',
             ],
             '/supervisi' => [
                 'command' => '/supervisi',
@@ -211,6 +226,7 @@ class TelegramChannel extends Model
                 'label' => '📋 Supervisi Guru',
                 'description' => 'Jadwal & pantauan supervisi guru',
                 'icon' => 'ti-checkbox',
+                'category' => 'akademik',
             ],
             '/ultah' => [
                 'command' => '/ultah',
@@ -218,13 +234,7 @@ class TelegramChannel extends Model
                 'label' => '🎂 Ultah GTK Bulan Ini',
                 'description' => 'Daftar GTK yang berulang tahun bulan ini',
                 'icon' => 'ti-cake',
-            ],
-            '/info_sekolah' => [
-                'command' => '/info_sekolah',
-                'name' => 'info_sekolah',
-                'label' => 'ℹ️ Profil & Info Sekolah',
-                'description' => 'Informasi profil, alamat & kontak sekolah',
-                'icon' => 'ti-info-circle',
+                'category' => 'gtk',
             ],
             '/pengumuman' => [
                 'command' => '/pengumuman',
@@ -232,6 +242,15 @@ class TelegramChannel extends Model
                 'label' => '📢 Pengumuman Resmi',
                 'description' => 'Pengumuman resmi terbaru sekolah',
                 'icon' => 'ti-speakerphone',
+                'category' => 'gtk',
+            ],
+            '/info_sekolah' => [
+                'command' => '/info_sekolah',
+                'name' => 'info_sekolah',
+                'label' => 'ℹ️ Profil & Info Sekolah',
+                'description' => 'Informasi profil, alamat & kontak sekolah',
+                'icon' => 'ti-info-circle',
+                'category' => 'gtk',
             ],
             '/rekap' => [
                 'command' => '/rekap',
@@ -239,6 +258,7 @@ class TelegramChannel extends Model
                 'label' => '📊 Rekap Cepat Hari Ini',
                 'description' => 'Rekapitulasi cepat operasional harian sekolah',
                 'icon' => 'ti-report-analytics',
+                'category' => 'gtk',
             ],
             '/bantuan' => [
                 'command' => '/bantuan',
@@ -246,6 +266,7 @@ class TelegramChannel extends Model
                 'label' => 'ℹ️ Panduan Bantuan',
                 'description' => 'Panduan bantuan penggunaan bot di grup ini',
                 'icon' => 'ti-help',
+                'category' => 'utilitas',
             ],
             '/id' => [
                 'command' => '/id',
@@ -253,6 +274,74 @@ class TelegramChannel extends Model
                 'label' => '🆔 Cek Chat ID Grup',
                 'description' => 'Cek nomor Chat ID Telegram unik grup ini',
                 'icon' => 'ti-fingerprint',
+                'category' => 'utilitas',
+            ],
+        ];
+    }
+
+    /**
+     * Kategori pengelompokan perintah.
+     */
+    public static function getCommandCategories(): array
+    {
+        return [
+            'piket' => [
+                'name' => 'Operasional Piket & KBM Harian',
+                'icon' => 'ti-calendar-user',
+                'badge' => 'bg-primary text-white',
+            ],
+            'disiplin' => [
+                'name' => 'Kedisiplinan, BK & Kasus Siswa',
+                'icon' => 'ti-shield-check',
+                'badge' => 'bg-warning text-dark',
+            ],
+            'akademik' => [
+                'name' => 'Agenda, Kaldik & Supervisi Guru',
+                'icon' => 'ti-calendar-event',
+                'badge' => 'bg-info text-white',
+            ],
+            'gtk' => [
+                'name' => 'Warga GTK & Informasi Sekolah',
+                'icon' => 'ti-users',
+                'badge' => 'bg-success text-white',
+            ],
+            'utilitas' => [
+                'name' => 'Bantuan & Utilitas Grup',
+                'icon' => 'ti-settings',
+                'badge' => 'bg-secondary text-white',
+            ],
+        ];
+    }
+
+    /**
+     * Preset pilihan cepat perintah untuk masing-masing jenis grup.
+     */
+    public static function getCommandPresets(): array
+    {
+        return [
+            'piket' => [
+                'name' => 'Paket Piket Harian',
+                'icon' => 'ti-calendar-user',
+                'color' => 'btn-outline-primary',
+                'commands' => ['/piket', '/jadwal', '/inval', '/guru_izin', '/izin_keluar', '/serah_terima', '/tamu', '/rekap', '/bantuan', '/id'],
+            ],
+            'disiplin' => [
+                'name' => 'Paket Kedisiplinan & BK',
+                'icon' => 'ti-shield-check',
+                'color' => 'btn-outline-warning',
+                'commands' => ['/lapor', '/poin', '/terlambat', '/bolos', '/top_kasus', '/rekap', '/bantuan', '/id'],
+            ],
+            'kegiatan' => [
+                'name' => 'Paket Kegiatan & Kaldik',
+                'icon' => 'ti-calendar-star',
+                'color' => 'btn-outline-info',
+                'commands' => ['/agenda', '/kaldik', '/asesmen', '/supervisi', '/jadwal', '/bantuan', '/id'],
+            ],
+            'gtk' => [
+                'name' => 'Paket Warga GTK',
+                'icon' => 'ti-users-group',
+                'color' => 'btn-outline-success',
+                'commands' => ['/piket', '/jadwal', '/agenda', '/ultah', '/pengumuman', '/info_sekolah', '/rekap', '/bantuan', '/id'],
             ],
         ];
     }
