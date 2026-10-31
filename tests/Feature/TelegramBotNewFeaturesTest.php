@@ -646,4 +646,26 @@ class TelegramBotNewFeaturesTest extends TestCase
                 && str_contains($request['text'], 'https://t.me/+AbCdEfG');
         });
     }
+
+    public function test_telegram_settings_page_renders_tabbed_interface(): void
+    {
+        $adminRole = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
+        $perm = Permission::firstOrCreate(['slug' => 'manage_settings'], ['name' => 'Manage Settings', 'group' => 'Settings']);
+        $adminRole->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
+        ]);
+        $admin->assignRole($adminRole, ['academic_year' => '2026/2027', 'status' => true]);
+
+        $response = $this->actingAs($admin)->get(route('telegram.index'));
+
+        $response->assertOk();
+        $response->assertSee('id="telegramTabs"', false);
+        $response->assertSee('href="#tab-config"', false);
+        $response->assertSee('href="#tab-channels"', false);
+        $response->assertSee('href="#tab-teachers"', false);
+        $response->assertSee('href="#tab-testing"', false);
+        $response->assertSee('href="#tab-logs"', false);
+    }
 }
