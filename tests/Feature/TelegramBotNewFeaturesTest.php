@@ -669,4 +669,72 @@ class TelegramBotNewFeaturesTest extends TestCase
         $response->assertSee('href="#tab-logs"', false);
         $response->assertSee('Daftar Saluran Grup Telegram Sekolah', false);
     }
+
+    public function test_telegram_bot_new_group_commands(): void
+    {
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]], 200),
+        ]);
+
+        // 1. Test /terlambat
+        PiketStudentPermit::create([
+            'academic_year' => '2026/2027',
+            'permit_number' => 'IZN-20261026-009',
+            'permit_date' => '2026-10-26',
+            'student_id' => $this->student->id,
+            'student_name' => $this->student->name,
+            'classroom_id' => $this->classroom->id,
+            'permit_type' => 'terlambat',
+            'reason' => 'Macet di jalan',
+            'entry_time' => '07:15:00',
+            'given_by' => $this->teacher->id,
+            'status' => 'diberikan',
+        ]);
+
+        $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'message_id' => 101,
+                'chat' => ['id' => 123456789],
+                'from' => ['id' => 123456789, 'first_name' => 'Pak Guru'],
+                'text' => '/terlambat',
+            ],
+        ])->assertOk();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($request['text'], 'REKAP KETERLAMBATAN SISWA HARI INI')
+                && stripos($request['text'], 'Budi Santoso') !== false;
+        });
+
+        // 2. Test /info_sekolah
+        $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'message_id' => 102,
+                'chat' => ['id' => 123456789],
+                'from' => ['id' => 123456789, 'first_name' => 'Pak Guru'],
+                'text' => '/info_sekolah',
+            ],
+        ])->assertOk();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($request['text'], 'PROFIL & INFORMASI RESMI SEKOLAH')
+                && str_contains($request['text'], 'Peserta Didik Aktif');
+        });
+
+        // 3. Test /serah_terima
+        $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'message_id' => 103,
+                'chat' => ['id' => 123456789],
+                'from' => ['id' => 123456789, 'first_name' => 'Pak Guru'],
+                'text' => '/serah_terima',
+            ],
+        ])->assertOk();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($request['text'], 'RINGKASAN SERAH TERIMA JURNAL PIKET');
+        });
+    }
 }

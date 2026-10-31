@@ -15,9 +15,11 @@ use App\Models\PiketInvalClass;
 use App\Models\PiketJournal;
 use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
+use App\Models\PiketTelegramLog;
 use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\SubjectAttendanceRecord;
+use App\Models\Supervision;
 use App\Models\TelegramChannel;
 use App\Models\User;
 use App\Services\AcademicYearContext;
@@ -241,6 +243,54 @@ class TelegramBotWebhookController extends Controller
 
             case $cmd === '/lapor' || $cmd === '/kasus' || $cmd === '⚠️ lapor kasus siswa':
                 $this->startIncidentReport($chatId, $user);
+                break;
+
+            case $cmd === '/terlambat' || $cmd === '/telat' || $cmd === '⏰ rekap siswa terlambat' || $cmd === 'rekap siswa terlambat':
+                $this->commandLateStudents($chatId, $user);
+                break;
+
+            case $cmd === '/bolos' || $cmd === '/alpa' || $cmd === '🚨 cek siswa bolos' || $cmd === 'cek siswa bolos':
+                $this->commandTruancyStudents($chatId, $user);
+                break;
+
+            case $cmd === '/top_kasus' || $cmd === '/topkasus' || $cmd === '📊 top kasus siswa' || $cmd === 'top kasus siswa':
+                $this->commandTopIncidents($chatId, $user);
+                break;
+
+            case $cmd === '/guru_izin' || $cmd === '/guruizin' || $cmd === '📋 daftar guru izin' || $cmd === 'daftar guru izin':
+                $this->commandTeacherPermitsToday($chatId, $user);
+                break;
+
+            case $cmd === '/izin_keluar' || $cmd === '/izinkeluar' || $cmd === '🎫 izin keluar siswa' || $cmd === 'izin keluar siswa':
+                $this->commandStudentOutPermits($chatId, $user);
+                break;
+
+            case $cmd === '/serah_terima' || $cmd === '/serahterima' || $cmd === '/handover' || $cmd === '📑 serah terima piket' || $cmd === 'serah terima piket':
+                $this->commandPiketHandover($chatId, $user);
+                break;
+
+            case $cmd === '/kaldik' || $cmd === '🗓️ kalender pendidikan' || $cmd === 'kalender pendidikan':
+                $this->commandAcademicCalendarMonth($chatId, $user);
+                break;
+
+            case $cmd === '/asesmen' || $cmd === '/ujian' || $cmd === '📝 jadwal asesmen' || $cmd === 'jadwal asesmen':
+                $this->commandUpcomingAssessments($chatId, $user);
+                break;
+
+            case $cmd === '/supervisi' || $cmd === '📋 jadwal supervisi' || $cmd === 'jadwal supervisi':
+                $this->commandSupervisionSchedule($chatId, $user);
+                break;
+
+            case $cmd === '/ultah' || $cmd === '/ulangtahun' || $cmd === '🎂 info ulang tahun' || $cmd === 'info ulang tahun':
+                $this->commandTodayBirthdays($chatId, $user);
+                break;
+
+            case $cmd === '/info_sekolah' || $cmd === '/infosekolah' || $cmd === '/profil_sekolah' || $cmd === '🏫 info sekolah' || $cmd === 'info sekolah':
+                $this->commandSchoolInfo($chatId, $user);
+                break;
+
+            case $cmd === '/pengumuman' || $cmd === '📢 pengumuman resmi' || $cmd === 'pengumuman resmi':
+                $this->commandLatestAnnouncement($chatId, $user);
                 break;
 
             default:
@@ -4325,5 +4375,546 @@ class TelegramBotWebhookController extends Controller
         } catch (Throwable) {
             // Silently ignore
         }
+    }
+
+    /**
+     * Command: /terlambat
+     */
+    protected function commandLateStudents(string $chatId, ?User $user): void
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $todayFormatted = Carbon::today('Asia/Jakarta')->translatedFormat('l, d F Y');
+
+        $permits = PiketStudentPermit::whereDate('permit_date', $today)
+            ->where('permit_type', 'terlambat')
+            ->with(['student', 'classroom'])
+            ->orderBy('entry_time')
+            ->get();
+
+        $msg = "⏰ <b>REKAP KETERLAMBATAN SISWA HARI INI</b>\n"
+            ."📅 <b>Hari/Tgl:</b> {$todayFormatted}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($permits->isEmpty()) {
+            $msg .= "✅ <i>Belum ada catatan siswa terlambat masuk sekolah hari ini.</i>\n";
+        } else {
+            $msg .= 'Total Terlambat: <b>'.$permits->count()." siswa</b>\n\n";
+            foreach ($permits as $i => $p) {
+                $num = $i + 1;
+                $nama = $p->student?->name ?? $p->student_name ?? 'Siswa';
+                $kelas = $p->classroom?->name ?? '-';
+                $jam = $p->entry_time ? Carbon::parse($p->entry_time)->format('H:i') : '-';
+                $alasan = $p->reason ?: 'Tidak ada alasan';
+
+                $msg .= "{$num}. <b>{$nama}</b> ({$kelas})\n"
+                    ."   ⏱️ Tiba: Pukul <b>{$jam}</b> WIB\n"
+                    ."   📝 Alasan: <i>{$alasan}</i>\n\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Data real-time dari Meja Piket & Presensi SIAP</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /bolos
+     */
+    protected function commandTruancyStudents(string $chatId, ?User $user): void
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $todayFormatted = Carbon::today('Asia/Jakarta')->translatedFormat('l, d F Y');
+
+        $records = SubjectAttendanceRecord::whereHas('session', fn ($q) => $q->whereDate('date', $today))
+            ->whereIn('status', ['alpa', 'a'])
+            ->with(['student', 'session.classroom', 'session.subject'])
+            ->get();
+
+        $msg = "🚨 <b>REKAP SISWA ALPA / BOLOS KBM HARI INI</b>\n"
+            ."📅 <b>Hari/Tgl:</b> {$todayFormatted}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($records->isEmpty()) {
+            $msg .= "✅ <i>Alhamdulillah, tidak ada siswa yang tercatat Alpa/Bolos pada sesi KBM hari ini.</i>\n";
+        } else {
+            $msg .= 'Ditemukan: <b>'.$records->count()." catatan ketidakhadiran tanpa izin</b>\n\n";
+            foreach ($records->take(15) as $i => $r) {
+                $num = $i + 1;
+                $nama = $r->student?->name ?? 'Siswa';
+                $kelas = $r->session?->classroom?->name ?? '-';
+                $mapel = $r->session?->subject?->name ?? '-';
+
+                $msg .= "{$num}. <b>{$nama}</b> ({$kelas})\n"
+                    ."   📚 Mapel: <b>{$mapel}</b>\n\n";
+            }
+            if ($records->count() > 15) {
+                $msg .= '<i>...dan '.($records->count() - 15)." siswa lainnya.</i>\n\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Data bersumber dari Jurnal Presensi KBM Guru Mapel</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /top_kasus
+     */
+    protected function commandTopIncidents(string $chatId, ?User $user): void
+    {
+        $now = Carbon::now('Asia/Jakarta');
+        $monthName = $now->translatedFormat('F Y');
+
+        $topCategories = PiketIncident::whereMonth('incident_date', $now->month)
+            ->whereYear('incident_date', $now->year)
+            ->selectRaw('category, count(*) as total')
+            ->groupBy('category')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        $totalIncidents = PiketIncident::whereMonth('incident_date', $now->month)
+            ->whereYear('incident_date', $now->year)
+            ->count();
+
+        $msg = "📊 <b>TOP 5 KASUS & PELANGGARAN SISWA</b>\n"
+            ."🗓️ <b>Periode:</b> {$monthName}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."Total Insiden Tercatat: <b>{$totalIncidents} kasus</b>\n\n";
+
+        if ($topCategories->isEmpty()) {
+            $msg .= "✅ <i>Belum ada kasus pelanggaran yang tercatat pada bulan ini.</i>\n";
+        } else {
+            foreach ($topCategories as $i => $cat) {
+                $num = $i + 1;
+                $catName = ucwords(str_replace('_', ' ', $cat->category ?: 'Lainnya'));
+                $firstTotal = max(1, (int) $topCategories->first()->total);
+                $barLength = min(10, max(1, (int) round(($cat->total / $firstTotal) * 10)));
+                $bar = str_repeat('█', $barLength);
+
+                $msg .= "{$num}. <b>{$catName}</b>\n"
+                    ."   <code>{$bar}</code> <b>{$cat->total}</b> kejadian\n\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Laporan evaluasi untuk Tim Kedisiplinan, BK, dan Wali Kelas</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /guru_izin
+     */
+    protected function commandTeacherPermitsToday(string $chatId, ?User $user): void
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $todayFormatted = Carbon::today('Asia/Jakarta')->translatedFormat('l, d F Y');
+
+        $permits = GtkPermit::whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->where('status', 'approved')
+            ->with('user')
+            ->get();
+
+        $invalClasses = PiketInvalClass::whereDate('date', $today)
+            ->with(['teacher', 'invalTeacher', 'subject', 'classroom'])
+            ->get();
+
+        $msg = "📋 <b>DAFTAR GURU IZIN & INVAL HARI INI</b>\n"
+            ."📅 <b>Hari/Tgl:</b> {$todayFormatted}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($permits->isEmpty() && $invalClasses->isEmpty()) {
+            $msg .= "✅ <i>Alhamdulillah, seluruh Bapak/Ibu Guru hadir dinas hari ini.</i>\n";
+        } else {
+            if ($permits->isNotEmpty()) {
+                $msg .= "👨‍🏫 <b>Guru Berhalangan Hadir:</b>\n";
+                foreach ($permits as $i => $p) {
+                    $num = $i + 1;
+                    $guru = $p->user?->name ?? 'Guru';
+                    $tipe = ucwords(str_replace('_', ' ', $p->permission_type));
+                    $alasan = $p->reason ?: '-';
+                    $msg .= "{$num}. <b>{$guru}</b> ({$tipe})\n"
+                        ."   📝 Alasan: <i>{$alasan}</i>\n";
+                }
+                $msg .= "\n";
+            }
+
+            if ($invalClasses->isNotEmpty()) {
+                $msg .= "🚨 <b>Penugasan Guru Pengganti (Inval):</b>\n";
+                foreach ($invalClasses as $j => $inv) {
+                    $num = $j + 1;
+                    $kelas = $inv->classroom?->name ?? 'Kelas';
+                    $mapel = $inv->subject?->name ?? 'Mapel';
+                    $pengganti = $inv->invalTeacher?->name ?? '<i>Belum ditentukan</i>';
+                    $msg .= "{$num}. <b>{$kelas}</b> - {$mapel}\n"
+                        ."   👉 Diampu oleh: <b>{$pengganti}</b>\n";
+                }
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Data sinkron dengan Modul Izin GTK & Meja Piket SIAP</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /izin_keluar
+     */
+    protected function commandStudentOutPermits(string $chatId, ?User $user): void
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $todayFormatted = Carbon::today('Asia/Jakarta')->translatedFormat('l, d F Y');
+
+        $permits = PiketStudentPermit::whereDate('permit_date', $today)
+            ->whereIn('permit_type', ['keluar', 'pulang', 'dispensasi'])
+            ->with(['student', 'classroom'])
+            ->orderBy('created_at')
+            ->get();
+
+        $msg = "🎫 <b>PERIZINAN SISWA KELUAR/PULANG HARI INI</b>\n"
+            ."📅 <b>Hari/Tgl:</b> {$todayFormatted}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($permits->isEmpty()) {
+            $msg .= "✅ <i>Belum ada siswa yang mengajukan izin keluar atau pulang cepat hari ini.</i>\n";
+        } else {
+            $msg .= 'Total Diberikan: <b>'.$permits->count()." izin</b>\n\n";
+            foreach ($permits as $i => $p) {
+                $num = $i + 1;
+                $nama = $p->student?->name ?? $p->student_name ?? 'Siswa';
+                $kelas = $p->classroom?->name ?? '-';
+                $tipe = match ($p->permit_type) {
+                    'keluar' => 'Izin Keluar Sementara',
+                    'pulang' => 'Izin Pulang Cepat',
+                    'dispensasi' => 'Dispensasi Kegiatan',
+                    default => ucfirst($p->permit_type),
+                };
+                $jam = $p->departure_time ? Carbon::parse($p->departure_time)->format('H:i') : '-';
+                $alasan = $p->reason ?: '-';
+
+                $msg .= "{$num}. <b>{$nama}</b> ({$kelas})\n"
+                    ."   🏷️ Jenis: <b>{$tipe}</b> (Pukul {$jam} WIB)\n"
+                    ."   📝 Alasan: <i>{$alasan}</i>\n\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Verifikasi surat perizinan resmi meja piket sekolah</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /serah_terima
+     */
+    protected function commandPiketHandover(string $chatId, ?User $user): void
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $todayFormatted = Carbon::today('Asia/Jakarta')->translatedFormat('l, d F Y');
+
+        $lateCount = PiketStudentPermit::whereDate('permit_date', $today)->where('permit_type', 'terlambat')->count();
+        $outPermitCount = PiketStudentPermit::whereDate('permit_date', $today)->whereIn('permit_type', ['keluar', 'pulang', 'dispensasi'])->count();
+        $guestCount = PiketGuest::whereDate('visit_date', $today)->count();
+        $invalCount = PiketInvalClass::whereDate('date', $today)->count();
+        $incidentCount = PiketIncident::whereDate('incident_date', $today)->count();
+
+        $dayNames = [
+            1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today('Asia/Jakarta')->dayOfWeekIso] ?? 'Senin';
+        $academicYear = $this->getOperationalAcademicYear();
+
+        $officers = PiketSchedule::where('academic_year', $academicYear)
+            ->where('day', $todayDay)
+            ->where('is_active', true)
+            ->with('teacher')
+            ->get();
+
+        $officerNames = $officers->map(fn ($s) => $s->teacher?->name)->filter()->implode(', ') ?: 'Petugas Piket Terjadwal';
+
+        $msg = "📑 <b>RINGKASAN SERAH TERIMA JURNAL PIKET</b>\n"
+            ."📅 <b>Hari/Tgl:</b> {$todayFormatted}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."👥 <b>Petugas:</b> {$officerNames}\n\n"
+            ."📊 <b>Statistik Operasional Hari Ini:</b>\n"
+            ."• ⏰ Siswa Terlambat: <b>{$lateCount}</b> anak\n"
+            ."• 🎫 Perizinan Siswa: <b>{$outPermitCount}</b> berkas\n"
+            ."• 🚨 Kelas Inval / Pengganti: <b>{$invalCount}</b> kelas\n"
+            ."• 🤝 Buku Tamu Sekolah: <b>{$guestCount}</b> kunjungan\n"
+            ."• ⚠️ Kejadian / Insiden: <b>{$incidentCount}</b> kasus\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            .'Status: <b>Jurnal Siap Ditutup & Diserahkan</b> ke Waka/Pimpinan.';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /kaldik
+     */
+    protected function commandAcademicCalendarMonth(string $chatId, ?User $user): void
+    {
+        $now = Carbon::now('Asia/Jakarta');
+        $monthName = $now->translatedFormat('F Y');
+
+        $events = CurriculumEvent::whereYear('start_date', $now->year)
+            ->whereMonth('start_date', $now->month)
+            ->orderBy('start_date')
+            ->get();
+
+        $msg = "🗓️ <b>AGENDA & KALENDER PENDIDIKAN</b>\n"
+            ."📆 <b>Bulan:</b> {$monthName}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($events->isEmpty()) {
+            $msg .= "ℹ️ <i>Belum ada agenda khusus atau kegiatan tercatat pada bulan ini. KBM berjalan normal.</i>\n";
+        } else {
+            foreach ($events as $i => $e) {
+                $num = $i + 1;
+                $start = Carbon::parse($e->start_date)->format('d M');
+                $end = ($e->end_date && $e->end_date !== $e->start_date) ? ' - '.Carbon::parse($e->end_date)->format('d M') : '';
+                $icon = $e->is_holiday ? '🔴' : '🔵';
+                $kategori = $e->category ? " [{$e->category}]" : '';
+
+                $msg .= "{$num}. {$icon} <b>{$e->title}</b>{$kategori}\n"
+                    ."   📅 {$start}{$end}\n";
+                if ($e->description) {
+                    $msg .= "   ℹ️ <i>{$e->description}</i>\n";
+                }
+                $msg .= "\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Data bersumber dari Kalender Pendidikan Resmi SMK PGRI Kras</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /asesmen
+     */
+    protected function commandUpcomingAssessments(string $chatId, ?User $user): void
+    {
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+
+        $events = CurriculumEvent::where('start_date', '>=', $today)
+            ->where(function ($q) {
+                $q->where('title', 'like', '%asesmen%')
+                    ->orWhere('title', 'like', '%ujian%')
+                    ->orWhere('title', 'like', '%pts%')
+                    ->orWhere('title', 'like', '%pas%')
+                    ->orWhere('title', 'like', '%pat%')
+                    ->orWhere('title', 'like', '%ukk%')
+                    ->orWhere('title', 'like', '%anbk%')
+                    ->orWhere('category', 'like', '%asesmen%')
+                    ->orWhere('category', 'like', '%ujian%');
+            })
+            ->orderBy('start_date')
+            ->limit(5)
+            ->get();
+
+        $msg = "📝 <b>JADWAL ASESMEN & UJIAN MENDATANG</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($events->isEmpty()) {
+            $msg .= "ℹ️ <i>Tidak ada jadwal asesmen/ujian resmi dalam waktu dekat.</i>\n";
+        } else {
+            foreach ($events as $i => $e) {
+                $num = $i + 1;
+                $start = Carbon::parse($e->start_date)->translatedFormat('d F Y');
+                $end = ($e->end_date && $e->end_date !== $e->start_date) ? ' s/d '.Carbon::parse($e->end_date)->translatedFormat('d F Y') : '';
+                $diffDays = (int) Carbon::today('Asia/Jakarta')->diffInDays(Carbon::parse($e->start_date), false);
+                $countdown = $diffDays <= 0 ? '🔥 <b>Hari ini!</b>' : "⏳ <b>{$diffDays} hari lagi</b>";
+
+                $msg .= "{$num}. <b>{$e->title}</b>\n"
+                    ."   🗓️ Tanggal: {$start}{$end}\n"
+                    ."   Status: {$countdown}\n\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Persiapkan administrasi dan perangkat pembelajaran dengan baik</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /supervisi
+     */
+    protected function commandSupervisionSchedule(string $chatId, ?User $user): void
+    {
+        $now = Carbon::now('Asia/Jakarta');
+        $startOfWeek = $now->copy()->startOfWeek()->toDateString();
+        $endOfWeek = $now->copy()->endOfWeek()->toDateString();
+
+        $supervisions = Supervision::whereBetween('schedule_date', [$startOfWeek, $endOfWeek])
+            ->with(['teacher', 'supervisor'])
+            ->orderBy('schedule_date')
+            ->get();
+
+        $isPekanIni = true;
+        if ($supervisions->isEmpty()) {
+            $supervisions = Supervision::where('schedule_date', '>=', $now->toDateString())
+                ->with(['teacher', 'supervisor'])
+                ->orderBy('schedule_date')
+                ->limit(5)
+                ->get();
+            $isPekanIni = false;
+        }
+
+        $msg = "📋 <b>JADWAL SUPERVISI PEMBELAJARAN GURU</b>\n"
+            .'🗓️ <b>Rentang:</b> '.($isPekanIni ? 'Pekan Berjalan' : 'Mendatang')."\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($supervisions->isEmpty()) {
+            $msg .= "ℹ️ <i>Tidak ada jadwal observasi supervisi kelas untuk pekan ini.</i>\n";
+        } else {
+            foreach ($supervisions as $i => $s) {
+                $num = $i + 1;
+                $guru = $s->teacher?->name ?? 'Guru';
+                $supervisor = $s->supervisor?->name ?? 'Tim Supervisor';
+                $mapel = $s->subject ?: 'Mata Pelajaran';
+                $kelas = $s->class_name ?: '-';
+                $tgl = $s->schedule_date ? Carbon::parse($s->schedule_date)->translatedFormat('l, d M Y') : '-';
+                $jam = $s->schedule_time ? Carbon::parse($s->schedule_time)->format('H:i').' WIB' : '';
+                $status = match ($s->status) {
+                    'scheduled' => '🟡 Terjadwal',
+                    'pre_completed' => '🔵 Siap Observasi',
+                    'completed' => '🟢 Selesai',
+                    default => ucfirst($s->status ?? 'Terjadwal'),
+                };
+
+                $msg .= "{$num}. <b>{$guru}</b> ({$kelas})\n"
+                    ."   📚 Mapel: <b>{$mapel}</b>\n"
+                    ."   👤 Penilai: {$supervisor}\n"
+                    ."   🗓️ Waktu: {$tgl} {$jam}\n"
+                    ."   Status: {$status}\n\n";
+            }
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Data resmi dari Modul Supervisi Akademik SIAP</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /ultah
+     */
+    protected function commandTodayBirthdays(string $chatId, ?User $user): void
+    {
+        $now = Carbon::now('Asia/Jakarta');
+        $day = $now->format('d');
+        $dayInt = (string) $now->day;
+        $months = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+        $monthName = $months[$now->month] ?? 'Januari';
+        $pattern1 = $day.' '.$monthName;
+        $pattern2 = $dayInt.' '.$monthName;
+
+        $birthdayUsers = User::where('is_active', true)
+            ->where(function ($q) use ($pattern1, $pattern2) {
+                $q->where('birth_info', 'like', "%{$pattern1}%")
+                    ->orWhere('birth_info', 'like', "%{$pattern2}%");
+            })
+            ->with('role')
+            ->get();
+
+        $todayFormatted = $now->translatedFormat('l, d F Y');
+
+        $msg = "🎂 <b>INFO ULANG TAHUN KELUARGA GTK</b>\n"
+            ."📅 <b>Hari Ini:</b> {$todayFormatted}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($birthdayUsers->isEmpty()) {
+            $msg .= "ℹ️ <i>Hari ini tidak ada Bapak/Ibu Guru atau Karyawan yang berulang tahun.</i>\n";
+        } else {
+            $msg .= "🎉 <b>Selamat Ulang Tahun kepada:</b>\n\n";
+            foreach ($birthdayUsers as $u) {
+                $role = $u->role?->name ?? 'GTK';
+                $msg .= "🌟 <b>{$u->name}</b>\n"
+                    ."   Jabatan: {$role}\n\n";
+            }
+            $msg .= "<i>Semoga senantiasa diberikan kesehatan, keberkahan usia, kebahagiaan, serta kemudahan dalam setiap langkah pengabdian di SMK PGRI Kras. Aamiin 🤲</i>\n";
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Keluarga Besar SMK PGRI Kras</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /info_sekolah
+     */
+    protected function commandSchoolInfo(string $chatId, ?User $user): void
+    {
+        $setting = SchoolSetting::first();
+        $totalStudents = Student::where('status', 'aktif')->count();
+        $totalClassrooms = Classroom::where('is_active', true)->count();
+        $totalTeachers = User::where('is_active', true)->whereHas('role', fn ($q) => $q->where('slug', 'guru'))->count();
+        $totalStaff = User::where('is_active', true)->whereHas('role', fn ($q) => $q->whereIn('slug', ['staf', 'kepala_tu', 'operator']))->count();
+        $academicYear = $this->getOperationalAcademicYear();
+
+        $schoolName = $setting?->school_name ?: 'SMK PGRI KRAS';
+        $npsn = $setting?->npsn ?: '20511979';
+        $principal = $setting?->principal_name ?: 'Drs. NONO SUHARYONO';
+        $address = $setting?->address ?: 'Jl. Raya Kras No. 123 Kras, Kediri, Jawa Timur';
+        $phone = $setting?->phone ?: '(0354) 479xxx';
+
+        $msg = "🏫 <b>PROFIL & INFORMASI RESMI SEKOLAH</b>\n"
+            ."<b>{$schoolName}</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."📌 <b>NPSN:</b> <code>{$npsn}</code>\n"
+            ."👤 <b>Kepala Sekolah:</b> {$principal}\n"
+            ."📅 <b>Tahun Pelajaran:</b> {$academicYear}\n\n"
+            ."📊 <b>Data Statistik Warga Sekolah:</b>\n"
+            ."• 👥 Peserta Didik Aktif: <b>{$totalStudents}</b> siswa\n"
+            ."• 🏫 Rombongan Belajar: <b>{$totalClassrooms}</b> kelas\n"
+            ."• 👨‍🏫 Dewan Guru Pengajar: <b>{$totalTeachers}</b> guru\n"
+            ."• 💼 Tenaga Kependidikan: <b>{$totalStaff}</b> staf/TU\n\n"
+            ."📍 <b>Alamat:</b> {$address}\n"
+            ."📞 <b>Kontak:</b> {$phone}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+    }
+
+    /**
+     * Command: /pengumuman
+     */
+    protected function commandLatestAnnouncement(string $chatId, ?User $user): void
+    {
+        $latestBroadcast = PiketTelegramLog::where('target_type', 'broadcast')
+            ->where('status', 'sent')
+            ->latest()
+            ->first();
+
+        $msg = "📢 <b>PENGUMUMAN & EDARAN RESMI TERBARU</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if (! $latestBroadcast) {
+            $msg .= "ℹ️ <i>Belum ada siaran pengumuman resmi yang dipublikasikan dalam sistem.</i>\n";
+        } else {
+            $tgl = $latestBroadcast->created_at ? $latestBroadcast->created_at->translatedFormat('l, d F Y H:i') : '-';
+            $isi = strip_tags($latestBroadcast->message);
+
+            $msg .= "🕒 <b>Waktu Terbit:</b> {$tgl} WIB\n\n"
+                ."{$isi}\n\n";
+        }
+
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Pemberitahuan Resmi SMK PGRI Kras</i>';
+
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
     }
 }
