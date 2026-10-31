@@ -768,183 +768,181 @@
 <!-- ========================================================================= -->
 <div class="modal fade" id="modal-tambah-saluran" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow">
-            <form action="{{ route('telegram.channel.store') }}" method="POST">
-                @csrf
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold d-flex align-items-center">
-                        <i class="ti ti-messages me-2 fs-2"></i>
-                        Tambah Saluran Grup Telegram Sekolah
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <div class="col-md-7">
-                            <label class="form-label required">Nama Saluran Grup</label>
-                            <input type="text" name="name" class="form-control" placeholder="Contoh: Warga TK SMK PGRI Kras / Tim Piket" required>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">ID Chat Telegram (Awali tanda minus misal -100...)</label>
-                            <input type="text" name="chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Deskripsi / Fungsi Grup</label>
-                            <textarea name="description" class="form-control" rows="2" placeholder="Jelaskan fungsi koordinasi dan informasi apa yang masuk ke grup ini..."></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Tautan Undangan Grup (Invite Link Telegram)</label>
-                            <input type="url" name="invite_link" class="form-control font-monospace" placeholder="https://t.me/+xxxxxx (Kosongkan jika ingin dibuat otomatis oleh bot)">
-                        </div>
+        <form action="{{ route('telegram.channel.store') }}" method="POST" class="modal-content shadow">
+            @csrf
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold d-flex align-items-center">
+                    <i class="ti ti-messages me-2 fs-2"></i>
+                    Tambah Saluran Grup Telegram Sekolah
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 modal-body-scrollable">
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <label class="form-label required">Nama Saluran Grup</label>
+                        <input type="text" name="name" class="form-control" placeholder="Contoh: Warga TK SMK PGRI Kras / Tim Piket" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">ID Chat Telegram (Awali tanda minus misal -100...)</label>
+                        <input type="text" name="chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Deskripsi / Fungsi Grup</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Jelaskan fungsi koordinasi dan informasi apa yang masuk ke grup ini..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Tautan Undangan Grup (Invite Link Telegram)</label>
+                        <input type="url" name="invite_link" class="form-control font-monospace" placeholder="https://t.me/+xxxxxx (Kosongkan jika ingin dibuat otomatis oleh bot)">
+                    </div>
 
-                        <!-- Pilihan Peran GTK yang Diizinkan -->
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-dark border-bottom pb-1">
-                                <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
-                            </label>
-                            <div class="row g-2 mt-1">
-                                @foreach($availableRoles as $role)
-                                    <div class="col-md-4 col-sm-6">
-                                        <label class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}">
-                                            <span class="form-check-label small">{{ $role->name }}</span>
-                                        </label>
-                                    </div>
-                                @endforeach
+                    <!-- Pilihan Peran GTK yang Diizinkan -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark border-bottom pb-1">
+                            <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
+                        </label>
+                        <div class="row g-2 mt-1">
+                            @foreach($availableRoles as $role)
+                                <div class="col-md-4 col-sm-6">
+                                    <label class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}">
+                                        <span class="form-check-label small">{{ $role->name }}</span>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted">Guru yang memiliki peran di atas akan diizinkan dan dikirimi link undangan personal via Japri Bot.</small>
+                    </div>
+
+                    <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
+                    <div class="col-12 mt-3">
+                        <div class="card border shadow-none">
+                            <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 gap-2">
+                                <div>
+                                    <h4 class="card-title mb-0 d-flex align-items-center">
+                                        <i class="ti ti-keyboard me-2 text-primary"></i>
+                                        Konfigurasi Menu Perintah & Tombol Keyboard Grup
+                                    </h4>
+                                    <small class="text-muted">Pilih paket kelompok perintah siap pakai di bawah, atau atur perintah & label tombol secara manual.</small>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="add_show_reply_keyboard" checked>
+                                    <label class="form-check-label fw-bold small" for="add_show_reply_keyboard">Tampilkan Reply Keyboard di Grup</label>
+                                </div>
                             </div>
-                            <small class="text-muted">Guru yang memiliki peran di atas akan diizinkan dan dikirimi link undangan personal via Japri Bot.</small>
-                        </div>
-
-                        <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
-                        <div class="col-12 mt-3">
-                            <div class="card border shadow-none">
-                                <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 gap-2">
-                                    <div>
-                                        <h4 class="card-title mb-0 d-flex align-items-center">
-                                            <i class="ti ti-keyboard me-2 text-primary"></i>
-                                            Konfigurasi Menu Perintah & Tombol Keyboard Grup
-                                        </h4>
-                                        <small class="text-muted">Pilih paket kelompok perintah siap pakai di bawah, atau atur perintah & label tombol secara manual.</small>
+                            <div class="card-body p-0">
+                                <!-- Preset Kelompok Perintah Siap Pakai -->
+                                <div class="p-3 bg-light border-bottom">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                        <span class="fw-bold small text-dark d-flex align-items-center">
+                                            <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
+                                            Pilih Cepat Kelompok Perintah (Preset Paket Grup):
+                                        </span>
+                                        <div class="d-flex gap-1">
+                                            <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="add">
+                                                <i class="ti ti-check-all me-1"></i> Pilih Semua
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="add">
+                                                <i class="ti ti-trash me-1"></i> Kosongkan
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="add_show_reply_keyboard" checked>
-                                        <label class="form-check-label fw-bold small" for="add_show_reply_keyboard">Tampilkan Reply Keyboard di Grup</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach($presets as $pKey => $p)
+                                            <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
+                                                data-target="add" 
+                                                data-commands='@json($p['commands'])'
+                                                title="Pilih kelompok perintah {{ $p['name'] }}">
+                                                <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
+                                            </button>
+                                        @endforeach
                                     </div>
                                 </div>
-                                <div class="card-body p-0">
-                                    <!-- Preset Kelompok Perintah Siap Pakai -->
-                                    <div class="p-3 bg-light border-bottom">
-                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                            <span class="fw-bold small text-dark d-flex align-items-center">
-                                                <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
-                                                Pilih Cepat Kelompok Perintah (Preset Paket Grup):
-                                            </span>
-                                            <div class="d-flex gap-1">
-                                                <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="add">
-                                                    <i class="ti ti-check-all me-1"></i> Pilih Semua
-                                                </button>
-                                                <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="add">
-                                                    <i class="ti ti-trash me-1"></i> Kosongkan
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            @foreach($presets as $pKey => $p)
-                                                <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
-                                                    data-target="add" 
-                                                    data-commands='@json($p['commands'])'
-                                                    title="Pilih kelompok perintah {{ $p['name'] }}">
-                                                    <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
 
-                                    <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
-                                        <table class="table table-vcenter table-sm table-striped mb-0">
-                                            <thead class="table-light sticky-top">
-                                                <tr>
-                                                    <th style="width: 150px;">Perintah Bot</th>
-                                                    <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
-                                                    <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
-                                                    <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
-                                                    <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($categories as $catKey => $cat)
-                                                    @php
-                                                        $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
-                                                    @endphp
-                                                    @if($catDefs->isNotEmpty())
-                                                        <tr class="table-light border-top border-bottom border-2">
-                                                            <td colspan="5" class="py-2 px-3 bg-light">
-                                                                <div class="d-flex align-items-center justify-content-between">
-                                                                    <div class="fw-bold text-dark d-flex align-items-center">
-                                                                        <span class="badge {{ $cat['badge'] }} p-2 me-2">
-                                                                            <i class="ti {{ $cat['icon'] }}"></i>
-                                                                        </span>
-                                                                        <span class="fs-4">{{ $cat['name'] }}</span>
-                                                                        <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
-                                                                    </div>
-                                                                    <div class="d-flex gap-1">
-                                                                        <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="add">
-                                                                            <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
-                                                                        </button>
-                                                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="add">
-                                                                            <i class="ti ti-x me-1"></i> Batal
-                                                                        </button>
-                                                                    </div>
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter table-sm table-striped mb-0">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th style="width: 150px;">Perintah Bot</th>
+                                                <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
+                                                <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
+                                                <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
+                                                <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($categories as $catKey => $cat)
+                                                @php
+                                                    $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
+                                                @endphp
+                                                @if($catDefs->isNotEmpty())
+                                                    <tr class="table-light border-top border-bottom border-2">
+                                                        <td colspan="5" class="py-2 px-3 bg-light">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <div class="fw-bold text-dark d-flex align-items-center">
+                                                                    <span class="badge {{ $cat['badge'] }} p-2 me-2">
+                                                                        <i class="ti {{ $cat['icon'] }}"></i>
+                                                                    </span>
+                                                                    <span class="fs-4">{{ $cat['name'] }}</span>
+                                                                    <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
+                                                                </div>
+                                                                <div class="d-flex gap-1">
+                                                                    <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="add">
+                                                                        <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="add">
+                                                                        <i class="ti ti-x me-1"></i> Batal
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    @foreach($catDefs as $cmd => $def)
+                                                        <tr class="add-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
+                                                                    <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
                                                                 </div>
                                                             </td>
+                                                            <td class="text-center">
+                                                                <input class="form-check-input add-cmd-cb" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" checked>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <input class="form-check-input add-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm" placeholder="{{ $def['label'] }}">
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm" placeholder="{{ $def['description'] }}">
+                                                            </td>
                                                         </tr>
-                                                        @foreach($catDefs as $cmd => $def)
-                                                            <tr class="add-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
-                                                                        <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-center">
-                                                                    <input class="form-check-input add-cmd-cb" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" checked>
-                                                                </td>
-                                                                <td class="text-center">
-                                                                    <input class="form-check-input add-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
-                                                                </td>
-                                                                <td>
-                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm" placeholder="{{ $def['label'] }}">
-                                                                </td>
-                                                                <td>
-                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm" placeholder="{{ $def['description'] }}">
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    @endif
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                    @endforeach
+                                                @endif
+                                            @endforeach
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" name="is_active" value="1" id="channel_add_active" checked>
-                                <label class="form-check-label fw-bold" for="channel_add_active">Aktifkan Saluran Grup Ini</label>
                             </div>
                         </div>
                     </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" name="is_active" value="1" id="channel_add_active" checked>
+                            <label class="form-check-label fw-bold" for="channel_add_active">Aktifkan Saluran Grup Ini</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary shadow-sm">
-                        <i class="ti ti-check me-1"></i> Simpan Saluran Grup
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary shadow-sm">
+                    <i class="ti ti-check me-1"></i> Simpan Saluran Grup
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -953,185 +951,182 @@
 <!-- ========================================================================= -->
 <div class="modal fade" id="modal-edit-saluran" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content shadow">
-            <form id="form-edit-channel" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold d-flex align-items-center">
-                        <i class="ti ti-edit me-2 fs-2"></i>
-                        Edit Saluran Grup: <span id="modal_edit_channel_title" class="ms-1">-</span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <div class="col-md-7">
-                            <label class="form-label required">Nama Saluran Grup</label>
-                            <input type="text" name="name" id="edit_channel_name" class="form-control" required>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">ID Chat Telegram (Awali tanda minus misal -100...)</label>
-                            <input type="text" name="chat_id" id="edit_channel_chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Deskripsi / Fungsi Grup</label>
-                            <textarea name="description" id="edit_channel_description" class="form-control" rows="2"></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Tautan Undangan Grup (Invite Link Telegram)</label>
-                            <input type="url" name="invite_link" id="edit_channel_invite_link" class="form-control font-monospace" placeholder="https://t.me/+xxxxxx">
-                        </div>
+        <form id="form-edit-channel" method="POST" class="modal-content shadow">
+            @csrf
+            @method('PUT')
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold d-flex align-items-center">
+                    <i class="ti ti-edit me-2 fs-2"></i>
+                    Edit Saluran Grup: <span id="modal_edit_channel_title" class="ms-1">-</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 modal-body-scrollable">
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <label class="form-label required">Nama Saluran Grup</label>
+                        <input type="text" name="name" id="edit_channel_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">ID Chat Telegram (Awali tanda minus misal -100...)</label>
+                        <input type="text" name="chat_id" id="edit_channel_chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Deskripsi / Fungsi Grup</label>
+                        <textarea name="description" id="edit_channel_description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Tautan Undangan Grup (Invite Link Telegram)</label>
+                        <input type="url" name="invite_link" id="edit_channel_invite_link" class="form-control font-monospace" placeholder="https://t.me/+xxxxxx">
+                    </div>
 
-                        <!-- Pilihan Peran GTK yang Diizinkan -->
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-dark border-bottom pb-1">
-                                <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
-                            </label>
-                            <div class="row g-2 mt-1" id="edit-roles-container">
-                                @foreach($availableRoles as $role)
-                                    <div class="col-md-4 col-sm-6">
-                                        <label class="form-check">
-                                            <input class="form-check-input edit-role-checkbox" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}" id="edit_role_{{ $role->slug }}">
-                                            <span class="form-check-label small">{{ $role->name }}</span>
-                                        </label>
-                                    </div>
-                                @endforeach
+                    <!-- Pilihan Peran GTK yang Diizinkan -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark border-bottom pb-1">
+                            <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
+                        </label>
+                        <div class="row g-2 mt-1" id="edit-roles-container">
+                            @foreach($availableRoles as $role)
+                                <div class="col-md-4 col-sm-6">
+                                    <label class="form-check">
+                                        <input class="form-check-input edit-role-checkbox" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}" id="edit_role_{{ $role->slug }}">
+                                        <span class="form-check-label small">{{ $role->name }}</span>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
+                    <div class="col-12 mt-3">
+                        <div class="card border shadow-none">
+                            <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 gap-2">
+                                <div>
+                                    <h4 class="card-title mb-0 d-flex align-items-center">
+                                        <i class="ti ti-keyboard me-2 text-primary"></i>
+                                        Konfigurasi Menu Perintah & Tombol Keyboard Grup
+                                    </h4>
+                                    <small class="text-muted">Pilih paket kelompok perintah siap pakai di bawah, atau atur perintah & label tombol secara manual.</small>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="edit_show_reply_keyboard" checked>
+                                    <label class="form-check-label fw-bold small" for="edit_show_reply_keyboard">Tampilkan Reply Keyboard di Grup</label>
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
-                        <div class="col-12 mt-3">
-                            <div class="card border shadow-none">
-                                <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 gap-2">
-                                    <div>
-                                        <h4 class="card-title mb-0 d-flex align-items-center">
-                                            <i class="ti ti-keyboard me-2 text-primary"></i>
-                                            Konfigurasi Menu Perintah & Tombol Keyboard Grup
-                                        </h4>
-                                        <small class="text-muted">Pilih paket kelompok perintah siap pakai di bawah, atau atur perintah & label tombol secara manual.</small>
+                            <div class="card-body p-0">
+                                <!-- Preset Kelompok Perintah Siap Pakai -->
+                                <div class="p-3 bg-light border-bottom">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                        <span class="fw-bold small text-dark d-flex align-items-center">
+                                            <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
+                                            Pilih Cepat Kelompok Perintah (Preset Paket Grup):
+                                        </span>
+                                        <div class="d-flex gap-1">
+                                            <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="edit">
+                                                <i class="ti ti-check-all me-1"></i> Pilih Semua
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="edit">
+                                                <i class="ti ti-trash me-1"></i> Kosongkan
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="edit_show_reply_keyboard" checked>
-                                        <label class="form-check-label fw-bold small" for="edit_show_reply_keyboard">Tampilkan Reply Keyboard di Grup</label>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach($presets as $pKey => $p)
+                                            <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
+                                                data-target="edit" 
+                                                data-commands='@json($p['commands'])'
+                                                title="Pilih kelompok perintah {{ $p['name'] }}">
+                                                <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
+                                            </button>
+                                        @endforeach
                                     </div>
                                 </div>
-                                <div class="card-body p-0">
-                                    <!-- Preset Kelompok Perintah Siap Pakai -->
-                                    <div class="p-3 bg-light border-bottom">
-                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                            <span class="fw-bold small text-dark d-flex align-items-center">
-                                                <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
-                                                Pilih Cepat Kelompok Perintah (Preset Paket Grup):
-                                            </span>
-                                            <div class="d-flex gap-1">
-                                                <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="edit">
-                                                    <i class="ti ti-check-all me-1"></i> Pilih Semua
-                                                </button>
-                                                <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="edit">
-                                                    <i class="ti ti-trash me-1"></i> Kosongkan
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            @foreach($presets as $pKey => $p)
-                                                <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
-                                                    data-target="edit" 
-                                                    data-commands='@json($p['commands'])'
-                                                    title="Pilih kelompok perintah {{ $p['name'] }}">
-                                                    <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
 
-                                    <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
-                                        <table class="table table-vcenter table-sm table-striped mb-0">
-                                            <thead class="table-light sticky-top">
-                                                <tr>
-                                                    <th style="width: 150px;">Perintah Bot</th>
-                                                    <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
-                                                    <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
-                                                    <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
-                                                    <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($categories as $catKey => $cat)
-                                                    @php
-                                                        $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
-                                                    @endphp
-                                                    @if($catDefs->isNotEmpty())
-                                                        <tr class="table-light border-top border-bottom border-2">
-                                                            <td colspan="5" class="py-2 px-3 bg-light">
-                                                                <div class="d-flex align-items-center justify-content-between">
-                                                                    <div class="fw-bold text-dark d-flex align-items-center">
-                                                                        <span class="badge {{ $cat['badge'] }} p-2 me-2">
-                                                                            <i class="ti {{ $cat['icon'] }}"></i>
-                                                                        </span>
-                                                                        <span class="fs-4">{{ $cat['name'] }}</span>
-                                                                        <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
-                                                                    </div>
-                                                                    <div class="d-flex gap-1">
-                                                                        <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="edit">
-                                                                            <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
-                                                                        </button>
-                                                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="edit">
-                                                                            <i class="ti ti-x me-1"></i> Batal
-                                                                        </button>
-                                                                    </div>
+                                <div class="table-responsive">
+                                    <table class="table table-vcenter table-sm table-striped mb-0">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th style="width: 150px;">Perintah Bot</th>
+                                                <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
+                                                <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
+                                                <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
+                                                <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($categories as $catKey => $cat)
+                                                @php
+                                                    $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
+                                                @endphp
+                                                @if($catDefs->isNotEmpty())
+                                                    <tr class="table-light border-top border-bottom border-2">
+                                                        <td colspan="5" class="py-2 px-3 bg-light">
+                                                            <div class="d-flex align-items-center justify-content-between">
+                                                                <div class="fw-bold text-dark d-flex align-items-center">
+                                                                    <span class="badge {{ $cat['badge'] }} p-2 me-2">
+                                                                        <i class="ti {{ $cat['icon'] }}"></i>
+                                                                    </span>
+                                                                    <span class="fs-4">{{ $cat['name'] }}</span>
+                                                                    <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
+                                                                </div>
+                                                                <div class="d-flex gap-1">
+                                                                    <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="edit">
+                                                                        <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="edit">
+                                                                        <i class="ti ti-x me-1"></i> Batal
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    @foreach($catDefs as $cmd => $def)
+                                                        <tr class="edit-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
+                                                            <td>
+                                                                <div class="d-flex align-items-center">
+                                                                    <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
+                                                                    <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
                                                                 </div>
                                                             </td>
+                                                            <td class="text-center">
+                                                                <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" id="edit_cmd_{{ ltrim(str_replace('/', '', $cmd), '_') }}">
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <input class="form-check-input edit-show-btn-checkbox" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" placeholder="{{ $def['label'] }}">
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" placeholder="{{ $def['description'] }}">
+                                                            </td>
                                                         </tr>
-                                                        @foreach($catDefs as $cmd => $def)
-                                                            <tr class="edit-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
-                                                                <td>
-                                                                    <div class="d-flex align-items-center">
-                                                                        <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
-                                                                        <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-center">
-                                                                    <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" id="edit_cmd_{{ ltrim(str_replace('/', '', $cmd), '_') }}">
-                                                                </td>
-                                                                <td class="text-center">
-                                                                    <input class="form-check-input edit-show-btn-checkbox" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
-                                                                </td>
-                                                                <td>
-                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" placeholder="{{ $def['label'] }}">
-                                                                </td>
-                                                                <td>
-                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" placeholder="{{ $def['description'] }}">
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    @endif
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                    @endforeach
+                                                @endif
+                                            @endforeach
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" name="is_active" value="1" id="edit_channel_is_active">
-                                <label class="form-check-label fw-bold" for="edit_channel_is_active">Aktifkan Saluran Grup Ini</label>
                             </div>
                         </div>
                     </div>
+
+                    <div class="col-12">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" name="is_active" value="1" id="edit_channel_is_active">
+                            <label class="form-check-label fw-bold" for="edit_channel_is_active">Aktifkan Saluran Grup Ini</label>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary shadow-sm">
-                        <i class="ti ti-device-floppy me-1"></i> Simpan Perubahan Grup
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary shadow-sm">
+                    <i class="ti ti-device-floppy me-1"></i> Simpan Perubahan Grup
+                </button>
+            </div>
+        </form>
     </div>
-</div>
 </div>
 
 <!-- ========================================================================= -->
@@ -1214,6 +1209,32 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+.modal-body-scrollable {
+    max-height: calc(85vh - 120px);
+    overflow-y: auto !important;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+}
+.modal-body-scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-body-scrollable::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+.modal-body-scrollable::-webkit-scrollbar-thumb {
+    background-color: #94a3b8;
+    border-radius: 4px;
+    border: 2px solid #f1f5f9;
+}
+.modal-body-scrollable::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b;
+}
+</style>
+@endpush
 
 @push('scripts')
 <script>
