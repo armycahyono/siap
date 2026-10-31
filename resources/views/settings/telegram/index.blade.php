@@ -310,11 +310,29 @@
                                     @endif
                                 </td>
                                 <td>
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="text-muted small">Perintah Aktif:</span>
+                                        @if($channel->show_reply_keyboard)
+                                            <span class="badge bg-teal-lt small" title="Tombol Reply Keyboard di bawah chat diaktifkan">
+                                                <i class="ti ti-keyboard me-1"></i> Keyboard Aktif
+                                            </span>
+                                        @else
+                                            <span class="badge bg-secondary-lt small" title="Tombol Reply Keyboard di bawah chat dinonaktifkan">
+                                                <i class="ti ti-keyboard-off me-1"></i> Keyboard Off
+                                            </span>
+                                        @endif
+                                    </div>
                                     @if(!empty($channel->enabled_commands) && count($channel->enabled_commands) > 0)
                                         <div class="d-flex flex-wrap gap-1">
                                             @foreach($channel->enabled_commands as $cmd)
-                                                <span class="badge bg-purple-lt font-monospace small" style="font-size: 0.72rem;">
+                                                @php
+                                                    $isBtn = $channel->isReplyButtonEnabled($cmd);
+                                                @endphp
+                                                <span class="badge {{ $isBtn && $channel->show_reply_keyboard ? 'bg-purple-lt' : 'bg-gray-lt' }} font-monospace small" style="font-size: 0.72rem;" title="{{ $isBtn && $channel->show_reply_keyboard ? 'Aktif sebagai tombol keyboard' : 'Hanya perintah menu teks' }}">
                                                     {{ $cmd }}
+                                                    @if($isBtn && $channel->show_reply_keyboard)
+                                                        <i class="ti ti-square-check ms-1 text-purple"></i>
+                                                    @endif
                                                 </span>
                                             @endforeach
                                         </div>
@@ -333,6 +351,8 @@
                                             data-invite-link="{{ $channel->invite_link }}"
                                             data-roles='@json($channel->allowed_roles ?? [])'
                                             data-commands='@json($channel->enabled_commands ?? [])'
+                                            data-show-reply-keyboard="{{ $channel->show_reply_keyboard ? 1 : 0 }}"
+                                            data-custom-buttons='@json($channel->custom_buttons ?? (object)[])'
                                             data-active="{{ $channel->is_active ? 1 : 0 }}"
                                             title="Edit Pengaturan Grup">
                                             <i class="ti ti-edit"></i>
@@ -741,7 +761,7 @@
 <!-- MODAL: TAMBAH SALURAN GRUP -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="modal-tambah-saluran" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content shadow">
             <form action="{{ route('telegram.channel.store') }}" method="POST">
                 @csrf
@@ -756,10 +776,10 @@
                     <div class="row g-3">
                         <div class="col-md-7">
                             <label class="form-label required">Nama Saluran Grup</label>
-                            <input type="text" name="name" class="form-control" placeholder="Contoh: Grup Tim Panitia Ujian" required>
+                            <input type="text" name="name" class="form-control" placeholder="Contoh: Warga TK SMK PGRI Kras / Tim Piket" required>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">ID Chat Telegram (Awali -100)</label>
+                            <label class="form-label">ID Chat Telegram (Awali tanda minus misal -100...)</label>
                             <input type="text" name="chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
                         </div>
                         <div class="col-12">
@@ -789,48 +809,68 @@
                             <small class="text-muted">Guru yang memiliki peran di atas akan diizinkan dan dikirimi link undangan personal via Japri Bot.</small>
                         </div>
 
-                        <!-- Pilihan Perintah yang Aktif di Grup -->
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-dark border-bottom pb-1">
-                                <i class="ti ti-command me-1 text-info"></i> Perintah Menu Interaktif yang Diaktifkan di Grup
-                            </label>
-                            <div class="row g-2 mt-1">
-                                @php
-                                    $defaultCommands = [
-                                        '/piket' => 'Cek tim piket hari ini',
-                                        '/jadwal' => 'Jadwal KBM jam sekarang',
-                                        '/inval' => 'Cek kelas kosong & inval',
-                                        '/guru_izin' => 'Daftar guru izin dinas/sakit',
-                                        '/izin_keluar' => 'Daftar izin keluar/pulang siswa',
-                                        '/serah_terima' => 'Ringkasan jurnal serah terima piket',
-                                        '/lapor' => 'Lapor kasus siswa + bukti foto',
-                                        '/poin' => 'Cek catatan kasus & poin siswa',
-                                        '/terlambat' => 'Rekap siswa terlambat hari ini',
-                                        '/bolos' => 'Siswa hadir gerbang tapi bolos KBM',
-                                        '/top_kasus' => 'Top 5 pelanggaran terbanyak bulan ini',
-                                        '/agenda' => 'Agenda kegiatan sekolah 7 hari ke depan',
-                                        '/kaldik' => 'Kalender pendidikan bulan ini',
-                                        '/asesmen' => 'Jadwal ujian & hitung mundur asesmen',
-                                        '/supervisi' => 'Jadwal supervisi kelas pekan ini',
-                                        '/ultah' => 'Ucapan selamat ulang tahun GTK hari ini',
-                                        '/pengumuman' => 'Siaran pengumuman resmi terbaru',
-                                        '/info_sekolah' => 'Data profil & statistik sekolah',
-                                        '/rekap' => 'Rekap harian sekolah',
-                                        '/tamu' => 'Daftar buku tamu hari ini',
-                                        '/bantuan' => 'Panduan bantuan bot',
-                                        '/id' => 'Cek Chat ID unik',
-                                    ];
-                                @endphp
-                                @foreach($defaultCommands as $cmdCode => $cmdDesc)
-                                    <div class="col-md-4 col-sm-6">
-                                        <label class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="enabled_commands[]" value="{{ $cmdCode }}">
-                                            <span class="form-check-label font-monospace small"><b>{{ $cmdCode }}</b> <span class="text-muted font-sans-serif" style="font-size: 0.75rem;">({{ $cmdDesc }})</span></span>
-                                        </label>
+                        <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
+                        <div class="col-12 mt-3">
+                            <div class="card border shadow-none">
+                                <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 gap-2">
+                                    <div>
+                                        <h4 class="card-title mb-0 d-flex align-items-center">
+                                            <i class="ti ti-keyboard me-2 text-primary"></i>
+                                            Konfigurasi Menu Perintah & Tombol Keyboard Grup
+                                        </h4>
+                                        <small class="text-muted">Pilih perintah yang aktif, tentukan perintah mana saja yang dijadikan tombol cepat di bawah chat, serta kustomisasi teks labelnya.</small>
                                     </div>
-                                @endforeach
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="add_show_reply_keyboard" checked>
+                                        <label class="form-check-label fw-bold small" for="add_show_reply_keyboard">Tampilkan Reply Keyboard di Grup</label>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="p-2 bg-azure-lt small border-bottom d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <i class="ti ti-info-circle me-1"></i>
+                                            <b>Tips:</b> Hilangkan centang pada <i>Tombol Reply</i> jika perintah tersebut hanya ingin diketik manual (tidak menjadi tombol di bawah chat).
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                                        <table class="table table-vcenter table-sm table-striped mb-0">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th style="width: 140px;">Perintah Bot</th>
+                                                    <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
+                                                    <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
+                                                    <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
+                                                    <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($commandDefinitions as $cmd => $def)
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
+                                                                <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <input class="form-check-input add-cmd-cb" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" checked>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <input class="form-check-input add-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm" placeholder="{{ $def['label'] }}">
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm" placeholder="{{ $def['description'] }}">
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                            <small class="text-muted">Hanya perintah yang dicentang yang akan direspons bot saat diketik di dalam grup.</small>
                         </div>
 
                         <div class="col-12">
@@ -856,7 +896,7 @@
 <!-- MODAL: EDIT SALURAN GRUP -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="modal-edit-saluran" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content shadow">
             <form id="form-edit-channel" method="POST">
                 @csrf
@@ -875,7 +915,7 @@
                             <input type="text" name="name" id="edit_channel_name" class="form-control" required>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label">ID Chat Telegram (Awali -100)</label>
+                            <label class="form-label">ID Chat Telegram (Awali tanda minus misal -100...)</label>
                             <input type="text" name="chat_id" id="edit_channel_chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
                         </div>
                         <div class="col-12">
@@ -904,20 +944,71 @@
                             </div>
                         </div>
 
-                        <!-- Pilihan Perintah yang Aktif di Grup -->
-                        <div class="col-12">
-                            <label class="form-label fw-bold text-dark border-bottom pb-1">
-                                <i class="ti ti-command me-1 text-info"></i> Perintah Menu Interaktif yang Diaktifkan di Grup
-                            </label>
-                            <div class="row g-2 mt-1" id="edit-commands-container">
-                                @foreach($defaultCommands as $cmdCode => $cmdDesc)
-                                    <div class="col-md-4 col-sm-6">
-                                        <label class="form-check">
-                                            <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmdCode }}" id="edit_cmd_{{ ltrim($cmdCode, '/') }}">
-                                            <span class="form-check-label font-monospace small"><b>{{ $cmdCode }}</b> <span class="text-muted font-sans-serif" style="font-size: 0.75rem;">({{ $cmdDesc }})</span></span>
-                                        </label>
+                        <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
+                        <div class="col-12 mt-3">
+                            <div class="card border shadow-none">
+                                <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 gap-2">
+                                    <div>
+                                        <h4 class="card-title mb-0 d-flex align-items-center">
+                                            <i class="ti ti-keyboard me-2 text-primary"></i>
+                                            Konfigurasi Menu Perintah & Tombol Keyboard Grup
+                                        </h4>
+                                        <small class="text-muted">Pilih perintah yang aktif di grup, atur mana yang muncul sebagai tombol cepat, dan sesuaikan teks labelnya.</small>
                                     </div>
-                                @endforeach
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="edit_show_reply_keyboard" checked>
+                                        <label class="form-check-label fw-bold small" for="edit_show_reply_keyboard">Tampilkan Reply Keyboard di Grup</label>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="p-2 bg-azure-lt small border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <i class="ti ti-info-circle me-1"></i>
+                                            <b>Tips:</b> Hilangkan centang pada <i>Tombol Reply</i> jika perintah tersebut hanya ingin diketik manual (tidak menjadi tombol di bawah chat).
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <button type="button" class="btn btn-xs btn-outline-primary" id="btn-check-all-edit-cmd">Centang Semua Perintah</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary" id="btn-uncheck-all-edit-btn">Nonaktifkan Semua Tombol</button>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                                        <table class="table table-vcenter table-sm table-striped mb-0">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th style="width: 140px;">Perintah Bot</th>
+                                                    <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
+                                                    <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
+                                                    <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
+                                                    <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($commandDefinitions as $cmd => $def)
+                                                    <tr class="edit-cmd-row" data-cmd="{{ $cmd }}">
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
+                                                                <span class="font-monospace fw-bold text-dark">{{ $cmd }}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" id="edit_cmd_{{ ltrim(str_replace('/', '', $cmd), '_') }}">
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <input class="form-check-input edit-show-btn-checkbox" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" placeholder="{{ $def['label'] }}">
+                                                        </td>
+                                                        <td>
+                                                            <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" placeholder="{{ $def['description'] }}">
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -938,6 +1029,7 @@
             </form>
         </div>
     </div>
+</div>
 </div>
 
 <!-- ========================================================================= -->
@@ -961,10 +1053,10 @@
                         <select name="target_channel" class="form-select" required>
                             <option value="">-- Pilih Grup Sekolah --</option>
                             @foreach($channels as $ch)
-                                @if($ch->is_active && $ch->chat_id)
-                                    <option value="{{ $ch->code }}">{{ $ch->name }} ({{ $ch->chat_id }})</option>
-                                @endif
+                                <option value="{{ $ch->code }}">{{ $ch->name }} {{ $ch->chat_id ? '('.$ch->chat_id.')' : '' }}</option>
                             @endforeach
+                            <option value="supervision" class="d-none">Grup Supervisi Guru</option>
+                            <option value="activities" class="d-none">Grup Kegiatan Sekolah</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -1072,6 +1164,24 @@ document.addEventListener('DOMContentLoaded', function () {
     // -------------------------------------------------------------
     // Edit Telegram Channel Modal
     // -------------------------------------------------------------
+    const btnCheckAllCmd = document.getElementById('btn-check-all-edit-cmd');
+    if (btnCheckAllCmd) {
+        btnCheckAllCmd.addEventListener('click', function () {
+            document.querySelectorAll('.edit-command-checkbox').forEach(function (cb) {
+                cb.checked = true;
+            });
+        });
+    }
+
+    const btnUncheckAllBtn = document.getElementById('btn-uncheck-all-edit-btn');
+    if (btnUncheckAllBtn) {
+        btnUncheckAllBtn.addEventListener('click', function () {
+            document.querySelectorAll('.edit-show-btn-checkbox').forEach(function (cb) {
+                cb.checked = false;
+            });
+        });
+    }
+
     document.querySelectorAll('.btn-edit-channel').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const id = this.dataset.id;
@@ -1080,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const description = this.dataset.description || '';
             const inviteLink = this.dataset.inviteLink || '';
             const active = this.dataset.active === '1';
+            const showReplyKeyboard = this.dataset.showReplyKeyboard !== '0';
 
             let roles = [];
             try {
@@ -1095,6 +1206,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 commands = [];
             }
 
+            let customButtons = {};
+            try {
+                customButtons = JSON.parse(this.dataset.customButtons || '{}');
+            } catch (e) {
+                customButtons = {};
+            }
+
             // Set Form action & values
             const form = document.getElementById('form-edit-channel');
             form.action = '{{ url("pengaturan/telegram/saluran-grup") }}/' + id;
@@ -1105,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_channel_description').value = description;
             document.getElementById('edit_channel_invite_link').value = inviteLink;
             document.getElementById('edit_channel_is_active').checked = active;
+            document.getElementById('edit_show_reply_keyboard').checked = showReplyKeyboard;
 
             // Check roles
             document.querySelectorAll('.edit-role-checkbox').forEach(function (cb) {
@@ -1114,6 +1233,29 @@ document.addEventListener('DOMContentLoaded', function () {
             // Check commands
             document.querySelectorAll('.edit-command-checkbox').forEach(function (cb) {
                 cb.checked = commands.includes(cb.value);
+            });
+
+            // Populate custom buttons configuration
+            document.querySelectorAll('.edit-cmd-row').forEach(function (row) {
+                const cmd = row.dataset.cmd;
+                const conf = customButtons[cmd] || {};
+
+                const btnCb = row.querySelector('.edit-show-btn-checkbox');
+                if (btnCb) {
+                    btnCb.checked = conf.show_reply_button !== undefined 
+                        ? (conf.show_reply_button === true || conf.show_reply_button === 1 || conf.show_reply_button === '1') 
+                        : true;
+                }
+
+                const labelInput = row.querySelector('.edit-label-input');
+                if (labelInput) {
+                    labelInput.value = conf.label || '';
+                }
+
+                const descInput = row.querySelector('.edit-desc-input');
+                if (descInput) {
+                    descInput.value = conf.description || '';
+                }
             });
 
             const modal = new bootstrap.Modal(document.getElementById('modal-edit-saluran'));

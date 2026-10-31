@@ -115,9 +115,14 @@ class TelegramService
             ];
 
             if ($replyMarkup !== null) {
-                // Jangan kirim persistent reply keyboard ke grup Telegram agar tidak mengotori antarmuka anggota grup
+                // Jika pesan ditujukan ke grup Telegram (chatId diawali tanda '-') dan membawa reply keyboard
                 if (str_starts_with($chatId, '-') && isset($replyMarkup['keyboard'])) {
-                    $replyMarkup = ['remove_keyboard' => true];
+                    $channel = TelegramChannel::where('chat_id', $chatId)->first();
+                    if ($channel && $channel->show_reply_keyboard) {
+                        $replyMarkup = $channel->buildReplyKeyboard();
+                    } else {
+                        $replyMarkup = ['remove_keyboard' => true];
+                    }
                 }
                 $payload['reply_markup'] = json_encode($replyMarkup);
             }
@@ -1389,10 +1394,14 @@ class TelegramService
     /**
      * Daftarkan daftar perintah khusus untuk sebuah chat/grup (BotCommandScopeChat).
      */
-    public function setChatCommands(string $chatId, array $commandList): array
+    public function setChatCommands(string $chatId, array $commandList, ?TelegramChannel $channel = null): array
     {
         if (empty($this->botToken) || empty($chatId)) {
             return ['success' => false, 'message' => 'Token Bot atau Chat ID belum valid.'];
+        }
+
+        if (! $channel) {
+            $channel = TelegramChannel::where('chat_id', $chatId)->first();
         }
 
         $commandDescriptions = [
@@ -1431,7 +1440,7 @@ class TelegramService
             if (empty($cleanCmd)) {
                 continue;
             }
-            $desc = $commandDescriptions[$cleanCmd] ?? "Perintah {$cleanCmd}";
+            $desc = $channel ? $channel->getCommandDescription("/{$cleanCmd}") : ($commandDescriptions[$cleanCmd] ?? "Perintah {$cleanCmd}");
             $commandsPayload[] = [
                 'command' => $cleanCmd,
                 'description' => substr($desc, 0, 256),

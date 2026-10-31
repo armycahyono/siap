@@ -130,6 +130,17 @@ class TelegramBotWebhookController extends Controller
         // Cek akun pengirim: jika di grup gunakan sender ID, jika di japri gunakan chat ID
         $user = User::where('telegram_chat_id', $isGroup ? $senderId : $chatId)->first();
 
+        $channel = null;
+        if ($isGroup) {
+            $channel = TelegramChannel::where('chat_id', $chatId)->where('is_active', true)->first();
+        }
+
+        // Resolusi teks tombol reply keyboard ke perintah bot resmi
+        $resolvedCmd = TelegramChannel::resolveCommandFromText($text, $channel);
+        if ($resolvedCmd !== null) {
+            $text = $resolvedCmd;
+        }
+
         // 1. Jika di grup sekolah: abaikan obrolan santai yang bukan perintah (tidak diawali /)
         if ($isGroup && ! str_starts_with($text, '/')) {
             return;
@@ -154,19 +165,17 @@ class TelegramBotWebhookController extends Controller
         }
 
         // 2. Filter izin perintah per grup (sesuai konfigurasi menu saluran grup)
-        $channel = null;
-        if ($isGroup) {
-            $channel = TelegramChannel::where('chat_id', $chatId)->where('is_active', true)->first();
-            if ($channel && ! empty($channel->enabled_commands)) {
-                $baseCmd = explode(' ', $cmd)[0];
-                $allowed = array_map(fn ($c) => mb_strtolower(trim($c)), $channel->enabled_commands);
-                $allowed[] = '/help';
-                $allowed[] = '/bantuan';
-                $allowed[] = '/panduan';
-                if (! in_array($baseCmd, $allowed)) {
-                    // Perintah tidak diaktifkan pada grup ini, abaikan dengan tenang
-                    return;
-                }
+        if ($isGroup && $channel && ! empty($channel->enabled_commands)) {
+            $baseCmd = explode(' ', $cmd)[0];
+            $allowed = array_map(fn ($c) => mb_strtolower(trim($c)), $channel->enabled_commands);
+            $allowed[] = '/help';
+            $allowed[] = '/bantuan';
+            $allowed[] = '/panduan';
+            $allowed[] = '/id';
+            $allowed[] = '/chatid';
+            if (! in_array($baseCmd, $allowed)) {
+                // Perintah tidak diaktifkan pada grup ini, abaikan dengan tenang
+                return;
             }
         }
 

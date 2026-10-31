@@ -47,9 +47,10 @@ class TelegramBotController extends Controller
         $totalTeachersWithId = User::whereNotNull('telegram_chat_id')->where('telegram_chat_id', '!=', '')->count();
         $webhookInfo = $this->telegramService->getWebhookInfo();
 
-        // Saluran Grup Dinamis & Daftar Peran
+        // Saluran Grup Dinamis, Daftar Peran, & Definisi Perintah
         $channels = TelegramChannel::orderBy('id')->get();
         $availableRoles = Role::orderBy('name')->get();
+        $commandDefinitions = TelegramChannel::getDefaultCommandDefinitions();
 
         return view('settings.telegram.index', compact(
             'setting',
@@ -61,7 +62,8 @@ class TelegramBotController extends Controller
             'targetType',
             'webhookInfo',
             'channels',
-            'availableRoles'
+            'availableRoles',
+            'commandDefinitions'
         ));
     }
 
@@ -317,6 +319,20 @@ class TelegramBotController extends Controller
             $code .= '_'.time();
         }
 
+        $customButtons = [];
+        if ($request->has('custom_buttons') && is_array($request->input('custom_buttons'))) {
+            foreach ($request->input('custom_buttons') as $cmd => $btnData) {
+                if (! is_array($btnData)) {
+                    continue;
+                }
+                $customButtons[$cmd] = [
+                    'label' => ! empty($btnData['label']) ? trim($btnData['label']) : null,
+                    'description' => ! empty($btnData['description']) ? trim($btnData['description']) : null,
+                    'show_reply_button' => ! empty($btnData['show_reply_button']),
+                ];
+            }
+        }
+
         $channel = TelegramChannel::create([
             'name' => $validated['name'],
             'code' => $code,
@@ -325,11 +341,13 @@ class TelegramBotController extends Controller
             'invite_link' => $validated['invite_link'] ?? null,
             'allowed_roles' => $validated['allowed_roles'] ?? [],
             'enabled_commands' => $validated['enabled_commands'] ?? [],
+            'show_reply_keyboard' => $request->has('show_reply_keyboard'),
+            'custom_buttons' => $customButtons,
             'is_active' => $request->has('is_active'),
         ]);
 
         if ($channel->chat_id && ! empty($channel->enabled_commands)) {
-            $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands);
+            $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands, $channel);
         }
 
         return back()->with('success', "Saluran Grup '{$channel->name}' berhasil ditambahkan.");
@@ -347,18 +365,34 @@ class TelegramBotController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $customButtons = [];
+        if ($request->has('custom_buttons') && is_array($request->input('custom_buttons'))) {
+            foreach ($request->input('custom_buttons') as $cmd => $btnData) {
+                if (! is_array($btnData)) {
+                    continue;
+                }
+                $customButtons[$cmd] = [
+                    'label' => ! empty($btnData['label']) ? trim($btnData['label']) : null,
+                    'description' => ! empty($btnData['description']) ? trim($btnData['description']) : null,
+                    'show_reply_button' => ! empty($btnData['show_reply_button']),
+                ];
+            }
+        }
+
         $channel->update([
             'name' => $validated['name'],
-            'chat_id' => $validated['chat_id'] ?: null,
-            'description' => $validated['description'] ?: null,
-            'invite_link' => $validated['invite_link'] ?: null,
+            'chat_id' => ! empty($validated['chat_id']) ? $validated['chat_id'] : null,
+            'description' => ! empty($validated['description']) ? $validated['description'] : null,
+            'invite_link' => ! empty($validated['invite_link']) ? $validated['invite_link'] : null,
             'allowed_roles' => $validated['allowed_roles'] ?? [],
             'enabled_commands' => $validated['enabled_commands'] ?? [],
+            'show_reply_keyboard' => $request->has('show_reply_keyboard'),
+            'custom_buttons' => $customButtons,
             'is_active' => $request->has('is_active'),
         ]);
 
         if ($channel->chat_id && $channel->is_active && ! empty($channel->enabled_commands)) {
-            $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands);
+            $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands, $channel);
         }
 
         return back()->with('success', "Pengaturan saluran grup '{$channel->name}' berhasil diperbarui.");
@@ -378,7 +412,7 @@ class TelegramBotController extends Controller
             return back()->with('error', "Grup '{$channel->name}' belum memiliki Chat ID Telegram.");
         }
 
-        $res = $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands ?? []);
+        $res = $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands ?? [], $channel);
 
         if ($res['success']) {
             return back()->with('success', $res['message']);
