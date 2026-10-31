@@ -118,10 +118,15 @@ class TelegramService
                 // Jika pesan ditujukan ke grup Telegram (chatId diawali tanda '-') dan membawa reply keyboard
                 if (str_starts_with($chatId, '-') && isset($replyMarkup['keyboard'])) {
                     $channel = TelegramChannel::where('chat_id', $chatId)->first();
-                    if ($channel && $channel->show_reply_keyboard) {
-                        $replyMarkup = $channel->buildReplyKeyboard();
+                    if ($channel) {
+                        if ($channel->show_reply_keyboard) {
+                            $replyMarkup = $channel->buildReplyKeyboard();
+                        } else {
+                            $replyMarkup = ['remove_keyboard' => true];
+                        }
                     } else {
-                        $replyMarkup = ['remove_keyboard' => true];
+                        // Jika grup belum terdaftar di database, tetap sediakan keyboard grup default
+                        $replyMarkup = TelegramChannel::buildDefaultGroupKeyboard();
                     }
                 }
                 $payload['reply_markup'] = json_encode($replyMarkup);

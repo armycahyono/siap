@@ -230,7 +230,13 @@
                         Kelola grup resmi sekolah, tentukan kelompok/peran GTK yang berhak bergabung, atur perintah menu yang aktif, dan kirimkan tautan undangan langsung ke japri guru.
                     </div>
                 </div>
-                <div class="card-actions d-flex gap-2">
+                <div class="card-actions d-flex flex-wrap gap-2">
+                    <form action="{{ route('telegram.channel.send-keyboard-all') }}" method="POST" class="d-inline" onsubmit="return confirm('Kirim dan munculkan tombol reply keyboard ke seluruh grup Telegram aktif sekarang?')">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-success shadow-sm" title="Kirim & munculkan tombol reply keyboard ke seluruh grup aktif sekarang">
+                            <i class="ti ti-keyboard me-1"></i> Munculkan Keyboard di Semua Grup
+                        </button>
+                    </form>
                     <form action="{{ route('telegram.channel.sync-all') }}" method="POST" class="d-inline">
                         @csrf
                         <button type="submit" class="btn btn-sm btn-outline-info shadow-sm" title="Sinkronkan perintah bawaan pribadi & seluruh grup ke Telegram">
@@ -363,6 +369,14 @@
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-outline-primary" title="Siarkan Tautan Undangan ke Japri GTK" {{ empty($channel->chat_id) ? 'disabled' : '' }}>
                                                 <i class="ti ti-send"></i>
+                                            </button>
+                                        </form>
+
+                                        <!-- Tombol Munculkan Tombol Keyboard ke Grup Ini -->
+                                        <form action="{{ route('telegram.channel.send-keyboard', $channel->id) }}" method="POST" class="d-inline" title="Kirim & Munculkan Tombol Keyboard ke Grup Ini Sekarang">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-success" {{ empty($channel->chat_id) ? 'disabled' : '' }}>
+                                                <i class="ti ti-keyboard"></i>
                                             </button>
                                         </form>
 

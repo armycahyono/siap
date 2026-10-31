@@ -394,6 +394,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/saluran-grup/{channel}/sync-commands', [TelegramBotController::class, 'syncChannelCommands'])->name('telegram.channel.sync-commands');
         Route::post('/saluran-grup/sync-all', [TelegramBotController::class, 'syncAllCommands'])->name('telegram.channel.sync-all');
         Route::post('/saluran-grup/{channel}/invite', [TelegramBotController::class, 'inviteChannelMembers'])->name('telegram.channel.invite');
+        Route::post('/saluran-grup/{channel}/send-keyboard', [TelegramBotController::class, 'sendKeyboardToChannel'])->name('telegram.channel.send-keyboard');
+        Route::post('/saluran-grup/send-keyboard-all', [TelegramBotController::class, 'sendKeyboardToAllChannels'])->name('telegram.channel.send-keyboard-all');
     });
 
     // Catatan & Masukan Perbaikan Aplikasi (Terbuka untuk semua pengguna login)

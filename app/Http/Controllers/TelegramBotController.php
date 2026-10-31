@@ -442,4 +442,72 @@ class TelegramBotController extends Controller
 
         return back()->with('error', $res['message']);
     }
+
+    public function sendKeyboardToChannel(TelegramChannel $channel): RedirectResponse
+    {
+        if (empty($channel->chat_id)) {
+            return back()->with('error', "Grup '{$channel->name}' belum memiliki Chat ID Telegram.");
+        }
+
+        $keyboard = $channel->buildReplyKeyboard();
+        $msg = "🤖 <b>PEMBARUAN TOMBOL MENU INTERAKTIF</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."Halo Bpk/Ibu di <b>{$channel->name}</b>,\n\n"
+            ."Tombol keyboard cepat untuk grup ini telah diperbarui oleh Admin SIM Kurikulum.\n\n"
+            ."Silakan gunakan tombol menu di bawah untuk mengakses fitur bot sekolah dengan cepat.\n\n"
+            .'<i>💡 Jika tombol keyboard tertutup, klik ikon keyboard (ikon empat kotak/titik) di samping kanan bilah tulis pesan Telegram Anda.</i>';
+
+        $success = $this->telegramService->sendMessage(
+            $channel->chat_id,
+            $msg,
+            'bot_reply',
+            'Manajemen Sekolah',
+            'HTML',
+            $keyboard
+        );
+
+        if ($success) {
+            return back()->with('success', "Tombol menu keyboard berhasil dikirim dan dimunculkan di grup '{$channel->name}'.");
+        }
+
+        return back()->with('error', "Gagal mengirim ke grup '{$channel->name}'. Pastikan bot aktif dan sudah bergabung ke dalam grup.");
+    }
+
+    public function sendKeyboardToAllChannels(): RedirectResponse
+    {
+        $channels = TelegramChannel::whereNotNull('chat_id')
+            ->where('is_active', true)
+            ->where('show_reply_keyboard', true)
+            ->get();
+
+        if ($channels->isEmpty()) {
+            return back()->with('warning', 'Tidak ada saluran grup aktif dengan tombol keyboard yang memiliki Chat ID.');
+        }
+
+        $sentCount = 0;
+        foreach ($channels as $channel) {
+            $keyboard = $channel->buildReplyKeyboard();
+            $msg = "🤖 <b>PEMBARUAN TOMBOL MENU INTERAKTIF</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."Halo Bpk/Ibu di <b>{$channel->name}</b>,\n\n"
+                ."Tombol keyboard cepat untuk grup ini telah diperbarui oleh Admin SIM Kurikulum.\n\n"
+                ."Silakan gunakan tombol menu di bawah untuk mengakses fitur bot sekolah dengan cepat.\n\n"
+                .'<i>💡 Jika tombol keyboard tertutup, klik ikon keyboard (ikon empat kotak/titik) di samping kanan bilah tulis pesan Telegram Anda.</i>';
+
+            $success = $this->telegramService->sendMessage(
+                $channel->chat_id,
+                $msg,
+                'bot_reply',
+                'Manajemen Sekolah',
+                'HTML',
+                $keyboard
+            );
+
+            if ($success) {
+                $sentCount++;
+            }
+        }
+
+        return back()->with('success', "Tombol menu keyboard berhasil dikirimkan ke {$sentCount} grup Telegram sekolah.");
+    }
 }

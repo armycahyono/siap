@@ -429,6 +429,23 @@ class TelegramChannel extends Model
     }
 
     /**
+     * Bangun susunan default Reply Keyboard untuk grup sekolah yang belum terdaftar khusus.
+     */
+    public static function buildDefaultGroupKeyboard(): array
+    {
+        return [
+            'keyboard' => [
+                [['text' => '📋 Tim Piket Hari Ini'], ['text' => '🏫 Jadwal Jam Sekarang']],
+                [['text' => '🚨 Cek Inval / Kelas Kosong'], ['text' => '🗓️ Agenda Sekolah']],
+                [['text' => '📊 Rekap Cepat Hari Ini'], ['text' => 'ℹ️ Panduan Bantuan']],
+                [['text' => '🆔 Cek Chat ID Grup']],
+            ],
+            'resize_keyboard' => true,
+            'is_persistent' => true,
+        ];
+    }
+
+    /**
      * Mengetahui perintah asli dari teks tombol kustom yang dikirim pengguna.
      */
     public static function resolveCommandFromText(string $text, ?self $channel = null): ?string

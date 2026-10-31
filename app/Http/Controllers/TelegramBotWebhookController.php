@@ -132,7 +132,36 @@ class TelegramBotWebhookController extends Controller
 
         $channel = null;
         if ($isGroup) {
-            $channel = TelegramChannel::where('chat_id', $chatId)->where('is_active', true)->first();
+            $channel = TelegramChannel::where('chat_id', $chatId)->first();
+
+            // Auto-discovery / auto-link jika grup belum memiliki saluran di database
+            if (! $channel) {
+                if (stripos($chatTitle, 'piket') !== false) {
+                    $channel = TelegramChannel::whereNull('chat_id')->where('code', 'piket')->first();
+                }
+
+                if ($channel) {
+                    $channel->update([
+                        'chat_id' => $chatId,
+                        'name' => $chatTitle ?: $channel->name,
+                    ]);
+                } else {
+                    $slug = Str::slug($chatTitle ?: 'grup_'.$chatId, '_');
+                    if (TelegramChannel::where('code', $slug)->exists()) {
+                        $slug .= '_'.substr(abs((int) $chatId), -4);
+                    }
+
+                    $channel = TelegramChannel::create([
+                        'name' => $chatTitle ?: 'Grup Telegram '.$chatId,
+                        'code' => $slug,
+                        'chat_id' => $chatId,
+                        'description' => 'Saluran grup otomatis terdeteksi saat bot diajak berinteraksi.',
+                        'enabled_commands' => ['/piket', '/jadwal', '/inval', '/agenda', '/rekap', '/bantuan', '/id'],
+                        'show_reply_keyboard' => true,
+                        'is_active' => true,
+                    ]);
+                }
+            }
         }
 
         // Resolusi teks tombol reply keyboard ke perintah bot resmi
@@ -173,6 +202,9 @@ class TelegramBotWebhookController extends Controller
             $allowed[] = '/panduan';
             $allowed[] = '/id';
             $allowed[] = '/chatid';
+            $allowed[] = '/start';
+            $allowed[] = '/menu';
+            $allowed[] = '/keyboard';
             if (! in_array($baseCmd, $allowed)) {
                 // Perintah tidak diaktifkan pada grup ini, abaikan dengan tenang
                 return;
@@ -180,7 +212,7 @@ class TelegramBotWebhookController extends Controller
         }
 
         switch (true) {
-            case $cmd === '/start':
+            case $cmd === '/start' || $cmd === '/menu' || $cmd === '/keyboard' || $cmd === 'menu' || $cmd === 'keyboard':
                 $this->commandStart($chatId, $user, $senderName);
                 break;
 
@@ -386,6 +418,30 @@ class TelegramBotWebhookController extends Controller
      */
     protected function commandStart(string $chatId, ?User $user, string $senderName): void
     {
+        $isGroup = str_starts_with($chatId, '-');
+        if ($isGroup) {
+            $channel = TelegramChannel::where('chat_id', $chatId)->first();
+            $channelTitle = $channel?->name ?? 'Grup Sekolah';
+            $keyboard = $channel?->buildReplyKeyboard() ?? TelegramChannel::buildDefaultGroupKeyboard();
+
+            $msg = "🤖 <b>MENU TOMBOL INTERAKTIF SIAP</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."Grup: <b>{$channelTitle}</b>\n\n"
+                ."Tombol keyboard cepat telah diaktifkan untuk grup ini. Silakan gunakan tombol-tombol menu di bawah layar untuk operasional harian sekolah.\n\n"
+                .'<i>💡 Jika tombol keyboard tertutup, klik ikon keyboard (ikon empat kotak/titik) di samping bilah tulis pesan Telegram Anda.</i>';
+
+            $this->telegramService->sendMessage(
+                $chatId,
+                $msg,
+                'bot_reply',
+                $senderName,
+                'HTML',
+                $keyboard
+            );
+
+            return;
+        }
+
         if (! $user) {
             $msg = "🤖 <b>SELAMAT DATANG DI BOT TELEGRAM SIAP</b>\n"
                 ."━━━━━━━━━━━━━━━━━━━━\n"

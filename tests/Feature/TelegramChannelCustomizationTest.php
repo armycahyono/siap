@@ -232,4 +232,58 @@ class TelegramChannelCustomizationTest extends TestCase
                 && $request['chat_id'] === '-100777888999';
         });
     }
+
+    public function test_admin_can_send_keyboard_to_channel(): void
+    {
+        $channel = TelegramChannel::create([
+            'name' => 'Warga GTK SMK PGRI Kras',
+            'code' => 'warga_gtk_send_test',
+            'chat_id' => '-1003981909476',
+            'show_reply_keyboard' => true,
+            'enabled_commands' => ['/piket', '/jadwal'],
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('telegram.channel.send-keyboard', $channel->id));
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($request['text'], 'PEMBARUAN TOMBOL MENU INTERAKTIF')
+                && $request['chat_id'] === '-1003981909476';
+        });
+    }
+
+    public function test_unregistered_group_receives_default_group_keyboard(): void
+    {
+        $response = $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'chat' => [
+                    'id' => -1004409003378,
+                    'title' => 'Pak Piket Sekolah',
+                    'type' => 'supergroup',
+                ],
+                'from' => [
+                    'id' => 8051871751,
+                    'first_name' => 'Army',
+                ],
+                'text' => '/start',
+            ],
+        ]);
+
+        $response->assertOk();
+
+        // An auto-discovered channel should now exist
+        $channel = TelegramChannel::where('chat_id', '-1004409003378')->first();
+        $this->assertNotNull($channel);
+        $this->assertTrue($channel->show_reply_keyboard);
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($request['text'], 'MENU TOMBOL INTERAKTIF SIAP')
+                && isset($request['reply_markup'])
+                && str_contains($request['reply_markup'], 'Tim Piket Hari Ini');
+        });
+    }
 }
