@@ -138,6 +138,12 @@ class TelegramBotWebhookController extends Controller
             if (! $channel) {
                 if (stripos($chatTitle, 'piket') !== false) {
                     $channel = TelegramChannel::whereNull('chat_id')->where('code', 'piket')->first();
+                } elseif (stripos($chatTitle, 'gtk') !== false || stripos($chatTitle, 'guru') !== false) {
+                    $channel = TelegramChannel::whereNull('chat_id')->where('code', 'gtk')->first();
+                } elseif (stripos($chatTitle, 'disiplin') !== false || stripos($chatTitle, 'bk') !== false) {
+                    $channel = TelegramChannel::whereNull('chat_id')->where('code', 'discipline')->first();
+                } elseif (stripos($chatTitle, 'kegiatan') !== false || stripos($chatTitle, 'kaldik') !== false) {
+                    $channel = TelegramChannel::whereNull('chat_id')->where('code', 'activities')->first();
                 }
 
                 if ($channel) {
@@ -145,6 +151,7 @@ class TelegramBotWebhookController extends Controller
                         'chat_id' => $chatId,
                         'name' => $chatTitle ?: $channel->name,
                     ]);
+                    TelegramChannel::syncAllToSchoolSettings();
                 } else {
                     $slug = Str::slug($chatTitle ?: 'grup_'.$chatId, '_');
                     if (TelegramChannel::where('code', $slug)->exists()) {
@@ -160,6 +167,7 @@ class TelegramBotWebhookController extends Controller
                         'show_reply_keyboard' => true,
                         'is_active' => true,
                     ]);
+                    TelegramChannel::syncAllToSchoolSettings();
                 }
             }
         }

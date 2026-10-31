@@ -43,11 +43,11 @@ class TelegramService
         $setting = SchoolSetting::getSetting();
         $this->botToken = $setting->telegram_bot_token ?: config('services.telegram.bot_token');
         $this->enabled = (bool) ($setting->telegram_notifications_enabled ?? false);
-        $this->disciplineChatId = $setting->telegram_discipline_chat_id;
-        $this->piketChatId = $setting->telegram_piket_chat_id;
-        $this->supervisionChatId = $setting->telegram_supervision_chat_id;
-        $this->activitiesChatId = $setting->telegram_activities_chat_id;
-        $this->teachersChatId = $setting->telegram_teachers_chat_id;
+        $this->disciplineChatId = TelegramChannel::getChatId('discipline') ?? $setting->telegram_discipline_chat_id;
+        $this->piketChatId = TelegramChannel::getChatId('piket') ?? $setting->telegram_piket_chat_id;
+        $this->supervisionChatId = TelegramChannel::getChatId('supervision') ?? $setting->telegram_supervision_chat_id;
+        $this->activitiesChatId = TelegramChannel::getChatId('activities') ?? $setting->telegram_activities_chat_id;
+        $this->teachersChatId = TelegramChannel::getChatId('gtk') ?? $setting->telegram_teachers_chat_id;
     }
 
     public function isEnabled(): bool
@@ -384,8 +384,9 @@ class TelegramService
         }
 
         // 3. Notif ke Grup Kedisiplinan & BK
-        if ($this->disciplineChatId) {
-            $this->sendMessage($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
+        $disciplineChatId = $this->getDisciplineChatId();
+        if ($disciplineChatId) {
+            $this->sendMessage($disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
         }
     }
 
@@ -473,13 +474,15 @@ class TelegramService
         }
 
         // 3. Notif ke Grup Tim Piket Harian Sekolah
-        if ($this->piketChatId) {
-            $this->sendMessage($this->piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
+        $piketChatId = $this->getPiketChatId();
+        if ($piketChatId) {
+            $this->sendMessage($piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
         }
 
         // 4. Notif ke Grup Kedisiplinan/BK
-        if ($this->disciplineChatId) {
-            $this->sendMessage($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
+        $disciplineChatId = $this->getDisciplineChatId();
+        if ($disciplineChatId) {
+            $this->sendMessage($disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
         }
     }
 
@@ -518,8 +521,9 @@ class TelegramService
         }
 
         // 2. Kirim ke Grup Tim Piket
-        if ($this->piketChatId) {
-            $this->sendMessage($this->piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
+        $piketChatId = $this->getPiketChatId();
+        if ($piketChatId) {
+            $this->sendMessage($piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
         }
 
         // 3. Japri ke seluruh Petugas Piket hari ini
@@ -632,8 +636,9 @@ class TelegramService
         }
 
         // 4. Kirim ke Grup Tim Piket Harian Sekolah
-        if ($this->piketChatId) {
-            $this->sendMessage($this->piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
+        $piketChatId = $this->getPiketChatId();
+        if ($piketChatId) {
+            $this->sendMessage($piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
         }
 
         // 5. Konfirmasi ke Guru yang izin (jika ada chat_id dan bukan dirinya sendiri yang mengajukan via bot)
@@ -707,8 +712,9 @@ class TelegramService
             }
 
             // 3. Grup Tim Piket
-            if ($this->piketChatId) {
-                $this->sendMessage($this->piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
+            $piketChatId = $this->getPiketChatId();
+            if ($piketChatId) {
+                $this->sendMessage($piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
             }
         }
 
@@ -768,8 +774,9 @@ class TelegramService
                 $this->sendMessage($wakaKurikulum->telegram_chat_id, $msgWaka, 'waka_kurikulum', $wakaKurikulum->name);
             }
 
-            if ($this->piketChatId) {
-                $this->sendMessage($this->piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
+            $piketChatId = $this->getPiketChatId();
+            if ($piketChatId) {
+                $this->sendMessage($piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
             }
         }
 
@@ -818,8 +825,9 @@ class TelegramService
         };
 
         // 1. Notif ke Grup Tim Piket Sekolah
-        if ($this->piketChatId) {
-            $dispatch($this->piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
+        $piketChatId = $this->getPiketChatId();
+        if ($piketChatId) {
+            $dispatch($piketChatId, $text, 'piket_group', 'Grup Tim Piket Sekolah');
         }
 
         // 2. Notif Japri ke Petugas Piket Hari Ini
@@ -855,8 +863,9 @@ class TelegramService
         }
 
         // 4. Notif ke Grup Kedisiplinan & BK
-        if ($this->disciplineChatId) {
-            $dispatch($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
+        $disciplineChatId = $this->getDisciplineChatId();
+        if ($disciplineChatId) {
+            $dispatch($disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
         }
 
         // 5. Notif Japri ke Kepala Sekolah
@@ -916,8 +925,9 @@ class TelegramService
         }
 
         // 2. Notif ke Grup Kedisiplinan & BK
-        if ($this->disciplineChatId) {
-            $this->sendMessage($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
+        $disciplineChatId = $this->getDisciplineChatId();
+        if ($disciplineChatId) {
+            $this->sendMessage($disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
         }
 
         // 3. Notif ke Petugas Pencatat Awal (apabila beda orang dengan verifikator)
@@ -996,8 +1006,9 @@ class TelegramService
         }
 
         // 4. Notif ke Grup Kedisiplinan & BK
-        if ($this->disciplineChatId) {
-            $this->sendMessage($this->disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
+        $disciplineChatId = $this->getDisciplineChatId();
+        if ($disciplineChatId) {
+            $this->sendMessage($disciplineChatId, $text, 'discipline_group', 'Grup Kedisiplinan/BK');
         }
     }
 
@@ -1120,7 +1131,8 @@ class TelegramService
         }
 
         // 2. Siarkan ke Grup Tim Piket Sekolah
-        if ($this->piketChatId) {
+        $piketChatId = $this->getPiketChatId();
+        if ($piketChatId) {
             $textGroup = "🔄 <b>INFO PERGANTIAN JADWAL PIKET RESMI</b>\n"
                 ."━━━━━━━━━━━━━━━━━━━━\n"
                 ."Telah disetujui pertukaran tugas piket:\n"
@@ -1132,7 +1144,7 @@ class TelegramService
                 ."━━━━━━━━━━━━━━━━━━━━\n"
                 .'<i>Pembaruan otomatis dari SIM Kurikulum & Sistem Piket.</i>';
 
-            $this->sendMessage($this->piketChatId, $textGroup, 'piket_group', 'Grup Tim Piket Sekolah');
+            $this->sendMessage($piketChatId, $textGroup, 'piket_group', 'Grup Tim Piket Sekolah');
         }
 
         // 3. Tembusan Japri ke Waka Kurikulum
@@ -1228,8 +1240,9 @@ class TelegramService
         if ($supervisor && $supervisor->telegram_chat_id) {
             $this->sendMessage($supervisor->telegram_chat_id, $textSupervisor, 'supervision_reminder', $supervisor->name);
         }
-        if ($this->supervisionChatId) {
-            $this->sendMessage($this->supervisionChatId, $textTeacher, 'supervision_group', 'Grup Supervisi');
+        $supervisionChatId = $this->getSupervisionChatId();
+        if ($supervisionChatId) {
+            $this->sendMessage($supervisionChatId, $textTeacher, 'supervision_group', 'Grup Supervisi');
         }
 
         return $sent;
@@ -1260,8 +1273,9 @@ class TelegramService
             $this->sendMessage($principal->telegram_chat_id, $text, 'supervision_approval', $principal->name);
         }
 
-        if ($this->supervisionChatId) {
-            $this->sendMessage($this->supervisionChatId, $text, 'supervision_group', 'Grup Supervisi');
+        $supervisionChatId = $this->getSupervisionChatId();
+        if ($supervisionChatId) {
+            $this->sendMessage($supervisionChatId, $text, 'supervision_group', 'Grup Supervisi');
         }
     }
 
@@ -1313,13 +1327,15 @@ class TelegramService
 
         $sent = false;
         // Kirim ke grup kegiatan/kurikulum jika diatur
-        if ($this->activitiesChatId) {
-            $sent = $this->sendMessage($this->activitiesChatId, $text, 'school_activity', 'Grup Kegiatan Sekolah');
+        $activitiesChatId = $this->getActivitiesChatId();
+        if ($activitiesChatId) {
+            $sent = $this->sendMessage($activitiesChatId, $text, 'school_activity', 'Grup Kegiatan Sekolah');
         }
 
-        // Kirim juga ke grup umum dewan guru
-        if ($this->teachersChatId) {
-            $sent = $this->sendMessage($this->teachersChatId, $text, 'school_activity', 'Grup Dewan Guru');
+        // Kirim juga ke grup umum Warga GTK
+        $teachersChatId = $this->getTeachersChatId();
+        if ($teachersChatId) {
+            $sent = $this->sendMessage($teachersChatId, $text, 'school_activity', 'Warga GTK SMK PGRI Kras');
         }
 
         return $sent;

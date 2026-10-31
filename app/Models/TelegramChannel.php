@@ -45,17 +45,25 @@ class TelegramChannel extends Model
     public static function getChatId(string $code): ?string
     {
         $channel = self::findByCode($code);
-        if ($channel && $channel->is_active && ! empty($channel->chat_id)) {
-            return $channel->chat_id;
+        if ($channel) {
+            // Jika record saluran ada di database:
+            // Hanya kembalikan chat_id jika saluran aktif dan chat_id tidak kosong
+            if ($channel->is_active && ! empty($channel->chat_id)) {
+                return $channel->chat_id;
+            }
+
+            // Jika record saluran ada di database tetapi chat_id NULL/kosong atau tidak aktif,
+            // JANGAN pernah fallback ke nilai lama di SchoolSetting! Karena artinya saluran memang kosong.
+            return null;
         }
 
-        // Fallback ke SchoolSetting jika belum diisi di TelegramChannel
+        // Fallback ke SchoolSetting HANYA jika record TelegramChannel belum ada sama sekali di tabel
         $setting = SchoolSetting::first();
         if (! $setting) {
             return null;
         }
 
-        return match ($code) {
+        $fallbackId = match ($code) {
             'discipline' => $setting->telegram_discipline_chat_id,
             'piket' => $setting->telegram_piket_chat_id,
             'supervision' => $setting->telegram_supervision_chat_id,
@@ -63,6 +71,43 @@ class TelegramChannel extends Model
             'gtk' => $setting->telegram_teachers_chat_id,
             default => null,
         };
+
+        if (empty($fallbackId)) {
+            return null;
+        }
+
+        // Cegah jika fallbackId sudah aktif digunakan oleh channel lain di tabel telegram_channels
+        $claimedByOther = self::where('chat_id', $fallbackId)->where('is_active', true)->exists();
+        if ($claimedByOther) {
+            return null;
+        }
+
+        return $fallbackId;
+    }
+
+    /**
+     * Sinkronkan konfigurasi Chat ID dari tabel telegram_channels ke school_settings.
+     */
+    public static function syncAllToSchoolSettings(): void
+    {
+        $setting = SchoolSetting::first();
+        if (! $setting) {
+            return;
+        }
+
+        $disciplineChannel = self::findByCode('discipline');
+        $piketChannel = self::findByCode('piket');
+        $supervisionChannel = self::findByCode('supervision');
+        $activitiesChannel = self::findByCode('activities');
+        $gtkChannel = self::findByCode('gtk');
+
+        $setting->update([
+            'telegram_discipline_chat_id' => ($disciplineChannel && $disciplineChannel->is_active) ? $disciplineChannel->chat_id : null,
+            'telegram_piket_chat_id' => ($piketChannel && $piketChannel->is_active) ? $piketChannel->chat_id : null,
+            'telegram_supervision_chat_id' => ($supervisionChannel && $supervisionChannel->is_active) ? $supervisionChannel->chat_id : null,
+            'telegram_activities_chat_id' => ($activitiesChannel && $activitiesChannel->is_active) ? $activitiesChannel->chat_id : null,
+            'telegram_teachers_chat_id' => ($gtkChannel && $gtkChannel->is_active) ? $gtkChannel->chat_id : null,
+        ]);
     }
 
     /**

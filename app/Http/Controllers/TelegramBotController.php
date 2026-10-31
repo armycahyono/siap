@@ -350,6 +350,8 @@ class TelegramBotController extends Controller
             'is_active' => $request->has('is_active'),
         ]);
 
+        TelegramChannel::syncAllToSchoolSettings();
+
         if ($channel->chat_id && ! empty($channel->enabled_commands)) {
             $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands, $channel);
         }
@@ -383,9 +385,18 @@ class TelegramBotController extends Controller
             }
         }
 
+        $newChatId = ! empty($validated['chat_id']) ? trim($validated['chat_id']) : null;
+
+        // Jika chat_id diisi, lepas chat_id yang sama dari channel lain agar tidak terjadi konflik/klaim ganda
+        if ($newChatId) {
+            TelegramChannel::where('id', '!=', $channel->id)
+                ->where('chat_id', $newChatId)
+                ->update(['chat_id' => null]);
+        }
+
         $channel->update([
             'name' => $validated['name'],
-            'chat_id' => ! empty($validated['chat_id']) ? $validated['chat_id'] : null,
+            'chat_id' => $newChatId,
             'description' => ! empty($validated['description']) ? $validated['description'] : null,
             'invite_link' => ! empty($validated['invite_link']) ? $validated['invite_link'] : null,
             'allowed_roles' => $validated['allowed_roles'] ?? [],
@@ -394,6 +405,9 @@ class TelegramBotController extends Controller
             'custom_buttons' => $customButtons,
             'is_active' => $request->has('is_active'),
         ]);
+
+        // Sinkronkan perubahan ke school_settings agar tidak ada data usang yang tertinggal
+        TelegramChannel::syncAllToSchoolSettings();
 
         if ($channel->chat_id && $channel->is_active && ! empty($channel->enabled_commands)) {
             $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands, $channel);
@@ -406,6 +420,8 @@ class TelegramBotController extends Controller
     {
         $name = $channel->name;
         $channel->delete();
+
+        TelegramChannel::syncAllToSchoolSettings();
 
         return back()->with('success', "Saluran grup '{$name}' telah dihapus.");
     }
