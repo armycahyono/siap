@@ -104,7 +104,7 @@
                 </li>
                 <li class="nav-item" role="presentation">
                     <a href="#tab-disiplin" class="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">
-                        <i class="ti ti-shield-alert me-2"></i> 7. Kedisiplinan &amp; Perizinan <span class="badge bg-danger-lt ms-1">{{ $allIncidents->count() + $permits->count() }}</span>
+                        <i class="ti ti-shield-exclamation me-2"></i> 7. Kedisiplinan &amp; Perizinan <span class="badge bg-danger-lt ms-1">{{ $allIncidents->count() + $permits->count() }}</span>
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -1131,7 +1131,7 @@
                         <div class="card-header bg-danger-lt py-2 d-flex justify-content-between align-items-center">
                             <div>
                                 <h4 class="card-title text-danger mb-0 fw-bold">
-                                    <i class="ti ti-shield-alert me-2"></i> Rekaman Kejadian &amp; Pelanggaran Kedisiplinan Siswa ({{ $allIncidents->count() }})
+                                    <i class="ti ti-shield-exclamation me-2"></i> Rekaman Kejadian &amp; Pelanggaran Kedisiplinan Siswa ({{ $allIncidents->count() }})
                                 </h4>
                                 <div class="text-muted small mt-1">Riwayat Kasus Piket Dirujuk ke BK &amp; Penanganan Kedisiplinan</div>
                             </div>

@@ -689,7 +689,7 @@
                     @if($kbmMonitoring['siswa']['incidents_count'] > 0)
                         <div class="mt-2 p-1.5 rounded-2 bg-danger-lt border border-danger d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center gap-1.5 overflow-hidden">
-                                <i class="ti ti-shield-alert text-danger fs-3 flex-shrink-0"></i>
+                                <i class="ti ti-shield-exclamation text-danger fs-3 flex-shrink-0"></i>
                                 <span class="small fw-semibold text-danger text-truncate" style="font-size: 0.72rem;">
                                     {{ $kbmMonitoring['siswa']['incidents_count'] }} kasus pelanggaran siswa tercatat di meja piket
                                 </span>

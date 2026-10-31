@@ -762,12 +762,6 @@
                                     <i class="ti ti-report-analytics me-2"></i> Rekapitulasi &amp; Laporan
                                 </a>
                                 @endif
-
-                                @if(auth()->user()->canManagePiketSettings())
-                                <a class="dropdown-item {{ request()->routeIs('piket.telegram.*') ? 'active' : '' }}" href="{{ route('piket.telegram.index') }}">
-                                    <i class="ti ti-brand-telegram me-2 text-info"></i> Bot Telegram Piket
-                                </a>
-                                @endif
                             </div>
                         </li>
                         @endif
@@ -781,7 +775,7 @@
                         <li class="nav-item dropdown {{ $isDisciplineMenuActive ? 'active' : '' }}">
                             <a class="nav-link dropdown-toggle" href="#navbar-tatib" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ $isDisciplineMenuActive ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
-                                    <i class="ti ti-shield-alert fs-2 text-danger"></i>
+                                    <i class="ti ti-shield-exclamation fs-2 text-danger"></i>
                                 </span>
                                 <span class="nav-link-title">Tim Kedisiplinan</span>
                             </a>
@@ -1040,7 +1034,7 @@
                             </span>
                         </li>
 
-                        @if(auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
+                        @if(auth()->user()->hasPermission('manage_settings') || auth()->user()->canManagePiketSettings() || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
                         <li class="nav-item {{ request()->routeIs('telegram.*', 'piket.telegram.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('telegram.index') }}">
                                 <span class="nav-link-icon d-inline-block">

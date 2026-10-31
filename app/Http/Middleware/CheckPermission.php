@@ -49,6 +49,10 @@ class CheckPermission
             return $next($request);
         }
 
+        if ($permission === 'manage_settings' && ($user->hasPermission('manage_settings') || $user->canManagePiketSettings())) {
+            return $next($request);
+        }
+
         if ($user->hasPermission($permission)) {
             return $next($request);
         }

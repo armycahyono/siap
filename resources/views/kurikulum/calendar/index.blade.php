@@ -678,7 +678,7 @@
                     <div class="card border border-warning-subtle shadow-none bg-yellow-lt mb-3" id="section_disengaged_impacts">
                         <div class="card-body p-3">
                             <div class="d-flex align-items-center mb-3 pb-1 border-bottom border-warning-subtle">
-                                <i class="ti ti-shield-alert text-warning fs-3 me-2"></i>
+                                <i class="ti ti-shield-exclamation text-warning fs-3 me-2"></i>
                                 <div>
                                     <h6 class="mb-0 fw-bold text-dark">Guru, Staf, &amp; Siswa yang TIDAK Terlibat Kegiatan</h6>
                                     <div class="text-muted small" style="font-size: 0.73rem;">Penetapan status bagi warga sekolah yang tidak bertugas/terlibat dalam agenda di atas.</div>
@@ -824,7 +824,7 @@
                 </div>
 
                 <div class="d-flex align-items-start gap-3 mb-3" id="detailDisengagedRow" style="display: none;">
-                    <i class="ti ti-shield-alert fs-2 text-warning flex-shrink-0 mt-1"></i>
+                    <i class="ti ti-shield-exclamation fs-2 text-warning flex-shrink-0 mt-1"></i>
                     <div>
                         <div class="fw-bold text-dark">Dampak Pihak Yang Tidak Terlibat</div>
                         <div class="small text-muted mt-1" id="detailDisengagedContent">

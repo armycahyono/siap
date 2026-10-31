@@ -687,7 +687,7 @@
         <div class="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom" style="border-color: #fee2e2 !important;">
             <div class="d-flex align-items-center gap-2">
                 <span class="avatar avatar-sm bg-danger text-white shadow-sm rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
-                    <i class="ti ti-shield-alert fs-2"></i>
+                    <i class="ti ti-shield-exclamation fs-2"></i>
                 </span>
                 <div>
                     <div class="fw-bold text-dark fs-3 lh-1">Kedisiplinan Siswa</div>

@@ -9,7 +9,7 @@
         <div class="row align-items-center">
             <div class="col-auto">
                 <span class="avatar avatar-md bg-danger-lt text-danger rounded-circle">
-                    <i class="ti ti-shield-alert fs-1"></i>
+                    <i class="ti ti-shield-exclamation fs-1"></i>
                 </span>
             </div>
             <div class="col">

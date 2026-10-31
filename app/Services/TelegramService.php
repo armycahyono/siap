@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\GtkPermit;
+use App\Models\LessonSchedule;
 use App\Models\PiketDutySwap;
 use App\Models\PiketIncident;
 use App\Models\PiketInvalClass;
@@ -1010,6 +1011,38 @@ class TelegramService
             .'<i>Semangat bertugas dan terima kasih atas dedikasinya!</i>';
 
         return $this->sendMessage($teacher->telegram_chat_id, $text, 'piket_reminder', $teacher->name);
+    }
+
+    /**
+     * Notifikasi pengingat 10 menit sebelum jam KBM dimulai ke guru pengajar.
+     */
+    public function notifyUpcomingTeaching(User $teacher, LessonSchedule $schedule, string $startTime, string $endTime): bool
+    {
+        if (empty($teacher->telegram_chat_id)) {
+            return false;
+        }
+
+        $classroomName = $schedule->classroom?->name ?? 'Kelas -';
+        $subjectName = $schedule->subject?->name ?? 'Mata Pelajaran';
+        $pStart = $schedule->start_period;
+        $pEnd = $schedule->end_period;
+
+        $text = "⏰ <b>PENGINGAT KBM — 10 MENIT LAGI</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."Halo Bpk/Ibu <b>{$teacher->name}</b>,\n\n"
+            ."Jam mengajar Anda berikutnya akan dimulai pada pukul <b>{$startTime} WIB</b>:\n\n"
+            ."🏫 <b>Kelas:</b> {$classroomName}\n"
+            ."📚 <b>Mata Pelajaran:</b> {$subjectName}\n"
+            ."⏰ <b>Waktu KBM:</b> Jam ke-{$pStart} s/d {$pEnd} ({$startTime} - {$endTime} WIB)\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Mohon segera menuju ruang kelas dan menyiapkan perangkat KBM. Selamat mengajar!</i>';
+
+        return $this->sendMessage(
+            $teacher->telegram_chat_id,
+            $text,
+            'teaching_reminder',
+            $teacher->name
+        );
     }
 
     /**

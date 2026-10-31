@@ -303,33 +303,69 @@
                     </form>
                 @endif
 
-                <div class="hr-text text-muted my-3">Perintah Interaktif Petugas Piket</div>
+                <div class="hr-text text-muted my-3">Daftar Perintah Interaktif Bot SIAP</div>
                 <div class="table-responsive">
                     <table class="table table-sm table-borderless text-secondary mb-0" style="font-size: 0.8rem;">
                         <tbody>
+                            <tr>
+                                <td><code>/presensi</code></td>
+                                <td>Cek log presensi tap/kehadiran saya hari ini</td>
+                            </tr>
+                            <tr>
+                                <td><code>/jadwalsaya</code></td>
+                                <td>Jadwal mengajar KBM pribadi hari ini</td>
+                            </tr>
+                            <tr>
+                                <td><code>/cek_absen_siswa</code></td>
+                                <td>Rekap presensi KBM & kejadian siswa (Wali Kelas, BK, Piket)</td>
+                            </tr>
                             <tr>
                                 <td><code>/piket</code></td>
                                 <td>Cek rekan & jadwal tim piket hari ini</td>
                             </tr>
                             <tr>
                                 <td><code>/jadwal</code></td>
-                                <td>Jadwal KBM & guru mengajar jam aktif</td>
+                                <td>Jadwal KBM & guru mengajar jam aktif sekolah</td>
                             </tr>
                             <tr>
                                 <td><code>/inval</code></td>
-                                <td>Cek guru tidak hadir & kelas kosong</td>
+                                <td>Cek guru izin & kelas kosong / penugasan inval</td>
                             </tr>
                             <tr>
                                 <td><code>/lapor</code></td>
-                                <td>Lapor kejadian/kasus siswa + foto bukti</td>
+                                <td>Lapor kasus/pelanggaran siswa + foto bukti</td>
+                            </tr>
+                            <tr>
+                                <td><code>/ajukan_izin</code></td>
+                                <td>Ajukan izin mandiri GTK & titip tugas KBM</td>
+                            </tr>
+                            <tr>
+                                <td><code>/tukar</code></td>
+                                <td>Tukar jadwal piket dengan rekan guru</td>
                             </tr>
                             <tr>
                                 <td><code>/rekap</code></td>
-                                <td>Rekap izin, kasus, & tamu hari ini</td>
+                                <td>Rekap cepat perizinan, tamu & kasus hari ini</td>
+                            </tr>
+                            <tr>
+                                <td><code>/tamu</code></td>
+                                <td>Daftar buku tamu kunjungan sekolah hari ini</td>
+                            </tr>
+                            <tr>
+                                <td><code>/agenda</code></td>
+                                <td>Agenda kegiatan & kalender pendidikan sekolah</td>
+                            </tr>
+                            <tr>
+                                <td><code>/poin [nis]</code></td>
+                                <td>Cek catatan kasus & rekam jejak siswa</td>
+                            </tr>
+                            <tr>
+                                <td><code>/hubungkan [nip]</code></td>
+                                <td>Tautkan akun SIAP ke akun Telegram</td>
                             </tr>
                             <tr>
                                 <td><code>/id</code></td>
-                                <td>Cek Chat ID Telegram pribadi</td>
+                                <td>Cek nomor Chat ID Telegram unik pribadi</td>
                             </tr>
                         </tbody>
                     </table>

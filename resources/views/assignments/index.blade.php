@@ -174,7 +174,7 @@
                 @endphp
                 @if($tatibRole)
                     <a href="{{ route('employee-assignments.index', array_merge(request()->except('role_id'), ['role_id' => $tatibRole->id, 'academic_year' => $filterYear])) }}" class="badge {{ (string)$filterRoleId === (string)$tatibRole->id ? 'bg-danger text-white' : 'bg-danger-lt border border-danger' }} text-decoration-none py-1.5 px-2">
-                        <i class="ti ti-shield-alert me-1"></i> Tim Kedisiplinan
+                        <i class="ti ti-shield-exclamation me-1"></i> Tim Kedisiplinan
                     </a>
                 @endif
                 @if($coordTatibRole)

@@ -106,7 +106,7 @@
             <div class="card shadow-sm border-0 border-start border-4 border-warning mb-4">
                 <div class="card-header bg-warning-lt d-flex justify-content-between align-items-center py-2">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="avatar avatar-xs bg-warning text-white rounded"><i class="ti ti-shield-alert"></i></span>
+                        <span class="avatar avatar-xs bg-warning text-white rounded"><i class="ti ti-shield-exclamation"></i></span>
                         <div>
                             <h3 class="card-title text-warning-emphasis mb-0 fs-4 fw-bold">
                                 Perangkat Baru Ditemukan ({{ $pendingDevices->count() }} Menunggu Verifikasi Admin)

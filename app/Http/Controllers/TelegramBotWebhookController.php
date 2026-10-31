@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
+use App\Models\AttendanceLog;
 use App\Models\Classroom;
+use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketDutySwap;
@@ -14,16 +17,19 @@ use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
+use App\Models\SubjectAttendanceRecord;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Throwable;
 
 class TelegramBotWebhookController extends Controller
@@ -132,8 +138,12 @@ class TelegramBotWebhookController extends Controller
         $cmd = mb_strtolower($text);
 
         switch (true) {
-            case $cmd === '/start' || $cmd === '/help' || $cmd === 'bantuan':
+            case $cmd === '/start':
                 $this->commandStart($chatId, $user, $senderName);
+                break;
+
+            case $cmd === '/help' || $cmd === 'bantuan' || $cmd === '/panduan' || $cmd === 'panduan' || $cmd === 'ℹ️ panduan bantuan' || $cmd === 'panduan bantuan':
+                $this->commandHelp($chatId, $user, $senderName);
                 break;
 
             case $cmd === '/izin_siswa' || $cmd === '/izinsiswa' || $cmd === '/izin' || $cmd === '🎫 perizinan siswa' || $cmd === 'perizinan siswa' || $cmd === '🎫 izin siswa (wali kelas)' || $cmd === 'izin siswa (wali kelas)' || $cmd === 'izin siswa wali kelas':
@@ -176,6 +186,30 @@ class TelegramBotWebhookController extends Controller
                 $this->commandLinkAccount($chatId, $text, $user, $senderName);
                 break;
 
+            case $cmd === '/presensi' || $cmd === '📍 cek presensi saya' || $cmd === 'cek presensi saya' || $cmd === 'cek presensi' || $cmd === 'presensi':
+                $this->commandMyAttendance($chatId, $user);
+                break;
+
+            case $cmd === '/jadwalsaya' || $cmd === '/jadwal_saya' || $cmd === '📅 jadwal mengajar saya' || $cmd === 'jadwal mengajar saya' || $cmd === 'jadwal saya':
+                $this->commandMyTeachingSchedule($chatId, $user);
+                break;
+
+            case $cmd === '/agenda' || $cmd === '🗓️ agenda sekolah' || $cmd === 'agenda sekolah' || $cmd === 'agenda':
+                $this->commandSchoolAgenda($chatId, $user);
+                break;
+
+            case $cmd === '/tamu' || $cmd === '👥 buku tamu hari ini' || $cmd === 'buku tamu hari ini' || $cmd === 'buku tamu':
+                $this->commandTodayGuests($chatId, $user);
+                break;
+
+            case $cmd === '/cek_absen_siswa' || $cmd === '/absen_siswa' || $cmd === '/presensi_siswa' || $cmd === '📊 cek absen siswa' || $cmd === 'cek absen siswa' || $cmd === 'cek absen':
+                $this->startCheckStudentAttendance($chatId, $user);
+                break;
+
+            case str_starts_with($cmd, '/poin') || str_starts_with($cmd, '/kasus_siswa') || str_starts_with($cmd, '/pelanggaran') || $cmd === '🔍 cek kasus siswa' || $cmd === 'cek kasus siswa':
+                $this->commandStudentIncidentsCheck($chatId, $text, $user);
+                break;
+
             case $cmd === '/lapor' || $cmd === '/kasus' || $cmd === '⚠️ lapor kasus siswa':
                 $this->startIncidentReport($chatId, $user);
                 break;
@@ -192,36 +226,66 @@ class TelegramBotWebhookController extends Controller
      */
     protected function getMainMenuKeyboard(?User $user = null): array
     {
-        $canOperate = $user && $user->canOperatePiket();
-
-        if ($canOperate) {
+        if (! $user) {
             return [
                 'keyboard' => [
-                    [['text' => '🎫 Perizinan Siswa'], ['text' => '📋 Perizinan GTK / Guru']],
-                    [['text' => '📋 Tim Piket Hari Ini'], ['text' => '🏫 Jadwal Jam Sekarang']],
-                    [['text' => '🚨 Cek Inval / Kelas Kosong'], ['text' => '⚠️ Lapor Kasus Siswa']],
-                    [['text' => '📊 Rekap Cepat Hari Ini'], ['text' => '🔄 Tukar Jadwal Piket']],
+                    [['text' => 'ℹ️ Panduan Bantuan'], ['text' => '🆔 Cek Chat ID']],
                 ],
                 'resize_keyboard' => true,
                 'is_persistent' => true,
             ];
         }
 
-        // Menu untuk Guru biasa (bisa mengajukan izin mandiri + izin siswa bagi wali kelas)
-        $isHomeroom = $user && $user->isHomeroomTeacher();
+        $canOperate = $user && $user->canOperatePiket();
+        $canCheckAttendance = $user && $this->canCheckStudentAttendance($user);
 
-        $firstRow = [['text' => '📝 Ajukan Izin Saya']];
-        if ($isHomeroom) {
-            $firstRow[] = ['text' => '🎫 Izin Siswa (Wali Kelas)'];
+        if ($canOperate) {
+            $piketRows = [
+                [['text' => '🎫 Perizinan Siswa'], ['text' => '📋 Perizinan GTK / Guru']],
+                [['text' => '⚠️ Lapor Kasus Siswa'], ['text' => '🚨 Cek Inval / Kelas Kosong']],
+                [['text' => '📍 Cek Presensi Saya'], ['text' => '📅 Jadwal Mengajar Saya']],
+                [['text' => '📊 Cek Absen Siswa'], ['text' => '🏫 Jadwal Jam Sekarang']],
+                [['text' => '📋 Tim Piket Hari Ini'], ['text' => '📊 Rekap Cepat Hari Ini']],
+                [['text' => '👥 Buku Tamu Hari Ini'], ['text' => '🗓️ Agenda Sekolah']],
+                [['text' => '🔄 Tukar Jadwal Piket'], ['text' => 'ℹ️ Panduan Bantuan']],
+                [['text' => '🆔 Cek Chat ID']],
+            ];
+
+            return [
+                'keyboard' => $piketRows,
+                'resize_keyboard' => true,
+                'is_persistent' => true,
+            ];
         }
 
+        // Menu untuk Guru biasa / Wali Kelas / BK / Kedisiplinan
+        $isHomeroom = $user && $user->isHomeroomTeacher();
+
+        $rows = [
+            [['text' => '📍 Cek Presensi Saya'], ['text' => '📅 Jadwal Mengajar Saya']],
+        ];
+
+        $actionRow = [['text' => '📝 Ajukan Izin Saya']];
+        if ($isHomeroom) {
+            $actionRow[] = ['text' => '🎫 Izin Siswa (Wali Kelas)'];
+        }
+        $rows[] = $actionRow;
+
+        if ($canCheckAttendance) {
+            $rows[] = [['text' => '📊 Cek Absen Siswa'], ['text' => '🏫 Jadwal Jam Sekarang']];
+            $rows[] = [['text' => '📋 Tim Piket Hari Ini'], ['text' => '🚨 Cek Inval / Kelas Kosong']];
+            $rows[] = [['text' => '📊 Rekap Cepat Hari Ini'], ['text' => '🗓️ Agenda Sekolah']];
+        } else {
+            $rows[] = [['text' => '📋 Tim Piket Hari Ini'], ['text' => '🏫 Jadwal Jam Sekarang']];
+            $rows[] = [['text' => '🚨 Cek Inval / Kelas Kosong'], ['text' => '📊 Rekap Cepat Hari Ini']];
+            $rows[] = [['text' => '🗓️ Agenda Sekolah']];
+        }
+
+        $rows[] = [['text' => '🔄 Tukar Jadwal Piket'], ['text' => 'ℹ️ Panduan Bantuan']];
+        $rows[] = [['text' => '🆔 Cek Chat ID']];
+
         return [
-            'keyboard' => [
-                $firstRow,
-                [['text' => '📋 Tim Piket Hari Ini'], ['text' => '🏫 Jadwal Jam Sekarang']],
-                [['text' => '🚨 Cek Inval / Kelas Kosong'], ['text' => '📊 Rekap Cepat Hari Ini']],
-                [['text' => '🔄 Tukar Jadwal Piket']],
-            ],
+            'keyboard' => $rows,
             'resize_keyboard' => true,
             'is_persistent' => true,
         ];
@@ -232,40 +296,144 @@ class TelegramBotWebhookController extends Controller
      */
     protected function commandStart(string $chatId, ?User $user, string $senderName): void
     {
+        if (! $user) {
+            $msg = "🤖 <b>SELAMAT DATANG DI BOT TELEGRAM SIAP</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."Halo Bpk/Ibu <b>{$senderName}</b>,\n\n"
+                ."Layanan asisten pintar terintegrasi SIM Kurikulum & Sistem Informasi Administrasi Pendidikan (SIAP) SMK PGRI Kras.\n\n"
+                ."⚠️ <b>Status Akun: Belum Terhubung</b>\n"
+                ."Akun Telegram Anda saat ini belum ditautkan ke akun GTK pada sistem SIAP.\n\n"
+                ."🔗 <b>Cara Cepat Menautkan Akun Anda:</b>\n"
+                ."Ketik perintah di bawah ini (ganti dengan NIP atau Username akun SIAP Anda):\n"
+                ."👉 <code>/hubungkan NIP_ATAU_USERNAME</code>\n\n"
+                ."<i>Contoh:</i>\n"
+                ."<code>/hubungkan 198501012010011005</code> atau <code>/hubungkan ahmad_guru</code>\n\n"
+                ."🆔 <b>Chat ID Anda:</b> <code>{$chatId}</code>\n"
+                ."(Anda juga dapat mengirimkan nomor ID di atas ke Administrator SIM untuk ditautkan manual).\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                .'📖 <i>Ketik <code>/help</code> atau klik tombol <b>ℹ️ Panduan Bantuan</b> di bawah untuk membaca panduan lengkap fitur bot.</i>';
+
+            $this->telegramService->sendMessage(
+                $chatId,
+                $msg,
+                'bot_reply',
+                $senderName,
+                'HTML',
+                $this->getMainMenuKeyboard($user)
+            );
+
+            return;
+        }
+
+        $roleName = $user->role?->name ?? 'Guru/Staf';
+        $isPiket = $user->canOperatePiket();
+        $isHomeroom = $user->isHomeroomTeacher();
+
+        $roleBadges = [];
+        if ($isPiket) {
+            $roleBadges[] = '👮 Petugas Piket Aktif';
+        }
+        if ($isHomeroom) {
+            $roleBadges[] = '👨‍🏫 Wali Kelas';
+        }
+        $roleInfo = ! empty($roleBadges) ? implode(' | ', $roleBadges) : $roleName;
+
+        $msg = "🤖 <b>ASISTEN TELEGRAM SIAP</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."Halo Bpk/Ibu <b>{$user->name}</b>,\n"
+            ."✅ <b>Status:</b> Terhubung ({$roleInfo})\n\n"
+            ."Selamat datang kembali di asisten digital SIAP SMK PGRI Kras. Bot siap melayani operasional harian, perizinan, dan pemantauan KBM Anda.\n\n"
+            ."Gunakan tombol menu interaktif di bawah untuk memilih aksi dengan cepat, atau ketik <code>/help</code> untuk membuka buku panduan lengkap fitur bot.\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>💡 Tips: Ketik <code>/batal</code> kapan saja jika ingin membatalkan proses pengisian formulir interaktif.</i>';
+
+        $this->telegramService->sendMessage(
+            $chatId,
+            $msg,
+            'bot_reply',
+            $user->name,
+            'HTML',
+            $this->getMainMenuKeyboard($user)
+        );
+    }
+
+    /**
+     * Command: /help (Buku Panduan Lengkap Pengguna)
+     */
+    protected function commandHelp(string $chatId, ?User $user, string $senderName): void
+    {
         $roleName = $user?->role?->name ?? 'Guru/Staf';
-        $statusUser = $user
-            ? "✅ <b>Terhubung:</b> {$user->name} ({$roleName})"
-            : '⚠️ <b>Belum Terhubung:</b> Akun Telegram Anda belum ditautkan ke SIM Kurikulum.';
-
         $isPiket = $user && $user->canOperatePiket();
+        $isHomeroom = $user && $user->isHomeroomTeacher();
 
-        $menuList = $isPiket
-            ? "<b>Menu Petugas Piket Aktif:</b>\n"
-                ."• <b>🎫 Perizinan Siswa:</b> Terbitkan izin siswa (diteruskan ke guru mapel jam KBM & wali kelas).\n"
-                ."• <b>📋 Perizinan Guru:</b> Catat izin rekan guru & tugas kelas (tembusan ke Kepala Sekolah & Waka Kurikulum).\n"
-                ."• <b>⚠️ Lapor Kasus Siswa:</b> Catat pelanggaran siswa + foto bukti.\n"
-                ."• <b>📋 Tim Piket Hari Ini:</b> Jadwal & rekan piket hari ini.\n"
-                ."• <b>🏫 Jadwal Jam Sekarang:</b> KBM & guru mengajar di jam aktif.\n"
-                ."• <b>🚨 Cek Inval:</b> Daftar guru tidak hadir & kelas kosong.\n"
-                ."• <b>📊 Rekap Hari Ini:</b> Ringkasan izin, kasus, & tamu harian.\n"
-                .'• <b>🔄 Tukar Jadwal Piket:</b> Ajukan pergantian jadwal piket langsung ke guru pengganti (tanpa verifikasi pihak lain).'
-            : "<b>Menu Layanan Guru:</b>\n"
-                ."• <b>📝 Ajukan Izin Saya:</b> Ajukan izin ketidakhadiran & titip tugas kelas (tembusan otomatis ke Petugas Piket, Waka Kurikulum, & Kepala Sekolah).\n"
-                ."• <b>📋 Tim Piket Hari Ini:</b> Jadwal & rekan piket yang bertugas hari ini.\n"
-                ."• <b>🏫 Jadwal Jam Sekarang:</b> KBM & guru mengajar di jam aktif.\n"
-                ."• <b>🚨 Cek Inval:</b> Pantau kelas kosong & tugas siswa hari ini.\n"
-                ."• <b>📊 Rekap Cepat:</b> Ringkasan aktivitas piket hari ini.\n"
-                ."• <b>🔄 Tukar Jadwal Piket:</b> Ajukan pergantian jadwal piket langsung ke guru pengganti (tanpa verifikasi pihak lain).\n\n"
-                .'<i>💡 Catatan: Tombol operasional meja piket (izin siswa/lapor kasus) otomatis aktif saat Anda bertugas piket hari ini.</i>';
+        $statusHeader = $user
+            ? "✅ <b>Akun Terhubung:</b> {$user->name} (<i>{$roleName}</i>)"
+            : "⚠️ <b>Status Akun:</b> Belum Terhubung (Chat ID: <code>{$chatId}</code>)";
 
-        $msg = "🤖 <b>BOT PIKET & SISTEM SEKOLAH</b>\n"
+        $msg = "📖 <b>PANDUAN PENGGUNAAN BOT TELEGRAM SIAP</b>\n"
+            ."SMK PGRI Kras — Sistem Administrasi & Pendidikan\n"
             ."━━━━━━━━━━━━━━━━━━━━\n"
-            ."Halo Bpk/Ibu <b>{$senderName}</b>,\n\n"
-            ."Selamat datang di layanan interaktif SIM Kurikulum & Tim Piket Sekolah.\n"
-            ."{$statusUser}\n\n"
-            ."{$menuList}\n"
+            ."{$statusHeader}\n\n"
+            ."<b>1️⃣ CARA MENAUTKAN AKUN (JIKA BELUM)</b>\n"
+            ."• Ketik perintah:\n"
+            ."  <code>/hubungkan NIP_ATAU_USERNAME</code>\n"
+            ."  <i>Contoh:</i> <code>/hubungkan 198501012010011005</code>\n"
+            ."• Atau salin Chat ID Anda (ketik <code>/id</code>) dan serahkan ke Tim IT / Admin SIM untuk dipasangkan ke profil Anda.\n\n"
+            ."<b>2️⃣ INFORMASI REAL-TIME & LAYANAN GTK</b>\n"
+            ."• <code>/presensi</code> atau tombol <b>📍 Cek Presensi Saya</b>\n"
+            ."  Melihat status scan masuk & pulang Anda hari ini beserta metode presensinya.\n"
+            ."• <code>/jadwalsaya</code> atau tombol <b>📅 Jadwal Mengajar Saya</b>\n"
+            ."  Melihat jadwal KBM pribadi Anda hari ini (kelas, mapel, jam ke, & waktu lonceng).\n"
+            ."• <code>/piket</code> atau tombol <b>📋 Tim Piket Hari Ini</b>\n"
+            ."  Melihat siapa saja guru yang bertugas piket hari ini.\n"
+            ."• <code>/jadwal</code> atau tombol <b>🏫 Jadwal Jam Sekarang</b>\n"
+            ."  Melihat guru pengajar & mapel yang sedang KBM di seluruh rombel jam ini.\n"
+            ."• <code>/inval</code> atau tombol <b>🚨 Cek Inval / Kelas Kosong</b>\n"
+            ."  Melihat kelas kosong yang ditinggal guru izin/tugas dan penugasan guru pengganti (inval).\n"
+            ."• <code>/rekap</code> atau tombol <b>📊 Rekap Cepat Hari Ini</b>\n"
+            ."  Melihat rekap jumlah siswa terlambat, izin keluar/pulang, kasus, dan buku tamu.\n"
+            ."• <code>/tamu</code> atau tombol <b>👥 Buku Tamu Hari Ini</b>\n"
+            ."  Melihat daftar tamu yang berkunjung ke sekolah hari ini.\n"
+            ."• <code>/agenda</code> atau tombol <b>🗓️ Agenda Sekolah</b>\n"
+            ."  Melihat agenda kegiatan sekolah & kalender akademik 7 hari ke depan.\n"
+            ."• <code>/poin NAMA_ATAU_NIS</code>\n"
+            ."  Mengecek catatan rekam jejak pelanggaran & keterlambatan siswa tertentu.\n"
+            ."• <code>/id</code> atau tombol <b>🆔 Cek Chat ID</b>\n"
+            ."  Mengetahui nomor identitas Telegram unik Anda.\n\n"
+            ."<b>3️⃣ LAYANAN MANDIRI GURU</b>\n"
+            ."• <code>/ajukan_izin</code> atau tombol <b>📝 Ajukan Izin Saya</b>\n"
+            ."  Bila berhalangan hadir, ajukan izin mandiri & titipkan tugas/materi kelas dari bot. Tembusan otomatis terkirim ke Meja Piket, Waka Kurikulum, dan Kepala Sekolah.\n"
+            ."• <code>/tukar</code> atau tombol <b>🔄 Tukar Jadwal Piket</b>\n"
+            ."  Mengajukan permohonan tukar hari piket ke rekan guru yang bersedia secara interaktif.\n\n";
+
+        if ($isHomeroom || ! $user) {
+            $msg .= "<b>4️⃣ FITUR KHUSUS WALI KELAS, KEDISIPLINAN & BK</b>\n"
+                ."• <code>/cek_absen_siswa</code> atau tombol <b>📊 Cek Absen Siswa</b>\n"
+                ."  Melihat rekap presensi KBM siswa, riwayat perizinan piket, dan catatan kejadian/pelanggaran siswa pada periode tertentu (Minggu ini, Bulan ini, atau Semua/Awal TP hingga hari ini).\n"
+                ."  <i>*Catatan: Wali Kelas dibatasi hanya dapat memeriksa siswa di kelas perwaliannya sendiri.</i>\n"
+                ."• <code>/izin_siswa</code> atau tombol <b>🎫 Izin Siswa (Wali Kelas)</b>\n"
+                ."  Menerbitkan izin resmi (sakit, izin urusan keluarga, dll.) untuk siswa di kelas binaan Anda langsung dari chat tanpa harus datang fisik ke meja piket.\n\n";
+        }
+
+        if ($isPiket || ! $user) {
+            $msg .= "<b>5️⃣ FITUR OPERASIONAL PETUGAS PIKET</b>\n"
+                ."• <b>🎫 Perizinan Siswa:</b>\n"
+                ."  Mencatat siswa terlambat, izin keluar sekolah sementara, atau izin pulang cepat. Sistem otomatis mengirim notifikasi ke wali kelas & guru jam KBM tersebut.\n"
+                ."• <b>📋 Perizinan GTK / Guru (/izin_gtk):</b>\n"
+                ."  Mencatat izin rekan GTK di meja piket serta mencatat kelas kosong / penugasan guru inval.\n"
+                ."• <b>⚠️ Lapor Kasus Siswa (/lapor atau /kasus):</b>\n"
+                ."  Melaporkan pelanggaran tata tertib siswa lengkap dengan <b>foto barang bukti</b> dari kamera HP. Laporan langsung masuk buku piket dan diteruskan ke Tim Kedisiplinan & BK.\n\n";
+        }
+
+        $msg .= "<b>6️⃣ NOTIFIKASI OTOMATIS YANG ANDA TERIMA</b>\n"
+            ."Setelah akun terhubung, bot akan mengirimkan pesan otomatis ke Telegram Anda:\n"
+            ."🔔 <b>Pengingat KBM:</b> Dikirimkan otomatis 10 menit sebelum jam mengajar Anda dimulai.\n"
+            ."🔔 <b>Pengingat Piket:</b> Dikirimkan H-1 sore & hari H pagi.\n"
+            ."🔔 <b>Tembusan Siswa:</b> Saat ada siswa di kelas binaan/KBM Anda yang terlambat atau izin keluar.\n"
+            ."🔔 <b>Penugasan Inval:</b> Pemberitahuan saat Anda ditugaskan menggantikan kelas kosong.\n"
+            ."🔔 <b>Perizinan & Supervisi:</b> Tembusan persetujuan izin GTK & hasil supervisi pembelajaran.\n\n"
             ."━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Gunakan tombol menu di bawah untuk memilih aksi dengan cepat.</i>';
+            .'💡 <i>Tips: Jika sedang berada dalam dialog pengisian data dan ingin membatalkan, cukup ketik <code>/batal</code> kapan saja.</i>';
 
         $this->telegramService->sendMessage(
             $chatId,
@@ -519,6 +687,303 @@ class TelegramBotWebhookController extends Controller
             ."   Login ke web &rarr; Menu <b>Profil Saya</b> &rarr; masukkan Chat ID <code>{$chatId}</code> pada kolom Telegram Chat ID.";
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $senderName, 'HTML', $this->getMainMenuKeyboard($user));
+    }
+
+    /**
+     * Command: /presensi (Cek Status Presensi Pribadi GTK Hari Ini)
+     */
+    protected function commandMyAttendance(string $chatId, ?User $user): void
+    {
+        if (! $user) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $today = Carbon::today('Asia/Jakarta');
+        $todayFormatted = $today->translatedFormat('l, d F Y');
+
+        // Cek log presensi GTK hari ini
+        $logs = AttendanceLog::where('user_type', 'teacher')
+            ->where('user_id', $user->id)
+            ->whereDate('scanned_at', $today)
+            ->orderBy('scanned_at', 'asc')
+            ->get();
+
+        $checkIn = $logs->first();
+        $checkOut = $logs->count() > 1 ? $logs->last() : null;
+
+        // Cek apakah ada izin/cuti aktif hari ini
+        $permit = GtkPermit::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->first();
+
+        $text = "📍 <b>STATUS PRESENSI GTK HARI INI</b>\n"
+            ."🗓️ <b>{$todayFormatted}</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."👤 <b>Nama:</b> {$user->name}\n"
+            .'📌 <b>NIP / NIGS:</b> '.($user->nip ?? $user->nigs ?? '-')."\n\n";
+
+        if ($permit) {
+            $text .= "ℹ️ <b>Status Khusus:</b> Izin / Cuti Resmi\n"
+                ."• <b>Jenis:</b> {$permit->type_label}\n"
+                ."• <b>Alasan:</b> {$permit->reason}\n\n";
+        }
+
+        if ($checkIn) {
+            $inTime = $checkIn->scanned_at->format('H:i');
+            $inMethod = $checkIn->verify_type_label;
+            $text .= "🟢 <b>Presensi Masuk:</b> Pukul <b>{$inTime} WIB</b>\n"
+                ."   Metode: <code>{$inMethod}</code>\n\n";
+        } else {
+            $text .= "⚪ <b>Presensi Masuk:</b> <i>Belum tercatat presensi masuk</i>\n\n";
+        }
+
+        if ($checkOut) {
+            $outTime = $checkOut->scanned_at->format('H:i');
+            $outMethod = $checkOut->verify_type_label;
+            $text .= "🔴 <b>Presensi Pulang:</b> Pukul <b>{$outTime} WIB</b>\n"
+                ."   Metode: <code>{$outMethod}</code>\n\n";
+        } else {
+            $text .= "⚪ <b>Presensi Pulang:</b> <i>Belum tercatat presensi pulang</i>\n\n";
+        }
+
+        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Presensi tersinkronisasi otomatis dari mesin biometrik & aplikasi mobile.</i>';
+
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+    }
+
+    /**
+     * Command: /jadwalsaya (Jadwal Mengajar Pribadi Guru Hari Ini)
+     */
+    protected function commandMyTeachingSchedule(string $chatId, ?User $user): void
+    {
+        if (! $user) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $today = Carbon::today('Asia/Jakarta');
+        $todayDay = $this->getTodayDayName();
+        $academicYear = $this->getOperationalAcademicYear();
+
+        $schedules = LessonSchedule::with(['classroom', 'subject'])
+            ->where('teacher_id', $user->id)
+            ->where('day', $todayDay)
+            ->where('academic_year', $academicYear)
+            ->orderBy('start_period', 'asc')
+            ->get();
+
+        $text = "📅 <b>JADWAL MENGAJAR SAYA HARI INI</b>\n"
+            ."🗓️ <b>{$todayDay}, {$today->translatedFormat('d F Y')}</b> (TP. {$academicYear})\n"
+            ."👤 <b>Guru:</b> {$user->name}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($schedules->isEmpty()) {
+            $text .= "🌴 <i>Tidak ada jadwal KBM yang tercatat untuk Anda pada hari {$todayDay}. Selamat beraktivitas atau bertugas lainnya!</i>\n";
+        } else {
+            $times = LessonSchedule::periodTimes($todayDay);
+            foreach ($schedules as $idx => $sch) {
+                $cls = $sch->classroom?->name ?? 'Kelas -';
+                $sub = $sch->subject?->name ?? 'Mata Pelajaran';
+                $pStart = $sch->start_period;
+                $pEnd = $sch->end_period;
+                $timeStart = $times[$pStart]['start'] ?? ($sch->start_time ?? '-');
+                $timeEnd = $times[$pEnd]['end'] ?? ($sch->end_time ?? '-');
+
+                $num = $idx + 1;
+                $text .= "<b>{$num}. {$cls} — {$sub}</b>\n"
+                    ."   ⏰ Jam ke-{$pStart} s/d {$pEnd} ({$timeStart} - {$timeEnd} WIB)\n\n";
+            }
+            $text .= "<i>💡 Notifikasi otomatis akan dikirimkan 10 menit sebelum jam KBM dimulai.</i>\n";
+        }
+
+        $text .= '━━━━━━━━━━━━━━━━━━━━';
+
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+    }
+
+    /**
+     * Command: /agenda (Agenda Kegiatan & Kalender Akademik 7 Hari ke Depan)
+     */
+    protected function commandSchoolAgenda(string $chatId, ?User $user = null): void
+    {
+        $today = Carbon::today('Asia/Jakarta');
+        $nextWeek = $today->copy()->addDays(7);
+
+        $events = CurriculumEvent::with('schoolActivity')
+            ->whereDate('end_date', '>=', $today)
+            ->whereDate('start_date', '<=', $nextWeek)
+            ->orderBy('start_date', 'asc')
+            ->take(8)
+            ->get();
+
+        $text = "🗓️ <b>AGENDA & KEGIATAN SEKOLAH TERDEKAT</b>\n"
+            ."Periode: {$today->translatedFormat('d M')} s/d {$nextWeek->translatedFormat('d M Y')}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($events->isEmpty()) {
+            $text .= "✅ <i>Belum ada agenda khusus atau kegiatan kalender akademik dalam 7 hari ke depan. KBM berjalan normal.</i>\n";
+        } else {
+            foreach ($events as $ev) {
+                $start = Carbon::parse($ev->start_date)->translatedFormat('d M Y');
+                $end = Carbon::parse($ev->end_date)->translatedFormat('d M Y');
+                $dateRange = ($start === $end) ? $start : "{$start} s/d {$end}";
+                $holidayBadge = $ev->is_holiday ? ' 🔴 [LIBUR]' : '';
+
+                $text .= "• <b>{$ev->title}</b>{$holidayBadge}\n"
+                    ."  📅 {$dateRange}\n"
+                    .($ev->location ? "  📍 Lokasi: {$ev->location}\n" : '')
+                    .($ev->description ? "  📝 <i>{$ev->description}</i>\n" : '')
+                    ."\n";
+            }
+        }
+
+        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Sumber: Kalender Akademik & Agenda Kegiatan Kurikulum.</i>';
+
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getMainMenuKeyboard($user));
+    }
+
+    /**
+     * Command: /tamu (Buku Tamu Meja Piket Hari Ini)
+     */
+    protected function commandTodayGuests(string $chatId, ?User $user = null): void
+    {
+        $today = Carbon::today('Asia/Jakarta');
+
+        $guests = PiketGuest::whereDate('visit_date', $today)
+            ->orderBy('check_in_time', 'desc')
+            ->get();
+
+        $text = "👥 <b>BUKU TAMU PIKET HARI INI</b>\n"
+            ."🗓️ <b>{$today->translatedFormat('l, d F Y')}</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($guests->isEmpty()) {
+            $text .= "📝 <i>Belum ada catatan buku tamu yang masuk hari ini.</i>\n";
+        } else {
+            foreach ($guests as $idx => $g) {
+                $num = $idx + 1;
+                $in = $g->check_in_time ? substr($g->check_in_time, 0, 5) : '-';
+                $out = $g->check_out_time ? substr($g->check_out_time, 0, 5) : 'Belum selesai';
+                $inst = $g->institution ? " ({$g->institution})" : '';
+
+                $text .= "<b>{$num}. {$g->guest_name}</b>{$inst}\n"
+                    ."   🕐 Waktu: {$in} - {$out} WIB\n"
+                    ."   🎯 Keperluan: {$g->purpose}\n"
+                    .($g->meet_with ? "   👤 Bertemu: {$g->meet_with}\n" : '')
+                    ."\n";
+            }
+        }
+
+        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
+            ."<i>Total tamu berkunjung hari ini: {$guests->count()} orang.</i>";
+
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getMainMenuKeyboard($user));
+    }
+
+    /**
+     * Command: /poin <nama/nis> atau /kasus_siswa <nama/nis>
+     */
+    protected function commandStudentIncidentsCheck(string $chatId, string $rawText, ?User $user): void
+    {
+        if (! $user) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $parts = preg_split('/\s+/', trim($rawText), 2);
+        $query = trim($parts[1] ?? '');
+
+        if (empty($query)) {
+            $msg = "🔍 <b>Pengecekan Kasus & Pelanggaran Siswa</b>\n\n"
+                ."Silakan ketik perintah diikuti Nama atau NIS siswa:\n"
+                ."👉 <code>/poin NAMA_ATAU_NIS</code>\n\n"
+                ."<i>Contoh:</i>\n"
+                .'<code>/poin Ahmad</code> atau <code>/poin 12345</code>';
+
+            $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+
+            return;
+        }
+
+        $students = Student::with('classroom')
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('nis', $query)
+                    ->orWhere('nisn', $query);
+            })
+            ->take(5)
+            ->get();
+
+        if ($students->isEmpty()) {
+            $msg = "❌ <b>Siswa Tidak Ditemukan!</b>\n\n"
+                ."Tidak ditemukan siswa dengan kata kunci: <i>\"{$query}\"</i>.";
+            $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+
+            return;
+        }
+
+        if ($students->count() > 1) {
+            $msg = "🔍 <b>Ditemukan beberapa siswa yang mirip:</b>\n"
+                ."Silakan ketik ulang dengan nama lebih spesifik atau gunakan NIS:\n\n";
+            foreach ($students as $st) {
+                $cls = $st->classroom?->name ?? 'Kelas -';
+                $msg .= "• <b>{$st->name}</b> (NIS: <code>{$st->nis}</code>) — {$cls}\n";
+            }
+            $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+
+            return;
+        }
+
+        $student = $students->first();
+        $academicYear = $this->getOperationalAcademicYear();
+        $classroomName = $student->classroom?->name ?? 'Kelas -';
+
+        $incidents = PiketIncident::where('student_id', $student->id)
+            ->where('academic_year', $academicYear)
+            ->orderBy('incident_date', 'desc')
+            ->get();
+
+        $latePermitsCount = PiketStudentPermit::where('student_id', $student->id)
+            ->where('permit_type', 'terlambat')
+            ->count();
+
+        $text = "👤 <b>REKAM JEJAK KEDISIPLINAN SISWA</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."• <b>Nama:</b> {$student->name}\n"
+            ."• <b>Kelas:</b> {$classroomName}\n"
+            ."• <b>NIS:</b> {$student->nis}\n"
+            ."• <b>Tahun Ajaran:</b> {$academicYear}\n\n"
+            ."📊 <b>Ringkasan Pelanggaran:</b>\n"
+            ."• Kasus Kejadian Piket: <b>{$incidents->count()} kali</b>\n"
+            ."• Keterlambatan Hadir: <b>{$latePermitsCount} kali</b>\n\n";
+
+        if ($incidents->isEmpty()) {
+            $text .= "✅ <i>Alhamdulillah, siswa ini belum memiliki catatan kasus kejadian pelanggaran pada tahun ajaran ini.</i>\n";
+        } else {
+            $text .= "📋 <b>Riwayat Kasus Terakhir:</b>\n";
+            foreach ($incidents->take(3) as $inc) {
+                $date = Carbon::parse($inc->incident_date)->format('d/m/Y');
+                $cat = ucfirst(str_replace('_', ' ', $inc->category));
+                $vStatus = $inc->verification_status === 'terverifikasi' ? '✅ Terverifikasi' : '⏳ Menunggu';
+                $sanction = $inc->disciplinary_sanction ? "\n     Sanksi: <i>{$inc->disciplinary_sanction}</i>" : '';
+
+                $text .= "• <b>{$date}</b> [{$cat}] ({$vStatus})\n"
+                    ."     <i>\"{$inc->description}\"</i>{$sanction}\n";
+            }
+        }
+
+        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Data terhubung dengan Modul Meja Piket, Tim Kedisiplinan, & Guru BK.</i>';
+
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
     }
 
     /**
@@ -2564,6 +3029,12 @@ class TelegramBotWebhookController extends Controller
             return;
         }
 
+        if ($flow === 'check_student_attendance') {
+            $this->handleCheckStudentAttendanceFlow($chatId, $text, $state, $user, $senderName);
+
+            return;
+        }
+
         // Default: Incident report flow
         $this->handleIncidentReportFlow($chatId, $text, $photos, $state, $user, $senderName);
     }
@@ -2775,6 +3246,18 @@ class TelegramBotWebhookController extends Controller
             return;
         }
 
+        // 2e. Callback untuk Alur Cek Absen Siswa (Wali Kelas / BK / Kedisiplinan)
+        if (str_starts_with($data, 'att_')) {
+            $this->handleStudentAttendanceCallback($chatId, $data, $state, $user);
+
+            return;
+        }
+
+        // Tombol noop (hanya label informasi)
+        if ($data === 'noop') {
+            return;
+        }
+
         // 3. Callback untuk Alur Pelaporan Kasus Siswa (Existing)
         if (str_starts_with($data, 'cat_')) {
             $cat = substr($data, 4);
@@ -2880,6 +3363,903 @@ class TelegramBotWebhookController extends Controller
             $officer->name,
             'HTML',
             $this->getMainMenuKeyboard($officer)
+        );
+    }
+
+    /**
+     * Memeriksa apakah user berhak mengakses fitur Cek Absen Siswa.
+     */
+    protected function canCheckStudentAttendance(?User $user, ?string $academicYear = null): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $academicYear = $academicYear ?? $this->getOperationalAcademicYear();
+
+        if ($user->isSuperAdmin() || $user->isPrincipal()) {
+            return true;
+        }
+
+        if ($user->canManageDiscipline($academicYear) || $user->canOperateBk($academicYear) || $user->canOperatePiket()) {
+            return true;
+        }
+
+        return $user->isHomeroomTeacher(academicYear: $academicYear);
+    }
+
+    /**
+     * Memeriksa apakah user dibatasi hanya untuk kelas perwaliannya saja.
+     */
+    protected function isHomeroomOnlyForAttendance(User $user, ?string $academicYear = null): bool
+    {
+        $academicYear = $academicYear ?? $this->getOperationalAcademicYear();
+
+        if ($user->isSuperAdmin() || $user->isPrincipal()) {
+            return false;
+        }
+
+        if ($user->canManageDiscipline($academicYear) || $user->canOperateBk($academicYear) || $user->canOperatePiket()) {
+            return false;
+        }
+
+        return $user->isHomeroomTeacher(academicYear: $academicYear);
+    }
+
+    /**
+     * Validasi akses user ke kelas tertentu.
+     */
+    protected function canAccessClassroom(User $user, Classroom $classroom, ?string $academicYear = null): bool
+    {
+        $academicYear = $academicYear ?? $this->getOperationalAcademicYear();
+
+        if (! $this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+            return true;
+        }
+
+        if ((int) $classroom->homeroom_teacher_id === (int) $user->id) {
+            return true;
+        }
+
+        return $user->isHomeroomTeacher($classroom, $academicYear);
+    }
+
+    /**
+     * Validasi akses user ke siswa tertentu.
+     */
+    protected function canAccessStudent(User $user, Student $student, ?string $academicYear = null): bool
+    {
+        $academicYear = $academicYear ?? $this->getOperationalAcademicYear();
+
+        if (! $this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+            return true;
+        }
+
+        $classroom = $student->classroomForAcademicYear($academicYear) ?? $student->classroom;
+        if (! $classroom) {
+            return false;
+        }
+
+        return $this->canAccessClassroom($user, $classroom, $academicYear);
+    }
+
+    /**
+     * Memulai alur cek rekap absen & kejadian siswa.
+     */
+    protected function startCheckStudentAttendance(string $chatId, ?User $user): void
+    {
+        if (! $user) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $academicYear = $this->getOperationalAcademicYear();
+
+        if (! $this->canCheckStudentAttendance($user, $academicYear)) {
+            $msg = "⚠️ <b>Akses Dibatasi</b>\n\n"
+                ."Fitur <b>Cek Absen Siswa</b> hanya dapat digunakan oleh <b>Wali Kelas</b> (terbatas untuk siswanya), <b>Tim Kedisiplinan</b>, atau <b>Guru BK</b>.\n\n"
+                ."Akun Anda (<b>{$user->name}</b>) tercatat tidak memiliki kewenangan tersebut.";
+
+            $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+
+            return;
+        }
+
+        $cacheKey = "tg_piket_state_{$chatId}";
+
+        // Jika Wali Kelas murni
+        if ($this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+            $homeroomClassrooms = Classroom::where('is_active', true)
+                ->where('homeroom_teacher_id', $user->id)
+                ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $academicYear)))
+                ->get();
+
+            if ($homeroomClassrooms->isEmpty()) {
+                $homeroomClassrooms = $user->homeroomClassrooms()
+                    ->where('is_active', true)
+                    ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $academicYear)))
+                    ->get();
+            }
+
+            if ($homeroomClassrooms->isEmpty()) {
+                $msg = "⚠️ <b>Data Kelas Tidak Ditemukan</b>\n\n"
+                    ."Akun Anda tercatat sebagai Wali Kelas namun tidak memiliki rombel kelas aktif yang diampu pada tahun ajaran <b>{$academicYear}</b>.\n\n"
+                    .'Silakan hubungi Administrator SIM Kurikulum.';
+
+                $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user->name, 'HTML', $this->getMainMenuKeyboard($user));
+
+                return;
+            }
+
+            // Jika hanya mengampu 1 kelas perwalian, langsung loncat ke pemilihan siswa
+            if ($homeroomClassrooms->count() === 1) {
+                $singleClassroom = $homeroomClassrooms->first();
+                Cache::put($cacheKey, [
+                    'flow' => 'check_student_attendance',
+                    'step' => 'select_student',
+                    'user_id' => $user->id,
+                    'classroom_id' => $singleClassroom->id,
+                    'student_id' => null,
+                    'page' => 1,
+                ], now()->addMinutes(15));
+
+                $this->showStudentSelectionList($chatId, $singleClassroom, 1, $user);
+
+                return;
+            }
+
+            // Jika mengampu lebih dari 1 kelas
+            Cache::put($cacheKey, [
+                'flow' => 'check_student_attendance',
+                'step' => 'select_classroom',
+                'user_id' => $user->id,
+                'classroom_id' => null,
+                'student_id' => null,
+                'page' => 1,
+            ], now()->addMinutes(15));
+
+            $this->showClassroomSelectionList($chatId, $user, 1, $homeroomClassrooms);
+
+            return;
+        }
+
+        // Kedisiplinan / Guru BK / Super Admin / Petugas Piket (bisa memilih semua kelas aktif)
+        Cache::put($cacheKey, [
+            'flow' => 'check_student_attendance',
+            'step' => 'select_classroom',
+            'user_id' => $user->id,
+            'classroom_id' => null,
+            'student_id' => null,
+            'page' => 1,
+        ], now()->addMinutes(15));
+
+        $this->showClassroomSelectionList($chatId, $user, 1);
+    }
+
+    /**
+     * Tampilkan pilihan daftar kelas dengan tombol inline.
+     */
+    protected function showClassroomSelectionList(
+        string $chatId,
+        User $user,
+        int $page = 1,
+        ?Collection $classroomsList = null
+    ): void {
+        $academicYear = $this->getOperationalAcademicYear();
+
+        if ($classroomsList === null) {
+            $classroomsList = Classroom::where('is_active', true)
+                ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $academicYear)))
+                ->orderBy('grade_level_id')
+                ->orderBy('name')
+                ->get();
+        }
+
+        if ($classroomsList->isEmpty()) {
+            $this->telegramService->sendMessage(
+                $chatId,
+                '⚠️ Tidak ada data kelas aktif yang ditemukan di sistem.',
+                'bot_reply',
+                $user->name,
+                'HTML',
+                $this->getMainMenuKeyboard($user)
+            );
+
+            return;
+        }
+
+        $perPage = 10;
+        $totalItems = $classroomsList->count();
+        $totalPages = (int) ceil($totalItems / $perPage);
+        $page = max(1, min($page, $totalPages));
+
+        $pagedClassrooms = $classroomsList->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $keyboard = [];
+        $currentRow = [];
+        foreach ($pagedClassrooms as $cls) {
+            $currentRow[] = [
+                'text' => '🏫 '.$cls->name,
+                'callback_data' => "att_cls_{$cls->id}",
+            ];
+            if (count($currentRow) === 2) {
+                $keyboard[] = $currentRow;
+                $currentRow = [];
+            }
+        }
+        if (! empty($currentRow)) {
+            $keyboard[] = $currentRow;
+        }
+
+        // Navigasi pagination jika halaman kelas > 1
+        if ($totalPages > 1) {
+            $navRow = [];
+            if ($page > 1) {
+                $navRow[] = ['text' => '⬅️ Hal '.($page - 1), 'callback_data' => 'att_clspg_'.($page - 1)];
+            }
+            $navRow[] = ['text' => "📄 {$page}/{$totalPages}", 'callback_data' => 'noop'];
+            if ($page < $totalPages) {
+                $navRow[] = ['text' => 'Hal '.($page + 1).' ➡️', 'callback_data' => 'att_clspg_'.($page + 1)];
+            }
+            $keyboard[] = $navRow;
+        }
+
+        $keyboard[] = [
+            ['text' => '❌ Batal', 'callback_data' => 'cancel_flow'],
+        ];
+
+        $roleNote = $this->isHomeroomOnlyForAttendance($user, $academicYear)
+            ? 'Pilih kelas binaan Anda:'
+            : 'Pilih kelas siswa yang ingin diperiksa:';
+
+        $msg = "📊 <b>CEK REKAP ABSEN & KEJADIAN SISWA</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."{$roleNote}\n\n"
+            .'<i>(Ketik <code>/batal</code> kapan saja untuk keluar)</i>';
+
+        $this->telegramService->sendMessage(
+            $chatId,
+            $msg,
+            'bot_reply',
+            $user->name,
+            'HTML',
+            ['inline_keyboard' => $keyboard]
+        );
+    }
+
+    /**
+     * Tampilkan pilihan daftar siswa dalam satu kelas dengan tombol inline & pagination.
+     */
+    protected function showStudentSelectionList(
+        string $chatId,
+        Classroom $classroom,
+        int $page,
+        User $user
+    ): void {
+        $academicYear = $this->getOperationalAcademicYear();
+
+        if (! $this->canAccessClassroom($user, $classroom, $academicYear)) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $students = Student::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($classroom) {
+                $q->where('classroom_id', $classroom->id)
+                    ->orWhereHas('studentClassrooms', fn ($sc) => $sc->where('classroom_id', $classroom->id));
+            })
+            ->orderBy('name')
+            ->get();
+
+        if ($students->isEmpty()) {
+            $keyboard = [];
+            if (! $this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+                $keyboard[] = [['text' => '🏫 Pilih Kelas Lain', 'callback_data' => 'att_back_cls']];
+            }
+            $keyboard[] = [['text' => '❌ Batal', 'callback_data' => 'cancel_flow']];
+
+            $this->telegramService->sendMessage(
+                $chatId,
+                "⚠️ Tidak ada data siswa aktif yang terdaftar di kelas <b>{$classroom->name}</b>.",
+                'bot_reply',
+                $user->name,
+                'HTML',
+                ['inline_keyboard' => $keyboard]
+            );
+
+            return;
+        }
+
+        $perPage = 8;
+        $totalItems = $students->count();
+        $totalPages = (int) ceil($totalItems / $perPage);
+        $page = max(1, min($page, $totalPages));
+
+        $pagedStudents = $students->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $keyboard = [];
+        $currentRow = [];
+        foreach ($pagedStudents as $student) {
+            $displayName = Str::limit($student->name, 16);
+            $currentRow[] = [
+                'text' => '👤 '.$displayName,
+                'callback_data' => "att_std_{$student->id}",
+            ];
+            if (count($currentRow) === 2) {
+                $keyboard[] = $currentRow;
+                $currentRow = [];
+            }
+        }
+        if (! empty($currentRow)) {
+            $keyboard[] = $currentRow;
+        }
+
+        // Navigasi halaman siswa
+        if ($totalPages > 1) {
+            $navRow = [];
+            if ($page > 1) {
+                $navRow[] = ['text' => '⬅️ Hal '.($page - 1), 'callback_data' => 'att_stdpg_'.($page - 1)];
+            }
+            $navRow[] = ['text' => "📄 {$page}/{$totalPages}", 'callback_data' => 'noop'];
+            if ($page < $totalPages) {
+                $navRow[] = ['text' => 'Hal '.($page + 1).' ➡️', 'callback_data' => 'att_stdpg_'.($page + 1)];
+            }
+            $keyboard[] = $navRow;
+        }
+
+        $bottomNav = [];
+        if (! $this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+            $bottomNav[] = ['text' => '🏫 Ganti Kelas', 'callback_data' => 'att_back_cls'];
+        }
+        $bottomNav[] = ['text' => '❌ Batal', 'callback_data' => 'cancel_flow'];
+        $keyboard[] = $bottomNav;
+
+        $msg = "🏫 <b>Kelas: {$classroom->name}</b>\n"
+            ."Total: <b>{$totalItems} siswa</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."Silakan klik nama siswa pada tombol di bawah:\n\n"
+            .'💡 <i>Tips: Anda juga dapat langsung <b>mengetik Nama atau NIS</b> siswa di chat untuk pencarian cepat.</i>';
+
+        $this->telegramService->sendMessage(
+            $chatId,
+            $msg,
+            'bot_reply',
+            $user->name,
+            'HTML',
+            ['inline_keyboard' => $keyboard]
+        );
+    }
+
+    /**
+     * Tampilkan dialog pemilihan periode laporan absen.
+     */
+    protected function promptPeriodSelection(
+        string $chatId,
+        Student $student,
+        Classroom $classroom,
+        User $user
+    ): void {
+        $academicYear = $this->getOperationalAcademicYear();
+
+        if (! $this->canAccessStudent($user, $student, $academicYear)) {
+            $this->telegramService->sendMessage(
+                $chatId,
+                '⚠️ <b>Akses Ditolak:</b> Anda hanya diizinkan memeriksa rekap siswa di kelas perwalian Anda sendiri.',
+                'bot_reply',
+                $user->name,
+                'HTML',
+                $this->getMainMenuKeyboard($user)
+            );
+
+            return;
+        }
+
+        $cacheKey = "tg_piket_state_{$chatId}";
+        Cache::put($cacheKey, [
+            'flow' => 'check_student_attendance',
+            'step' => 'select_period',
+            'user_id' => $user->id,
+            'classroom_id' => $classroom->id,
+            'student_id' => $student->id,
+            'page' => 1,
+        ], now()->addMinutes(15));
+
+        $keyboard = [
+            [['text' => '📅 Minggu Ini (Awal Minggu s/d Hari Ini)', 'callback_data' => 'att_per_minggu']],
+            [['text' => '🗓️ Bulan Ini (Awal Bulan s/d Hari Ini)', 'callback_data' => 'att_per_bulan']],
+            [['text' => '📚 Semua (Awal TP Aktif s/d Hari Ini)', 'callback_data' => 'att_per_semua']],
+            [
+                ['text' => '👤 Pilih Siswa Lain', 'callback_data' => 'att_back_std'],
+                ['text' => '❌ Batal', 'callback_data' => 'cancel_flow'],
+            ],
+        ];
+
+        $nisInfo = $student->nis ? "NIS: <code>{$student->nis}</code>" : 'NIS: -';
+        $msg = "👤 <b>PROFIL SISWA TERPILIH</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."• Nama  : <b>{$student->name}</b>\n"
+            ."• Kelas : <b>{$classroom->name}</b>\n"
+            ."• {$nisInfo}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            .'Silakan pilih <b>Periode Absen</b> yang ingin dilihat:';
+
+        $this->telegramService->sendMessage(
+            $chatId,
+            $msg,
+            'bot_reply',
+            $user->name,
+            'HTML',
+            ['inline_keyboard' => $keyboard]
+        );
+    }
+
+    /**
+     * Callback handler untuk flow Cek Absen Siswa.
+     */
+    protected function handleStudentAttendanceCallback(
+        string $chatId,
+        string $data,
+        array $state,
+        ?User $user
+    ): void {
+        if (! $user) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $cacheKey = "tg_piket_state_{$chatId}";
+
+        // 1. Pindah Halaman Kelas
+        if (str_starts_with($data, 'att_clspg_')) {
+            $page = (int) substr($data, 10);
+            $state['page'] = $page;
+            Cache::put($cacheKey, $state, now()->addMinutes(15));
+            $this->showClassroomSelectionList($chatId, $user, $page);
+
+            return;
+        }
+
+        // 2. Pilih Kelas
+        if (str_starts_with($data, 'att_cls_')) {
+            $classroomId = (int) substr($data, 8);
+            $classroom = Classroom::find($classroomId);
+            if (! $classroom) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Kelas tidak ditemukan.');
+
+                return;
+            }
+
+            $state['classroom_id'] = $classroomId;
+            $state['step'] = 'select_student';
+            $state['page'] = 1;
+            Cache::put($cacheKey, $state, now()->addMinutes(15));
+
+            $this->showStudentSelectionList($chatId, $classroom, 1, $user);
+
+            return;
+        }
+
+        // 3. Kembali ke Daftar Kelas
+        if ($data === 'att_back_cls') {
+            $state['step'] = 'select_classroom';
+            $state['classroom_id'] = null;
+            $state['student_id'] = null;
+            $state['page'] = 1;
+            Cache::put($cacheKey, $state, now()->addMinutes(15));
+
+            $this->showClassroomSelectionList($chatId, $user, 1);
+
+            return;
+        }
+
+        // 4. Pindah Halaman Siswa
+        if (str_starts_with($data, 'att_stdpg_')) {
+            $page = (int) substr($data, 10);
+            $classroomId = $state['classroom_id'] ?? null;
+            $classroom = Classroom::find($classroomId);
+            if (! $classroom) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Sesi tidak valid. Silakan mulai ulang.');
+
+                return;
+            }
+
+            $state['page'] = $page;
+            Cache::put($cacheKey, $state, now()->addMinutes(15));
+            $this->showStudentSelectionList($chatId, $classroom, $page, $user);
+
+            return;
+        }
+
+        // 5. Kembali ke Daftar Siswa
+        if ($data === 'att_back_std') {
+            $classroomId = $state['classroom_id'] ?? null;
+            $classroom = Classroom::find($classroomId);
+            if (! $classroom) {
+                $this->showClassroomSelectionList($chatId, $user, 1);
+
+                return;
+            }
+
+            $state['step'] = 'select_student';
+            $state['student_id'] = null;
+            $page = $state['page'] ?? 1;
+            Cache::put($cacheKey, $state, now()->addMinutes(15));
+
+            $this->showStudentSelectionList($chatId, $classroom, $page, $user);
+
+            return;
+        }
+
+        // 6. Pilih Siswa
+        if (str_starts_with($data, 'att_std_')) {
+            $studentId = (int) substr($data, 8);
+            $student = Student::find($studentId);
+            if (! $student) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Data siswa tidak ditemukan.');
+
+                return;
+            }
+
+            $classroomId = $state['classroom_id'] ?? $student->classroom_id;
+            $classroom = Classroom::find($classroomId) ?? $student->classroom;
+
+            if (! $classroom) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Data kelas siswa tidak ditemukan.');
+
+                return;
+            }
+
+            $this->promptPeriodSelection($chatId, $student, $classroom, $user);
+
+            return;
+        }
+
+        // 7. Pilih Periode (att_per_minggu, att_per_bulan, att_per_semua)
+        if (str_starts_with($data, 'att_per_')) {
+            $period = substr($data, 8);
+            $studentId = $state['student_id'] ?? null;
+            $student = Student::find($studentId);
+            if (! $student) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Data siswa tidak ditemukan atau sesi kedaluwarsa. Silakan mulai ulang.');
+
+                return;
+            }
+
+            $classroomId = $state['classroom_id'] ?? $student->classroom_id;
+            $classroom = Classroom::find($classroomId) ?? $student->classroom;
+
+            if (! $classroom) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Data kelas tidak valid.');
+
+                return;
+            }
+
+            $this->renderStudentAttendanceReport($chatId, $student, $classroom, $period, $user);
+
+            return;
+        }
+    }
+
+    /**
+     * Tangani input ketikan teks pada alur Cek Absen Siswa (pencarian nama/NIS cepat).
+     */
+    protected function handleCheckStudentAttendanceFlow(
+        string $chatId,
+        string $text,
+        array $state,
+        ?User $user,
+        string $senderName
+    ): void {
+        if (! $user) {
+            $this->replyAccessDenied($chatId);
+
+            return;
+        }
+
+        $academicYear = $this->getOperationalAcademicYear();
+        $classroomId = $state['classroom_id'] ?? null;
+        $classroom = $classroomId ? Classroom::find($classroomId) : null;
+
+        $query = Student::query()->where('is_active', true);
+
+        // Jika Wali Kelas murni, kunci pencarian hanya pada kelas binaannya
+        if ($this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+            $homeroomClassroomIds = Classroom::where('is_active', true)
+                ->where('homeroom_teacher_id', $user->id)
+                ->pluck('id')
+                ->toArray();
+
+            $relationIds = $user->homeroomClassrooms()
+                ->where('is_active', true)
+                ->pluck('classrooms.id')
+                ->toArray();
+
+            $homeroomClassroomIds = array_unique(array_merge($homeroomClassroomIds, $relationIds));
+
+            $query->where(function ($q) use ($homeroomClassroomIds) {
+                $q->whereIn('classroom_id', $homeroomClassroomIds)
+                    ->orWhereHas('studentClassrooms', fn ($sc) => $sc->whereIn('classroom_id', $homeroomClassroomIds));
+            });
+        } elseif ($classroom) {
+            $query->where(function ($q) use ($classroom) {
+                $q->where('classroom_id', $classroom->id)
+                    ->orWhereHas('studentClassrooms', fn ($sc) => $sc->where('classroom_id', $classroom->id));
+            });
+        }
+
+        $students = $query->where(function ($q) use ($text) {
+            $q->where('name', 'like', "%{$text}%")
+                ->orWhere('nis', $text);
+        })->get();
+
+        if ($students->isEmpty()) {
+            $scopeText = $classroom ? "di kelas <b>{$classroom->name}</b>" : 'di kelas binaan Anda';
+            $this->telegramService->sendMessage(
+                $chatId,
+                "⚠️ Siswa dengan nama atau NIS \"<b>{$text}</b>\" tidak ditemukan {$scopeText}.\n\nSilakan coba kata kunci lain atau pilih melalui menu:",
+                'bot_reply',
+                $user->name
+            );
+
+            return;
+        }
+
+        if ($students->count() === 1) {
+            $singleStudent = $students->first();
+            $targetClassroom = $classroom ?? $singleStudent->classroom;
+            if (! $targetClassroom) {
+                $targetClassroom = Classroom::find($singleStudent->classroom_id);
+            }
+
+            if (! $targetClassroom) {
+                $this->telegramService->sendMessage($chatId, '⚠️ Rombel kelas siswa tidak ditemukan.');
+
+                return;
+            }
+
+            $this->promptPeriodSelection($chatId, $singleStudent, $targetClassroom, $user);
+
+            return;
+        }
+
+        // Tampilkan beberapa tombol siswa yang cocok
+        $keyboard = [];
+        $currentRow = [];
+        foreach ($students->take(8) as $s) {
+            $sClass = $s->classroom?->name ? " ({$s->classroom->name})" : '';
+            $currentRow[] = [
+                'text' => '👤 '.Str::limit($s->name.$sClass, 20),
+                'callback_data' => "att_std_{$s->id}",
+            ];
+            if (count($currentRow) === 2) {
+                $keyboard[] = $currentRow;
+                $currentRow = [];
+            }
+        }
+        if (! empty($currentRow)) {
+            $keyboard[] = $currentRow;
+        }
+
+        $keyboard[] = [
+            ['text' => '❌ Batal', 'callback_data' => 'cancel_flow'],
+        ];
+
+        $this->telegramService->sendMessage(
+            $chatId,
+            "🔍 Ditemukan <b>{$students->count()} siswa</b> yang cocok dengan \"<b>{$text}</b>\". Silakan pilih salah satu:",
+            'bot_reply',
+            $user->name,
+            'HTML',
+            ['inline_keyboard' => $keyboard]
+        );
+    }
+
+    /**
+     * Render pesan rekap presensi KBM, riwayat izin piket, dan kejadian siswa.
+     */
+    protected function renderStudentAttendanceReport(
+        string $chatId,
+        Student $student,
+        Classroom $classroom,
+        string $period,
+        User $user
+    ): void {
+        $academicYear = $this->getOperationalAcademicYear();
+
+        if (! $this->canAccessStudent($user, $student, $academicYear)) {
+            $this->telegramService->sendMessage(
+                $chatId,
+                '⚠️ <b>Akses Ditolak:</b> Anda hanya berhak memeriksa rekap siswa di kelas perwalian Anda sendiri.',
+                'bot_reply',
+                $user->name,
+                'HTML',
+                $this->getMainMenuKeyboard($user)
+            );
+
+            return;
+        }
+
+        $endDate = Carbon::now('Asia/Jakarta')->endOfDay();
+
+        if ($period === 'minggu') {
+            $startDate = Carbon::now('Asia/Jakarta')->startOfWeek()->startOfDay();
+            $periodTitle = 'Minggu Ini ('.$startDate->translatedFormat('d M').' - '.$endDate->translatedFormat('d M Y').')';
+        } elseif ($period === 'bulan') {
+            $startDate = Carbon::now('Asia/Jakarta')->startOfMonth()->startOfDay();
+            $periodTitle = 'Bulan Ini ('.$startDate->translatedFormat('F Y').')';
+        } else {
+            $period = 'semua';
+            $activeAy = AcademicYear::where('is_active', true)->first();
+            if ($activeAy && $activeAy->start_date) {
+                $startDate = Carbon::parse($activeAy->start_date, 'Asia/Jakarta')->startOfDay();
+            } else {
+                if (preg_match('/^(\d{4})/', $academicYear, $matches)) {
+                    $startDate = Carbon::create((int) $matches[1], 7, 1, 0, 0, 0, 'Asia/Jakarta');
+                } else {
+                    $startYear = Carbon::now('Asia/Jakarta')->month >= 7 ? Carbon::now('Asia/Jakarta')->year : Carbon::now('Asia/Jakarta')->year - 1;
+                    $startDate = Carbon::create($startYear, 7, 1, 0, 0, 0, 'Asia/Jakarta');
+                }
+            }
+            $periodTitle = 'Awal TP Aktif s/d Hari Ini ('.$startDate->translatedFormat('d M Y').' - '.$endDate->translatedFormat('d M Y').')';
+        }
+
+        $startDateYmd = $startDate->format('Y-m-d');
+        $endDateYmd = $endDate->format('Y-m-d');
+
+        // 1. Data Presensi KBM (Subject Attendance Records)
+        $attendanceRecords = SubjectAttendanceRecord::where('student_id', $student->id)
+            ->whereHas('session', function ($q) use ($startDateYmd, $endDateYmd) {
+                $q->whereDate('attendance_date', '>=', $startDateYmd)
+                    ->whereDate('attendance_date', '<=', $endDateYmd);
+            })
+            ->with(['session.subject', 'session.teacher'])
+            ->get();
+
+        $hCount = $attendanceRecords->where('status', 'h')->count();
+        $tCount = $attendanceRecords->where('status', 't')->count();
+        $sCount = $attendanceRecords->where('status', 's')->count();
+        $iCount = $attendanceRecords->where('status', 'i')->count();
+        $aCount = $attendanceRecords->where('status', 'a')->count();
+        $dCount = $attendanceRecords->where('status', 'd')->count();
+        $totalSessions = $attendanceRecords->count();
+        $attendanceRate = $totalSessions > 0
+            ? round((($hCount + $tCount) / $totalSessions) * 100, 1)
+            : 100.0;
+
+        $nonPresentRecords = $attendanceRecords->filter(fn ($r) => in_array($r->status, ['a', 's', 'i', 't', 'd']))
+            ->sortByDesc(fn ($r) => $r->session?->attendance_date?->timestamp ?? 0)
+            ->take(4);
+
+        $attendanceNotesList = [];
+        foreach ($nonPresentRecords as $rec) {
+            $recDate = $rec->session?->attendance_date?->translatedFormat('d M') ?? '-';
+            $statusLabel = $rec->status_label ?? strtoupper($rec->status);
+            $subjectName = $rec->session?->subject?->name ?? 'KBM';
+            $attendanceNotesList[] = "• {$recDate}: <b>{$statusLabel}</b> ({$subjectName})";
+        }
+
+        // 2. Data Perizinan Meja Piket
+        $permits = PiketStudentPermit::where('student_id', $student->id)
+            ->whereDate('permit_date', '>=', $startDateYmd)
+            ->whereDate('permit_date', '<=', $endDateYmd)
+            ->orderByDesc('permit_date')
+            ->get();
+
+        $permitLateCount = $permits->where('permit_type', 'terlambat')->count();
+        $permitLeaveCount = $permits->where('permit_type', 'izin_keluar_sementara')->count();
+        $permitEarlyCount = $permits->where('permit_type', 'izin_pulang_cepat')->count();
+
+        $recentPermitsList = [];
+        foreach ($permits->take(3) as $permit) {
+            $pDate = $permit->permit_date?->translatedFormat('d M') ?? '-';
+            $typeLabel = match ($permit->permit_type) {
+                'terlambat' => 'Terlambat Masuk',
+                'izin_keluar_sementara' => 'Keluar Sementara',
+                'izin_pulang_cepat' => 'Pulang Cepat',
+                default => ucfirst($permit->permit_type ?? 'Izin'),
+            };
+            $reason = Str::limit($permit->reason ?? 'Tidak ada keterangan', 35);
+            $recentPermitsList[] = "• {$pDate}: <b>{$typeLabel}</b> ({$reason})";
+        }
+
+        // 3. Data Kasus / Kejadian Siswa (Piket Incident)
+        $incidents = PiketIncident::where(function ($q) use ($student) {
+            $q->where('student_id', $student->id)
+                ->orWhere('student_name', $student->name);
+        })
+            ->whereDate('incident_date', '>=', $startDateYmd)
+            ->whereDate('incident_date', '<=', $endDateYmd)
+            ->orderByDesc('incident_date')
+            ->get();
+
+        $totalIncidents = $incidents->count();
+        $recentIncidentsList = [];
+        foreach ($incidents->take(3) as $inc) {
+            $incDate = $inc->incident_date?->translatedFormat('d M Y') ?? '-';
+            $cat = $inc->category_label ?? ucfirst($inc->category ?? 'Kejadian');
+            $desc = Str::limit($inc->description ?? '-', 50);
+            $status = $inc->verification_status === 'verified' ? '✅ Terverifikasi' : '⏳ Menunggu Verifikasi';
+            $recentIncidentsList[] = "• <b>{$incDate}</b> [{$cat}]\n  <i>{$desc}</i> ({$status})";
+        }
+
+        // Susun teks pesan lengkap
+        $msg = "📊 <b>REKAP PRESENSI & KEJADIAN SISWA</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."👤 <b>Nama:</b> {$student->name}\n"
+            ."🏫 <b>Kelas:</b> {$classroom->name}\n"
+            .'🆔 <b>NIS:</b> '.($student->nis ?? '-')."\n"
+            ."📅 <b>Periode:</b> {$periodTitle}\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n\n"
+            ."📈 <b>PRESENSI KBM MATA PELAJARAN:</b>\n"
+            ."• Total Sesi KBM : <b>{$totalSessions} pertemuan</b>\n"
+            ."• Hadir (H)      : <b>{$hCount}</b>\n"
+            ."• Terlambat (T)  : <b>{$tCount}</b>\n"
+            ."• Sakit (S)      : <b>{$sCount}</b>\n"
+            ."• Izin (I)       : <b>{$iCount}</b>\n"
+            ."• Alpa (A)       : <b>{$aCount}</b>\n"
+            ."• Dispen (D)     : <b>{$dCount}</b>\n"
+            ."📊 <b>Tingkat Kehadiran: {$attendanceRate}%</b>\n";
+
+        if (! empty($attendanceNotesList)) {
+            $msg .= "\n<i>Catatan Absen Terakhir:</i>\n".implode("\n", $attendanceNotesList)."\n";
+        }
+
+        $msg .= "\n🎫 <b>CATATAN PERIZINAN MEJA PIKET:</b>\n"
+            ."• Terlambat Masuk : <b>{$permitLateCount}x</b>\n"
+            ."• Keluar Sementara: <b>{$permitLeaveCount}x</b>\n"
+            ."• Pulang Cepat    : <b>{$permitEarlyCount}x</b>\n";
+
+        if (! empty($recentPermitsList)) {
+            $msg .= "\n<i>Riwayat Izin Terakhir:</i>\n".implode("\n", $recentPermitsList)."\n";
+        }
+
+        $msg .= "\n⚠️ <b>CATATAN KEJADIAN / PELANGGARAN:</b>\n"
+            ."Total Kejadian: <b>{$totalIncidents} kasus</b>\n";
+
+        if ($totalIncidents === 0) {
+            $msg .= "✅ <i>Bersih / Tidak ada catatan kejadian pada periode ini.</i>\n";
+        } else {
+            $msg .= implode("\n", $recentIncidentsList)."\n";
+            if ($totalIncidents > 3) {
+                $more = $totalIncidents - 3;
+                $msg .= "<i>(+ {$more} catatan kejadian lainnya di sistem)</i>\n";
+            }
+        }
+
+        $msg .= "\n━━━━━━━━━━━━━━━━━━━━\n"
+            .'⏱️ <i>Digenerate: '.Carbon::now('Asia/Jakarta')->translatedFormat('d M Y H:i').' WIB</i>';
+
+        // Susun inline buttons
+        $keyboard = [
+            [
+                ['text' => ($period === 'minggu' ? '✅ ' : '').'📅 Minggu Ini', 'callback_data' => 'att_per_minggu'],
+                ['text' => ($period === 'bulan' ? '✅ ' : '').'🗓️ Bulan Ini', 'callback_data' => 'att_per_bulan'],
+                ['text' => ($period === 'semua' ? '✅ ' : '').'📚 Semua', 'callback_data' => 'att_per_semua'],
+            ],
+            [
+                ['text' => '👤 Pilih Siswa Lain', 'callback_data' => 'att_back_std'],
+            ],
+        ];
+
+        if (! $this->isHomeroomOnlyForAttendance($user, $academicYear)) {
+            $keyboard[1][] = ['text' => '🏫 Ganti Kelas', 'callback_data' => 'att_back_cls'];
+        }
+
+        $keyboard[] = [
+            ['text' => '❌ Selesai', 'callback_data' => 'cancel_flow'],
+        ];
+
+        $this->telegramService->sendMessage(
+            $chatId,
+            $msg,
+            'bot_reply',
+            $user->name,
+            'HTML',
+            ['inline_keyboard' => $keyboard]
         );
     }
 

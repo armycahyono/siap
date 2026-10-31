@@ -162,7 +162,7 @@
                                     <label class="form-selectgroup-item w-100">
                                         <input type="radio" name="follow_up_target" value="rujuk_kesiswaan" class="form-selectgroup-input">
                                         <span class="form-selectgroup-label text-center p-2">
-                                            <i class="ti ti-shield-alert text-danger d-block fs-2"></i>
+                                            <i class="ti ti-shield-exclamation text-danger d-block fs-2"></i>
                                             <span class="small fw-bold">Tim Kesiswaan</span>
                                         </span>
                                     </label>

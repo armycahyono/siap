@@ -47,7 +47,6 @@ use App\Http\Controllers\Piket\PiketPermitController;
 use App\Http\Controllers\Piket\PiketReportController;
 use App\Http\Controllers\Piket\PiketScheduleController;
 use App\Http\Controllers\Piket\PiketStudentController;
-use App\Http\Controllers\Piket\PiketTelegramController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RolePermissionController;
 use App\Http\Controllers\RubricController;
@@ -507,14 +506,8 @@ Route::middleware('auth')->group(function () {
             Route::post('siswa/import', [PiketStudentController::class, 'import'])->name('students.import');
         });
 
-        // 12. Pengaturan & Bot Telegram
-        Route::middleware('permission:manage_piket_settings')->group(function () {
-            Route::get('telegram', [PiketTelegramController::class, 'index'])->name('telegram.index');
-            Route::post('telegram/pengaturan', [PiketTelegramController::class, 'updateSettings'])->name('telegram.settings');
-            Route::post('telegram/guru-chat-id', [PiketTelegramController::class, 'updateTeacherChatId'])->name('telegram.teacher-chat-id');
-            Route::post('telegram/test', [PiketTelegramController::class, 'testSend'])->name('telegram.test');
-            Route::post('telegram/kirim-pengingat', [PiketTelegramController::class, 'sendReminder'])->name('telegram.reminder');
-        });
+        // 12. Bot Telegram Terpusat (Menggunakan TelegramBotController)
+        Route::get('telegram', [TelegramBotController::class, 'index'])->name('telegram.index');
     });
 
     // ==========================================
