@@ -72,20 +72,15 @@
 </div>
 
 <!-- ========================================================================= -->
-<!-- NAVIGASI TAB PENGATURAN BOT TELEGRAM -->
+<!-- NAVIGASI TAB PENGATURAN BOT TELEGRAM (4 TAB UTAMA) -->
 <!-- ========================================================================= -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header border-bottom-0 p-0 bg-transparent">
         <ul class="nav nav-tabs card-header-tabs px-3 pt-2" id="telegramTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <a href="#tab-config" class="nav-link active fw-bold py-2" id="nav-config-tab" data-bs-toggle="tab" role="tab" aria-controls="tab-config" aria-selected="true">
-                    <i class="ti ti-settings me-1 text-primary fs-3"></i> Konfigurasi & Webhook
-                </a>
-            </li>
-            <li class="nav-item" role="presentation">
-                <a href="#tab-channels" class="nav-link fw-bold py-2" id="nav-channels-tab" data-bs-toggle="tab" role="tab" aria-controls="tab-channels" aria-selected="false">
-                    <i class="ti ti-messages me-1 text-info fs-3"></i> Saluran Grup Sekolah
-                    <span class="badge bg-primary-lt ms-1">{{ $channels->count() }}</span>
+                    <i class="ti ti-settings me-1 text-primary fs-3"></i> Konfigurasi & Grup
+                    <span class="badge bg-primary-lt ms-1">{{ $channels->count() }} Saluran</span>
                 </a>
             </li>
             <li class="nav-item" role="presentation">
@@ -114,33 +109,33 @@
 <!-- ========================================================================= -->
 <div class="tab-content">
     <!-- ===================================================================== -->
-    <!-- TAB 1: KONFIGURASI & WEBHOOK -->
+    <!-- TAB 1: KONFIGURASI & GRUP (DIGABUNGKAN) -->
     <!-- ===================================================================== -->
     <div class="tab-pane fade show active" id="tab-config" role="tabpanel" aria-labelledby="nav-config-tab">
-        <div class="row g-4">
-            <!-- Kolom Kiri: Form Konfigurasi Bot & Saluran Grup Default -->
-            <div class="col-lg-7">
+        <!-- Baris Atas: Kunci Bot & Webhook -->
+        <div class="row g-4 mb-4">
+            <!-- Kolom Kiri: Form Kunci Bot Telegram -->
+            <div class="col-lg-6">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-white py-3">
                         <h4 class="card-title fw-bold text-dark m-0">
-                            <i class="ti ti-settings text-primary me-2"></i> Konfigurasi Kunci Bot Telegram
+                            <i class="ti ti-key text-primary me-2"></i> Kunci & Identitas Bot Telegram
                         </h4>
                     </div>
                     <div class="card-body p-4">
                         <form action="{{ route('telegram.settings') }}" method="POST">
                             @csrf
-                            <!-- Token & Username -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-12">
-                                    <label class="form-label required fw-bold text-dark">
-                                        <i class="ti ti-key me-1 text-warning"></i> Token Bot Telegram (@BotFather)
-                                    </label>
-                                    <input type="text" name="telegram_bot_token" class="form-control font-monospace" 
-                                        value="{{ old('telegram_bot_token', $setting->telegram_bot_token) }}" 
-                                        placeholder="Contoh: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
-                                    <small class="text-muted">Dapatkan token bot dengan membuat bot di Telegram melalui akun resmi <b>@BotFather</b>.</small>
-                                </div>
-                                <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label required fw-bold text-dark">
+                                    <i class="ti ti-key me-1 text-warning"></i> Token Bot Telegram (@BotFather)
+                                </label>
+                                <input type="text" name="telegram_bot_token" class="form-control font-monospace" 
+                                    value="{{ old('telegram_bot_token', $setting->telegram_bot_token) }}" 
+                                    placeholder="Contoh: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+                                <small class="text-muted">Token rahasia dari bot resmi <b>@BotFather</b> di Telegram.</small>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-sm-6">
                                     <label class="form-label fw-bold text-dark">Username Bot</label>
                                     <div class="input-group">
                                         <span class="input-group-text">@</span>
@@ -149,71 +144,17 @@
                                             placeholder="NamaBotSekolah_bot">
                                     </div>
                                 </div>
-                                <div class="col-md-6 d-flex align-items-center">
+                                <div class="col-sm-6 d-flex align-items-center">
                                     <div class="form-check form-switch mt-3">
                                         <input class="form-check-input" type="checkbox" name="telegram_notifications_enabled" value="1" id="notif_enabled"
                                             {{ $setting->telegram_notifications_enabled ? 'checked' : '' }}>
                                         <label class="form-check-label fw-bold text-dark" for="notif_enabled">
-                                            Aktifkan Layanan Notifikasi Bot
+                                            Aktifkan Notifikasi Bot
                                         </label>
                                     </div>
                                 </div>
                             </div>
-
-                            <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
-                                <i class="ti ti-messages me-1 text-info"></i> ID Default Saluran Grup Utama
-                            </h5>
-                            <div class="text-secondary small mb-3">
-                                Nilai cadangan Chat ID untuk grup inti sekolah. Anda juga dapat mengelola dan memodifikasi saluran grup secara dinamis pada tab <b>Saluran Grup Sekolah</b>.
-                            </div>
-
-                            <div class="row g-3 mb-4">
-                                <!-- 1. Grup Piket & Disiplin -->
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold text-dark">
-                                        <i class="ti ti-shield-check text-warning me-1"></i> Grup Kedisiplinan & BK
-                                    </label>
-                                    <input type="text" name="telegram_discipline_chat_id" class="form-control font-monospace" 
-                                        value="{{ old('telegram_discipline_chat_id', $setting->telegram_discipline_chat_id) }}" 
-                                        placeholder="-100xxxxxxxxxx">
-                                    <small class="text-muted">Notif keterlambatan, izin, & kasus pelanggaran.</small>
-                                </div>
-
-                                <!-- 2. Grup Petugas Piket -->
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold text-dark">
-                                        <i class="ti ti-calendar-user text-primary me-1"></i> Grup Piket Harian
-                                    </label>
-                                    <input type="text" name="telegram_piket_chat_id" class="form-control font-monospace" 
-                                        value="{{ old('telegram_piket_chat_id', $setting->telegram_piket_chat_id) }}" 
-                                        placeholder="-100xxxxxxxxxx">
-                                    <small class="text-muted">Pengumuman tim piket hari H & kelas kosong/inval.</small>
-                                </div>
-
-                                <!-- 3. Grup Kegiatan Sekolah & Kurikulum -->
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold text-dark">
-                                        <i class="ti ti-calendar-star text-success me-1"></i> Grup Kegiatan & Kaldik
-                                    </label>
-                                    <input type="text" name="telegram_activities_chat_id" class="form-control font-monospace" 
-                                        value="{{ old('telegram_activities_chat_id', $setting->telegram_activities_chat_id) }}" 
-                                        placeholder="-100xxxxxxxxxx">
-                                    <small class="text-muted">Agenda kegiatan, ujian, & pengingat kaldik.</small>
-                                </div>
-
-                                <!-- 4. Grup Dewan Guru -->
-                                <div class="col-md-6">
-                                    <label class="form-label fw-bold text-dark">
-                                        <i class="ti ti-users-group text-azure me-1"></i> Grup GTK SMK PGRI Kras
-                                    </label>
-                                    <input type="text" name="telegram_teachers_chat_id" class="form-control font-monospace" 
-                                        value="{{ old('telegram_teachers_chat_id', $setting->telegram_teachers_chat_id) }}" 
-                                        placeholder="-100xxxxxxxxxx">
-                                    <small class="text-muted">Pengumuman kedinasan resmi dewan guru & staf.</small>
-                                </div>
-                            </div>
-
-                            <div class="d-flex justify-content-end">
+                            <div class="d-flex justify-content-end pt-2">
                                 <button type="submit" class="btn btn-primary shadow-sm px-4">
                                     <i class="ti ti-device-floppy me-1"></i> Simpan Pengaturan Bot
                                 </button>
@@ -223,25 +164,22 @@
                 </div>
             </div>
 
-            <!-- Kolom Kanan: Webhook & Panduan -->
-            <div class="col-lg-5">
-                <!-- Card Webhook -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4 class="card-title fw-bold text-dark m-0">
-                                <i class="ti ti-webhook text-purple me-2"></i> Webhook & Bot Interaktif
-                            </h4>
-                            @if(!empty($webhookInfo['url']))
-                                <span class="badge bg-success-lt"><i class="ti ti-check me-1"></i> Webhook Aktif</span>
-                            @else
-                                <span class="badge bg-secondary-lt">Belum Disetel</span>
-                            @endif
-                        </div>
+            <!-- Kolom Kanan: Webhook & Panduan Singkat -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h4 class="card-title fw-bold text-dark m-0">
+                            <i class="ti ti-webhook text-purple me-2"></i> Webhook & Bot Interaktif
+                        </h4>
+                        @if(!empty($webhookInfo['url']))
+                            <span class="badge bg-success-lt"><i class="ti ti-check me-1"></i> Webhook Aktif</span>
+                        @else
+                            <span class="badge bg-secondary-lt">Belum Disetel</span>
+                        @endif
                     </div>
-                    <div class="card-body p-3">
+                    <div class="card-body p-4">
                         <div class="small text-secondary mb-3">
-                            Webhook memungkinkan guru berinteraksi 2 arah dengan Bot Telegram (cek presensi, jadwal mengajar, rekap absen siswa bimbingan, lapor kasus, dan izin mandiri).
+                            Webhook memungkinkan Bot menerima perintah interaktif 2 arah secara real-time dari guru maupun obrolan di saluran grup sekolah.
                         </div>
 
                         @if(!empty($webhookInfo['url']))
@@ -254,62 +192,33 @@
                             </div>
                         @endif
 
-                        <form action="{{ route('telegram.set-webhook') }}" method="POST" class="mb-2">
+                        <form action="{{ route('telegram.set-webhook') }}" method="POST" class="mb-3">
                             @csrf
                             <label class="form-label small text-muted">URL Webhook Aplikasi (Harus HTTPS):</label>
-                            <div class="input-group mb-2">
+                            <div class="input-group">
                                 <input type="url" name="webhook_url" class="form-control font-monospace form-control-sm" 
                                     value="{{ !empty($webhookInfo['url']) ? $webhookInfo['url'] : url('/telegram/webhook') }}" 
-                                    placeholder="https://domain-anda.com/telegram/webhook" required>
+                                    placeholder="https://siap.smkpgrikras.my.id/telegram/webhook" required>
                                 <button type="submit" class="btn btn-sm btn-purple text-white">
                                     <i class="ti ti-check me-1"></i> Setel Webhook
                                 </button>
                             </div>
-                            <small class="text-muted" style="font-size: 0.75rem;">
-                                Pastikan domain dapat diakses publik oleh server Telegram.
-                            </small>
                         </form>
 
                         @if(!empty($webhookInfo['url']))
                             <form action="{{ route('telegram.delete-webhook') }}" method="POST" onsubmit="return confirm('Hapus konfigurasi webhook?')">
                                 @csrf
-                                <button type="submit" class="btn btn-sm btn-outline-danger w-100 mt-2">
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100">
                                     <i class="ti ti-trash me-1"></i> Hapus Webhook
                                 </button>
                             </form>
                         @endif
                     </div>
                 </div>
-
-                <!-- Card Panduan Chat ID -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3">
-                        <h4 class="card-title fw-bold text-dark m-0">
-                            <i class="ti ti-help text-secondary me-2"></i> Panduan Chat ID Telegram
-                        </h4>
-                    </div>
-                    <div class="card-body p-3 small text-secondary">
-                        <ol class="ps-3 mb-0">
-                            <li class="mb-2">
-                                <b>Chat ID Guru Pribadi:</b> Guru membuka bot <code>@userinfobot</code> atau mengirim perintah <code>/id</code> ke bot sekolah untuk melihat ID Telegram pribadinya.
-                            </li>
-                            <li class="mb-2">
-                                <b>Chat ID Grup:</b> Masukkan Bot ke dalam grup sebagai Admin. Gunakan <code>@userinfobot</code> di grup untuk melihat ID Grup (diawali minus, contoh: <code>-1002345678901</code>).
-                            </li>
-                            <li>
-                                <b>Wajib Klik Start:</b> Telegram mewajibkan setiap guru mengklik <b>Start</b> pada bot sekolah sebelum bot dapat mengirimkan pesan japri pribadi kepada mereka.
-                            </li>
-                        </ol>
-                    </div>
-                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ===================================================================== -->
-    <!-- TAB 2: SALURAN GRUP TELEGRAM SEKOLAH -->
-    <!-- ===================================================================== -->
-    <div class="tab-pane fade" id="tab-channels" role="tabpanel" aria-labelledby="nav-channels-tab">
+        <!-- Baris Bawah: Pengelolaan Saluran Grup Telegram Sekolah -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <div>
@@ -318,7 +227,7 @@
                         Daftar Saluran Grup Telegram Sekolah
                     </h4>
                     <div class="text-muted small mt-1">
-                        Kelola grup resmi sekolah, tentukan kelompok GTK yang berhak bergabung, aktifkan menu perintah interaktif, dan kirimkan tautan undangan resmi ke japri guru.
+                        Kelola grup resmi sekolah, tentukan kelompok/peran GTK yang berhak bergabung, atur perintah menu yang aktif, dan kirimkan tautan undangan langsung ke japri guru.
                     </div>
                 </div>
                 <div class="card-actions">
@@ -333,8 +242,8 @@
                         <tr>
                             <th style="min-width: 220px;">Saluran Grup</th>
                             <th style="min-width: 170px;">ID Chat & Tautan Undangan</th>
-                            <th style="min-width: 220px;">Kelompok / Peran GTK</th>
-                            <th style="min-width: 220px;">Perintah Menu Aktif</th>
+                            <th style="min-width: 240px;">Kelompok / Peran GTK</th>
+                            <th style="min-width: 200px;">Perintah Menu Aktif</th>
                             <th class="text-center" style="width: 190px;">Aksi Cepat</th>
                         </tr>
                     </thead>
@@ -381,8 +290,12 @@
                                     @if(!empty($channel->allowed_roles) && count($channel->allowed_roles) > 0)
                                         <div class="d-flex flex-wrap gap-1">
                                             @foreach($channel->allowed_roles as $roleSlug)
-                                                <span class="badge bg-blue-lt small text-uppercase" style="font-size: 0.7rem;">
-                                                    {{ str_replace('_', ' ', $roleSlug) }}
+                                                @php
+                                                    $roleModel = $availableRoles->firstWhere('slug', $roleSlug);
+                                                    $roleName = $roleModel ? $roleModel->name : ucwords(str_replace('_', ' ', $roleSlug));
+                                                @endphp
+                                                <span class="badge bg-blue-lt small" style="font-size: 0.72rem;">
+                                                    {{ $roleName }}
                                                 </span>
                                             @endforeach
                                         </div>
@@ -462,7 +375,7 @@
     </div>
 
     <!-- ===================================================================== -->
-    <!-- TAB 3: AKUN TELEGRAM GTK -->
+    <!-- TAB 2: AKUN TELEGRAM GTK -->
     <!-- ===================================================================== -->
     <div class="tab-pane fade" id="tab-teachers" role="tabpanel" aria-labelledby="nav-teachers-tab">
         <div class="card border-0 shadow-sm mb-4">
@@ -483,7 +396,7 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width: 50px;">No</th>
-                            <th>Nama Guru</th>
+                            <th>Nama Guru / GTK</th>
                             <th>Peran / Jabatan</th>
                             <th>Chat ID Telegram</th>
                             <th>Username Telegram</th>
@@ -542,7 +455,7 @@
     </div>
 
     <!-- ===================================================================== -->
-    <!-- TAB 4: UJI COBA & PENGINGAT -->
+    <!-- TAB 3: UJI COBA & PENGINGAT -->
     <!-- ===================================================================== -->
     <div class="tab-pane fade" id="tab-testing" role="tabpanel" aria-labelledby="nav-testing-tab">
         <div class="row g-4 mb-4">
@@ -592,12 +505,6 @@
                                             <option value="{{ $ch->code }}">{{ $ch->name }} ({{ $ch->chat_id }})</option>
                                         @endif
                                     @endforeach
-                                    @if($setting->telegram_teachers_chat_id && !$channels->where('code', 'gtk')->first()?->chat_id)
-                                        <option value="teachers">📢 Grup Dewan Guru & Karyawan</option>
-                                    @endif
-                                    @if($setting->telegram_discipline_chat_id && !$channels->where('code', 'discipline')->first()?->chat_id)
-                                        <option value="discipline">🛡️ Grup Kedisiplinan & BK</option>
-                                    @endif
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -665,68 +572,25 @@
                     </div>
                 </div>
 
-                <!-- Card Daftar Perintah Interaktif Bot -->
+                <!-- Card Panduan Chat ID -->
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white py-3">
                         <h4 class="card-title fw-bold text-dark m-0">
-                            <i class="ti ti-command text-secondary me-2"></i> Daftar Perintah Interaktif Bot SIAP
+                            <i class="ti ti-help text-secondary me-2"></i> Panduan Chat ID Telegram
                         </h4>
                     </div>
-                    <div class="card-body p-3">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-borderless text-secondary mb-0" style="font-size: 0.8rem;">
-                                <tbody>
-                                    <tr>
-                                        <td><code>/presensi</code></td>
-                                        <td>Cek log presensi tap/kehadiran saya hari ini</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/jadwalsaya</code></td>
-                                        <td>Jadwal mengajar KBM pribadi hari ini</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/cek_absen_siswa</code></td>
-                                        <td>Rekap presensi KBM & kejadian siswa (Wali Kelas, BK, Piket)</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/piket</code></td>
-                                        <td>Cek rekan & jadwal tim piket hari ini</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/jadwal</code></td>
-                                        <td>Jadwal KBM & guru mengajar jam aktif sekolah</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/inval</code></td>
-                                        <td>Cek guru izin & kelas kosong / penugasan inval</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/lapor</code></td>
-                                        <td>Lapor kasus/pelanggaran siswa + foto bukti</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/ajukan_izin</code></td>
-                                        <td>Ajukan izin mandiri GTK & titip tugas KBM</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/tamu</code></td>
-                                        <td>Daftar buku tamu kunjungan sekolah hari ini</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/agenda</code></td>
-                                        <td>Agenda kegiatan & kalender pendidikan sekolah</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/poin [nis]</code></td>
-                                        <td>Cek catatan kasus & rekam jejak siswa</td>
-                                    </tr>
-                                    <tr>
-                                        <td><code>/id</code></td>
-                                        <td>Cek nomor Chat ID Telegram unik pribadi</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="card-body p-4 small text-secondary">
+                        <ol class="ps-3 mb-0">
+                            <li class="mb-2">
+                                <b>Chat ID Guru Pribadi:</b> Guru membuka bot <code>@userinfobot</code> atau mengirim perintah <code>/id</code> ke bot sekolah untuk melihat nomor ID uniknya.
+                            </li>
+                            <li class="mb-2">
+                                <b>Chat ID Grup:</b> Masukkan Bot ke dalam grup sebagai Admin. Masukkan bot <code>@userinfobot</code> ke grup untuk melihat ID Grup (diawali minus, contoh: <code>-1002345678901</code>).
+                            </li>
+                            <li>
+                                <b>Wajib Klik Start:</b> Telegram mewajibkan setiap guru mengklik <b>Start</b> pada bot sekolah sebelum bot diizinkan mengirimkan pesan pribadi.
+                            </li>
+                        </ol>
                     </div>
                 </div>
             </div>
@@ -734,7 +598,7 @@
     </div>
 
     <!-- ===================================================================== -->
-    <!-- TAB 5: RIWAYAT NOTIFIKASI -->
+    <!-- TAB 4: RIWAYAT NOTIFIKASI -->
     <!-- ===================================================================== -->
     <div class="tab-pane fade" id="tab-logs" role="tabpanel" aria-labelledby="nav-logs-tab">
         <div class="card border-0 shadow-sm mb-4">
@@ -1083,12 +947,6 @@
                                     <option value="{{ $ch->code }}">{{ $ch->name }} ({{ $ch->chat_id }})</option>
                                 @endif
                             @endforeach
-                            @if($setting->telegram_teachers_chat_id && !$channels->where('code', 'gtk')->first()?->chat_id)
-                                <option value="teachers">📢 Grup Dewan Guru & Karyawan</option>
-                            @endif
-                            @if($setting->telegram_discipline_chat_id && !$channels->where('code', 'discipline')->first()?->chat_id)
-                                <option value="discipline">🛡️ Grup Kedisiplinan & BK</option>
-                            @endif
                         </select>
                     </div>
                     <div class="mb-3">

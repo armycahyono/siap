@@ -79,16 +79,20 @@ class TelegramBotController extends Controller
         ]);
 
         $setting = SchoolSetting::getSetting();
-        $setting->update([
+        $dataToUpdate = [
             'telegram_bot_token' => $validated['telegram_bot_token'] ?? null,
             'telegram_bot_username' => $validated['telegram_bot_username'] ?? null,
-            'telegram_discipline_chat_id' => $validated['telegram_discipline_chat_id'] ?? null,
-            'telegram_piket_chat_id' => $validated['telegram_piket_chat_id'] ?? null,
-            'telegram_supervision_chat_id' => $validated['telegram_supervision_chat_id'] ?? null,
-            'telegram_activities_chat_id' => $validated['telegram_activities_chat_id'] ?? null,
-            'telegram_teachers_chat_id' => $validated['telegram_teachers_chat_id'] ?? null,
             'telegram_notifications_enabled' => $request->has('telegram_notifications_enabled'),
-        ]);
+        ];
+
+        // Jika form mengirim legacy chat id
+        foreach (['telegram_discipline_chat_id', 'telegram_piket_chat_id', 'telegram_supervision_chat_id', 'telegram_activities_chat_id', 'telegram_teachers_chat_id'] as $field) {
+            if ($request->has($field)) {
+                $dataToUpdate[$field] = $validated[$field] ?? null;
+            }
+        }
+
+        $setting->update($dataToUpdate);
 
         return back()->with('success', 'Konfigurasi Bot Telegram & Saluran Notifikasi Sekolah berhasil disimpan.');
     }

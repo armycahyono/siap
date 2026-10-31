@@ -75,6 +75,16 @@ class TelegramChannel extends Model
             ->where(function ($q) use ($roles) {
                 $q->whereHas('role', fn ($sub) => $sub->whereIn('slug', $roles))
                     ->orWhereHas('roleAssignments.role', fn ($sub) => $sub->whereIn('slug', $roles));
+
+                // Jika grup mengizinkan Wali Kelas, sertakan guru yang tercatat sebagai wali kelas aktif di tabel classrooms
+                if (in_array('wali_kelas', $roles)) {
+                    $q->orWhereIn('id', Classroom::whereNotNull('homeroom_teacher_id')->pluck('homeroom_teacher_id'));
+                }
+
+                // Jika grup mengizinkan Guru Piket, sertakan guru yang memiliki jadwal piket aktif
+                if (in_array('guru_piket', $roles) || in_array('piket_officer', $roles)) {
+                    $q->orWhereIn('id', PiketSchedule::where('is_active', true)->pluck('teacher_id'));
+                }
             })
             ->orderBy('name')
             ->get();

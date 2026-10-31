@@ -663,9 +663,10 @@ class TelegramBotNewFeaturesTest extends TestCase
         $response->assertOk();
         $response->assertSee('id="telegramTabs"', false);
         $response->assertSee('href="#tab-config"', false);
-        $response->assertSee('href="#tab-channels"', false);
+        $response->assertSee('Konfigurasi & Grup', false);
         $response->assertSee('href="#tab-teachers"', false);
         $response->assertSee('href="#tab-testing"', false);
         $response->assertSee('href="#tab-logs"', false);
+        $response->assertSee('Daftar Saluran Grup Telegram Sekolah', false);
     }
 }
