@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\PiketSchedule;
 use App\Models\PiketTelegramLog;
+use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Supervision;
+use App\Models\TelegramChannel;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
@@ -13,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class TelegramBotController extends Controller
@@ -44,7 +47,22 @@ class TelegramBotController extends Controller
         $totalTeachersWithId = User::whereNotNull('telegram_chat_id')->where('telegram_chat_id', '!=', '')->count();
         $webhookInfo = $this->telegramService->getWebhookInfo();
 
-        return view('settings.telegram.index', compact('setting', 'logs', 'teachers', 'totalSent', 'totalFailed', 'totalTeachersWithId', 'targetType', 'webhookInfo'));
+        // Saluran Grup Dinamis & Daftar Peran
+        $channels = TelegramChannel::orderBy('id')->get();
+        $availableRoles = Role::orderBy('name')->get();
+
+        return view('settings.telegram.index', compact(
+            'setting',
+            'logs',
+            'teachers',
+            'totalSent',
+            'totalFailed',
+            'totalTeachersWithId',
+            'targetType',
+            'webhookInfo',
+            'channels',
+            'availableRoles'
+        ));
     }
 
     public function updateSettings(Request $request): RedirectResponse
@@ -119,32 +137,37 @@ class TelegramBotController extends Controller
         $targetChatId = null;
         $channelName = 'Grup Sekolah';
 
-        switch ($validated['target_channel']) {
-            case 'discipline':
-                $targetChatId = $setting->telegram_discipline_chat_id;
-                $channelName = 'Grup Kedisiplinan & BK';
-                break;
-            case 'piket':
-                $targetChatId = $setting->telegram_piket_chat_id;
-                $channelName = 'Grup Tim Piket Sekolah';
-                break;
-            case 'supervision':
-                $targetChatId = $setting->telegram_supervision_chat_id;
-                $channelName = 'Grup Supervisi Guru';
-                break;
-            case 'activities':
-                $targetChatId = $setting->telegram_activities_chat_id;
-                $channelName = 'Grup Kegiatan Sekolah';
-                break;
-            case 'teachers':
-                $targetChatId = $setting->telegram_teachers_chat_id;
-                $channelName = 'Grup Dewan Guru';
-                break;
-            default:
-                // Jika input langsung berupa chat_id
-                $targetChatId = $validated['target_channel'];
-                $channelName = 'Chat ID '.$targetChatId;
-                break;
+        $channel = TelegramChannel::findByCode($validated['target_channel']);
+        if ($channel) {
+            $targetChatId = $channel->chat_id;
+            $channelName = $channel->name;
+        } else {
+            switch ($validated['target_channel']) {
+                case 'discipline':
+                    $targetChatId = $setting->telegram_discipline_chat_id;
+                    $channelName = 'Grup Kedisiplinan & BK';
+                    break;
+                case 'piket':
+                    $targetChatId = $setting->telegram_piket_chat_id;
+                    $channelName = 'Grup Tim Piket Sekolah';
+                    break;
+                case 'supervision':
+                    $targetChatId = $setting->telegram_supervision_chat_id;
+                    $channelName = 'Grup Supervisi Guru';
+                    break;
+                case 'activities':
+                    $targetChatId = $setting->telegram_activities_chat_id;
+                    $channelName = 'Grup Kegiatan Sekolah';
+                    break;
+                case 'teachers':
+                    $targetChatId = $setting->telegram_teachers_chat_id;
+                    $channelName = 'Grup Dewan Guru';
+                    break;
+                default:
+                    $targetChatId = $validated['target_channel'];
+                    $channelName = 'Chat ID '.$targetChatId;
+                    break;
+            }
         }
 
         if (empty($targetChatId)) {
@@ -264,6 +287,105 @@ class TelegramBotController extends Controller
     public function deleteWebhook(): RedirectResponse
     {
         $res = $this->telegramService->deleteWebhook();
+
+        if ($res['success']) {
+            return back()->with('success', $res['message']);
+        }
+
+        return back()->with('error', $res['message']);
+    }
+
+    public function storeChannel(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'code' => 'nullable|string|max:50|unique:telegram_channels,code',
+            'chat_id' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+            'invite_link' => 'nullable|string|max:255',
+            'allowed_roles' => 'nullable|array',
+            'enabled_commands' => 'nullable|array',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $code = ! empty($validated['code']) ? Str::slug($validated['code'], '_') : Str::slug($validated['name'], '_');
+        if (TelegramChannel::where('code', $code)->exists()) {
+            $code .= '_'.time();
+        }
+
+        $channel = TelegramChannel::create([
+            'name' => $validated['name'],
+            'code' => $code,
+            'chat_id' => $validated['chat_id'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'invite_link' => $validated['invite_link'] ?? null,
+            'allowed_roles' => $validated['allowed_roles'] ?? [],
+            'enabled_commands' => $validated['enabled_commands'] ?? [],
+            'is_active' => $request->has('is_active'),
+        ]);
+
+        if ($channel->chat_id && ! empty($channel->enabled_commands)) {
+            $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands);
+        }
+
+        return back()->with('success', "Saluran Grup '{$channel->name}' berhasil ditambahkan.");
+    }
+
+    public function updateChannel(Request $request, TelegramChannel $channel): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:150',
+            'chat_id' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+            'invite_link' => 'nullable|string|max:255',
+            'allowed_roles' => 'nullable|array',
+            'enabled_commands' => 'nullable|array',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $channel->update([
+            'name' => $validated['name'],
+            'chat_id' => $validated['chat_id'] ?: null,
+            'description' => $validated['description'] ?: null,
+            'invite_link' => $validated['invite_link'] ?: null,
+            'allowed_roles' => $validated['allowed_roles'] ?? [],
+            'enabled_commands' => $validated['enabled_commands'] ?? [],
+            'is_active' => $request->has('is_active'),
+        ]);
+
+        if ($channel->chat_id && $channel->is_active && ! empty($channel->enabled_commands)) {
+            $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands);
+        }
+
+        return back()->with('success', "Pengaturan saluran grup '{$channel->name}' berhasil diperbarui.");
+    }
+
+    public function destroyChannel(TelegramChannel $channel): RedirectResponse
+    {
+        $name = $channel->name;
+        $channel->delete();
+
+        return back()->with('success', "Saluran grup '{$name}' telah dihapus.");
+    }
+
+    public function syncChannelCommands(TelegramChannel $channel): RedirectResponse
+    {
+        if (empty($channel->chat_id)) {
+            return back()->with('error', "Grup '{$channel->name}' belum memiliki Chat ID Telegram.");
+        }
+
+        $res = $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands ?? []);
+
+        if ($res['success']) {
+            return back()->with('success', $res['message']);
+        }
+
+        return back()->with('error', $res['message']);
+    }
+
+    public function inviteChannelMembers(TelegramChannel $channel): RedirectResponse
+    {
+        $res = $this->telegramService->sendInviteToEligibleUsers($channel);
 
         if ($res['success']) {
             return back()->with('success', $res['message']);

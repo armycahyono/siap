@@ -14,6 +14,7 @@ use App\Models\SchoolActivity;
 use App\Models\SchoolSetting;
 use App\Models\StudentVisitation;
 use App\Models\Supervision;
+use App\Models\TelegramChannel;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -61,27 +62,27 @@ class TelegramService
 
     public function getDisciplineChatId(): ?string
     {
-        return $this->disciplineChatId;
+        return TelegramChannel::getChatId('discipline') ?? $this->disciplineChatId;
     }
 
     public function getPiketChatId(): ?string
     {
-        return $this->piketChatId;
+        return TelegramChannel::getChatId('piket') ?? $this->piketChatId;
     }
 
     public function getSupervisionChatId(): ?string
     {
-        return $this->supervisionChatId;
+        return TelegramChannel::getChatId('supervision') ?? $this->supervisionChatId;
     }
 
     public function getActivitiesChatId(): ?string
     {
-        return $this->activitiesChatId;
+        return TelegramChannel::getChatId('activities') ?? $this->activitiesChatId;
     }
 
     public function getTeachersChatId(): ?string
     {
-        return $this->teachersChatId;
+        return TelegramChannel::getChatId('gtk') ?? $this->teachersChatId;
     }
 
     /**
@@ -1379,6 +1380,171 @@ class TelegramService
                 'message' => 'Koneksi ke server Telegram gagal: '.$e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Daftarkan daftar perintah khusus untuk sebuah chat/grup (BotCommandScopeChat).
+     */
+    public function setChatCommands(string $chatId, array $commandList): array
+    {
+        if (empty($this->botToken) || empty($chatId)) {
+            return ['success' => false, 'message' => 'Token Bot atau Chat ID belum valid.'];
+        }
+
+        $commandDescriptions = [
+            'piket' => 'Daftar tim piket hari ini',
+            'jadwal' => 'Jadwal KBM jam sekarang',
+            'inval' => 'Cek kelas kosong & penugasan inval',
+            'lapor' => 'Lapor kasus / pelanggaran siswa',
+            'rekap' => 'Rekapitulasi cepat harian sekolah',
+            'tamu' => 'Daftar buku tamu kunjungan',
+            'agenda' => 'Agenda kegiatan & kaldik sekolah',
+            'poin' => 'Cek rekam kasus & kedisiplinan siswa',
+            'bantuan' => 'Panduan bantuan penggunaan bot',
+            'id' => 'Cek nomor Chat ID Telegram unik',
+        ];
+
+        $commandsPayload = [];
+        foreach ($commandList as $cmd) {
+            $cleanCmd = ltrim(strtolower(trim($cmd)), '/');
+            if (empty($cleanCmd)) {
+                continue;
+            }
+            $desc = $commandDescriptions[$cleanCmd] ?? "Perintah {$cleanCmd}";
+            $commandsPayload[] = [
+                'command' => $cleanCmd,
+                'description' => substr($desc, 0, 256),
+            ];
+        }
+
+        if (empty($commandsPayload)) {
+            $commandsPayload = [
+                ['command' => 'bantuan', 'description' => 'Panduan penggunaan bot'],
+            ];
+        }
+
+        $url = "https://api.telegram.org/bot{$this->botToken}/setMyCommands";
+
+        try {
+            $response = Http::timeout(6)->post($url, [
+                'commands' => $commandsPayload,
+                'scope' => [
+                    'type' => 'chat',
+                    'chat_id' => $chatId,
+                ],
+            ]);
+
+            if ($response->successful() && $response->json('ok') === true) {
+                return [
+                    'success' => true,
+                    'message' => 'Daftar perintah khusus grup berhasil disinkronkan ke Telegram!',
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Telegram Error: '.($response->json('description') ?? $response->body()),
+            ];
+        } catch (Throwable $e) {
+            return ['success' => false, 'message' => 'Koneksi gagal: '.$e->getMessage()];
+        }
+    }
+
+    /**
+     * Buat tautan undangan resmi grup via API Telegram.
+     */
+    public function createChatInviteLink(string $chatId, ?string $name = null): ?string
+    {
+        if (empty($this->botToken) || empty($chatId)) {
+            return null;
+        }
+
+        $url = "https://api.telegram.org/bot{$this->botToken}/createChatInviteLink";
+
+        try {
+            $response = Http::timeout(6)->post($url, [
+                'chat_id' => $chatId,
+                'name' => $name ?: 'Undangan Resmi GTK SIAP',
+                'creates_join_request' => false,
+            ]);
+
+            if ($response->successful() && $response->json('ok') === true) {
+                return $response->json('result.invite_link');
+            }
+        } catch (Throwable $e) {
+            Log::warning("Gagal createChatInviteLink untuk {$chatId}: ".$e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Kirimkan pesan undangan bergabung ke grup via Japri Bot ke seluruh GTK yang memenuhi syarat peran.
+     */
+    public function sendInviteToEligibleUsers(TelegramChannel $channel): array
+    {
+        if (! $channel->is_active || empty($channel->chat_id)) {
+            return ['success' => false, 'message' => 'Grup belum aktif atau Chat ID belum terisi.'];
+        }
+
+        $inviteLink = $channel->invite_link;
+        if (empty($inviteLink)) {
+            $inviteLink = $this->createChatInviteLink($channel->chat_id, "Grup {$channel->name}");
+            if ($inviteLink) {
+                $channel->update(['invite_link' => $inviteLink]);
+            }
+        }
+
+        if (empty($inviteLink)) {
+            return ['success' => false, 'message' => 'Gagal mendapatkan tautan undangan grup dari Telegram. Pastikan Bot sudah menjadi Admin di grup tersebut.'];
+        }
+
+        $eligibleUsers = $channel->getEligibleUsers();
+        $sentCount = 0;
+        $failedCount = 0;
+
+        foreach ($eligibleUsers as $user) {
+            if (empty($user->telegram_chat_id)) {
+                continue;
+            }
+
+            $msg = "📢 <b>UNDANGAN BERGABUNG KE GRUP SEKOLAH</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."Halo Bpk/Ibu <b>{$user->name}</b>,\n\n"
+                ."Berdasarkan penugasan & peran Anda pada sistem SIAP SMK PGRI Kras, Anda diundang untuk bergabung ke saluran koordinasi resmi:\n\n"
+                ."👥 <b>Grup:</b> {$channel->name}\n"
+                ."📝 <b>Fungsi:</b> {$channel->description}\n\n"
+                ."Silakan klik tautan resmi di bawah ini untuk bergabung:\n"
+                ."👉 <a href=\"{$inviteLink}\"><b>KLIK DI SINI UNTUK GABUNG GRUP</b></a>\n\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                .'<i>Pesan otomatis oleh Bot SIAP SMK PGRI Kras</i>';
+
+            $res = $this->sendMessage(
+                (string) $user->telegram_chat_id,
+                $msg,
+                'group_invite',
+                $user->name,
+                'HTML',
+                [
+                    'inline_keyboard' => [
+                        [['text' => "🚀 Gabung {$channel->name}", 'url' => $inviteLink]],
+                    ],
+                ]
+            );
+
+            if ($res) {
+                $sentCount++;
+            } else {
+                $failedCount++;
+            }
+        }
+
+        return [
+            'success' => true,
+            'message' => "Undangan berhasil disiarkan ke {$sentCount} GTK yang terhubung Telegram.",
+            'sent' => $sentCount,
+            'failed' => $failedCount,
+        ];
     }
 
     /**

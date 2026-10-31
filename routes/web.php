@@ -386,6 +386,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/kirim-pengingat-supervisi', [TelegramBotController::class, 'sendSupervisionReminder'])->name('telegram.supervision-reminder');
         Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])->name('telegram.set-webhook');
         Route::post('/delete-webhook', [TelegramBotController::class, 'deleteWebhook'])->name('telegram.delete-webhook');
+
+        // Saluran Grup Dinamis (Kelompok, Menu, dan Undangan)
+        Route::post('/saluran-grup', [TelegramBotController::class, 'storeChannel'])->name('telegram.channel.store');
+        Route::put('/saluran-grup/{channel}', [TelegramBotController::class, 'updateChannel'])->name('telegram.channel.update');
+        Route::delete('/saluran-grup/{channel}', [TelegramBotController::class, 'destroyChannel'])->name('telegram.channel.destroy');
+        Route::post('/saluran-grup/{channel}/sync-commands', [TelegramBotController::class, 'syncChannelCommands'])->name('telegram.channel.sync-commands');
+        Route::post('/saluran-grup/{channel}/invite', [TelegramBotController::class, 'inviteChannelMembers'])->name('telegram.channel.invite');
     });
 
     // Catatan & Masukan Perbaikan Aplikasi (Terbuka untuk semua pengguna login)

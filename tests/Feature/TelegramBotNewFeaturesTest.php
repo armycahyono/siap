@@ -8,6 +8,7 @@ use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\GradeLevel;
 use App\Models\LessonSchedule;
+use App\Models\Permission;
 use App\Models\PiketGuest;
 use App\Models\PiketIncident;
 use App\Models\PiketJournal;
@@ -19,6 +20,7 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
+use App\Models\TelegramChannel;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -508,6 +510,140 @@ class TelegramBotNewFeaturesTest extends TestCase
                 && str_contains($request['text'], 'Ban motor bocor di jalan')
                 && str_contains($request['text'], 'CATATAN KEJADIAN / PELANGGARAN')
                 && str_contains($request['text'], 'Kaos kaki tidak sesuai');
+        });
+    }
+
+    public function test_group_casual_chat_is_ignored(): void
+    {
+        TelegramChannel::updateOrCreate(
+            ['code' => 'piket'],
+            [
+                'name' => 'Grup Piket',
+                'chat_id' => '-100111222333',
+                'enabled_commands' => ['/piket', '/inval'],
+                'is_active' => true,
+            ]
+        );
+
+        Http::fake();
+
+        // Pesan obrolan biasa (tanpa awalan /) di grup
+        $response = $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'message_id' => 99,
+                'chat' => ['id' => -100111222333, 'type' => 'supergroup'],
+                'from' => ['id' => 123456789, 'first_name' => 'Pak Guru'],
+                'text' => 'Halo bapak ibu, besok ada rapat ya?',
+            ],
+        ]);
+
+        $response->assertOk();
+
+        // Tidak ada pesan terkirim ke Telegram
+        Http::assertNothingSent();
+    }
+
+    public function test_group_command_routing_and_channel_scoping(): void
+    {
+        TelegramChannel::updateOrCreate(
+            ['code' => 'piket'],
+            [
+                'name' => 'Grup Piket',
+                'chat_id' => '-100111222333',
+                'enabled_commands' => ['/piket'],
+                'is_active' => true,
+            ]
+        );
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 1]], 200),
+        ]);
+
+        // Perintah yang tidak diizinkan di grup ini (/agenda tidak ada di enabled_commands)
+        $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'message_id' => 100,
+                'chat' => ['id' => -100111222333, 'type' => 'supergroup'],
+                'from' => ['id' => 123456789, 'first_name' => 'Pak Guru'],
+                'text' => '/agenda@smkpgrikras_bot',
+            ],
+        ])->assertOk();
+
+        // Karena /agenda dinonaktifkan di grup ini, bot diam (tidak merespons dan tidak replyUnknown)
+        Http::assertNothingSent();
+
+        // Perintah yang diizinkan (/piket)
+        $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'message_id' => 101,
+                'chat' => ['id' => -100111222333, 'type' => 'supergroup'],
+                'from' => ['id' => 123456789, 'first_name' => 'Pak Guru'],
+                'text' => '/piket',
+            ],
+        ])->assertOk();
+
+        // Bot merespons /piket
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($request['text'], 'TIM PIKET HARI INI');
+        });
+    }
+
+    public function test_telegram_channel_management_and_invite(): void
+    {
+        $adminRole = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
+        $perm = Permission::firstOrCreate(['slug' => 'manage_settings'], ['name' => 'Manage Settings', 'group' => 'Settings']);
+        $adminRole->permissions()->syncWithoutDetaching([$perm->id]);
+
+        $admin = User::factory()->create([
+            'role_id' => $adminRole->id,
+        ]);
+        $admin->assignRole($adminRole, ['academic_year' => '2026/2027', 'status' => true]);
+
+        // 1. Simpan channel baru
+        $response = $this->actingAs($admin)->post(route('telegram.channel.store'), [
+            'name' => 'Grup Panitia Ujian',
+            'chat_id' => '-10099887766',
+            'description' => 'Saluran koordinasi panitia ujian',
+            'allowed_roles' => ['guru'],
+            'enabled_commands' => ['/jadwal', '/bantuan'],
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('telegram_channels', [
+            'name' => 'Grup Panitia Ujian',
+            'chat_id' => '-10099887766',
+        ]);
+
+        $channel = TelegramChannel::where('name', 'Grup Panitia Ujian')->first();
+
+        // 2. Sync commands to Telegram API
+        Http::fake([
+            'https://api.telegram.org/*/setMyCommands' => Http::response(['ok' => true, 'result' => true], 200),
+            'https://api.telegram.org/*/sendMessage' => Http::response(['ok' => true, 'result' => ['message_id' => 1]], 200),
+        ]);
+
+        $syncRes = $this->actingAs($admin)->post(route('telegram.channel.sync-commands', $channel->id));
+        $syncRes->assertRedirect();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'setMyCommands')
+                && $request['scope']['type'] === 'chat'
+                && $request['scope']['chat_id'] === '-10099887766';
+        });
+
+        // 3. Invite eligible users (teacher has role guru and telegram_chat_id 123456789)
+        $channel->update(['invite_link' => 'https://t.me/+AbCdEfG']);
+
+        $inviteRes = $this->actingAs($admin)->post(route('telegram.channel.invite', $channel->id));
+        $inviteRes->assertRedirect();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && $request['chat_id'] === '123456789'
+                && str_contains($request['text'], 'UNDANGAN BERGABUNG KE GRUP SEKOLAH')
+                && str_contains($request['text'], 'https://t.me/+AbCdEfG');
         });
     }
 }

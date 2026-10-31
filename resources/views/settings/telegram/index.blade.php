@@ -115,47 +115,36 @@
                     </div>
 
                     <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
-                        <i class="ti ti-messages me-1 text-info"></i> Saluran / Grup Telegram Terpusat Sekolah
+                        <i class="ti ti-messages me-1 text-info"></i> Ringkasan ID Saluran Grup Sekolah
                     </h5>
                     <div class="text-secondary small mb-3">
-                        Masukkan ID Grup Telegram (biasanya diawali dengan tanda minus <code>-100xxxxxxxxxx</code>). Pastikan Bot sudah dimasukkan ke dalam grup sebagai Administrator.
+                        ID Grup utama sekolah yang terhubung dengan bot. Untuk mengatur daftar kelompok peran, perintah grup, dan mengirim tautan undangan personal, kelola pada tabel <b>Saluran Grup Telegram</b> di bawah.
                     </div>
 
                     <div class="row g-3 mb-4">
                         <!-- 1. Grup Piket & Disiplin -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">
-                                <i class="ti ti-shield-check text-warning me-1"></i> Grup Kedisiplinan & BK (Piket)
+                                <i class="ti ti-shield-check text-warning me-1"></i> Grup Kedisiplinan & BK
                             </label>
                             <input type="text" name="telegram_discipline_chat_id" class="form-control font-monospace" 
                                 value="{{ old('telegram_discipline_chat_id', $setting->telegram_discipline_chat_id) }}" 
                                 placeholder="-100xxxxxxxxxx">
-                            <small class="text-muted">Notif siswa terlambat, izin keluar/pulang, dan kasus pelanggaran.</small>
+                            <small class="text-muted">Notif keterlambatan, izin, & kasus pelanggaran.</small>
                         </div>
 
                         <!-- 2. Grup Petugas Piket -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">
-                                <i class="ti ti-calendar-user text-primary me-1"></i> Grup Tim Piket Harian
+                                <i class="ti ti-calendar-user text-primary me-1"></i> Grup Piket Harian
                             </label>
                             <input type="text" name="telegram_piket_chat_id" class="form-control font-monospace" 
                                 value="{{ old('telegram_piket_chat_id', $setting->telegram_piket_chat_id) }}" 
                                 placeholder="-100xxxxxxxxxx">
-                            <small class="text-muted">Pengingat jadwal piket dan instruksi tugas harian.</small>
+                            <small class="text-muted">Pengumuman tim piket hari H & kelas kosong/inval.</small>
                         </div>
 
-                        <!-- 3. Grup Supervisi -->
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold text-dark">
-                                <i class="ti ti-clipboard-check text-indigo me-1"></i> Grup Supervisi Guru & Akademik
-                            </label>
-                            <input type="text" name="telegram_supervision_chat_id" class="form-control font-monospace" 
-                                value="{{ old('telegram_supervision_chat_id', $setting->telegram_supervision_chat_id) }}" 
-                                placeholder="-100xxxxxxxxxx">
-                            <small class="text-muted">Jadwal observasi, pengajuan pengesahan, dan hasil supervisi.</small>
-                        </div>
-
-                        <!-- 4. Grup Kegiatan Sekolah & Kurikulum -->
+                        <!-- 3. Grup Kegiatan Sekolah & Kurikulum -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">
                                 <i class="ti ti-calendar-star text-success me-1"></i> Grup Kegiatan Sekolah & Kaldik
@@ -163,18 +152,18 @@
                             <input type="text" name="telegram_activities_chat_id" class="form-control font-monospace" 
                                 value="{{ old('telegram_activities_chat_id', $setting->telegram_activities_chat_id) }}" 
                                 placeholder="-100xxxxxxxxxx">
-                            <small class="text-muted">Pengingat agenda kurikulum, kalender pendidikan, dan ujian.</small>
+                            <small class="text-muted">Agenda kegiatan, ujian, & pengingat kaldik.</small>
                         </div>
 
-                        <!-- 5. Grup Dewan Guru -->
-                        <div class="col-12">
+                        <!-- 4. Grup Dewan Guru -->
+                        <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">
-                                <i class="ti ti-users-group text-azure me-1"></i> Grup Umum Dewan Guru & Karyawan
+                                <i class="ti ti-users-group text-azure me-1"></i> Grup GTK SMK PGRI Kras
                             </label>
                             <input type="text" name="telegram_teachers_chat_id" class="form-control font-monospace" 
                                 value="{{ old('telegram_teachers_chat_id', $setting->telegram_teachers_chat_id) }}" 
                                 placeholder="-100xxxxxxxxxx">
-                            <small class="text-muted">Pengumuman umum resmi dinas dan pesan siaran massal sekolah.</small>
+                            <small class="text-muted">Pengumuman kedinasan resmi dewan guru & staf.</small>
                         </div>
                     </div>
 
@@ -398,6 +387,159 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- PENGELOLAAN SALURAN GRUP TELEGRAM SEKOLAH (DINAMIS & MULTI-GRUP) -->
+<!-- ========================================================================= -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="card-title fw-bold text-dark m-0 d-flex align-items-center">
+                <i class="ti ti-messages text-primary me-2 fs-2"></i>
+                Saluran Grup Telegram Sekolah
+            </h4>
+            <div class="text-muted small mt-1">
+                Kelola grup resmi sekolah, sesuaikan menu perintah interaktif khusus per grup, dan siarkan tautan undangan resmi langsung ke japri guru yang berwenang.
+            </div>
+        </div>
+        <div class="card-actions">
+            <button type="button" class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-tambah-saluran">
+                <i class="ti ti-plus me-1"></i> Tambah Saluran Grup
+            </button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-vcenter table-hover table-striped mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="min-width: 200px;">Saluran Grup</th>
+                    <th style="min-width: 170px;">ID Chat & Tautan</th>
+                    <th style="min-width: 220px;">Kelompok / Peran GTK</th>
+                    <th style="min-width: 200px;">Perintah Menu Aktif</th>
+                    <th class="text-center" style="width: 190px;">Aksi Cepat</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($channels as $channel)
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                @php
+                                    $icon = match($channel->code) {
+                                        'discipline' => 'ti-shield-check text-warning',
+                                        'piket' => 'ti-calendar-user text-primary',
+                                        'activities' => 'ti-calendar-star text-success',
+                                        'gtk' => 'ti-users-group text-azure',
+                                        default => 'ti-message-circle text-info',
+                                    };
+                                @endphp
+                                <i class="ti {{ $icon }} fs-2 me-2"></i>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ $channel->name }}</div>
+                                    <small class="text-muted text-truncate d-inline-block" style="max-width: 230px;" title="{{ $channel->description }}">
+                                        {{ $channel->description ?? 'Tidak ada keterangan.' }}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            @if($channel->chat_id)
+                                <div class="font-monospace fw-bold text-dark small"><code>{{ $channel->chat_id }}</code></div>
+                                <span class="badge bg-success-lt small"><i class="ti ti-check me-1"></i> Terhubung</span>
+                            @else
+                                <span class="badge bg-secondary-lt small"><i class="ti ti-alert-circle me-1"></i> Belum Ada ID</span>
+                            @endif
+
+                            @if($channel->invite_link)
+                                <div class="mt-1">
+                                    <a href="{{ $channel->invite_link }}" target="_blank" class="small text-primary text-decoration-none" title="Buka tautan undangan grup">
+                                        <i class="ti ti-link me-1"></i> Buka Tautan
+                                    </a>
+                                </div>
+                            @endif
+                        </td>
+                        <td>
+                            @if(!empty($channel->allowed_roles) && count($channel->allowed_roles) > 0)
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach($channel->allowed_roles as $roleSlug)
+                                        <span class="badge bg-blue-lt small text-uppercase" style="font-size: 0.7rem;">
+                                            {{ str_replace('_', ' ', $roleSlug) }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <span class="badge bg-azure-lt small">Semua GTK / Terbuka</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if(!empty($channel->enabled_commands) && count($channel->enabled_commands) > 0)
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach($channel->enabled_commands as $cmd)
+                                        <span class="badge bg-purple-lt font-monospace small" style="font-size: 0.72rem;">
+                                            {{ $cmd }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <span class="text-muted small">Hanya siaran / notifikasi</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            <div class="d-inline-flex gap-1">
+                                <!-- Tombol Edit -->
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-channel" 
+                                    data-id="{{ $channel->id }}"
+                                    data-name="{{ $channel->name }}"
+                                    data-chat-id="{{ $channel->chat_id }}"
+                                    data-description="{{ $channel->description }}"
+                                    data-invite-link="{{ $channel->invite_link }}"
+                                    data-roles='@json($channel->allowed_roles ?? [])'
+                                    data-commands='@json($channel->enabled_commands ?? [])'
+                                    data-active="{{ $channel->is_active ? 1 : 0 }}"
+                                    title="Edit Pengaturan Grup">
+                                    <i class="ti ti-edit"></i>
+                                </button>
+
+                                <!-- Tombol Kirim Undangan ke Japri GTK -->
+                                <form action="{{ route('telegram.channel.invite', $channel->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Kirimkan pesan undangan bergabung ke grup ini via Japri Telegram ke seluruh GTK yang memenuhi peran?')">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Siarkan Tautan Undangan ke Japri GTK" {{ empty($channel->chat_id) ? 'disabled' : '' }}>
+                                        <i class="ti ti-send"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Tombol Sync Menu Perintah ke Telegram -->
+                                <form action="{{ route('telegram.channel.sync-commands', $channel->id) }}" method="POST" class="d-inline" title="Sinkronkan Menu Perintah Khusus ke Telegram">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-info" {{ empty($channel->chat_id) ? 'disabled' : '' }}>
+                                        <i class="ti ti-refresh"></i>
+                                    </button>
+                                </form>
+
+                                @if(!in_array($channel->code, ['discipline', 'piket', 'activities', 'gtk']))
+                                    <!-- Tombol Hapus (Hanya untuk grup kustom) -->
+                                    <form action="{{ route('telegram.channel.destroy', $channel->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus saluran grup ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus Saluran">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                            Belum ada saluran grup telegram yang dikonfigurasi.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- TABEL PEMETAAN CHAT ID GURU -->
 <!-- ========================================================================= -->
 <div class="card border-0 shadow-sm mb-4">
@@ -605,6 +747,197 @@
 </div>
 
 <!-- ========================================================================= -->
+<!-- MODAL: TAMBAH SALURAN GRUP -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-tambah-saluran" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow">
+            <form action="{{ route('telegram.channel.store') }}" method="POST">
+                @csrf
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold d-flex align-items-center">
+                        <i class="ti ti-messages me-2 fs-2"></i>
+                        Tambah Saluran Grup Telegram Sekolah
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label required">Nama Saluran Grup</label>
+                            <input type="text" name="name" class="form-control" placeholder="Contoh: Grup Tim Panitia Ujian" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">ID Chat Telegram (Awali -100)</label>
+                            <input type="text" name="chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Deskripsi / Fungsi Grup</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Jelaskan fungsi koordinasi dan informasi apa yang masuk ke grup ini..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Tautan Undangan Grup (Invite Link Telegram)</label>
+                            <input type="url" name="invite_link" class="form-control font-monospace" placeholder="https://t.me/+xxxxxx (Kosongkan jika ingin dibuat otomatis oleh bot)">
+                        </div>
+
+                        <!-- Pilihan Peran GTK yang Diizinkan -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-dark border-bottom pb-1">
+                                <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
+                            </label>
+                            <div class="row g-2 mt-1">
+                                @foreach($availableRoles as $role)
+                                    <div class="col-md-4 col-sm-6">
+                                        <label class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}">
+                                            <span class="form-check-label small">{{ $role->name }}</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <small class="text-muted">Guru yang memiliki peran di atas akan diizinkan dan dikirimi link undangan personal via Japri Bot.</small>
+                        </div>
+
+                        <!-- Pilihan Perintah yang Aktif di Grup -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-dark border-bottom pb-1">
+                                <i class="ti ti-command me-1 text-info"></i> Perintah Menu Interaktif yang Diaktifkan di Grup
+                            </label>
+                            <div class="row g-2 mt-1">
+                                @php
+                                    $defaultCommands = [
+                                        '/piket' => 'Cek tim piket hari ini',
+                                        '/jadwal' => 'Jadwal KBM jam sekarang',
+                                        '/inval' => 'Cek kelas kosong & inval',
+                                        '/lapor' => 'Lapor kasus siswa',
+                                        '/rekap' => 'Rekap harian sekolah',
+                                        '/tamu' => 'Daftar buku tamu',
+                                        '/agenda' => 'Agenda kegiatan & kaldik',
+                                        '/poin' => 'Cek kasus & poin siswa',
+                                        '/bantuan' => 'Panduan bantuan bot',
+                                        '/id' => 'Cek Chat ID unik',
+                                    ];
+                                @endphp
+                                @foreach($defaultCommands as $cmdCode => $cmdDesc)
+                                    <div class="col-md-4 col-sm-6">
+                                        <label class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="enabled_commands[]" value="{{ $cmdCode }}">
+                                            <span class="form-check-label font-monospace small"><b>{{ $cmdCode }}</b> <span class="text-muted font-sans-serif" style="font-size: 0.75rem;">({{ $cmdDesc }})</span></span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <small class="text-muted">Hanya perintah yang dicentang yang akan direspons bot saat diketik di dalam grup.</small>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" value="1" id="channel_add_active" checked>
+                                <label class="form-check-label fw-bold" for="channel_add_active">Aktifkan Saluran Grup Ini</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary shadow-sm">
+                        <i class="ti ti-check me-1"></i> Simpan Saluran Grup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EDIT SALURAN GRUP -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-edit-saluran" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow">
+            <form id="form-edit-channel" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold d-flex align-items-center">
+                        <i class="ti ti-edit me-2 fs-2"></i>
+                        Edit Saluran Grup: <span id="modal_edit_channel_title" class="ms-1">-</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label required">Nama Saluran Grup</label>
+                            <input type="text" name="name" id="edit_channel_name" class="form-control" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">ID Chat Telegram (Awali -100)</label>
+                            <input type="text" name="chat_id" id="edit_channel_chat_id" class="form-control font-monospace" placeholder="-100xxxxxxxxxx">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Deskripsi / Fungsi Grup</label>
+                            <textarea name="description" id="edit_channel_description" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Tautan Undangan Grup (Invite Link Telegram)</label>
+                            <input type="url" name="invite_link" id="edit_channel_invite_link" class="form-control font-monospace" placeholder="https://t.me/+xxxxxx">
+                        </div>
+
+                        <!-- Pilihan Peran GTK yang Diizinkan -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-dark border-bottom pb-1">
+                                <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
+                            </label>
+                            <div class="row g-2 mt-1" id="edit-roles-container">
+                                @foreach($availableRoles as $role)
+                                    <div class="col-md-4 col-sm-6">
+                                        <label class="form-check">
+                                            <input class="form-check-input edit-role-checkbox" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}" id="edit_role_{{ $role->slug }}">
+                                            <span class="form-check-label small">{{ $role->name }}</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Pilihan Perintah yang Aktif di Grup -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-dark border-bottom pb-1">
+                                <i class="ti ti-command me-1 text-info"></i> Perintah Menu Interaktif yang Diaktifkan di Grup
+                            </label>
+                            <div class="row g-2 mt-1" id="edit-commands-container">
+                                @foreach($defaultCommands as $cmdCode => $cmdDesc)
+                                    <div class="col-md-4 col-sm-6">
+                                        <label class="form-check">
+                                            <input class="form-check-input edit-command-checkbox" type="checkbox" name="enabled_commands[]" value="{{ $cmdCode }}" id="edit_cmd_{{ ltrim($cmdCode, '/') }}">
+                                            <span class="form-check-label font-monospace small"><b>{{ $cmdCode }}</b> <span class="text-muted font-sans-serif" style="font-size: 0.75rem;">({{ $cmdDesc }})</span></span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" value="1" id="edit_channel_is_active">
+                                <label class="form-check-label fw-bold" for="edit_channel_is_active">Aktifkan Saluran Grup Ini</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary shadow-sm">
+                        <i class="ti ti-device-floppy me-1"></i> Simpan Perubahan Grup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- MODAL: BROADCAST SIARAN CEPAT -->
 <!-- ========================================================================= -->
 <div class="modal fade" id="modal-broadcast-cepat" tabindex="-1" aria-hidden="true">
@@ -624,20 +957,16 @@
                         <label class="form-label required">Pilih Saluran / Grup Tujuan</label>
                         <select name="target_channel" class="form-select" required>
                             <option value="">-- Pilih Grup Sekolah --</option>
-                            @if($setting->telegram_teachers_chat_id)
+                            @foreach($channels as $ch)
+                                @if($ch->is_active && $ch->chat_id)
+                                    <option value="{{ $ch->code }}">{{ $ch->name }} ({{ $ch->chat_id }})</option>
+                                @endif
+                            @endforeach
+                            @if($setting->telegram_teachers_chat_id && !$channels->where('code', 'gtk')->first()?->chat_id)
                                 <option value="teachers">📢 Grup Dewan Guru & Karyawan</option>
                             @endif
-                            @if($setting->telegram_discipline_chat_id)
+                            @if($setting->telegram_discipline_chat_id && !$channels->where('code', 'discipline')->first()?->chat_id)
                                 <option value="discipline">🛡️ Grup Kedisiplinan & BK</option>
-                            @endif
-                            @if($setting->telegram_piket_chat_id)
-                                <option value="piket">👮 Grup Tim Piket Harian</option>
-                            @endif
-                            @if($setting->telegram_supervision_chat_id)
-                                <option value="supervision">📋 Grup Supervisi & Akademik</option>
-                            @endif
-                            @if($setting->telegram_activities_chat_id)
-                                <option value="activities">🗓️ Grup Kegiatan Sekolah & Kurikulum</option>
                             @endif
                         </select>
                     </div>
@@ -698,6 +1027,7 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Edit Teacher Chat ID Modal
     document.querySelectorAll('.btn-edit-teacher-chat').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.getElementById('modal_teacher_id').value = this.dataset.id;
@@ -706,6 +1036,56 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('modal_telegram_username').value = this.dataset.username || '';
 
             const modal = new bootstrap.Modal(document.getElementById('modal-edit-teacher-chat'));
+            modal.show();
+        });
+    });
+
+    // Edit Telegram Channel Modal
+    document.querySelectorAll('.btn-edit-channel').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const name = this.dataset.name || '';
+            const chatId = this.dataset.chatId || '';
+            const description = this.dataset.description || '';
+            const inviteLink = this.dataset.inviteLink || '';
+            const active = this.dataset.active === '1';
+
+            let roles = [];
+            try {
+                roles = JSON.parse(this.dataset.roles || '[]');
+            } catch (e) {
+                roles = [];
+            }
+
+            let commands = [];
+            try {
+                commands = JSON.parse(this.dataset.commands || '[]');
+            } catch (e) {
+                commands = [];
+            }
+
+            // Set Form action & values
+            const form = document.getElementById('form-edit-channel');
+            form.action = '{{ url("pengaturan/telegram/saluran-grup") }}/' + id;
+
+            document.getElementById('modal_edit_channel_title').textContent = name;
+            document.getElementById('edit_channel_name').value = name;
+            document.getElementById('edit_channel_chat_id').value = chatId;
+            document.getElementById('edit_channel_description').value = description;
+            document.getElementById('edit_channel_invite_link').value = inviteLink;
+            document.getElementById('edit_channel_is_active').checked = active;
+
+            // Check roles
+            document.querySelectorAll('.edit-role-checkbox').forEach(function (cb) {
+                cb.checked = roles.includes(cb.value);
+            });
+
+            // Check commands
+            document.querySelectorAll('.edit-command-checkbox').forEach(function (cb) {
+                cb.checked = commands.includes(cb.value);
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('modal-edit-saluran'));
             modal.show();
         });
     });

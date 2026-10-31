@@ -18,6 +18,7 @@ use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\SubjectAttendanceRecord;
+use App\Models\TelegramChannel;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
@@ -117,25 +118,53 @@ class TelegramBotWebhookController extends Controller
             return;
         }
 
+        $isGroup = str_starts_with($chatId, '-');
         $senderName = $message['from']['first_name'] ?? 'Petugas';
+        $senderId = (string) ($message['from']['id'] ?? '');
         $text = trim($message['text'] ?? '');
         $photos = $message['photo'] ?? null;
 
-        // Cek apakah akun pengirim terdaftar di SIM Kurikulum
-        $user = User::where('telegram_chat_id', $chatId)->first();
+        // Cek akun pengirim: jika di grup gunakan sender ID, jika di japri gunakan chat ID
+        $user = User::where('telegram_chat_id', $isGroup ? $senderId : $chatId)->first();
 
-        // Cek apakah ada state percakapan interaktif (misal pelaporan kasus)
-        $cacheKey = "tg_piket_state_{$chatId}";
-        $state = Cache::get($cacheKey);
-
-        if ($state) {
-            $this->handleStatefulConversation($chatId, $text, $photos, $state, $user, $senderName);
-
+        // 1. Jika di grup sekolah: abaikan obrolan santai yang bukan perintah (tidak diawali /)
+        if ($isGroup && ! str_starts_with($text, '/')) {
             return;
         }
 
-        // Command router
+        // Cek apakah ada state percakapan interaktif (hanya berlaku di chat pribadi japri)
+        if (! $isGroup) {
+            $cacheKey = "tg_piket_state_{$chatId}";
+            $state = Cache::get($cacheKey);
+
+            if ($state) {
+                $this->handleStatefulConversation($chatId, $text, $photos, $state, $user, $senderName);
+
+                return;
+            }
+        }
+
+        // Normalisasi perintah (hilangkan mention @bot_username jika dipanggil di grup)
         $cmd = mb_strtolower($text);
+        if (str_contains($cmd, '@')) {
+            $cmd = preg_replace('/@[a-z0-9_]+/i', '', $cmd);
+        }
+
+        // 2. Filter izin perintah per grup (sesuai konfigurasi menu saluran grup)
+        if ($isGroup) {
+            $channel = TelegramChannel::where('chat_id', $chatId)->where('is_active', true)->first();
+            if ($channel && ! empty($channel->enabled_commands)) {
+                $baseCmd = explode(' ', $cmd)[0];
+                $allowed = array_map(fn ($c) => mb_strtolower(trim($c)), $channel->enabled_commands);
+                $allowed[] = '/help';
+                $allowed[] = '/bantuan';
+                $allowed[] = '/panduan';
+                if (! in_array($baseCmd, $allowed)) {
+                    // Perintah tidak diaktifkan pada grup ini, abaikan dengan tenang
+                    return;
+                }
+            }
+        }
 
         switch (true) {
             case $cmd === '/start':
@@ -4268,6 +4297,11 @@ class TelegramBotWebhookController extends Controller
      */
     protected function replyUnknown(string $chatId, ?User $user): void
     {
+        // Abaikan dengan tenang jika di dalam grup sekolah
+        if (str_starts_with($chatId, '-')) {
+            return;
+        }
+
         $msg = "Halo! Perintah tidak dikenali.\n\n"
             .'Silakan pilih salah satu tombol menu tugas piket di bawah atau ketik <code>/help</code> untuk panduan lengkap.';
 
