@@ -584,6 +584,7 @@ class TelegramBotController extends Controller
 
     public function resetAllTemplates(): RedirectResponse
     {
+        TelegramMessageTemplate::syncDefaultTemplates();
         $templates = TelegramMessageTemplate::all();
         foreach ($templates as $t) {
             $t->resetToDefault();

@@ -59,6 +59,28 @@ class TelegramMessageTemplate extends Model
     }
 
     /**
+     * Sinkronkan template default bawaan pabrik ke database (menambah yang belum ada dan memperbarui metadata).
+     */
+    public static function syncDefaultTemplates(): void
+    {
+        foreach (self::getDefaultSeedData() as $item) {
+            $existing = self::where('code', $item['code'])->first();
+            if (! $existing) {
+                self::create($item);
+            } else {
+                $existing->update([
+                    'name' => $item['name'],
+                    'category' => $item['category'],
+                    'command' => $item['command'],
+                    'default_template' => $item['default_template'],
+                    'available_placeholders' => $item['available_placeholders'],
+                    'description' => $item['description'],
+                ]);
+            }
+        }
+    }
+
+    /**
      * Kembalikan isi template ke default bawaan pabrik.
      */
     public function resetToDefault(): void
@@ -235,6 +257,185 @@ class TelegramMessageTemplate extends Model
                 'available_placeholders' => [
                     'nama_grup' => 'Nama saluran grup Telegram',
                     'nama_pengirim' => 'Nama pengguna pengirim',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'guru_izin',
+                'name' => 'Daftar Guru Izin & Inval Hari Ini',
+                'category' => 'piket',
+                'command' => '/guru_izin',
+                'description' => 'Balasan daftar guru berhalangan hadir dinas beserta penugasan guru pengganti (inval).',
+                'template' => "📋 <b>DAFTAR GURU IZIN & INVAL HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_guru_izin}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data sinkron dengan Modul Izin GTK & Meja Piket {nama_sekolah}</i>",
+                'default_template' => "📋 <b>DAFTAR GURU IZIN & INVAL HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_guru_izin}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data sinkron dengan Modul Izin GTK & Meja Piket {nama_sekolah}</i>",
+                'available_placeholders' => [
+                    'tanggal' => 'Hari dan tanggal hari ini',
+                    'daftar_guru_izin' => 'Daftar guru izin dan penugasan guru pengganti (inval)',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'izin_keluar',
+                'name' => 'Daftar Siswa Izin Keluar / Pulang',
+                'category' => 'piket',
+                'command' => '/izin_keluar',
+                'description' => 'Balasan rincian siswa yang mendapatkan surat izin keluar kelas atau pulang cepat hari ini.',
+                'template' => "🎫 <b>PERIZINAN SISWA KELUAR/PULANG HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_izin_keluar}\n━━━━━━━━━━━━━━━━━━━━\n<i>Verifikasi surat perizinan resmi meja piket {nama_sekolah}</i>",
+                'default_template' => "🎫 <b>PERIZINAN SISWA KELUAR/PULANG HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_izin_keluar}\n━━━━━━━━━━━━━━━━━━━━\n<i>Verifikasi surat perizinan resmi meja piket {nama_sekolah}</i>",
+                'available_placeholders' => [
+                    'tanggal' => 'Hari dan tanggal hari ini',
+                    'daftar_izin_keluar' => 'Daftar rincian siswa yang izin keluar atau pulang cepat',
+                    'total_izin_keluar' => 'Total surat izin keluar yang diterbitkan',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'serah_terima',
+                'name' => 'Ringkasan Serah Terima Jurnal Piket',
+                'category' => 'piket',
+                'command' => '/serah_terima',
+                'description' => 'Balasan statistik serah terima meja piket saat pergantian jam atau penutupan jurnal harian.',
+                'template' => "📑 <b>RINGKASAN SERAH TERIMA JURNAL PIKET</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n👥 <b>Petugas:</b> {petugas_piket}\n\n📊 <b>Statistik Operasional Hari Ini:</b>\n• ⏰ Siswa Terlambat: <b>{total_terlambat}</b> anak\n• 🎫 Perizinan Siswa: <b>{total_izin}</b> berkas\n• 🚨 Kelas Inval / Pengganti: <b>{total_inval}</b> kelas\n• 🤝 Buku Tamu Sekolah: <b>{total_tamu}</b> kunjungan\n• ⚠️ Kejadian / Insiden: <b>{total_kasus}</b> kasus\n━━━━━━━━━━━━━━━━━━━━\nStatus: <b>Jurnal Siap Ditutup & Diserahkan</b> ke Waka/Pimpinan.",
+                'default_template' => "📑 <b>RINGKASAN SERAH TERIMA JURNAL PIKET</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n👥 <b>Petugas:</b> {petugas_piket}\n\n📊 <b>Statistik Operasional Hari Ini:</b>\n• ⏰ Siswa Terlambat: <b>{total_terlambat}</b> anak\n• 🎫 Perizinan Siswa: <b>{total_izin}</b> berkas\n• 🚨 Kelas Inval / Pengganti: <b>{total_inval}</b> kelas\n• 🤝 Buku Tamu Sekolah: <b>{total_tamu}</b> kunjungan\n• ⚠️ Kejadian / Insiden: <b>{total_kasus}</b> kasus\n━━━━━━━━━━━━━━━━━━━━\nStatus: <b>Jurnal Siap Ditutup & Diserahkan</b> ke Waka/Pimpinan.",
+                'available_placeholders' => [
+                    'tanggal' => 'Hari dan tanggal hari ini',
+                    'petugas_piket' => 'Nama-nama petugas piket hari ini',
+                    'total_terlambat' => 'Jumlah siswa terlambat hari ini',
+                    'total_izin' => 'Jumlah perizinan siswa hari ini',
+                    'total_inval' => 'Jumlah kelas pengganti (inval) hari ini',
+                    'total_tamu' => 'Jumlah tamu berkunjung hari ini',
+                    'total_kasus' => 'Jumlah insiden/kejadian hari ini',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'terlambat',
+                'name' => 'Daftar Siswa Terlambat Hari Ini',
+                'category' => 'disiplin',
+                'command' => '/terlambat',
+                'description' => 'Balasan daftar siswa yang datang terlambat masuk gerbang sekolah hari ini.',
+                'template' => "⏰ <b>REKAP KETERLAMBATAN SISWA HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_terlambat}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data real-time dari Meja Piket & Presensi {nama_sekolah}</i>",
+                'default_template' => "⏰ <b>REKAP KETERLAMBATAN SISWA HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_terlambat}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data real-time dari Meja Piket & Presensi {nama_sekolah}</i>",
+                'available_placeholders' => [
+                    'tanggal' => 'Hari dan tanggal hari ini',
+                    'daftar_terlambat' => 'Rincian nama siswa, kelas, waktu tiba, dan alasan terlambat',
+                    'total_terlambat' => 'Jumlah siswa terlambat hari ini',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'bolos',
+                'name' => 'Pantauan Siswa Terindikasi Alpa / Bolos',
+                'category' => 'disiplin',
+                'command' => '/bolos',
+                'description' => 'Balasan rekap siswa yang tidak hadir tanpa izin pada jam pelajaran KBM hari ini.',
+                'template' => "🚨 <b>REKAP SISWA ALPA / BOLOS KBM HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_bolos}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data bersumber dari Jurnal Presensi KBM Guru Mapel {nama_sekolah}</i>",
+                'default_template' => "🚨 <b>REKAP SISWA ALPA / BOLOS KBM HARI INI</b>\n📅 <b>Hari/Tgl:</b> {tanggal}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_bolos}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data bersumber dari Jurnal Presensi KBM Guru Mapel {nama_sekolah}</i>",
+                'available_placeholders' => [
+                    'tanggal' => 'Hari dan tanggal hari ini',
+                    'daftar_bolos' => 'Daftar nama siswa, kelas, dan mapel dengan status alpa/bolos',
+                    'total_bolos' => 'Jumlah siswa terdata alpa/bolos',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'top_kasus',
+                'name' => 'Top Statistik Pelanggaran Siswa',
+                'category' => 'disiplin',
+                'command' => '/top_kasus',
+                'description' => 'Balasan statistik tren 5 kategori pelanggaran siswa teratas bulan ini.',
+                'template' => "📊 <b>TOP 5 KASUS & PELANGGARAN SISWA</b>\n🗓️ <b>Periode:</b> {periode}\n━━━━━━━━━━━━━━━━━━━━\nTotal Insiden Tercatat: <b>{total_kasus} kasus</b>\n\n{daftar_top_kasus}\n━━━━━━━━━━━━━━━━━━━━\n<i>Laporan evaluasi untuk Tim Kedisiplinan, BK, dan Wali Kelas</i>",
+                'default_template' => "📊 <b>TOP 5 KASUS & PELANGGARAN SISWA</b>\n🗓️ <b>Periode:</b> {periode}\n━━━━━━━━━━━━━━━━━━━━\nTotal Insiden Tercatat: <b>{total_kasus} kasus</b>\n\n{daftar_top_kasus}\n━━━━━━━━━━━━━━━━━━━━\n<i>Laporan evaluasi untuk Tim Kedisiplinan, BK, dan Wali Kelas</i>",
+                'available_placeholders' => [
+                    'periode' => 'Bulan dan tahun periode evaluasi',
+                    'total_kasus' => 'Total insiden pelanggaran siswa tercatat',
+                    'daftar_top_kasus' => 'Grafik batang teks dan jumlah kejadian per kategori',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'kaldik',
+                'name' => 'Kalender Pendidikan & Agenda Bulanan',
+                'category' => 'akademik',
+                'command' => '/kaldik',
+                'description' => 'Balasan kalender pendidikan dan agenda khusus sekolah pada bulan berjalan.',
+                'template' => "🗓️ <b>AGENDA & KALENDER PENDIDIKAN</b>\n📆 <b>Bulan:</b> {bulan}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_kaldik}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data bersumber dari Kalender Pendidikan Resmi {nama_sekolah}</i>",
+                'default_template' => "🗓️ <b>AGENDA & KALENDER PENDIDIKAN</b>\n📆 <b>Bulan:</b> {bulan}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_kaldik}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data bersumber dari Kalender Pendidikan Resmi {nama_sekolah}</i>",
+                'available_placeholders' => [
+                    'bulan' => 'Bulan dan tahun berjalan',
+                    'daftar_kaldik' => 'Rincian kegiatan, rentang tanggal, dan hari libur',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'asesmen',
+                'name' => 'Jadwal Asesmen & Ujian Mendatang',
+                'category' => 'akademik',
+                'command' => '/asesmen',
+                'description' => 'Balasan daftar agenda asesmen sumatif, PTS, PAS, PAT, atau UKK yang akan datang.',
+                'template' => "📝 <b>JADWAL ASESMEN & UJIAN MENDATANG</b>\n━━━━━━━━━━━━━━━━━━━━\n{daftar_asesmen}\n━━━━━━━━━━━━━━━━━━━━\n<i>Persiapkan administrasi dan perangkat pembelajaran dengan baik</i>",
+                'default_template' => "📝 <b>JADWAL ASESMEN & UJIAN MENDATANG</b>\n━━━━━━━━━━━━━━━━━━━━\n{daftar_asesmen}\n━━━━━━━━━━━━━━━━━━━━\n<i>Persiapkan administrasi dan perangkat pembelajaran dengan baik</i>",
+                'available_placeholders' => [
+                    'daftar_asesmen' => 'Rincian nama asesmen/ujian, rentang tanggal, dan hitung mundur hari',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'supervisi',
+                'name' => 'Jadwal Supervisi Pembelajaran Guru',
+                'category' => 'akademik',
+                'command' => '/supervisi',
+                'description' => 'Balasan agenda pelaksanaan supervisi dan observasi pembelajaran guru.',
+                'template' => "📋 <b>JADWAL SUPERVISI PEMBELAJARAN GURU</b>\n🗓️ <b>Rentang:</b> {rentang}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_supervisi}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data resmi dari Modul Supervisi Akademik {nama_sekolah}</i>",
+                'default_template' => "📋 <b>JADWAL SUPERVISI PEMBELAJARAN GURU</b>\n🗓️ <b>Rentang:</b> {rentang}\n━━━━━━━━━━━━━━━━━━━━\n{daftar_supervisi}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data resmi dari Modul Supervisi Akademik {nama_sekolah}</i>",
+                'available_placeholders' => [
+                    'rentang' => 'Keterangan pekan supervisi (Pekan Berjalan / Mendatang)',
+                    'daftar_supervisi' => 'Daftar guru yang diobservasi, supervisor, mapel, kelas, dan status',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'id',
+                'name' => 'Cek Chat ID & Informasi Akun',
+                'category' => 'umum',
+                'command' => '/id',
+                'description' => 'Balasan nomor Chat ID Telegram dan panduan menghubungkan ke akun SIAP.',
+                'template' => "👤 <b>INFORMASI AKUN PRIBADI TELEGRAM ANDA</b>\n━━━━━━━━━━━━━━━━━━━━\nNama: <b>{nama_pengirim}</b>\n🆔 <b>User ID Telegram Pribadi:</b> <code>{chat_id}</code>\nStatus: {status_akun}\n━━━━━━━━━━━━━━━━━━━━\n<b>Cara Menghubungkan Akun Guru:</b>\n1. <b>Otomatis lewat Bot:</b> Ketik perintah:\n   <code>/hubungkan [NIP atau Username Anda]</code>\n   <i>Contoh: <code>/hubungkan 19850101...</code> atau <code>/hubungkan ahmad.soleh</code></i>\n\n2. <b>Lewat Web SIAP:</b>\n   Login ke web &rarr; Menu <b>Profil Saya</b> &rarr; masukkan Chat ID <code>{chat_id}</code> pada kolom Telegram Chat ID.",
+                'default_template' => "👤 <b>INFORMASI AKUN PRIBADI TELEGRAM ANDA</b>\n━━━━━━━━━━━━━━━━━━━━\nNama: <b>{nama_pengirim}</b>\n🆔 <b>User ID Telegram Pribadi:</b> <code>{chat_id}</code>\nStatus: {status_akun}\n━━━━━━━━━━━━━━━━━━━━\n<b>Cara Menghubungkan Akun Guru:</b>\n1. <b>Otomatis lewat Bot:</b> Ketik perintah:\n   <code>/hubungkan [NIP atau Username Anda]</code>\n   <i>Contoh: <code>/hubungkan 19850101...</code> atau <code>/hubungkan ahmad.soleh</code></i>\n\n2. <b>Lewat Web SIAP:</b>\n   Login ke web &rarr; Menu <b>Profil Saya</b> &rarr; masukkan Chat ID <code>{chat_id}</code> pada kolom Telegram Chat ID.",
+                'available_placeholders' => [
+                    'nama_pengirim' => 'Nama profil pengirim',
+                    'chat_id' => 'Nomor unik Telegram Chat ID',
+                    'status_akun' => 'Status keterhubungan dengan akun GTK di sistem',
+                    'nama_sekolah' => 'Nama resmi sekolah',
+                ],
+                'is_active' => true,
+            ],
+            [
+                'code' => 'poin',
+                'name' => 'Rekam Jejak Kedisiplinan Siswa',
+                'category' => 'disiplin',
+                'command' => '/poin',
+                'description' => 'Balasan rekam jejak pelanggaran dan akumulasi keterlambatan siswa tertentu.',
+                'template' => "👤 <b>REKAM JEJAK KEDISIPLINAN SISWA</b>\n━━━━━━━━━━━━━━━━━━━━\n• <b>Nama:</b> {nama_siswa}\n• <b>Kelas:</b> {kelas}\n• <b>NIS:</b> {nis}\n• <b>Tahun Ajaran:</b> {tahun_ajaran}\n\n📊 <b>Ringkasan Pelanggaran:</b>\n• Kasus Kejadian Piket: <b>{total_kasus} kali</b>\n• Keterlambatan Hadir: <b>{total_terlambat} kali</b>\n\n{riwayat_kasus}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data terhubung dengan Modul Meja Piket, Tim Kedisiplinan, & Guru BK {nama_sekolah}.</i>",
+                'default_template' => "👤 <b>REKAM JEJAK KEDISIPLINAN SISWA</b>\n━━━━━━━━━━━━━━━━━━━━\n• <b>Nama:</b> {nama_siswa}\n• <b>Kelas:</b> {kelas}\n• <b>NIS:</b> {nis}\n• <b>Tahun Ajaran:</b> {tahun_ajaran}\n\n📊 <b>Ringkasan Pelanggaran:</b>\n• Kasus Kejadian Piket: <b>{total_kasus} kali</b>\n• Keterlambatan Hadir: <b>{total_terlambat} kali</b>\n\n{riwayat_kasus}\n━━━━━━━━━━━━━━━━━━━━\n<i>Data terhubung dengan Modul Meja Piket, Tim Kedisiplinan, & Guru BK {nama_sekolah}.</i>",
+                'available_placeholders' => [
+                    'nama_siswa' => 'Nama lengkap siswa',
+                    'kelas' => 'Nama rombel kelas siswa',
+                    'nis' => 'Nomor Induk Siswa',
+                    'tahun_ajaran' => 'Tahun ajaran operasional',
+                    'total_kasus' => 'Jumlah kasus kejadian siswa',
+                    'total_terlambat' => 'Jumlah keterlambatan siswa',
+                    'riwayat_kasus' => 'Daftar riwayat 3 kasus kejadian terakhir siswa',
                     'nama_sekolah' => 'Nama resmi sekolah',
                 ],
                 'is_active' => true,

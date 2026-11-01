@@ -18,6 +18,7 @@ use App\Models\Supervision;
 use App\Models\TelegramChannel;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -279,6 +280,48 @@ class TelegramService
     }
 
     /**
+     * Dapatkan secret token webhook yang konsisten dan aman.
+     */
+    public function getWebhookSecretToken(): ?string
+    {
+        $configured = config('services.telegram.webhook_secret');
+        if (! empty($configured)) {
+            return $configured;
+        }
+
+        $token = $this->getBotToken();
+        if (! empty($token)) {
+            return substr(hash('sha256', 'siap_webhook_secret_'.$token), 0, 32);
+        }
+
+        return null;
+    }
+
+    /**
+     * Dapatkan username bot telegram saat ini (dengan cache 24 jam).
+     */
+    public function getBotUsername(): ?string
+    {
+        $token = $this->getBotToken();
+        if (empty($token)) {
+            return null;
+        }
+
+        return Cache::remember('tg_bot_username_'.substr(md5($token), 0, 8), 86400, function () use ($token) {
+            try {
+                $response = Http::timeout(5)->get("https://api.telegram.org/bot{$token}/getMe");
+                if ($response->successful()) {
+                    return $response->json('result.username');
+                }
+            } catch (Throwable $e) {
+                Log::warning('Telegram getMe failed: '.$e->getMessage());
+            }
+
+            return null;
+        });
+    }
+
+    /**
      * Set Webhook URL in Telegram.
      */
     public function setWebhook(string $url, ?string $secretToken = null): array
@@ -289,9 +332,10 @@ class TelegramService
 
         try {
             $endpoint = "https://api.telegram.org/bot{$this->botToken}/setWebhook";
+            $secret = $secretToken ?: $this->getWebhookSecretToken();
             $params = ['url' => $url];
-            if ($secretToken) {
-                $params['secret_token'] = $secretToken;
+            if ($secret) {
+                $params['secret_token'] = $secret;
             }
 
             $res = Http::timeout(10)->post($endpoint, $params);
