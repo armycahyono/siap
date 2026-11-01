@@ -35,6 +35,46 @@
     </div>
 </div>
 
+@php
+    $dashboardAnnouncement = \App\Models\Announcement::active()
+        ->forUser(auth()->user())
+        ->whereDoesntHave('reads', function ($q) {
+            $q->where('user_id', auth()->id());
+        })
+        ->orderByDesc('is_pinned')
+        ->latest('published_at')
+        ->first();
+@endphp
+@if($dashboardAnnouncement)
+    <div class="alert alert-important alert-primary shadow-sm mb-4 border-0" role="alert" style="background: linear-gradient(135deg, #102d52 0%, #1d4ed8 100%); color: #fff;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <span class="avatar avatar-md bg-white text-primary rounded-circle shadow-sm">
+                    <i class="ti ti-speakerphone fs-1"></i>
+                </span>
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-0.5">
+                        <span class="badge bg-warning text-dark fw-bold">PENGUMUMAN TERBARU</span>
+                        <span class="small text-white-50">{{ $dashboardAnnouncement->published_at ? $dashboardAnnouncement->published_at->translatedFormat('d M Y, H:i') : '' }}</span>
+                    </div>
+                    <h3 class="fw-bold text-white mb-1">{{ $dashboardAnnouncement->title }}</h3>
+                    <div class="text-white-50 small text-truncate" style="max-width: 650px;">
+                        {{ strip_tags($dashboardAnnouncement->content) }}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('announcements.index') }}" class="btn btn-sm btn-white text-primary fw-bold shadow-sm">
+                    <i class="ti ti-eye me-1"></i> Baca Pengumuman
+                </a>
+                <a href="{{ $dashboardAnnouncement->whatsapp_share_url }}" target="_blank" class="btn btn-sm btn-success shadow-sm">
+                    <i class="ti ti-brand-whatsapp me-1"></i> Bagikan WA
+                </a>
+            </div>
+        </div>
+    </div>
+@endif
+
 <!-- Daily Operational Pulse: Live KBM, Agenda Kalender, & Petugas Piket -->
 <div class="row g-3 mb-4">
     <!-- Live KBM Status -->

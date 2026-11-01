@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Announcement;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketDutySwap;
@@ -1365,6 +1366,122 @@ class TelegramService
             ."⏰ <b>Waktu Siar:</b> {$date} WIB";
 
         return $this->sendMessage($targetChatId, $text, 'broadcast', 'Broadcast: '.$title);
+    }
+
+    /**
+     * Siarkan pengumuman resmi ke saluran grup dan/atau Japri Telegram sesuai sasaran target.
+     *
+     * @return array{success: bool, sent_count: int, message: string}
+     */
+    public function sendAnnouncementNotification(Announcement $announcement): array
+    {
+        if (! $this->isEnabled()) {
+            return ['success' => false, 'sent_count' => 0, 'message' => 'Integrasi Bot Telegram belum diaktifkan.'];
+        }
+
+        $schoolSetting = SchoolSetting::getSetting();
+        $schoolName = $schoolSetting->school_name ?? 'SMK PGRI Kras';
+        $authorName = $announcement->author ? $announcement->author->name : 'Pimpinan Sekolah';
+        $authorRole = $announcement->author ? ($announcement->author->role?->name ?? 'Pimpinan') : 'Pimpinan';
+        $waktu = $announcement->published_at ? $announcement->published_at->translatedFormat('l, d F Y H:i') : now()->translatedFormat('l, d F Y H:i');
+        $target = $announcement->target_label;
+        $content = strip_tags($announcement->content);
+
+        $text = "📢 <b>PENGUMUMAN RESMI SEKOLAH</b>\n"
+            ."<b>{$schoolName}</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."📌 <b>Judul:</b> {$announcement->title}\n"
+            ."👤 <b>Pengirim:</b> {$authorName} ({$authorRole})\n"
+            ."🎯 <b>Sasaran:</b> {$target}\n"
+            ."⏰ <b>Waktu:</b> {$waktu} WIB\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n\n"
+            ."{$content}\n\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+
+        $targetChatIds = collect();
+
+        // 1. Kirim ke Saluran Grup Telegram yang relevan
+        if ($announcement->target_type === 'all') {
+            // Semua saluran grup yang aktif
+            $channels = TelegramChannel::where('is_active', true)
+                ->whereNotNull('chat_id')
+                ->where('chat_id', '!=', '')
+                ->get();
+            foreach ($channels as $ch) {
+                $targetChatIds->push($ch->chat_id);
+            }
+        } elseif ($announcement->target_type === 'role') {
+            $targetRoles = $announcement->target_roles ?? [];
+            $channels = TelegramChannel::where('is_active', true)
+                ->whereNotNull('chat_id')
+                ->where('chat_id', '!=', '')
+                ->get()
+                ->filter(function ($ch) use ($targetRoles) {
+                    if ($ch->isAllGtk()) {
+                        return false;
+                    }
+                    $allowed = $ch->allowed_roles ?? [];
+
+                    return ! empty(array_intersect($allowed, $targetRoles));
+                });
+
+            foreach ($channels as $ch) {
+                $targetChatIds->push($ch->chat_id);
+            }
+
+            // Kirim juga ke Japri GTK yang memiliki peran tersebut
+            $roleUsers = User::whereNotNull('telegram_chat_id')
+                ->where('telegram_chat_id', '!=', '')
+                ->where('is_active', true)
+                ->get()
+                ->filter(function ($u) use ($targetRoles) {
+                    $uRoles = $u->allRoles()->pluck('slug')->toArray();
+                    if ($u->role && ! in_array($u->role->slug, $uRoles)) {
+                        $uRoles[] = $u->role->slug;
+                    }
+
+                    return ! empty(array_intersect($uRoles, $targetRoles));
+                });
+
+            foreach ($roleUsers as $u) {
+                $targetChatIds->push($u->telegram_chat_id);
+            }
+        } elseif ($announcement->target_type === 'department') {
+            $deptIds = $announcement->target_departments ?? [];
+            $deptUsers = User::whereNotNull('telegram_chat_id')
+                ->where('telegram_chat_id', '!=', '')
+                ->where('is_active', true)
+                ->get()
+                ->filter(function ($u) use ($deptIds) {
+                    return Department::whereIn('id', $deptIds)->where('head_of_department_id', $u->id)->exists();
+                });
+
+            foreach ($deptUsers as $u) {
+                $targetChatIds->push($u->telegram_chat_id);
+            }
+        }
+
+        $uniqueChatIds = $targetChatIds->unique()->filter()->values();
+        $sentCount = 0;
+
+        foreach ($uniqueChatIds as $chatId) {
+            $ok = $this->sendMessage((string) $chatId, $text, 'broadcast', 'Pengumuman: '.$announcement->title);
+            if ($ok) {
+                $sentCount++;
+            }
+        }
+
+        $announcement->update([
+            'telegram_sent_at' => now(),
+            'telegram_sent_count' => $sentCount,
+        ]);
+
+        return [
+            'success' => $sentCount > 0,
+            'sent_count' => $sentCount,
+            'message' => "Pengumuman berhasil disiarkan ke {$sentCount} kontak / saluran Telegram.",
+        ];
     }
 
     /**

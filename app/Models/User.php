@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
@@ -623,6 +624,74 @@ class User extends Authenticatable
                     ->orWhere('name', 'like', '%wakil%')
                     ->orWhere('code', 'like', 'WAKA_%');
             })->exists();
+    }
+
+    /**
+     * Cek apakah pengguna merupakan Kepala Program Keahlian / Ketua Jurusan (Kajur / Kaprogli).
+     */
+    public function isHeadOfDepartment(): bool
+    {
+        // 1. Relasi kepala program di tabel departments
+        if (Schema::hasTable('departments') && Department::where('head_of_department_id', $this->id)->exists()) {
+            return true;
+        }
+
+        // 2. Keterangan pada kolom jabatan (position)
+        $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'kaprogli') || str_contains($pos, 'kajur') || str_contains($pos, 'ketua jurusan') || str_contains($pos, 'kepala program')) {
+            return true;
+        }
+
+        // 3. Jabatan struktural di tabel structural_positions
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) {
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+                $category = strtolower($p->category ?? '');
+
+                return str_contains($name, 'kaprogli') || str_contains($name, 'kajur') || str_starts_with($code, 'KAPRO_') || str_contains($category, 'kepala program keahlian');
+            });
+        }
+
+        return $this->structuralPositions()
+            ->where(function ($q) {
+                $q->where('name', 'like', '%kaprogli%')
+                    ->orWhere('name', 'like', '%kajur%')
+                    ->orWhere('code', 'like', 'KAPRO_%')
+                    ->orWhere('category', 'like', '%kepala program keahlian%');
+            })->exists();
+    }
+
+    /**
+     * Otorisasi pembuat pengumuman:
+     * Yang bisa membuat pengumuman adalah: Kepala Sekolah, Semua Waka, Semua Kajur/Kaprogli, dan Super Admin.
+     */
+    public function canPublishAnnouncement(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->isPrincipal()
+            || $this->isVicePrincipal()
+            || $this->isHeadOfDepartment();
+    }
+
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(Announcement::class, 'author_id');
+    }
+
+    public function announcementReads(): HasMany
+    {
+        return $this->hasMany(AnnouncementRead::class);
+    }
+
+    public function unreadAnnouncementsCount(): int
+    {
+        return Announcement::active()
+            ->forUser($this)
+            ->whereDoesntHave('reads', function ($q) {
+                $q->where('user_id', $this->id);
+            })
+            ->count();
     }
 
     public function canSubmitPermitForOthers(): bool

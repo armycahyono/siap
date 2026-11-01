@@ -566,6 +566,21 @@
                             </a>
                         </li>
 
+                        <li class="nav-item {{ request()->routeIs('announcements.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('announcements.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-speakerphone fs-2 text-danger"></i>
+                                </span>
+                                <span class="nav-link-title">Pengumuman</span>
+                                @php
+                                    $unreadAnnounceCount = auth()->check() ? auth()->user()->unreadAnnouncementsCount() : 0;
+                                @endphp
+                                @if($unreadAnnounceCount > 0)
+                                    <span class="badge bg-danger text-white ms-auto rounded-pill">{{ $unreadAnnounceCount }}</span>
+                                @endif
+                            </a>
+                        </li>
+
                         <li class="nav-item {{ request()->routeIs('kurikulum.activities.*', 'school-activities.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.activities.index') }}">
                                 <span class="nav-link-icon d-inline-block">

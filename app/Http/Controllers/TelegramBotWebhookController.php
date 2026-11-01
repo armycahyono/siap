@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\Announcement;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
@@ -5127,19 +5128,39 @@ class TelegramBotWebhookController extends Controller
      */
     protected function commandLatestAnnouncement(string $chatId, ?User $user): void
     {
-        $latestBroadcast = PiketTelegramLog::where('target_type', 'broadcast')
-            ->where('status', 'sent')
-            ->latest()
+        // 1. Cek pengumuman resmi terbaru dari modul Pengumuman
+        $latestAnnouncement = Announcement::active()
+            ->forUser($user)
+            ->latest('published_at')
             ->first();
 
         $isiPengumuman = '';
         $waktuTerbit = '-';
-        if (! $latestBroadcast) {
-            $isiPengumuman = 'ℹ️ <i>Belum ada siaran pengumuman resmi yang dipublikasikan dalam sistem.</i>';
+
+        if ($latestAnnouncement) {
+            $waktuTerbit = $latestAnnouncement->published_at ? $latestAnnouncement->published_at->translatedFormat('l, d F Y H:i') : '-';
+            $author = $latestAnnouncement->author ? $latestAnnouncement->author->name : 'Pimpinan Sekolah';
+            $target = $latestAnnouncement->target_label;
+            $cleanContent = strip_tags($latestAnnouncement->content);
+
+            $isiPengumuman = "📌 <b>{$latestAnnouncement->title}</b>\n"
+                ."👤 <b>Pengirim:</b> {$author}\n"
+                ."🎯 <b>Sasaran:</b> {$target}\n"
+                ."🕒 <b>Waktu Terbit:</b> {$waktuTerbit} WIB\n\n"
+                ."{$cleanContent}";
         } else {
-            $waktuTerbit = $latestBroadcast->created_at ? $latestBroadcast->created_at->translatedFormat('l, d F Y H:i') : '-';
-            $isi = strip_tags($latestBroadcast->message);
-            $isiPengumuman = "🕒 <b>Waktu Terbit:</b> {$waktuTerbit} WIB\n\n{$isi}";
+            $latestBroadcast = PiketTelegramLog::where('target_type', 'broadcast')
+                ->where('status', 'sent')
+                ->latest()
+                ->first();
+
+            if (! $latestBroadcast) {
+                $isiPengumuman = 'ℹ️ <i>Belum ada siaran pengumuman resmi yang dipublikasikan dalam sistem.</i>';
+            } else {
+                $waktuTerbit = $latestBroadcast->created_at ? $latestBroadcast->created_at->translatedFormat('l, d F Y H:i') : '-';
+                $isi = strip_tags($latestBroadcast->message);
+                $isiPengumuman = "🕒 <b>Waktu Terbit:</b> {$waktuTerbit} WIB\n\n{$isi}";
+            }
         }
 
         $msg = TelegramMessageTemplate::render('pengumuman', [

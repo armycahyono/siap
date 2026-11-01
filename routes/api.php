@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Mobile\MobileAnnouncementController;
 use App\Http\Controllers\Api\Mobile\MobileAttendanceController;
 use App\Http\Controllers\Api\Mobile\MobileAuthController;
 use App\Http\Controllers\Api\Mobile\MobileDashboardController;
@@ -86,6 +87,13 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('profile', [MobileProfileController::class, 'index']);
     Route::get('profile/activity-logs', [MobileProfileController::class, 'getActivityLogs']);
     Route::get('notifications', [MobileNotificationController::class, 'index']);
+
+    // 2.1 Modul Pengumuman Mobile
+    Route::get('announcements', [MobileAnnouncementController::class, 'index']);
+    Route::get('announcements/{announcement}', [MobileAnnouncementController::class, 'show']);
+    Route::post('announcements/{announcement}/read', [MobileAnnouncementController::class, 'markAsRead']);
+    Route::post('announcements', [MobileAnnouncementController::class, 'store']);
+
     Route::post('profile/update', [MobileAuthController::class, 'updateProfile']);
     Route::post('profile/password', [MobileAuthController::class, 'updatePassword']);
 

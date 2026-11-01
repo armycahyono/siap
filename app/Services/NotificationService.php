@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Announcement;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
@@ -19,6 +20,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class NotificationService
 {
@@ -46,6 +48,32 @@ class NotificationService
             Log::warning('NotificationService operational academic year fallback: '.$e->getMessage());
             $academicYear = SchoolSetting::getMasterYear();
             $semester = $setting->semester ?? 'Ganjil';
+        }
+
+        // 0. Pengumuman Resmi Sekolah yang Belum Dibaca
+        try {
+            $unreadAnnouncements = Announcement::active()
+                ->forUser($user)
+                ->whereDoesntHave('reads', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->latest('published_at')
+                ->take(3)
+                ->get();
+
+            foreach ($unreadAnnouncements as $ann) {
+                $notifications->push([
+                    'id' => 'announcement_'.$ann->id,
+                    'title' => '📢 '.$ann->title,
+                    'message' => Str::limit(strip_tags($ann->content), 90),
+                    'badge' => 'Pengumuman Baru',
+                    'badge_class' => 'bg-primary text-white',
+                    'icon' => 'ti ti-speakerphone text-primary',
+                    'url' => route('announcements.index'),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Abaikan jika tabel belum siap
         }
 
         // ---------------------------------------------------------------------

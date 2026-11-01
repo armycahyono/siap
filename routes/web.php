@@ -4,6 +4,7 @@ use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\ActiveUserController;
 use App\Http\Controllers\ActivityCategoryController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AppFeedbackController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Attendance\AdmsController;
@@ -95,6 +96,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/tugas', [DashboardController::class, 'tasks'])->name('tasks');
+
+    // Modul Pengumuman Multi-Saluran (Web, Mobile, Telegram, WhatsApp)
+    Route::prefix('pengumuman')->name('announcements.')->group(function () {
+        Route::get('/', [AnnouncementController::class, 'index'])->name('index');
+        Route::post('/', [AnnouncementController::class, 'store'])->name('store');
+        Route::post('/tandai-semua-dibaca', [AnnouncementController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::get('/{announcement}', [AnnouncementController::class, 'show'])->name('show');
+        Route::put('/{announcement}', [AnnouncementController::class, 'update'])->name('update');
+        Route::delete('/{announcement}', [AnnouncementController::class, 'destroy'])->name('destroy');
+        Route::post('/{announcement}/baca', [AnnouncementController::class, 'markAsRead'])->name('read');
+        Route::post('/{announcement}/siar-ulang-telegram', [AnnouncementController::class, 'resendTelegram'])->name('resend-telegram');
+    });
 
     // Profile & Password
     Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
