@@ -90,10 +90,12 @@ class TelegramBotController extends Controller
         ]);
 
         $setting = SchoolSetting::getSetting();
+        $isLocallyDisabled = config('services.telegram.enabled') === false;
+
         $dataToUpdate = [
             'telegram_bot_token' => $validated['telegram_bot_token'] ?? null,
             'telegram_bot_username' => $validated['telegram_bot_username'] ?? null,
-            'telegram_notifications_enabled' => $request->has('telegram_notifications_enabled'),
+            'telegram_notifications_enabled' => $isLocallyDisabled ? false : $request->has('telegram_notifications_enabled'),
         ];
 
         // Jika form mengirim legacy chat id
@@ -105,7 +107,20 @@ class TelegramBotController extends Controller
 
         $setting->update($dataToUpdate);
 
-        return back()->with('success', 'Konfigurasi Bot Telegram & Saluran Notifikasi Sekolah berhasil disimpan.');
+        $msg = $isLocallyDisabled
+            ? 'Konfigurasi disimpan. Catatan: Pengiriman Bot Telegram tetap dinonaktifkan di server lokal (siap.test) agar tidak berbenturan dengan server Proxmox.'
+            : 'Konfigurasi Bot Telegram & Saluran Notifikasi Sekolah berhasil disimpan.';
+
+        return back()->with('success', $msg);
+    }
+
+    protected function ensureTelegramAllowed(): ?RedirectResponse
+    {
+        if (config('services.telegram.enabled') === false) {
+            return back()->with('error', 'Aksi diblokir: Bot Telegram dinonaktifkan di server lokal (siap.test). Seluruh operasional bot dan webhook dikelola melalui server produksi Proxmox.');
+        }
+
+        return null;
     }
 
     public function updateTeacherChatId(Request $request): RedirectResponse
@@ -127,6 +142,10 @@ class TelegramBotController extends Controller
 
     public function testSend(Request $request): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $validated = $request->validate([
             'test_chat_id' => 'required|string|max:100',
         ]);
@@ -142,6 +161,10 @@ class TelegramBotController extends Controller
 
     public function sendBroadcast(Request $request): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $validated = $request->validate([
             'target_channel' => 'required|string',
             'broadcast_title' => 'required|string|max:200',
@@ -206,6 +229,10 @@ class TelegramBotController extends Controller
 
     public function sendReminder(Request $request): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $type = $request->input('type', 'tomorrow'); // 'tomorrow' or 'today'
         $isToday = $type === 'today';
 
@@ -258,6 +285,10 @@ class TelegramBotController extends Controller
 
     public function sendSupervisionReminder(Request $request): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $type = $request->input('type', 'tomorrow');
         $isToday = $type === 'today';
         $targetDate = $isToday ? Carbon::today()->format('Y-m-d') : Carbon::tomorrow()->format('Y-m-d');
@@ -286,6 +317,10 @@ class TelegramBotController extends Controller
 
     public function setWebhook(Request $request): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $validated = $request->validate([
             'webhook_url' => 'required|url',
         ]);
@@ -301,6 +336,10 @@ class TelegramBotController extends Controller
 
     public function deleteWebhook(): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $res = $this->telegramService->deleteWebhook();
 
         if ($res['success']) {
@@ -424,7 +463,7 @@ class TelegramBotController extends Controller
         // Sinkronkan perubahan ke school_settings agar tidak ada data usang yang tertinggal
         TelegramChannel::syncAllToSchoolSettings();
 
-        if ($channel->chat_id && $channel->is_active && ! empty($channel->enabled_commands)) {
+        if (config('services.telegram.enabled') !== false && $channel->chat_id && $channel->is_active && ! empty($channel->enabled_commands)) {
             $this->telegramService->setChatCommands($channel->chat_id, $channel->enabled_commands, $channel);
         }
 
@@ -443,6 +482,10 @@ class TelegramBotController extends Controller
 
     public function syncChannelCommands(TelegramChannel $channel): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         if (empty($channel->chat_id)) {
             return back()->with('error', "Grup '{$channel->name}' belum memiliki Chat ID Telegram.");
         }
@@ -458,6 +501,10 @@ class TelegramBotController extends Controller
 
     public function syncAllCommands(): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $res = $this->telegramService->syncAllChannelCommands();
 
         return back()->with('success', $res['message']);
@@ -465,6 +512,10 @@ class TelegramBotController extends Controller
 
     public function inviteChannelMembers(TelegramChannel $channel): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $res = $this->telegramService->sendInviteToEligibleUsers($channel);
 
         if ($res['success']) {
@@ -476,6 +527,10 @@ class TelegramBotController extends Controller
 
     public function syncChannelMembers(TelegramChannel $channel): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $res = $this->telegramService->syncChannelMembers($channel, true);
 
         if ($res['success']) {
@@ -487,6 +542,10 @@ class TelegramBotController extends Controller
 
     public function syncAllChannelMembers(): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $res = $this->telegramService->syncAllChannelMembers(true);
 
         return back()->with('success', $res['message']);
@@ -494,6 +553,10 @@ class TelegramBotController extends Controller
 
     public function sendKeyboardToChannel(TelegramChannel $channel): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         if (empty($channel->chat_id)) {
             return back()->with('error', "Grup '{$channel->name}' belum memiliki Chat ID Telegram.");
         }
@@ -524,6 +587,10 @@ class TelegramBotController extends Controller
 
     public function sendKeyboardToAllChannels(): RedirectResponse
     {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
         $channels = TelegramChannel::whereNotNull('chat_id')
             ->where('is_active', true)
             ->where('show_reply_keyboard', true)

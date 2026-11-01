@@ -29,6 +29,20 @@
     </div>
 </div>
 
+@if(config('services.telegram.enabled') === false)
+<div class="alert alert-warning border-start border-warning border-4 shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="ti ti-shield-alert fs-1 text-warning me-3"></i>
+        <div>
+            <h4 class="alert-title fw-bold mb-1">Perhatian: Bot Telegram Dinonaktifkan di Server Lokal (siap.test)</h4>
+            <div class="text-secondary small">
+                Server lokal ini dikonfigurasi agar <b>tidak aktif</b> mengirim pesan atau mengubah webhook Telegram. Hal ini untuk mencegah terjadinya benturan konfigurasi dan pemutusan webhook dari server produksi <b>Proxmox</b> (<code>siap.smkpgrikras.my.id</code>). Seluruh operasional bot resmi berjalan satu pintu melalui server Proxmox.
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Stat Cards Ringkasan -->
 <div class="row row-cards mb-4">
     <div class="col-sm-6 col-md-3">

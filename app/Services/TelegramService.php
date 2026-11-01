@@ -55,6 +55,10 @@ class TelegramService
 
     public function isEnabled(): bool
     {
+        if (config('services.telegram.enabled') === false) {
+            return false;
+        }
+
         $token = $this->getBotToken();
         $setting = SchoolSetting::getSetting();
 

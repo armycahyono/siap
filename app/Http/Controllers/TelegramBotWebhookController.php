@@ -61,12 +61,23 @@ class TelegramBotWebhookController extends Controller
     public function handle(Request $request): JsonResponse
     {
         if ($request->isMethod('GET')) {
+            $isEnabled = config('services.telegram.enabled') !== false;
+
             return response()->json([
-                'status' => 'online',
+                'status' => $isEnabled ? 'online' : 'disabled_locally',
                 'service' => 'SIM Kurikulum - Telegram Bot Webhook Endpoint',
-                'message' => 'Endpoint aktif dan siap menerima data POST dari Telegram Bot API.',
+                'message' => $isEnabled
+                    ? 'Endpoint aktif dan siap menerima data POST dari Telegram Bot API.'
+                    : 'Bot Telegram dinonaktifkan di server lokal siap.test. Webhook aktif di server produksi Proxmox.',
                 'timestamp' => Carbon::now()->toDateTimeString(),
             ]);
+        }
+
+        if (config('services.telegram.enabled') === false) {
+            return response()->json([
+                'status' => 'disabled',
+                'message' => 'Bot Telegram dinonaktifkan pada lingkungan lokal siap.test. Webhook resmi berjalan di server produksi Proxmox.',
+            ], 403);
         }
 
         // Validasi secret token webhook jika dikonfigurasi / tersedia
