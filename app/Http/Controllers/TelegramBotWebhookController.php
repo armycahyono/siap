@@ -84,6 +84,13 @@ class TelegramBotWebhookController extends Controller
 
                 return response()->json(['ok' => true]);
             }
+
+            // 3. Handle Chat Member Updates (Deteksi saat anggota baru masuk grup)
+            if (isset($update['chat_member'])) {
+                $this->handleChatMemberUpdate($update['chat_member']);
+
+                return response()->json(['ok' => true]);
+            }
         } catch (Throwable $e) {
             Log::error('Telegram bot webhook exception: '.$e->getMessage(), [
                 'exception' => $e,
@@ -171,6 +178,13 @@ class TelegramBotWebhookController extends Controller
                     TelegramChannel::syncAllToSchoolSettings();
                 }
             }
+        }
+
+        // Cek jika ada anggota baru yang masuk ke grup (new_chat_members)
+        if ($isGroup && $channel && isset($message['new_chat_members']) && ! empty($message['new_chat_members'])) {
+            $this->handleNewChatMembers($message, $channel);
+
+            return;
         }
 
         // Resolusi teks tombol reply keyboard ke perintah bot resmi
@@ -5134,5 +5148,93 @@ class TelegramBotWebhookController extends Controller
         ]);
 
         $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
+    }
+
+    /**
+     * Tangani anggota baru yang bergabung ke saluran grup (auto-kick jika tidak memiliki penugasan resmi).
+     */
+    protected function handleNewChatMembers(array $message, TelegramChannel $channel): void
+    {
+        if ($channel->isAllGtk()) {
+            return;
+        }
+
+        $newMembers = $message['new_chat_members'] ?? [];
+        $chatId = (string) ($message['chat']['id'] ?? '');
+
+        foreach ($newMembers as $member) {
+            $memberId = (string) ($member['id'] ?? '');
+            $isBot = (bool) ($member['is_bot'] ?? false);
+            if ($isBot || empty($memberId)) {
+                continue;
+            }
+
+            $user = User::where('telegram_chat_id', $memberId)->first();
+            if (! $user || ! $channel->isUserAllowed($user)) {
+                $this->telegramService->kickChatMember($chatId, $memberId, true);
+
+                $userName = $user ? $user->name : ($member['first_name'] ?? 'Pengguna');
+                $reason = $user
+                    ? "Akun Anda saat ini tidak tercatat memiliki penugasan aktif untuk saluran grup <b>{$channel->name}</b>."
+                    : 'Akun Telegram Anda belum ditautkan ke akun GTK pada sistem SIAP SMK PGRI Kras.';
+
+                $pm = "⚠️ <b>PENYESUAIAN AKSES GRUP</b>\n"
+                    ."━━━━━━━━━━━━━━━━━━━━\n"
+                    ."Halo Bpk/Ibu <b>{$userName}</b>,\n\n"
+                    ."Akses Anda pada grup <b>{$channel->name}</b> telah disesuaikan karena:\n"
+                    ."{$reason}\n\n"
+                    ."Grup ini dikhususkan bagi GTK yang memiliki penugasan dinas aktif pada periode berjalan.\n"
+                    ."━━━━━━━━━━━━━━━━━━━━\n"
+                    .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+
+                $this->telegramService->sendMessage($memberId, $pm, 'bot_reply', $userName);
+            }
+        }
+    }
+
+    /**
+     * Tangani pembaruan status chat_member (ketika user masuk/berubah status di grup).
+     */
+    protected function handleChatMemberUpdate(array $chatMemberUpdate): void
+    {
+        $chatId = (string) ($chatMemberUpdate['chat']['id'] ?? '');
+        $newMember = $chatMemberUpdate['new_chat_member'] ?? [];
+        $newStatus = $newMember['status'] ?? '';
+
+        if (! in_array($newStatus, ['member', 'restricted'])) {
+            return;
+        }
+
+        $channel = TelegramChannel::where('chat_id', $chatId)->first();
+        if (! $channel || $channel->isAllGtk()) {
+            return;
+        }
+
+        $userId = (string) ($newMember['user']['id'] ?? '');
+        $isBot = (bool) ($newMember['user']['is_bot'] ?? false);
+        if ($isBot || empty($userId)) {
+            return;
+        }
+
+        $user = User::where('telegram_chat_id', $userId)->first();
+        if (! $user || ! $channel->isUserAllowed($user)) {
+            $this->telegramService->kickChatMember($chatId, $userId, true);
+
+            $userName = $user ? $user->name : ($newMember['user']['first_name'] ?? 'Pengguna');
+            $reason = $user
+                ? "Akun Anda saat ini tidak tercatat memiliki penugasan aktif untuk saluran grup <b>{$channel->name}</b>."
+                : 'Akun Telegram Anda belum ditautkan ke akun GTK pada sistem SIAP SMK PGRI Kras.';
+
+            $pm = "⚠️ <b>PENYESUAIAN AKSES GRUP</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."Halo Bpk/Ibu <b>{$userName}</b>,\n\n"
+                ."Akses Anda pada grup <b>{$channel->name}</b> telah disesuaikan karena:\n"
+                ."{$reason}\n\n"
+                ."Grup ini dikhususkan bagi GTK yang memiliki penugasan dinas aktif pada periode berjalan.\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+
+            $this->telegramService->sendMessage($userId, $pm, 'bot_reply', $userName);
+        }
     }
 }

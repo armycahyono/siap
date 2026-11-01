@@ -52,12 +52,17 @@ class TelegramService
 
     public function isEnabled(): bool
     {
-        return $this->enabled && ! empty($this->botToken);
+        $token = $this->getBotToken();
+        $setting = SchoolSetting::getSetting();
+
+        return (bool) ($setting->telegram_notifications_enabled ?? $this->enabled) && ! empty($token);
     }
 
     public function getBotToken(): ?string
     {
-        return $this->botToken;
+        $setting = SchoolSetting::getSetting();
+
+        return $setting->telegram_bot_token ?: ($this->botToken ?: config('services.telegram.bot_token'));
     }
 
     public function getDisciplineChatId(): ?string
@@ -1663,6 +1668,203 @@ class TelegramService
             'message' => "Undangan berhasil disiarkan ke {$sentCount} GTK yang terhubung Telegram.",
             'sent' => $sentCount,
             'failed' => $failedCount,
+        ];
+    }
+
+    /**
+     * Dapatkan informasi keanggotaan seorang user di dalam grup Telegram.
+     */
+    public function getChatMember(string $chatId, string|int $userId): ?array
+    {
+        if (! $this->isEnabled() || empty($this->getBotToken())) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$this->getBotToken()}/getChatMember", [
+                'chat_id' => $chatId,
+                'user_id' => $userId,
+            ]);
+
+            if ($response->successful() && $response->json('ok')) {
+                return $response->json('result');
+            }
+        } catch (Throwable $e) {
+            Log::warning("Telegram getChatMember failed for chat {$chatId} user {$userId}: ".$e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Keluarkan seorang pengguna dari grup Telegram (kick).
+     * Menggunakan banChatMember lalu unbanChatMember agar tidak di-blacklist permanen dan bisa masuk kembali saat ditugaskan lagi.
+     */
+    public function kickChatMember(string $chatId, string|int $userId, bool $unbanImmediately = true): bool
+    {
+        if (! $this->isEnabled() || empty($this->getBotToken())) {
+            return false;
+        }
+
+        try {
+            // 1. Keluarkan pengguna dengan banChatMember
+            $response = Http::timeout(10)->post("https://api.telegram.org/bot{$this->getBotToken()}/banChatMember", [
+                'chat_id' => $chatId,
+                'user_id' => $userId,
+            ]);
+
+            if (! $response->successful() || ! $response->json('ok')) {
+                Log::warning("Telegram banChatMember failed for chat {$chatId} user {$userId}: ".$response->body());
+
+                return false;
+            }
+
+            // 2. Unban segera agar statusnya hanya 'left / kicked', bukan blacklist permanen
+            if ($unbanImmediately) {
+                Http::timeout(10)->post("https://api.telegram.org/bot{$this->getBotToken()}/unbanChatMember", [
+                    'chat_id' => $chatId,
+                    'user_id' => $userId,
+                    'only_if_banned' => true,
+                ]);
+            }
+
+            return true;
+        } catch (Throwable $e) {
+            Log::error("Telegram kickChatMember exception for chat {$chatId} user {$userId}: ".$e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Audit dan sinkronkan anggota saluran grup: keluarkan GTK yang masa penugasannya telah selesai.
+     */
+    public function syncChannelMembers(TelegramChannel $channel, bool $sendNotification = true, bool $dryRun = false): array
+    {
+        if (! $this->isEnabled() || empty($channel->chat_id) || ! $channel->is_active) {
+            return [
+                'success' => false,
+                'message' => 'Saluran grup belum aktif atau Chat ID belum dikonfigurasi.',
+                'kicked_count' => 0,
+                'kicked_users' => [],
+            ];
+        }
+
+        // Grup umum 'Semua Warga GTK' tidak boleh mengeluarkan anggota
+        if ($channel->isAllGtk()) {
+            return [
+                'success' => true,
+                'message' => "Saluran grup '{$channel->name}' adalah grup terbuka untuk Semua Warga GTK (tidak ada anggota yang dikeluarkan).",
+                'kicked_count' => 0,
+                'kicked_users' => [],
+            ];
+        }
+
+        // Ambil seluruh GTK SIAP yang memiliki telegram_chat_id
+        $usersWithTelegram = User::where('is_active', true)
+            ->whereNotNull('telegram_chat_id')
+            ->where('telegram_chat_id', '!=', '')
+            ->get();
+
+        $kickedUsers = [];
+        $kickedCount = 0;
+
+        foreach ($usersWithTelegram as $user) {
+            // Jika user masih memiliki penugasan / diizinkan di grup ini, lewati
+            if ($channel->isUserAllowed($user)) {
+                continue;
+            }
+
+            // Cek status keanggotaan di Telegram
+            $memberInfo = $this->getChatMember($channel->chat_id, $user->telegram_chat_id);
+            if (! $memberInfo) {
+                continue;
+            }
+
+            $status = $memberInfo['status'] ?? '';
+            // Jangan pernah keluarkan pembuat atau administrator grup
+            if (in_array($status, ['creator', 'administrator'])) {
+                continue;
+            }
+
+            // Jika statusnya aktif di grup (member atau restricted), lakukan pengeluaran
+            if (in_array($status, ['member', 'restricted'])) {
+                if (! $dryRun) {
+                    $kicked = $this->kickChatMember($channel->chat_id, $user->telegram_chat_id, true);
+                    if ($kicked) {
+                        $kickedCount++;
+                        $kickedUsers[] = $user->name;
+
+                        // Kirim notifikasi santun via Japri
+                        if ($sendNotification) {
+                            $msg = "📢 <b>PEMBERITAHUAN PENYESUAIAN AKSES GRUP</b>\n"
+                                ."━━━━━━━━━━━━━━━━━━━━\n"
+                                ."Halo Bpk/Ibu <b>{$user->name}</b>,\n\n"
+                                ."Terima kasih yang sebesar-besarnya atas partisipasi dan pengabdian Anda dalam penugasan di SMK PGRI Kras.\n\n"
+                                ."Berdasarkan pembaruan data penugasan operasional SIAP saat ini, masa penugasan Anda untuk grup:\n"
+                                ."👥 <b>{$channel->name}</b>\n"
+                                ."telah selesai, sehingga akses ke grup tersebut telah disesuaikan secara otomatis.\n\n"
+                                ."<i>Catatan: Apabila di masa mendatang Anda kembali menerima penugasan tersebut, sistem akan otomatis mengirimkan undangan bergabung kembali.</i>\n\n"
+                                ."Terima kasih! 🙏\n"
+                                ."━━━━━━━━━━━━━━━━━━━━\n"
+                                .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+
+                            $this->sendMessage(
+                                (string) $user->telegram_chat_id,
+                                $msg,
+                                'group_access_sync',
+                                $user->name
+                            );
+                        }
+                    }
+                } else {
+                    $kickedCount++;
+                    $kickedUsers[] = $user->name;
+                }
+            }
+        }
+
+        $dryPrefix = $dryRun ? '[SIMULASI] ' : '';
+
+        return [
+            'success' => true,
+            'message' => "{$dryPrefix}Sinkronisasi anggota '{$channel->name}' selesai. {$kickedCount} GTK disesuaikan/dikeluarkan karena masa tugas telah selesai.",
+            'kicked_count' => $kickedCount,
+            'kicked_users' => $kickedUsers,
+        ];
+    }
+
+    /**
+     * Audit dan sinkronkan seluruh saluran grup penugasan sekolah sekaligus.
+     */
+    public function syncAllChannelMembers(bool $sendNotification = true, bool $dryRun = false): array
+    {
+        $channels = TelegramChannel::where('is_active', true)
+            ->whereNotNull('chat_id')
+            ->where('chat_id', '!=', '')
+            ->get();
+
+        $totalKicked = 0;
+        $details = [];
+
+        foreach ($channels as $channel) {
+            if ($channel->isAllGtk()) {
+                continue;
+            }
+
+            $res = $this->syncChannelMembers($channel, $sendNotification, $dryRun);
+            $count = $res['kicked_count'] ?? 0;
+            $totalKicked += $count;
+            $details[$channel->name] = $count;
+        }
+
+        $dryPrefix = $dryRun ? '[SIMULASI] ' : '';
+
+        return [
+            'success' => true,
+            'total_kicked' => $totalKicked,
+            'details' => $details,
+            'message' => "{$dryPrefix}Audit seluruh grup selesai. Total {$totalKicked} akun anggota yang sudah tidak bertugas berhasil disesuaikan.",
         ];
     }
 

@@ -7,8 +7,10 @@ use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\TelegramChannel;
 use App\Models\User;
+use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -36,7 +38,7 @@ class TelegramChannelCustomizationTest extends TestCase
             'end_date' => '2026-12-20',
         ]);
 
-        SchoolSetting::create([
+        SchoolSetting::firstOrCreate(['id' => 1])->update([
             'school_name' => 'SMK PGRI KRAS',
             'telegram_bot_token' => '123456789:AAFakeTokenTest',
             'telegram_bot_username' => 'smkpgrikras_bot',
@@ -316,5 +318,186 @@ class TelegramChannelCustomizationTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('telegram.index'));
         $response->assertOk();
         $response->assertSee('Semua Warga GTK');
+    }
+
+    public function test_sync_channel_members_kicks_ineligible_users_and_sends_notification(): void
+    {
+        $piketRole = Role::firstOrCreate(['slug' => 'guru_piket'], ['name' => 'Guru Piket']);
+
+        $channel = TelegramChannel::create([
+            'name' => 'Grup Tim Piket',
+            'code' => 'piket_test',
+            'chat_id' => '-100444333222',
+            'allowed_roles' => ['guru_piket'],
+            'enabled_commands' => ['/piket'],
+            'is_active' => true,
+        ]);
+
+        // User A: Active piket teacher
+        $activeUser = User::create([
+            'name' => 'Guru Piket Aktif',
+            'username' => 'guru_aktif',
+            'email' => 'aktif@test.local',
+            'password' => bcrypt('password'),
+            'role_id' => $piketRole->id,
+            'telegram_chat_id' => '111111',
+            'is_active' => true,
+        ]);
+
+        // User B: Regular teacher whose piket assignment ended (not in guru_piket role)
+        $regularRole = Role::firstOrCreate(['slug' => 'guru'], ['name' => 'Guru Biasa']);
+        $ineligibleUser = User::create([
+            'name' => 'Guru Non Piket',
+            'username' => 'guru_non_piket',
+            'email' => 'nonpiket@test.local',
+            'password' => bcrypt('password'),
+            'role_id' => $regularRole->id,
+            'telegram_chat_id' => '222222',
+            'is_active' => true,
+        ]);
+
+        Http::swap(new Factory);
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if (str_contains($url, 'getChatMember')) {
+                return Http::response([
+                    'ok' => true,
+                    'result' => ['status' => 'member'],
+                ], 200);
+            }
+            if (str_contains($url, 'banChatMember') || str_contains($url, 'unbanChatMember')) {
+                return Http::response(['ok' => true, 'result' => true], 200);
+            }
+
+            return Http::response(['ok' => true, 'result' => ['message_id' => 123]], 200);
+        });
+
+        $service = app(TelegramService::class);
+        $result = $service->syncChannelMembers($channel, true, false);
+
+        $this->assertTrue($result['success']);
+        $this->assertEquals(1, $result['kicked_count']);
+        $this->assertContains('Guru Non Piket', $result['kicked_users']);
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'banChatMember')
+                && $request['chat_id'] === '-100444333222'
+                && (string) $request['user_id'] === '222222';
+        });
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && $request['chat_id'] === '222222'
+                && str_contains($request['text'], 'PEMBERITAHUAN PENYESUAIAN AKSES GRUP');
+        });
+    }
+
+    public function test_sync_channel_members_never_kicks_in_all_gtk_channel(): void
+    {
+        $channel = TelegramChannel::create([
+            'name' => 'Warga GTK',
+            'code' => 'gtk_general',
+            'chat_id' => '-100555666777',
+            'allowed_roles' => ['semua_gtk'],
+            'enabled_commands' => ['/piket'],
+            'is_active' => true,
+        ]);
+
+        $service = app(TelegramService::class);
+        $result = $service->syncChannelMembers($channel, true, false);
+
+        $this->assertTrue($result['success']);
+        $this->assertEquals(0, $result['kicked_count']);
+
+        Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), 'banChatMember');
+        });
+    }
+
+    public function test_webhook_new_chat_members_auto_kicks_unauthorized_user_joining_specialized_group(): void
+    {
+        $piketRole = Role::firstOrCreate(['slug' => 'guru_piket'], ['name' => 'Guru Piket']);
+
+        $channel = TelegramChannel::create([
+            'name' => 'Grup Piket Khusus',
+            'code' => 'piket_khusus',
+            'chat_id' => '-100777888999',
+            'allowed_roles' => ['guru_piket'],
+            'enabled_commands' => ['/piket'],
+            'is_active' => true,
+        ]);
+
+        // Unauthorized user who is not a piket teacher
+        $regularRole = Role::firstOrCreate(['slug' => 'guru'], ['name' => 'Guru Biasa']);
+        $unauthorized = User::create([
+            'name' => 'Guru Biasa',
+            'username' => 'guru_biasa_join',
+            'email' => 'biasajoin@test.local',
+            'password' => bcrypt('password'),
+            'role_id' => $regularRole->id,
+            'telegram_chat_id' => '999888',
+            'is_active' => true,
+        ]);
+
+        Http::swap(new Factory);
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if (str_contains($url, 'banChatMember') || str_contains($url, 'unbanChatMember')) {
+                return Http::response(['ok' => true, 'result' => true], 200);
+            }
+
+            return Http::response(['ok' => true, 'result' => ['message_id' => 456]], 200);
+        });
+
+        $response = $this->postJson(route('telegram.webhook'), [
+            'message' => [
+                'chat' => [
+                    'id' => -100777888999,
+                    'title' => 'Grup Piket Khusus',
+                    'type' => 'supergroup',
+                ],
+                'new_chat_members' => [
+                    [
+                        'id' => 999888,
+                        'is_bot' => false,
+                        'first_name' => 'Guru Biasa',
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        // Bot should have auto-kicked the unauthorized member and sent DM
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'banChatMember')
+                && $request['chat_id'] === '-100777888999'
+                && (string) $request['user_id'] === '999888';
+        });
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && $request['chat_id'] === '999888'
+                && str_contains($request['text'], 'PENYESUAIAN AKSES GRUP');
+        });
+    }
+
+    public function test_artisan_command_syncs_channel_members(): void
+    {
+        $channel = TelegramChannel::create([
+            'name' => 'Grup Piket CLI',
+            'code' => 'piket_cli',
+            'chat_id' => '-100333222111',
+            'allowed_roles' => ['guru_piket'],
+            'enabled_commands' => ['/piket'],
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['status' => 'left']], 200),
+        ]);
+
+        $this->artisan('telegram:sync-channel-members', ['--channel' => 'piket_cli', '--dry-run' => true])
+            ->assertSuccessful();
     }
 }

@@ -243,6 +243,12 @@
                             <i class="ti ti-keyboard me-1"></i> Munculkan Keyboard di Semua Grup
                         </button>
                     </form>
+                    <form action="{{ route('telegram.channel.sync-all-members') }}" method="POST" class="d-inline" onsubmit="return confirm('Audit seluruh grup penugasan dan keluarkan anggota yang masa tugasnya telah selesai sekarang?')">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm" title="Audit dan sesuaikan keanggotaan seluruh grup penugasan (keluarkan yang sudah tidak bertugas)">
+                            <i class="ti ti-user-x me-1"></i> Audit & Keluarkan yang Tidak Bertugas
+                        </button>
+                    </form>
                     <form action="{{ route('telegram.channel.sync-all') }}" method="POST" class="d-inline">
                         @csrf
                         <button type="submit" class="btn btn-sm btn-outline-info shadow-sm" title="Sinkronkan perintah bawaan pribadi & seluruh grup ke Telegram">
@@ -407,6 +413,16 @@
                                                 <i class="ti ti-send"></i>
                                             </button>
                                         </form>
+
+                                        @if(!$channel->isAllGtk())
+                                            <!-- Tombol Audit & Keluarkan yang Tidak Bertugas -->
+                                            <form action="{{ route('telegram.channel.sync-members', $channel->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Audit grup {{ $channel->name }} dan keluarkan anggota yang masa tugasnya telah selesai sekarang?')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Audit & Keluarkan yang Tidak Bertugas dari Grup Ini" {{ empty($channel->chat_id) ? 'disabled' : '' }}>
+                                                    <i class="ti ti-user-x"></i>
+                                                </button>
+                                            </form>
+                                        @endif
 
                                         <!-- Tombol Munculkan Tombol Keyboard ke Grup Ini -->
                                         <form action="{{ route('telegram.channel.send-keyboard', $channel->id) }}" method="POST" class="d-inline" title="Kirim & Munculkan Tombol Keyboard ke Grup Ini Sekarang">

@@ -474,6 +474,24 @@ class TelegramBotController extends Controller
         return back()->with('error', $res['message']);
     }
 
+    public function syncChannelMembers(TelegramChannel $channel): RedirectResponse
+    {
+        $res = $this->telegramService->syncChannelMembers($channel, true);
+
+        if ($res['success']) {
+            return back()->with('success', $res['message']);
+        }
+
+        return back()->with('error', $res['message']);
+    }
+
+    public function syncAllChannelMembers(): RedirectResponse
+    {
+        $res = $this->telegramService->syncAllChannelMembers(true);
+
+        return back()->with('success', $res['message']);
+    }
+
     public function sendKeyboardToChannel(TelegramChannel $channel): RedirectResponse
     {
         if (empty($channel->chat_id)) {
