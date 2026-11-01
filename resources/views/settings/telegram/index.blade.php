@@ -1061,19 +1061,49 @@
                                     </div>
                                 </div>
 
+                                <!-- Panduan Pintasan PC & Reset Default -->
+                                <div class="px-3 py-2 bg-blue-lt border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ti ti-info-circle text-primary fs-2"></i>
+                                        <div class="small">
+                                            <strong class="text-primary">💡 Tips Mengetik Emoticon di PC / Laptop:</strong>
+                                            Gunakan shortcut <kbd class="bg-dark text-white px-1 rounded">Win</kbd> + <kbd class="bg-dark text-white px-1 rounded">.</kbd> (titik) pada keyboard komputer, atau klik tombol <span class="badge bg-white border text-dark">😀</span> di samping kolom label. Teks bawaan sistem telah dimuat secara tegas.
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-all-labels" data-target="add" title="Kembalikan seluruh teks label & deskripsi ke bawaan sistem">
+                                            <i class="ti ti-rotate-clockwise me-1"></i> Pulihkan Semua Teks Default
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Baris Cepat Emoticon -->
+                                <div class="px-3 py-2 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                                    <span class="small fw-bold text-secondary d-flex align-items-center gap-1">
+                                        <i class="ti ti-mood-smile text-primary"></i> Sisipkan Cepat:
+                                    </span>
+                                    <div class="d-flex flex-wrap gap-1 align-items-center emoji-quick-bar">
+                                        @foreach(['📋', '🏫', '🚨', '🎫', '👥', '🗓️', '📊', '🔄', '📍', '📅', '📝', '🆔', 'ℹ️', '🔔', '☕', '✅', '⚡', '📌', '📢', '🔍', '💬', '🎓', '⏰', '⭐', '💡', '📖', '🔒', '🛠️'] as $em)
+                                            <button type="button" class="btn btn-xs btn-white border shadow-none px-2 py-1 fs-5 btn-quick-insert-emoji" data-emoji="{{ $em }}" title="Sisipkan {{ $em }} ke kolom yang aktif">
+                                                {{ $em }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+
                                 <div class="table-responsive">
                                     <table class="table table-vcenter table-sm table-striped mb-0">
                                         <thead class="table-light sticky-top">
                                             <tr>
-                                                <th style="width: 150px;">Perintah Bot</th>
-                                                <th style="width: 125px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
+                                                <th style="width: 140px;">Perintah Bot</th>
+                                                <th style="width: 120px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
                                                     <span class="badge bg-primary text-white">1. Perintah Aktif</span>
                                                 </th>
-                                                <th style="width: 135px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
+                                                <th style="width: 130px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
                                                     <span class="badge bg-teal text-white">2. Tombol Keyboard</span>
                                                 </th>
-                                                <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
-                                                <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
+                                                <th style="min-width: 280px;">Teks Label Tombol (Kustom)</th>
+                                                <th style="min-width: 250px;">Deskripsi Menu Telegram</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1104,7 +1134,7 @@
                                                         </td>
                                                     </tr>
                                                     @foreach($catDefs as $cmd => $def)
-                                                        <tr class="add-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
+                                                        <tr class="add-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}" data-default-label="{{ $def['label'] }}" data-default-desc="{{ $def['description'] }}">
                                                             <td>
                                                                 <div class="d-flex align-items-center">
                                                                     <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
@@ -1118,10 +1148,49 @@
                                                                 <input class="form-check-input add-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
                                                             </td>
                                                             <td>
-                                                                <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm" placeholder="{{ $def['label'] }}">
+                                                                <div class="input-group input-group-sm">
+                                                                    <div class="dropdown">
+                                                                        <button class="btn btn-outline-secondary dropdown-toggle btn-emoji-dropdown px-2" type="button" data-bs-toggle="dropdown" data-bs-boundary="window" aria-expanded="false" title="Pilih Emoticon">
+                                                                            😀
+                                                                        </button>
+                                                                        <div class="dropdown-menu p-2 shadow-lg border emoji-picker-menu" style="min-width: 270px; max-width: 300px; z-index: 1060;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                                                                                <span class="small fw-bold text-dark"><i class="ti ti-mood-smile text-primary me-1"></i> Pilih Emoticon</span>
+                                                                                <span class="badge bg-secondary-lt" style="font-size: 10px;">Klik untuk sisip</span>
+                                                                            </div>
+                                                                            <div class="d-flex flex-wrap gap-1 p-1">
+                                                                                @foreach(['📋', '🏫', '🚨', '🎫', '👥', '🗓️', '📊', '🔄', '📍', '📅', '📝', '🆔', 'ℹ️', '🔔', '☕', '✅', '⚡', '📌', '📢', '🔍', '💬', '🎓', '⏰', '⭐', '💡', '📖', '🔒', '🛠️'] as $em)
+                                                                                    <button type="button" class="btn btn-xs btn-light border p-1 fs-5 btn-insert-row-emoji" data-emoji="{{ $em }}" style="width: 32px; height: 32px; line-height: 1;">
+                                                                                        {{ $em }}
+                                                                                    </button>
+                                                                                @endforeach
+                                                                            </div>
+                                                                            <div class="mt-2 pt-1 border-top text-muted" style="font-size: 10px;">
+                                                                                <i class="ti ti-keyboard"></i> Di PC: Tekan <kbd>Win</kbd> + <kbd>.</kbd> untuk emoji lainnya
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm add-label-input" value="{{ $def['label'] }}" data-default="{{ $def['label'] }}" placeholder="{{ $def['label'] }}" title="Teks tombol di keyboard Telegram">
+                                                                    <button type="button" class="btn btn-outline-secondary btn-reset-field" title="Kembalikan ke Teks Bawaan: {{ $def['label'] }}" data-default="{{ $def['label'] }}">
+                                                                        <i class="ti ti-rotate-clockwise"></i>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="mt-1 d-flex align-items-center text-muted" style="font-size: 11px;">
+                                                                    <span class="badge bg-secondary-lt border text-secondary py-0 px-1 me-1" style="font-size: 9px;">Default:</span>
+                                                                    <span class="fw-medium text-dark text-truncate" style="max-width: 200px;" title="{{ $def['label'] }}">{{ $def['label'] }}</span>
+                                                                </div>
                                                             </td>
                                                             <td>
-                                                                <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm" placeholder="{{ $def['description'] }}">
+                                                                <div class="input-group input-group-sm">
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm add-desc-input" value="{{ $def['description'] }}" data-default="{{ $def['description'] }}" placeholder="{{ $def['description'] }}" title="Deskripsi perintah saat user mengetik / di Telegram">
+                                                                    <button type="button" class="btn btn-outline-secondary btn-reset-field" title="Kembalikan ke Deskripsi Bawaan" data-default="{{ $def['description'] }}">
+                                                                        <i class="ti ti-rotate-clockwise"></i>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="mt-1 d-flex align-items-center text-muted" style="font-size: 11px;">
+                                                                    <span class="badge bg-secondary-lt border text-secondary py-0 px-1 me-1" style="font-size: 9px;">Default:</span>
+                                                                    <span class="text-muted text-truncate" style="max-width: 220px;" title="{{ $def['description'] }}">{{ $def['description'] }}</span>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -1260,19 +1329,49 @@
                                     </div>
                                 </div>
 
+                                <!-- Panduan Pintasan PC & Reset Default -->
+                                <div class="px-3 py-2 bg-blue-lt border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="ti ti-info-circle text-primary fs-2"></i>
+                                        <div class="small">
+                                            <strong class="text-primary">💡 Tips Mengetik Emoticon di PC / Laptop:</strong>
+                                            Gunakan shortcut <kbd class="bg-dark text-white px-1 rounded">Win</kbd> + <kbd class="bg-dark text-white px-1 rounded">.</kbd> (titik) pada keyboard komputer, atau klik tombol <span class="badge bg-white border text-dark">😀</span> di samping kolom label. Teks bawaan sistem telah dimuat secara tegas sehingga Anda tidak perlu mengetik dari awal.
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-all-labels" data-target="edit" title="Kembalikan seluruh teks label & deskripsi ke bawaan sistem">
+                                            <i class="ti ti-rotate-clockwise me-1"></i> Pulihkan Semua Teks Default
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Baris Cepat Emoticon -->
+                                <div class="px-3 py-2 bg-light border-bottom d-flex flex-wrap align-items-center gap-2">
+                                    <span class="small fw-bold text-secondary d-flex align-items-center gap-1">
+                                        <i class="ti ti-mood-smile text-primary"></i> Sisipkan Cepat:
+                                    </span>
+                                    <div class="d-flex flex-wrap gap-1 align-items-center emoji-quick-bar">
+                                        @foreach(['📋', '🏫', '🚨', '🎫', '👥', '🗓️', '📊', '🔄', '📍', '📅', '📝', '🆔', 'ℹ️', '🔔', '☕', '✅', '⚡', '📌', '📢', '🔍', '💬', '🎓', '⏰', '⭐', '💡', '📖', '🔒', '🛠️'] as $em)
+                                            <button type="button" class="btn btn-xs btn-white border shadow-none px-2 py-1 fs-5 btn-quick-insert-emoji" data-emoji="{{ $em }}" title="Sisipkan {{ $em }} ke kolom yang aktif">
+                                                {{ $em }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+
                                 <div class="table-responsive">
                                     <table class="table table-vcenter table-sm table-striped mb-0">
                                         <thead class="table-light sticky-top">
                                             <tr>
-                                                <th style="width: 150px;">Perintah Bot</th>
-                                                <th style="width: 125px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
+                                                <th style="width: 140px;">Perintah Bot</th>
+                                                <th style="width: 120px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
                                                     <span class="badge bg-primary text-white">1. Perintah Aktif</span>
                                                 </th>
-                                                <th style="width: 135px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
+                                                <th style="width: 130px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
                                                     <span class="badge bg-teal text-white">2. Tombol Keyboard</span>
                                                 </th>
-                                                <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
-                                                <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
+                                                <th style="min-width: 280px;">Teks Label Tombol (Kustom)</th>
+                                                <th style="min-width: 250px;">Deskripsi Menu Telegram</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1303,7 +1402,7 @@
                                                         </td>
                                                     </tr>
                                                     @foreach($catDefs as $cmd => $def)
-                                                        <tr class="edit-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}">
+                                                        <tr class="edit-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-cat="{{ $catKey }}" data-default-label="{{ $def['label'] }}" data-default-desc="{{ $def['description'] }}">
                                                             <td>
                                                                 <div class="d-flex align-items-center">
                                                                     <i class="ti {{ $def['icon'] ?? 'ti-terminal-2' }} text-primary me-2"></i>
@@ -1317,10 +1416,49 @@
                                                                 <input class="form-check-input edit-show-btn-checkbox" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" checked>
                                                             </td>
                                                             <td>
-                                                                <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" placeholder="{{ $def['label'] }}">
+                                                                <div class="input-group input-group-sm">
+                                                                    <div class="dropdown">
+                                                                        <button class="btn btn-outline-secondary dropdown-toggle btn-emoji-dropdown px-2" type="button" data-bs-toggle="dropdown" data-bs-boundary="window" aria-expanded="false" title="Pilih Emoticon">
+                                                                            😀
+                                                                        </button>
+                                                                        <div class="dropdown-menu p-2 shadow-lg border emoji-picker-menu" style="min-width: 270px; max-width: 300px; z-index: 1060;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                                                                                <span class="small fw-bold text-dark"><i class="ti ti-mood-smile text-primary me-1"></i> Pilih Emoticon</span>
+                                                                                <span class="badge bg-secondary-lt" style="font-size: 10px;">Klik untuk sisip</span>
+                                                                            </div>
+                                                                            <div class="d-flex flex-wrap gap-1 p-1">
+                                                                                @foreach(['📋', '🏫', '🚨', '🎫', '👥', '🗓️', '📊', '🔄', '📍', '📅', '📝', '🆔', 'ℹ️', '🔔', '☕', '✅', '⚡', '📌', '📢', '🔍', '💬', '🎓', '⏰', '⭐', '💡', '📖', '🔒', '🛠️'] as $em)
+                                                                                    <button type="button" class="btn btn-xs btn-light border p-1 fs-5 btn-insert-row-emoji" data-emoji="{{ $em }}" style="width: 32px; height: 32px; line-height: 1;">
+                                                                                        {{ $em }}
+                                                                                    </button>
+                                                                                @endforeach
+                                                                            </div>
+                                                                            <div class="mt-2 pt-1 border-top text-muted" style="font-size: 10px;">
+                                                                                <i class="ti ti-keyboard"></i> Di PC: Tekan <kbd>Win</kbd> + <kbd>.</kbd> untuk emoji lainnya
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control form-control-sm edit-label-input" value="{{ $def['label'] }}" data-default="{{ $def['label'] }}" placeholder="{{ $def['label'] }}" title="Teks tombol di keyboard Telegram">
+                                                                    <button type="button" class="btn btn-outline-secondary btn-reset-field" title="Kembalikan ke Teks Bawaan: {{ $def['label'] }}" data-default="{{ $def['label'] }}">
+                                                                        <i class="ti ti-rotate-clockwise"></i>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="mt-1 d-flex align-items-center text-muted" style="font-size: 11px;">
+                                                                    <span class="badge bg-secondary-lt border text-secondary py-0 px-1 me-1" style="font-size: 9px;">Default:</span>
+                                                                    <span class="fw-medium text-dark text-truncate" style="max-width: 200px;" title="{{ $def['label'] }}">{{ $def['label'] }}</span>
+                                                                </div>
                                                             </td>
                                                             <td>
-                                                                <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" placeholder="{{ $def['description'] }}">
+                                                                <div class="input-group input-group-sm">
+                                                                    <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm edit-desc-input" value="{{ $def['description'] }}" data-default="{{ $def['description'] }}" placeholder="{{ $def['description'] }}" title="Deskripsi perintah saat user mengetik / di Telegram">
+                                                                    <button type="button" class="btn btn-outline-secondary btn-reset-field" title="Kembalikan ke Deskripsi Bawaan" data-default="{{ $def['description'] }}">
+                                                                        <i class="ti ti-rotate-clockwise"></i>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="mt-1 d-flex align-items-center text-muted" style="font-size: 11px;">
+                                                                    <span class="badge bg-secondary-lt border text-secondary py-0 px-1 me-1" style="font-size: 9px;">Default:</span>
+                                                                    <span class="text-muted text-truncate" style="max-width: 220px;" title="{{ $def['description'] }}">{{ $def['description'] }}</span>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -1814,6 +1952,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.edit-cmd-row').forEach(function (row) {
                 const cmd = row.dataset.cmd;
                 const conf = customButtons[cmd] || {};
+                const defaultLabel = row.dataset.defaultLabel || '';
+                const defaultDesc = row.dataset.defaultDesc || '';
 
                 const btnCb = row.querySelector('.edit-show-btn-checkbox');
                 if (btnCb) {
@@ -1824,17 +1964,108 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const labelInput = row.querySelector('.edit-label-input');
                 if (labelInput) {
-                    labelInput.value = conf.label || '';
+                    // Tampilkan teks default secara tegas:
+                    // Jika admin sudah punya teks kustom dan tidak kosong, gunakan teks kustom.
+                    // Jika belum pernah kustom (atau kosong), OTOMATIS tampilkan teks default sistem sehingga admin tidak perlu mengetik dari awal!
+                    const customVal = (conf.label !== undefined && conf.label !== null) ? conf.label.toString().trim() : '';
+                    labelInput.value = customVal !== '' ? customVal : defaultLabel;
                 }
 
                 const descInput = row.querySelector('.edit-desc-input');
                 if (descInput) {
-                    descInput.value = conf.description || '';
+                    const customDesc = (conf.description !== undefined && conf.description !== null) ? conf.description.toString().trim() : '';
+                    descInput.value = customDesc !== '' ? customDesc : defaultDesc;
                 }
             });
 
             const modal = new bootstrap.Modal(document.getElementById('modal-edit-saluran'));
             modal.show();
+        });
+    });
+
+    // -------------------------------------------------------------
+    // Helper & Event Listener Emoticon dan Reset Teks Tombol Saluran
+    // -------------------------------------------------------------
+    let lastFocusedChannelInput = null;
+    document.addEventListener('focusin', function (e) {
+        if (e.target && e.target.matches('.edit-label-input, .add-label-input, .edit-desc-input, .add-desc-input')) {
+            lastFocusedChannelInput = e.target;
+        }
+    });
+
+    function insertChannelTextAtCursor(input, text) {
+        if (!input) return;
+        const start = input.selectionStart !== null ? input.selectionStart : input.value.length;
+        const end = input.selectionEnd !== null ? input.selectionEnd : input.value.length;
+        const val = input.value;
+        input.value = val.substring(0, start) + text + val.substring(end);
+        input.focus();
+        const newPos = start + text.length;
+        input.setSelectionRange(newPos, newPos);
+    }
+
+    // Tombol Baris Cepat Emoticon
+    document.querySelectorAll('.btn-quick-insert-emoji').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const emoji = this.dataset.emoji;
+            const targetModal = this.closest('.modal');
+            let targetInput = lastFocusedChannelInput;
+
+            if (!targetInput || !targetModal || !targetModal.contains(targetInput)) {
+                targetInput = targetModal ? targetModal.querySelector('.edit-label-input, .add-label-input') : null;
+            }
+
+            if (targetInput) {
+                insertChannelTextAtCursor(targetInput, emoji);
+            }
+        });
+    });
+
+    // Tombol Emoticon di dalam Dropdown per Baris
+    document.querySelectorAll('.btn-insert-row-emoji').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const emoji = this.dataset.emoji;
+            const inputGroup = this.closest('.input-group');
+            const input = inputGroup ? inputGroup.querySelector('input') : null;
+            if (input) {
+                insertChannelTextAtCursor(input, emoji);
+            }
+        });
+    });
+
+    // Tombol Reset Per Kolom Input
+    document.querySelectorAll('.btn-reset-field').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const defaultVal = this.dataset.default || '';
+            const inputGroup = this.closest('.input-group');
+            const input = inputGroup ? inputGroup.querySelector('input') : null;
+            if (input) {
+                input.value = defaultVal;
+                input.classList.add('border-success');
+                setTimeout(() => input.classList.remove('border-success'), 600);
+            }
+        });
+    });
+
+    // Tombol Pulihkan Semua Teks Default di Modal
+    document.querySelectorAll('.btn-reset-all-labels').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = this.dataset.target; // 'add' or 'edit'
+            const modal = target === 'add' ? document.getElementById('modal-tambah-saluran') : document.getElementById('modal-edit-saluran');
+            if (!modal) return;
+
+            if (confirm('Pulihkan semua teks label tombol dan deskripsi ke bawaan sistem?')) {
+                modal.querySelectorAll('.' + target + '-label-input').forEach(function (input) {
+                    if (input.dataset.default) input.value = input.dataset.default;
+                });
+                modal.querySelectorAll('.' + target + '-desc-input').forEach(function (input) {
+                    if (input.dataset.default) input.value = input.dataset.default;
+                });
+            }
         });
     });
 

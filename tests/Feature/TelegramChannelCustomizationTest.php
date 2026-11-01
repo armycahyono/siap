@@ -500,4 +500,18 @@ class TelegramChannelCustomizationTest extends TestCase
         $this->artisan('telegram:sync-channel-members', ['--channel' => 'piket_cli', '--dry-run' => true])
             ->assertSuccessful();
     }
+
+    public function test_channel_modal_renders_explicit_default_labels_and_emoji_tools(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('telegram.index'));
+        $response->assertOk();
+
+        // Verify that default labels, emoji tools, and PC tips are rendered
+        $response->assertSee('Tips Mengetik Emoticon di PC / Laptop');
+        $response->assertSee('Sisipkan Cepat:');
+        $response->assertSee('btn-emoji-dropdown');
+        $response->assertSee('btn-reset-field');
+        $response->assertSee('Pulihkan Semua Teks Default');
+        $response->assertSee('📋 Tim Piket Hari Ini');
+    }
 }
