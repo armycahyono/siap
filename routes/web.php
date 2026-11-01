@@ -401,6 +401,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/template/{template}', [TelegramBotController::class, 'updateTemplate'])->name('telegram.template.update');
         Route::post('/template/{template}/reset', [TelegramBotController::class, 'resetTemplate'])->name('telegram.template.reset');
         Route::post('/template/reset-all', [TelegramBotController::class, 'resetAllTemplates'])->name('telegram.template.reset-all');
+
+        // Pembersihan & Reset Log Pengiriman Bot
+        Route::post('/logs/clear', [TelegramBotController::class, 'clearLogs'])->name('telegram.logs.clear');
     });
 
     // Catatan & Masukan Perbaikan Aplikasi (Terbuka untuk semua pengguna login)

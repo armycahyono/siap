@@ -563,4 +563,48 @@ class TelegramBotController extends Controller
 
         return redirect()->route('telegram.index')->with('success', 'Seluruh template balasan bot telah dikembalikan ke format default pabrik.');
     }
+
+    /**
+     * Bersihkan atau reset riwayat log pengiriman notifikasi bot Telegram.
+     */
+    public function clearLogs(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'period' => 'required|in:all,7_days,30_days,90_days,failed_only',
+        ]);
+
+        $period = $validated['period'];
+
+        switch ($period) {
+            case '7_days':
+                $deletedCount = PiketTelegramLog::where('created_at', '<', Carbon::now()->subDays(7))->delete();
+                $message = "Berhasil membersihkan {$deletedCount} catatan log pengiriman yang lebih lama dari 7 hari.";
+                break;
+
+            case '30_days':
+                $deletedCount = PiketTelegramLog::where('created_at', '<', Carbon::now()->subDays(30))->delete();
+                $message = "Berhasil membersihkan {$deletedCount} catatan log pengiriman yang lebih lama dari 30 hari.";
+                break;
+
+            case '90_days':
+                $deletedCount = PiketTelegramLog::where('created_at', '<', Carbon::now()->subDays(90))->delete();
+                $message = "Berhasil membersihkan {$deletedCount} catatan log pengiriman yang lebih lama dari 90 hari.";
+                break;
+
+            case 'failed_only':
+                $deletedCount = PiketTelegramLog::where('status', 'failed')->delete();
+                $message = "Berhasil membersihkan {$deletedCount} catatan log pengiriman berstatus gagal.";
+                break;
+
+            case 'all':
+            default:
+                $deletedCount = PiketTelegramLog::count();
+                PiketTelegramLog::query()->delete();
+                $message = "Seluruh riwayat log pengiriman bot ({$deletedCount} catatan) berhasil dikosongkan/direset.";
+                break;
+        }
+
+        return redirect()->route('telegram.index', ['tab' => 'logs', '#tab-logs'])
+            ->with('success', $message);
+    }
 }

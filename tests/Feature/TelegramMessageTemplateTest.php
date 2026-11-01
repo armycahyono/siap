@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\PiketTelegramLog;
 use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\TelegramMessageTemplate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -139,5 +141,104 @@ class TelegramMessageTemplateTest extends TestCase
                 && str_contains($text, 'Total Tamu:')
                 && str_contains($text, 'SMK PGRI KRAS TESTING');
         });
+    }
+
+    public function test_telegram_index_displays_separated_columns_for_commands_and_keyboard(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->get(route('telegram.index'));
+
+        $response->assertOk();
+        $response->assertSee('Perintah Aktif (/cmd)');
+        $response->assertSee('Tombol Keyboard Grup');
+        $response->assertSee('Bersihkan Log');
+    }
+
+    public function test_admin_can_clear_logs_by_period(): void
+    {
+        // Buat log lama (40 hari lalu) dan baru (2 hari lalu)
+        $oldLog = PiketTelegramLog::create([
+            'target_type' => 'test',
+            'recipient_name' => 'Guru Lama',
+            'chat_id' => '111',
+            'message' => 'Pesan lama',
+            'status' => 'sent',
+        ]);
+        DB::table('piket_telegram_logs')
+            ->where('id', $oldLog->id)
+            ->update(['created_at' => now()->subDays(40)]);
+
+        $newLog = PiketTelegramLog::create([
+            'target_type' => 'test',
+            'recipient_name' => 'Guru Baru',
+            'chat_id' => '222',
+            'message' => 'Pesan baru',
+            'status' => 'sent',
+            'created_at' => now()->subDays(2),
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('telegram.logs.clear'), [
+                'period' => '30_days',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('piket_telegram_logs', ['id' => $oldLog->id]);
+        $this->assertDatabaseHas('piket_telegram_logs', ['id' => $newLog->id]);
+    }
+
+    public function test_admin_can_clear_failed_logs_only(): void
+    {
+        $sentLog = PiketTelegramLog::create([
+            'target_type' => 'test',
+            'recipient_name' => 'Guru Sukses',
+            'chat_id' => '111',
+            'message' => 'Pesan terkirim',
+            'status' => 'sent',
+        ]);
+
+        $failedLog = PiketTelegramLog::create([
+            'target_type' => 'test',
+            'recipient_name' => 'Guru Gagal',
+            'chat_id' => '222',
+            'message' => 'Pesan gagal',
+            'status' => 'failed',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('telegram.logs.clear'), [
+                'period' => 'failed_only',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('piket_telegram_logs', ['id' => $sentLog->id]);
+        $this->assertDatabaseMissing('piket_telegram_logs', ['id' => $failedLog->id]);
+    }
+
+    public function test_admin_can_reset_all_logs(): void
+    {
+        PiketTelegramLog::create([
+            'target_type' => 'test',
+            'recipient_name' => 'Guru Test',
+            'chat_id' => '999',
+            'message' => 'Pesan tes',
+            'status' => 'sent',
+        ]);
+
+        $this->assertGreaterThan(0, PiketTelegramLog::count());
+
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('telegram.logs.clear'), [
+                'period' => 'all',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertEquals(0, PiketTelegramLog::count());
     }
 }

@@ -258,11 +258,12 @@
                 <table class="table table-vcenter table-hover table-striped mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="min-width: 220px;">Saluran Grup</th>
-                            <th style="min-width: 170px;">ID Chat & Tautan Undangan</th>
-                            <th style="min-width: 240px;">Kelompok / Peran GTK</th>
-                            <th style="min-width: 200px;">Perintah Menu Aktif</th>
-                            <th class="text-center" style="width: 190px;">Aksi Cepat</th>
+                            <th style="min-width: 200px;">Saluran Grup</th>
+                            <th style="min-width: 160px;">ID Chat & Tautan Undangan</th>
+                            <th style="min-width: 200px;">Kelompok / Peran GTK</th>
+                            <th style="min-width: 200px;">Perintah Aktif (/cmd)</th>
+                            <th style="min-width: 230px;">Tombol Keyboard Grup</th>
+                            <th class="text-center" style="width: 170px;">Aksi Cepat</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -321,35 +322,55 @@
                                         <span class="badge bg-azure-lt small">Semua GTK / Terbuka</span>
                                     @endif
                                 </td>
+                                <!-- Kolom: Perintah Aktif (/cmd) -->
                                 <td>
-                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <span class="text-muted small">Perintah Aktif:</span>
-                                        @if($channel->show_reply_keyboard)
-                                            <span class="badge bg-teal-lt small" title="Tombol Reply Keyboard di bawah chat diaktifkan">
-                                                <i class="ti ti-keyboard me-1"></i> Keyboard Aktif
-                                            </span>
-                                        @else
-                                            <span class="badge bg-secondary-lt small" title="Tombol Reply Keyboard di bawah chat dinonaktifkan">
-                                                <i class="ti ti-keyboard-off me-1"></i> Keyboard Off
-                                            </span>
-                                        @endif
+                                    <div class="mb-1">
+                                        <span class="badge bg-primary-lt fw-bold small">
+                                            <i class="ti ti-terminal me-1"></i> {{ count($channel->enabled_commands ?? []) }} Perintah Aktif
+                                        </span>
                                     </div>
                                     @if(!empty($channel->enabled_commands) && count($channel->enabled_commands) > 0)
                                         <div class="d-flex flex-wrap gap-1">
                                             @foreach($channel->enabled_commands as $cmd)
-                                                @php
-                                                    $isBtn = $channel->isReplyButtonEnabled($cmd);
-                                                @endphp
-                                                <span class="badge {{ $isBtn && $channel->show_reply_keyboard ? 'bg-purple-lt' : 'bg-gray-lt' }} font-monospace small" style="font-size: 0.72rem;" title="{{ $isBtn && $channel->show_reply_keyboard ? 'Aktif sebagai tombol keyboard' : 'Hanya perintah menu teks' }}">
+                                                <span class="badge bg-blue-lt font-monospace small" style="font-size: 0.73rem;">
                                                     {{ $cmd }}
-                                                    @if($isBtn && $channel->show_reply_keyboard)
-                                                        <i class="ti ti-square-check ms-1 text-purple"></i>
-                                                    @endif
                                                 </span>
                                             @endforeach
                                         </div>
                                     @else
-                                        <span class="text-muted small">Hanya siaran / notifikasi</span>
+                                        <span class="text-muted small"><i>Hanya siaran / notifikasi</i></span>
+                                    @endif
+                                </td>
+                                <!-- Kolom: Tombol Keyboard Grup -->
+                                <td>
+                                    <div class="mb-1">
+                                        @if($channel->show_reply_keyboard)
+                                            <span class="badge bg-teal text-white fw-bold small" title="Tombol Reply Keyboard di layar Telegram diaktifkan">
+                                                <i class="ti ti-keyboard me-1"></i> Keyboard Aktif
+                                            </span>
+                                        @else
+                                            <span class="badge bg-secondary-lt fw-bold small" title="Tombol Reply Keyboard di layar Telegram dinonaktifkan">
+                                                <i class="ti ti-keyboard-off me-1"></i> Keyboard Non-Aktif
+                                            </span>
+                                        @endif
+                                    </div>
+                                    @if($channel->show_reply_keyboard)
+                                        @php
+                                            $replyButtons = collect($channel->enabled_commands ?? [])->filter(fn($c) => $channel->isReplyButtonEnabled($c));
+                                        @endphp
+                                        @if($replyButtons->isNotEmpty())
+                                            <div class="d-flex flex-wrap gap-1">
+                                                @foreach($replyButtons as $btnCmd)
+                                                    <span class="badge bg-teal-lt small d-inline-flex align-items-center" style="font-size: 0.73rem;" title="Perintah: {{ $btnCmd }}">
+                                                        <i class="ti ti-square-check me-1 text-teal"></i> {{ $channel->getButtonLabel($btnCmd) }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <span class="text-muted small"><i>Belum ada tombol keyboard dipilih</i></span>
+                                        @endif
+                                    @else
+                                        <span class="text-muted small"><i>Reply keyboard dimatikan</i></span>
                                     @endif
                                 </td>
                                 <td class="text-center">
@@ -648,11 +669,11 @@
     <!-- ===================================================================== -->
     <div class="tab-pane fade" id="tab-logs" role="tabpanel" aria-labelledby="nav-logs-tab">
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h4 class="card-title fw-bold text-dark m-0">
                     <i class="ti ti-history text-secondary me-2"></i> Riwayat Pengiriman Notifikasi Bot Telegram
                 </h4>
-                <div class="card-actions d-flex gap-2 align-items-center">
+                <div class="card-actions d-flex flex-wrap gap-2 align-items-center">
                     <form action="{{ route('telegram.index') }}" method="GET" class="d-flex gap-1">
                         <input type="hidden" name="tab" value="logs">
                         <select name="target_type" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -667,6 +688,9 @@
                             <option value="test" {{ $targetType === 'test' ? 'selected' : '' }}>Uji Coba</option>
                         </select>
                     </form>
+                    <button type="button" class="btn btn-sm btn-outline-danger shadow-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modal-clear-logs">
+                        <i class="ti ti-trash me-1"></i> Bersihkan Log
+                    </button>
                 </div>
             </div>
             <div class="table-responsive">
@@ -1005,8 +1029,12 @@
                                         <thead class="table-light sticky-top">
                                             <tr>
                                                 <th style="width: 150px;">Perintah Bot</th>
-                                                <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
-                                                <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
+                                                <th style="width: 125px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
+                                                    <span class="badge bg-primary text-white">1. Perintah Aktif</span>
+                                                </th>
+                                                <th style="width: 135px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
+                                                    <span class="badge bg-teal text-white">2. Tombol Keyboard</span>
+                                                </th>
                                                 <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
                                                 <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
                                             </tr>
@@ -1188,8 +1216,12 @@
                                         <thead class="table-light sticky-top">
                                             <tr>
                                                 <th style="width: 150px;">Perintah Bot</th>
-                                                <th style="width: 110px;" class="text-center" title="Perintah ini aktif dan bisa digunakan di grup">Aktif di Grup</th>
-                                                <th style="width: 120px;" class="text-center" title="Tampilkan sebagai tombol di keyboard bawah Telegram">Tombol Reply</th>
+                                                <th style="width: 125px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
+                                                    <span class="badge bg-primary text-white">1. Perintah Aktif</span>
+                                                </th>
+                                                <th style="width: 135px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
+                                                    <span class="badge bg-teal text-white">2. Tombol Keyboard</span>
+                                                </th>
                                                 <th style="min-width: 220px;">Teks Label Tombol (Kustom)</th>
                                                 <th style="min-width: 240px;">Deskripsi Menu Telegram</th>
                                             </tr>
@@ -1417,6 +1449,83 @@
                         <i class="ti ti-check me-1"></i> Simpan Template Balasan
                     </button>
                 </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: BERSIHKAN / RESET RIWAYAT LOG PENGIRIMAN BOT -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-clear-logs" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('telegram.logs.clear') }}" method="POST" class="modal-content shadow">
+            @csrf
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold d-flex align-items-center">
+                    <i class="ti ti-trash me-2 fs-2"></i>
+                    Bersihkan / Reset Riwayat Log Bot
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-secondary small mb-3">
+                    Seiring berjalannya operasional sekolah, catatan riwayat pengiriman notifikasi bot dapat mencapai puluhan ribu hingga jutaan baris. Anda dapat membersihkan data log lama yang sudah tidak digunakan lagi untuk menghemat ruang penyimpanan basis data.
+                </p>
+
+                <label class="form-label fw-bold text-dark mb-2">Pilih Periode Pembersihan Data:</label>
+                <div class="d-flex flex-column gap-2 mb-3">
+                    <label class="form-check border rounded p-2 m-0 bg-light-subtle cursor-pointer">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="period" value="30_days" checked>
+                        <span class="form-check-label">
+                            <span class="fw-bold text-dark d-block">Hapus Log Lebih Lama dari 30 Hari</span>
+                            <span class="text-muted small">Direkomendasikan: arsip riwayat 1 bulan terakhir tetap tersimpan.</span>
+                        </span>
+                    </label>
+
+                    <label class="form-check border rounded p-2 m-0 bg-light-subtle cursor-pointer">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="period" value="7_days">
+                        <span class="form-check-label">
+                            <span class="fw-bold text-dark d-block">Hapus Log Lebih Lama dari 7 Hari</span>
+                            <span class="text-muted small">Hanya menyimpan catatan riwayat notifikasi 1 minggu terakhir.</span>
+                        </span>
+                    </label>
+
+                    <label class="form-check border rounded p-2 m-0 bg-light-subtle cursor-pointer">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="period" value="90_days">
+                        <span class="form-check-label">
+                            <span class="fw-bold text-dark d-block">Hapus Log Lebih Lama dari 90 Hari</span>
+                            <span class="text-muted small">Menyimpan arsip log notifikasi selama 3 bulan terakhir.</span>
+                        </span>
+                    </label>
+
+                    <label class="form-check border rounded p-2 m-0 bg-light-subtle cursor-pointer">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="period" value="failed_only">
+                        <span class="form-check-label">
+                            <span class="fw-bold text-dark d-block">Hanya Hapus Log Gagal (Status: Failed)</span>
+                            <span class="text-muted small">Hanya membuang catatan pesan error tanpa menghapus log yang berhasil terkirim.</span>
+                        </span>
+                    </label>
+
+                    <label class="form-check border border-danger rounded p-2 m-0 bg-danger-lt cursor-pointer">
+                        <input class="form-check-input ms-0 me-2" type="radio" name="period" value="all">
+                        <span class="form-check-label">
+                            <span class="fw-bold text-danger d-block">Hapus SEMUA Riwayat Log (Reset Total)</span>
+                            <span class="text-danger small">Mengosongkan seluruh tabel riwayat notifikasi bot dari awal.</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="alert alert-warning py-2 px-3 small d-flex align-items-center mb-0">
+                    <i class="ti ti-alert-triangle me-2 fs-3 text-warning"></i>
+                    <span>Tindakan pembersihan log ini bersifat permanen dan data yang dihapus tidak dapat dipulihkan.</span>
+                </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-danger shadow-sm" onclick="return confirm('Apakah Anda yakin ingin memproses pembersihan log ini?')">
+                    <i class="ti ti-trash me-1"></i> Bersihkan Log Sekarang
+                </button>
             </div>
         </form>
     </div>
