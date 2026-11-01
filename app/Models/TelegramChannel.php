@@ -111,14 +111,67 @@ class TelegramChannel extends Model
     }
 
     /**
+     * Apakah saluran grup ini terbuka untuk seluruh warga GTK (tanpa batasan penugasan tertentu).
+     */
+    public function isAllGtk(): bool
+    {
+        $roles = $this->allowed_roles ?? [];
+
+        if (empty($roles) || in_array('semua_gtk', $roles) || in_array('all', $roles)) {
+            return true;
+        }
+
+        if (count($roles) >= 15) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Periksa apakah seorang user diizinkan mengakses perintah di saluran grup ini.
+     */
+    public function isUserAllowed(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->isAllGtk()) {
+            return true;
+        }
+
+        $roles = $this->allowed_roles ?? [];
+        $userRoleSlug = $user->role?->slug;
+        if ($userRoleSlug && in_array($userRoleSlug, $roles)) {
+            return true;
+        }
+
+        if ($user->roleAssignments()->whereHas('role', fn ($q) => $q->whereIn('slug', $roles))->exists()) {
+            return true;
+        }
+
+        if (in_array('wali_kelas', $roles) && $user->isHomeroomTeacher()) {
+            return true;
+        }
+
+        if ((in_array('guru_piket', $roles) || in_array('piket_officer', $roles)) && $user->canOperatePiket()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Dapatkan daftar user/GTK yang memenuhi syarat bergabung ke grup ini berdasarkan allowed_roles.
      */
     public function getEligibleUsers(): Collection
     {
-        $roles = $this->allowed_roles ?? [];
-        if (empty($roles)) {
+        if ($this->isAllGtk()) {
             return User::where('is_active', true)->orderBy('name')->get();
         }
+
+        $roles = $this->allowed_roles ?? [];
 
         return User::where('is_active', true)
             ->where(function ($q) use ($roles) {

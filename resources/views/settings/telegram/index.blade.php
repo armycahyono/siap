@@ -306,7 +306,14 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if(!empty($channel->allowed_roles) && count($channel->allowed_roles) > 0)
+                                    @if($channel->isAllGtk())
+                                        <span class="badge bg-green text-white fw-bold small" style="font-size: 0.78rem;">
+                                            <i class="ti ti-users-group me-1"></i> Semua Warga GTK
+                                        </span>
+                                        <div class="text-muted small mt-1" style="font-size: 0.72rem;">
+                                            Seluruh Guru & Staf (Terbuka)
+                                        </div>
+                                    @elseif(!empty($channel->allowed_roles) && count($channel->allowed_roles) > 0)
                                         <div class="d-flex flex-wrap gap-1">
                                             @foreach($channel->allowed_roles as $roleSlug)
                                                 @php
@@ -319,7 +326,9 @@
                                             @endforeach
                                         </div>
                                     @else
-                                        <span class="badge bg-azure-lt small">Semua GTK / Terbuka</span>
+                                        <span class="badge bg-green text-white fw-bold small" style="font-size: 0.78rem;">
+                                            <i class="ti ti-users-group me-1"></i> Semua Warga GTK
+                                        </span>
                                     @endif
                                 </td>
                                 <!-- Kolom: Perintah Aktif (/cmd) -->
@@ -963,20 +972,32 @@
 
                     <!-- Pilihan Peran GTK yang Diizinkan -->
                     <div class="col-12">
-                        <label class="form-label fw-bold text-dark border-bottom pb-1">
-                            <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
+                        <label class="form-label fw-bold text-dark border-bottom pb-1 d-flex justify-content-between align-items-center">
+                            <span><i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung</span>
+                            <small class="text-muted">Pilih "Semua Warga GTK" atau tentukan peran khusus</small>
                         </label>
-                        <div class="row g-2 mt-1">
+                        <div class="p-2 mb-2 bg-success-lt rounded border border-success border-opacity-50">
+                            <label class="form-check m-0 cursor-pointer">
+                                <input class="form-check-input role-all-gtk-toggle" type="checkbox" name="allowed_roles[]" value="semua_gtk" id="add_role_semua_gtk" data-target="add" checked>
+                                <span class="form-check-label fw-bold text-success">
+                                    <i class="ti ti-users-group me-1"></i> Semua Warga GTK (Seluruh Guru & Staf Bebas Bergabung)
+                                </span>
+                                <span class="d-block text-muted small mt-1">
+                                    Pilih opsi ini agar grup terbuka untuk seluruh warga sekolah tanpa dibatasi jabatan / penugasan tertentu, dan tampilan tabel tetap ringkas.
+                                </span>
+                            </label>
+                        </div>
+                        <div class="row g-2 mt-1" id="add-specific-roles-container">
                             @foreach($availableRoles as $role)
                                 <div class="col-md-4 col-sm-6">
                                     <label class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}">
-                                        <span class="form-check-label small">{{ $role->name }}</span>
+                                        <input class="form-check-input add-role-checkbox" type="checkbox" name="allowed_roles[]" value="{{ $role->slug }}" disabled>
+                                        <span class="form-check-label small text-muted">{{ $role->name }}</span>
                                     </label>
                                 </div>
                             @endforeach
                         </div>
-                        <small class="text-muted">Guru yang memiliki peran di atas akan diizinkan dan dikirimi link undangan personal via Japri Bot.</small>
+                        <small class="text-muted d-block mt-2">GTK yang memenuhi syarat di atas akan diizinkan dan dapat dikirimi tautan undangan personal via Japri Bot.</small>
                     </div>
 
                     <!-- Pengaturan Reply Keyboard & Kustomisasi Menu Perintah -->
@@ -1151,9 +1172,21 @@
 
                     <!-- Pilihan Peran GTK yang Diizinkan -->
                     <div class="col-12">
-                        <label class="form-label fw-bold text-dark border-bottom pb-1">
-                            <i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung
+                        <label class="form-label fw-bold text-dark border-bottom pb-1 d-flex justify-content-between align-items-center">
+                            <span><i class="ti ti-user-check me-1 text-primary"></i> Kelompok / Peran GTK yang Diizinkan Bergabung</span>
+                            <small class="text-muted">Pilih "Semua Warga GTK" atau tentukan peran khusus</small>
                         </label>
+                        <div class="p-2 mb-2 bg-success-lt rounded border border-success border-opacity-50">
+                            <label class="form-check m-0 cursor-pointer">
+                                <input class="form-check-input role-all-gtk-toggle edit-role-all-gtk" type="checkbox" name="allowed_roles[]" value="semua_gtk" id="edit_role_semua_gtk" data-target="edit">
+                                <span class="form-check-label fw-bold text-success">
+                                    <i class="ti ti-users-group me-1"></i> Semua Warga GTK (Seluruh Guru & Staf Bebas Bergabung)
+                                </span>
+                                <span class="d-block text-muted small mt-1">
+                                    Pilih opsi ini agar grup terbuka untuk seluruh warga sekolah tanpa dibatasi jabatan / penugasan tertentu, dan tampilan tabel tetap ringkas.
+                                </span>
+                            </label>
+                        </div>
                         <div class="row g-2 mt-1" id="edit-roles-container">
                             @foreach($availableRoles as $role)
                                 <div class="col-md-4 col-sm-6">
@@ -1745,8 +1778,15 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('edit_show_reply_keyboard').checked = showReplyKeyboard;
 
             // Check roles
+            const isAllGtk = roles.length === 0 || roles.includes('semua_gtk') || roles.includes('all') || roles.length >= 15;
+            const editAllGtkCb = document.getElementById('edit_role_semua_gtk');
+            if (editAllGtkCb) {
+                editAllGtkCb.checked = isAllGtk;
+            }
+
             document.querySelectorAll('.edit-role-checkbox').forEach(function (cb) {
-                cb.checked = roles.includes(cb.value);
+                cb.checked = !isAllGtk && roles.includes(cb.value);
+                cb.disabled = isAllGtk;
             });
 
             // Check commands
@@ -1779,6 +1819,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const modal = new bootstrap.Modal(document.getElementById('modal-edit-saluran'));
             modal.show();
+        });
+    });
+
+    // Toggle Semua Warga GTK vs Peran Spesifik
+    document.querySelectorAll('.role-all-gtk-toggle').forEach(function (allCb) {
+        allCb.addEventListener('change', function () {
+            const target = this.dataset.target;
+            const isChecked = this.checked;
+            const selector = target === 'add' ? '.add-role-checkbox' : '.edit-role-checkbox';
+            document.querySelectorAll(selector).forEach(function (cb) {
+                if (isChecked) {
+                    cb.checked = false;
+                }
+                cb.disabled = isChecked;
+            });
+        });
+    });
+
+    document.querySelectorAll('.add-role-checkbox, .edit-role-checkbox').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            if (this.checked) {
+                const target = this.classList.contains('add-role-checkbox') ? 'add' : 'edit';
+                const allCb = target === 'add' ? document.getElementById('add_role_semua_gtk') : document.getElementById('edit_role_semua_gtk');
+                if (allCb) {
+                    allCb.checked = false;
+                }
+            }
         });
     });
 

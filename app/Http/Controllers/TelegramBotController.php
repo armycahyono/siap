@@ -342,13 +342,18 @@ class TelegramBotController extends Controller
             }
         }
 
+        $allowedRoles = $validated['allowed_roles'] ?? [];
+        if (in_array('semua_gtk', $allowedRoles)) {
+            $allowedRoles = ['semua_gtk'];
+        }
+
         $channel = TelegramChannel::create([
             'name' => $validated['name'],
             'code' => $code,
             'chat_id' => $validated['chat_id'] ?? null,
             'description' => $validated['description'] ?? null,
             'invite_link' => $validated['invite_link'] ?? null,
-            'allowed_roles' => $validated['allowed_roles'] ?? [],
+            'allowed_roles' => $allowedRoles,
             'enabled_commands' => $validated['enabled_commands'] ?? [],
             'show_reply_keyboard' => $request->has('show_reply_keyboard'),
             'custom_buttons' => $customButtons,
@@ -399,12 +404,17 @@ class TelegramBotController extends Controller
                 ->update(['chat_id' => null]);
         }
 
+        $allowedRoles = $validated['allowed_roles'] ?? [];
+        if (in_array('semua_gtk', $allowedRoles)) {
+            $allowedRoles = ['semua_gtk'];
+        }
+
         $channel->update([
             'name' => $validated['name'],
             'chat_id' => $newChatId,
             'description' => ! empty($validated['description']) ? $validated['description'] : null,
             'invite_link' => ! empty($validated['invite_link']) ? $validated['invite_link'] : null,
-            'allowed_roles' => $validated['allowed_roles'] ?? [],
+            'allowed_roles' => $allowedRoles,
             'enabled_commands' => $validated['enabled_commands'] ?? [],
             'show_reply_keyboard' => $request->has('show_reply_keyboard'),
             'custom_buttons' => $customButtons,

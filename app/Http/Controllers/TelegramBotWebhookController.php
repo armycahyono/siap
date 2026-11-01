@@ -574,8 +574,9 @@ class TelegramBotWebhookController extends Controller
                 '/bantuan' => 'Panduan menu & perintah grup ini',
             ];
 
-            $roleBadges = [];
-            if ($channel && ! empty($channel->allowed_roles)) {
+            $rolesText = 'Semua Warga GTK';
+            if ($channel && ! $channel->isAllGtk() && ! empty($channel->allowed_roles)) {
+                $roleBadges = [];
                 $rolesMap = [
                     'guru' => 'Guru',
                     'guru_piket' => 'Guru Piket',
@@ -596,8 +597,10 @@ class TelegramBotWebhookController extends Controller
                 foreach ($channel->allowed_roles as $r) {
                     $roleBadges[] = $rolesMap[$r] ?? ucfirst($r);
                 }
+                if (! empty($roleBadges)) {
+                    $rolesText = implode(', ', $roleBadges);
+                }
             }
-            $rolesText = ! empty($roleBadges) ? implode(', ', $roleBadges) : 'Seluruh GTK';
 
             $cmdListText = '';
             if (! empty($enabledCommands)) {

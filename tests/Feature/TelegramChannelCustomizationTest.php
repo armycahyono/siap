@@ -286,4 +286,35 @@ class TelegramChannelCustomizationTest extends TestCase
                 && str_contains($request['reply_markup'], 'Tim Piket Hari Ini');
         });
     }
+
+    public function test_semua_gtk_role_option_allows_all_gtk_members_and_displays_concisely(): void
+    {
+        $channel = TelegramChannel::create([
+            'name' => 'Grup Umum Semua GTK',
+            'code' => 'umum_gtk',
+            'chat_id' => '-100888777666',
+            'allowed_roles' => ['semua_gtk'],
+            'enabled_commands' => ['/piket'],
+            'is_active' => true,
+        ]);
+
+        $this->assertTrue($channel->isAllGtk());
+
+        // Regular user with any role should be allowed
+        $regularUser = User::create([
+            'name' => 'Guru Biasa',
+            'username' => 'guru_biasa',
+            'email' => 'guru_biasa@test.local',
+            'password' => bcrypt('password'),
+            'role_id' => $this->admin->role_id,
+            'is_active' => true,
+        ]);
+
+        $this->assertTrue($channel->isUserAllowed($regularUser));
+
+        // When viewing telegram settings index, it shows 'Semua Warga GTK' badge
+        $response = $this->actingAs($this->admin)->get(route('telegram.index'));
+        $response->assertOk();
+        $response->assertSee('Semua Warga GTK');
+    }
 }
