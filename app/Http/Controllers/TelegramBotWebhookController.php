@@ -422,6 +422,28 @@ class TelegramBotWebhookController extends Controller
     }
 
     /**
+     * Dapatkan Reply Markup (Keyboard) yang tepat sesuai konteks chat (Grup Saluran vs Japri Pribadi).
+     */
+    protected function getReplyMarkupForChat(string $chatId, ?User $user = null): ?array
+    {
+        $isGroup = str_starts_with($chatId, '-');
+        if ($isGroup) {
+            $channel = TelegramChannel::where('chat_id', $chatId)->first();
+            if ($channel) {
+                if ($channel->show_reply_keyboard) {
+                    return $channel->buildReplyKeyboard();
+                }
+
+                return ['remove_keyboard' => true];
+            }
+
+            return TelegramChannel::buildDefaultGroupKeyboard();
+        }
+
+        return $this->getMainMenuKeyboard($user);
+    }
+
+    /**
      * Command: /start
      */
     protected function commandStart(string $chatId, ?User $user, string $senderName): void
@@ -686,7 +708,7 @@ class TelegramBotWebhookController extends Controller
             'bot_reply',
             $senderName,
             'HTML',
-            $this->getMainMenuKeyboard($user)
+            $this->getReplyMarkupForChat($chatId, $user)
         );
     }
 
@@ -741,7 +763,7 @@ class TelegramBotWebhookController extends Controller
         $text .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Keterangan: (⭐) Koordinator Piket &bull; (📱) Akun Telegram Aktif</i>';
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -806,7 +828,7 @@ class TelegramBotWebhookController extends Controller
         if (! $detectedPeriod) {
             $text .= "Saat ini berada di luar jam pelajaran aktif. Silakan pantau kembali saat jam KBM berlangsung.\n";
             $text .= '━━━━━━━━━━━━━━━━━━━━';
-            $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getMainMenuKeyboard($user));
+            $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
 
             return;
         }
@@ -835,7 +857,7 @@ class TelegramBotWebhookController extends Controller
         $text .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Gunakan untuk memeriksa kehadiran guru dan ketertiban kelas.</i>';
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -878,7 +900,7 @@ class TelegramBotWebhookController extends Controller
 
         $text .= '━━━━━━━━━━━━━━━━━━━━';
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -905,7 +927,7 @@ class TelegramBotWebhookController extends Controller
             ."━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Data diperbarui secara real-time dari database piket sekolah.</i>';
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -940,7 +962,7 @@ class TelegramBotWebhookController extends Controller
                 ."3. Cari saluran grup yang sesuai (misal: <i>Grup Piket Harian</i>), klik tombol <b>Edit (ikon pensil)</b>.\n"
                 ."4. Masukkan Chat ID <code>{$chatId}</code> pada kolom <b>ID Chat Telegram</b>, lalu klik <b>Simpan</b>.";
 
-            $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $senderName, 'HTML', ['remove_keyboard' => true]);
+            $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $senderName, 'HTML', $this->getReplyMarkupForChat($chatId, $user));
 
             return;
         }
@@ -963,7 +985,7 @@ class TelegramBotWebhookController extends Controller
             ."2. <b>Lewat Web SIM Kurikulum:</b>\n"
             ."   Login ke web &rarr; Menu <b>Profil Saya</b> &rarr; masukkan Chat ID <code>{$chatId}</code> pada kolom Telegram Chat ID.";
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $senderName, 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $senderName, 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -1123,7 +1145,7 @@ class TelegramBotWebhookController extends Controller
         $text .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Sumber: Kalender Akademik & Agenda Kegiatan Kurikulum.</i>';
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -1161,7 +1183,7 @@ class TelegramBotWebhookController extends Controller
         $text .= "━━━━━━━━━━━━━━━━━━━━\n"
             ."<i>Total tamu berkunjung hari ini: {$guests->count()} orang.</i>";
 
-        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getMainMenuKeyboard($user));
+        $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4613,7 +4635,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Data real-time dari Meja Piket & Presensi SIAP</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4654,7 +4676,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Data bersumber dari Jurnal Presensi KBM Guru Mapel</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4700,7 +4722,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Laporan evaluasi untuk Tim Kedisiplinan, BK, dan Wali Kelas</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4757,7 +4779,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Data sinkron dengan Modul Izin GTK & Meja Piket SIAP</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4804,7 +4826,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Verifikasi surat perizinan resmi meja piket sekolah</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4848,7 +4870,7 @@ class TelegramBotWebhookController extends Controller
             ."━━━━━━━━━━━━━━━━━━━━\n"
             .'Status: <b>Jurnal Siap Ditutup & Diserahkan</b> ke Waka/Pimpinan.';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4890,7 +4912,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Data bersumber dari Kalender Pendidikan Resmi SMK PGRI Kras</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4938,7 +4960,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Persiapkan administrasi dan perangkat pembelajaran dengan baik</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -4998,7 +5020,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Data resmi dari Modul Supervisi Akademik SIAP</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -5047,7 +5069,7 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Keluarga Besar SMK PGRI Kras</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -5084,7 +5106,7 @@ class TelegramBotWebhookController extends Controller
             ."━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 
     /**
@@ -5113,6 +5135,6 @@ class TelegramBotWebhookController extends Controller
         $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>Pemberitahuan Resmi SMK PGRI Kras</i>';
 
-        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML');
+        $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
 }

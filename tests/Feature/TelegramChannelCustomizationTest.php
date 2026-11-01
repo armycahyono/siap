@@ -260,8 +260,8 @@ class TelegramChannelCustomizationTest extends TestCase
         $response = $this->postJson(route('telegram.webhook'), [
             'message' => [
                 'chat' => [
-                    'id' => -1004409003378,
-                    'title' => 'Pak Piket Sekolah',
+                    'id' => -100999888777,
+                    'title' => 'Grup Baru Belum Terdaftar',
                     'type' => 'supergroup',
                 ],
                 'from' => [
@@ -275,7 +275,7 @@ class TelegramChannelCustomizationTest extends TestCase
         $response->assertOk();
 
         // An auto-discovered channel should now exist
-        $channel = TelegramChannel::where('chat_id', '-1004409003378')->first();
+        $channel = TelegramChannel::where('chat_id', '-100999888777')->first();
         $this->assertNotNull($channel);
         $this->assertTrue($channel->show_reply_keyboard);
 

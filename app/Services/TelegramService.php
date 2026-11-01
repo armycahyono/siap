@@ -115,8 +115,8 @@ class TelegramService
             ];
 
             if ($replyMarkup !== null) {
-                // Jika pesan ditujukan ke grup Telegram (chatId diawali tanda '-') dan membawa reply keyboard
-                if (str_starts_with($chatId, '-') && isset($replyMarkup['keyboard'])) {
+                // Jika pesan ditujukan ke grup Telegram (chatId diawali tanda '-')
+                if (str_starts_with($chatId, '-')) {
                     $channel = TelegramChannel::where('chat_id', $chatId)->first();
                     if ($channel) {
                         if ($channel->show_reply_keyboard) {
@@ -124,7 +124,7 @@ class TelegramService
                         } else {
                             $replyMarkup = ['remove_keyboard' => true];
                         }
-                    } else {
+                    } elseif (isset($replyMarkup['keyboard'])) {
                         // Jika grup belum terdaftar di database, tetap sediakan keyboard grup default
                         $replyMarkup = TelegramChannel::buildDefaultGroupKeyboard();
                     }
