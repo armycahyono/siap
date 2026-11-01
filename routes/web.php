@@ -396,6 +396,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/saluran-grup/{channel}/invite', [TelegramBotController::class, 'inviteChannelMembers'])->name('telegram.channel.invite');
         Route::post('/saluran-grup/{channel}/send-keyboard', [TelegramBotController::class, 'sendKeyboardToChannel'])->name('telegram.channel.send-keyboard');
         Route::post('/saluran-grup/send-keyboard-all', [TelegramBotController::class, 'sendKeyboardToAllChannels'])->name('telegram.channel.send-keyboard-all');
+
+        // Template Pesan & Balasan Bot Kustom
+        Route::put('/template/{template}', [TelegramBotController::class, 'updateTemplate'])->name('telegram.template.update');
+        Route::post('/template/{template}/reset', [TelegramBotController::class, 'resetTemplate'])->name('telegram.template.reset');
+        Route::post('/template/reset-all', [TelegramBotController::class, 'resetAllTemplates'])->name('telegram.template.reset-all');
     });
 
     // Catatan & Masukan Perbaikan Aplikasi (Terbuka untuk semua pengguna login)

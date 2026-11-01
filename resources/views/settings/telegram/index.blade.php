@@ -100,6 +100,12 @@
                     <span class="badge bg-secondary-lt ms-1">{{ $logs->total() }}</span>
                 </a>
             </li>
+            <li class="nav-item" role="presentation">
+                <a href="#tab-templates" class="nav-link fw-bold py-2" id="nav-templates-tab" data-bs-toggle="tab" role="tab" aria-controls="tab-templates" aria-selected="false">
+                    <i class="ti ti-message-code me-1 text-teal fs-3"></i> Template Balasan Bot
+                    <span class="badge bg-teal-lt ms-1">{{ $messageTemplates->count() }}</span>
+                </a>
+            </li>
         </ul>
     </div>
 </div>
@@ -722,6 +728,127 @@
             @endif
         </div>
     </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 5: TEMPLATE BALASAN & PESAN BOT -->
+    <!-- ===================================================================== -->
+    <div class="tab-pane fade" id="tab-templates" role="tabpanel" aria-labelledby="nav-templates-tab">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h4 class="card-title fw-bold text-dark m-0 d-flex align-items-center">
+                        <i class="ti ti-message-code text-teal me-2 fs-2"></i> Kustomisasi Template Balasan & Pesan Bot
+                    </h4>
+                    <div class="text-muted small mt-1">
+                        Sesuaikan kata-kata, salam, format tata letak, dan emoji balasan bot sesuai kebutuhan dan karakteristik sekolah.
+                    </div>
+                </div>
+                <div>
+                    <form action="{{ route('telegram.template.reset-all') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengembalikan SEMUA template balasan bot ke teks standar bawaan pabrik?');">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="ti ti-refresh me-1"></i> Reset Semua ke Bawaan
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="card-body p-3 bg-light-subtle border-bottom">
+                <div class="d-flex align-items-start gap-2 text-secondary small">
+                    <i class="ti ti-info-circle text-teal fs-2 mt-1"></i>
+                    <div>
+                        <strong>Panduan Tag Variabel:</strong> Teks dalam kurung kurawal seperti <code>{tanggal}</code>, <code>{nama_sekolah}</code>, atau <code>{daftar_petugas}</code> merupakan data otomatis dari sistem. Jangan ubah nama variabel di dalam kurung kurawal. Bot Telegram mendukung format HTML dasar seperti <code>&lt;b&gt;Tebal&lt;/b&gt;</code>, <code>&lt;i&gt;Miring&lt;/i&gt;</code>, dan <code>&lt;code&gt;Kode&lt;/code&gt;</code>.
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 230px;">Perintah & Nama Template</th>
+                            <th style="min-width: 320px;">Pratinjau Format Balasan</th>
+                            <th style="width: 250px;">Variabel Tersedia</th>
+                            <th style="width: 100px;" class="text-center">Status</th>
+                            <th style="width: 140px;" class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($messageTemplates as $tpl)
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-teal-lt p-2 me-2">
+                                            <i class="ti ti-terminal-2 fs-3"></i>
+                                        </span>
+                                        <div>
+                                            <div class="fw-bold text-dark font-monospace">{{ $tpl->command ?? '-' }}</div>
+                                            <div class="small fw-semibold text-secondary">{{ $tpl->name }}</div>
+                                            <span class="badge bg-secondary-lt mt-1">{{ ucfirst($tpl->category) }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="bg-light p-2 rounded border font-monospace text-dark small" style="white-space: pre-wrap; max-height: 120px; overflow-y: auto; font-size: 0.78rem;">{{ $tpl->template ?: $tpl->default_template }}</div>
+                                    @if($tpl->description)
+                                        <div class="text-muted small mt-1">
+                                            <i class="ti ti-bulb text-warning me-1"></i>{{ $tpl->description }}
+                                        </div>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @if(is_array($tpl->available_placeholders))
+                                            @foreach($tpl->available_placeholders as $varKey => $varDesc)
+                                                <span class="badge bg-azure-lt font-monospace text-lowercase" title="{{ $varDesc }}">
+                                                    {{ '{' . $varKey . '}' }}
+                                                </span>
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted small">-</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    @if($tpl->is_active)
+                                        <span class="badge bg-success-lt fw-bold"><i class="ti ti-check me-1"></i> Aktif</span>
+                                    @else
+                                        <span class="badge bg-secondary-lt fw-bold"><i class="ti ti-pause me-1"></i> Standar</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-template"
+                                            data-id="{{ $tpl->id }}"
+                                            data-name="{{ $tpl->name }}"
+                                            data-command="{{ $tpl->command }}"
+                                            data-category="{{ $tpl->category }}"
+                                            data-description="{{ $tpl->description }}"
+                                            data-template="{{ $tpl->template ?: $tpl->default_template }}"
+                                            data-placeholders='@json($tpl->available_placeholders)'
+                                            data-active="{{ $tpl->is_active ? '1' : '0' }}"
+                                            title="Edit template ini">
+                                            <i class="ti ti-pencil me-1"></i> Edit
+                                        </button>
+                                        <form action="{{ route('telegram.template.reset', $tpl->id) }}" method="POST" onsubmit="return confirm('Kembalikan template {{ $tpl->name }} ke teks standar bawaan?');">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reset ke teks standar">
+                                                <i class="ti ti-refresh"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    Belum ada data template pesan bot.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ========================================================================= -->
@@ -1222,6 +1349,78 @@
         </div>
     </div>
 </div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EDIT TEMPLATE PESAN BOT -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-edit-template" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <form id="form-edit-template" method="POST" class="modal-content shadow">
+            @csrf
+            @method('PUT')
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold d-flex align-items-center">
+                    <i class="ti ti-edit me-2 fs-2"></i>
+                    Edit Balasan Bot: <span id="modal_edit_tpl_title" class="ms-1">-</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 modal-body-scrollable">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label text-muted small mb-0">Nama Template & Perintah</label>
+                        <div class="h4 fw-bold text-dark d-flex align-items-center mb-0">
+                            <span id="tpl_command_badge" class="badge bg-primary me-2 font-monospace">/command</span>
+                            <span id="tpl_name_text">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="form-check form-switch d-inline-block mt-2">
+                            <input class="form-check-input" type="checkbox" name="is_active" value="1" id="edit_tpl_is_active" checked>
+                            <label class="form-check-label fw-bold" for="edit_tpl_is_active">Aktifkan Template</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12" id="tpl_desc_container">
+                        <div class="alert alert-info py-2 px-3 small mb-0 d-flex align-items-center">
+                            <i class="ti ti-info-circle me-2 fs-3"></i>
+                            <span id="tpl_desc_text">-</span>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="ti ti-code me-1 text-teal"></i> Variabel Dinamis (Klik untuk Sisipkan ke Teks)</span>
+                            <small class="text-muted">Klik salah satu tag:</small>
+                        </label>
+                        <div id="tpl_placeholders_container" class="d-flex flex-wrap gap-2 p-2 bg-light rounded border">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label required fw-bold text-dark d-flex justify-content-between">
+                            <span>Isi Teks Balasan Bot</span>
+                            <small class="text-muted">Mendukung format HTML (&lt;b&gt;, &lt;i&gt;, &lt;code&gt;)</small>
+                        </label>
+                        <textarea name="template" id="edit_tpl_template" class="form-control font-monospace" rows="12" required style="font-size: 0.88rem; line-height: 1.5;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <div class="small text-muted">
+                    <i class="ti ti-help me-1"></i> Tag di dalam kurung kurawal <code>{...}</code> akan diganti dengan data real-time saat bot membalas.
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary shadow-sm">
+                        <i class="ti ti-check me-1"></i> Simpan Template Balasan
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('styles')
@@ -1470,6 +1669,66 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             const modal = new bootstrap.Modal(document.getElementById('modal-edit-saluran'));
+            modal.show();
+        });
+    });
+
+    // =========================================================================
+    // EDIT TEMPLATE PESAN BOT
+    // =========================================================================
+    function insertTagAtCursor(textareaId, tag) {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        textarea.value = text.substring(0, start) + tag + text.substring(end);
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+    }
+
+    document.querySelectorAll('.btn-edit-template').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            const command = this.dataset.command;
+            const description = this.dataset.description;
+            const template = this.dataset.template;
+            const active = this.dataset.active === '1';
+
+            let placeholders = {};
+            try {
+                placeholders = JSON.parse(this.dataset.placeholders || '{}');
+            } catch (e) {
+                placeholders = {};
+            }
+
+            const form = document.getElementById('form-edit-template');
+            form.action = '{{ url("pengaturan/telegram/template") }}/' + id;
+
+            document.getElementById('modal_edit_tpl_title').textContent = name;
+            document.getElementById('tpl_name_text').textContent = name;
+            document.getElementById('tpl_command_badge').textContent = command || '/';
+            document.getElementById('tpl_desc_text').textContent = description || 'Template balasan perintah bot.';
+            document.getElementById('edit_tpl_template').value = template;
+            document.getElementById('edit_tpl_is_active').checked = active;
+
+            // Render clickable placeholders
+            const container = document.getElementById('tpl_placeholders_container');
+            container.innerHTML = '';
+            for (const [key, desc] of Object.entries(placeholders)) {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'btn btn-xs btn-outline-primary font-monospace';
+                chip.title = desc;
+                chip.textContent = '{' + key + '}';
+                chip.addEventListener('click', function () {
+                    insertTagAtCursor('edit_tpl_template', '{' + key + '}');
+                });
+                container.appendChild(chip);
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modal-edit-template'));
             modal.show();
         });
     });

@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Supervision;
 use App\Models\TelegramChannel;
+use App\Models\TelegramMessageTemplate;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
@@ -54,6 +55,9 @@ class TelegramBotController extends Controller
         $commandCategories = TelegramChannel::getCommandCategories();
         $commandPresets = TelegramChannel::getCommandPresets();
 
+        // Template Pesan & Balasan Bot Kustom
+        $messageTemplates = TelegramMessageTemplate::orderBy('id')->get();
+
         return view('settings.telegram.index', compact(
             'setting',
             'logs',
@@ -67,7 +71,8 @@ class TelegramBotController extends Controller
             'availableRoles',
             'commandDefinitions',
             'commandCategories',
-            'commandPresets'
+            'commandPresets',
+            'messageTemplates'
         ));
     }
 
@@ -525,5 +530,37 @@ class TelegramBotController extends Controller
         }
 
         return back()->with('success', "Tombol menu keyboard berhasil dikirimkan ke {$sentCount} grup Telegram sekolah.");
+    }
+
+    public function updateTemplate(Request $request, TelegramMessageTemplate $template): RedirectResponse
+    {
+        $validated = $request->validate([
+            'template' => 'required|string',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $template->update([
+            'template' => $validated['template'],
+            'is_active' => $request->has('is_active'),
+        ]);
+
+        return redirect()->route('telegram.index')->with('success', "Template balasan '{$template->name}' berhasil diperbarui.");
+    }
+
+    public function resetTemplate(TelegramMessageTemplate $template): RedirectResponse
+    {
+        $template->resetToDefault();
+
+        return redirect()->route('telegram.index')->with('success', "Template balasan '{$template->name}' telah dikembalikan ke format default pabrik.");
+    }
+
+    public function resetAllTemplates(): RedirectResponse
+    {
+        $templates = TelegramMessageTemplate::all();
+        foreach ($templates as $t) {
+            $t->resetToDefault();
+        }
+
+        return redirect()->route('telegram.index')->with('success', 'Seluruh template balasan bot telah dikembalikan ke format default pabrik.');
     }
 }

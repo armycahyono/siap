@@ -21,6 +21,7 @@ use App\Models\Student;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\Supervision;
 use App\Models\TelegramChannel;
+use App\Models\TelegramMessageTemplate;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\TelegramService;
@@ -454,11 +455,14 @@ class TelegramBotWebhookController extends Controller
             $channelTitle = $channel?->name ?? 'Grup Sekolah';
             $keyboard = $channel?->buildReplyKeyboard() ?? TelegramChannel::buildDefaultGroupKeyboard();
 
-            $msg = "🤖 <b>MENU TOMBOL INTERAKTIF SIAP</b>\n"
+            $msg = TelegramMessageTemplate::render('start_group', [
+                'nama_grup' => $channelTitle,
+                'nama_pengirim' => $senderName,
+            ], "🤖 <b>MENU TOMBOL INTERAKTIF SIAP</b>\n"
                 ."━━━━━━━━━━━━━━━━━━━━\n"
                 ."Grup: <b>{$channelTitle}</b>\n\n"
                 ."Tombol keyboard cepat telah diaktifkan untuk grup ini. Silakan gunakan tombol-tombol menu di bawah layar untuk operasional harian sekolah.\n\n"
-                .'<i>💡 Jika tombol keyboard tertutup, klik ikon keyboard (ikon empat kotak/titik) di samping bilah tulis pesan Telegram Anda.</i>';
+                .'<i>💡 Jika tombol keyboard tertutup, klik ikon keyboard (ikon empat kotak/titik) di samping bilah tulis pesan Telegram Anda.</i>');
 
             $this->telegramService->sendMessage(
                 $chatId,
@@ -741,27 +745,27 @@ class TelegramBotWebhookController extends Controller
         $journal = PiketJournal::whereDate('date', Carbon::today()->format('Y-m-d'))->first();
         $journalStatus = $journal ? strtoupper($journal->status) : 'BELUM DIBUAT';
 
-        $text = "📋 <b>TIM PIKET HARI INI</b>\n"
-            ."🗓️ <b>{$todayFormatted}</b>\n"
-            ."Tahun Ajaran: {$academicYear}\n"
-            ."Status Jurnal: <code>{$journalStatus}</code>\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $daftarPetugas = '';
         if ($schedules->isEmpty()) {
-            $text .= "<i>Belum ada petugas piket yang dijadwalkan untuk hari {$todayDay}.</i>\n";
+            $daftarPetugas = "<i>Belum ada petugas piket yang dijadwalkan untuk hari {$todayDay}.</i>";
         } else {
             $no = 1;
             foreach ($schedules as $sched) {
                 $roleLabel = ($sched->role === 'koordinator') ? ' ⭐ (Koordinator)' : '';
                 $teacherName = $sched->teacher?->name ?? 'Belum Ditugaskan';
                 $hasTelegram = $sched->teacher?->telegram_chat_id ? '📱' : '⚪';
-                $text .= "{$no}. <b>{$teacherName}</b>{$roleLabel} {$hasTelegram}\n";
+                $daftarPetugas .= "{$no}. <b>{$teacherName}</b>{$roleLabel} {$hasTelegram}\n";
                 $no++;
             }
+            $daftarPetugas = rtrim($daftarPetugas);
         }
 
-        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Keterangan: (⭐) Koordinator Piket &bull; (📱) Akun Telegram Aktif</i>';
+        $text = TelegramMessageTemplate::render('piket', [
+            'tanggal' => $todayFormatted,
+            'tahun_ajaran' => $academicYear,
+            'status_jurnal' => $journalStatus,
+            'daftar_petugas' => $daftarPetugas,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -820,42 +824,38 @@ class TelegramBotWebhookController extends Controller
 
         $academicYear = $this->getOperationalAcademicYear();
 
-        $text = "🏫 <b>JADWAL PELAJARAN KELAS SAAT INI</b>\n"
-            ."⏰ <b>Waktu:</b> {$currentTime} WIB\n"
-            ."📌 <b>Status:</b> {$periodLabel}\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $daftarJadwal = '';
         if (! $detectedPeriod) {
-            $text .= "Saat ini berada di luar jam pelajaran aktif. Silakan pantau kembali saat jam KBM berlangsung.\n";
-            $text .= '━━━━━━━━━━━━━━━━━━━━';
-            $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
-
-            return;
-        }
-
-        // Ambil jadwal pelajaran untuk jam ke-$detectedPeriod
-        $schedules = LessonSchedule::where('academic_year', $academicYear)
-            ->where('day', $todayDay)
-            ->where('start_period', '<=', $detectedPeriod)
-            ->where('end_period', '>=', $detectedPeriod)
-            ->with(['classroom', 'subject', 'teacher'])
-            ->get();
-
-        if ($schedules->isEmpty()) {
-            $text .= "<i>Tidak ada data jadwal pelajaran untuk Jam ke-{$detectedPeriod}.</i>\n";
+            $daftarJadwal = '<i>Saat ini berada di luar jam pelajaran aktif. Silakan pantau kembali saat jam KBM berlangsung.</i>';
         } else {
-            foreach ($schedules as $s) {
-                $className = $s->classroom?->name ?? 'Kelas ?';
-                $subjectName = $s->subject?->name ?? 'Mapel ?';
-                $teacherName = $s->teacher?->formatted_short_name ?? ($s->teacher?->name ?? 'Guru ?');
+            // Ambil jadwal pelajaran untuk jam ke-$detectedPeriod
+            $schedules = LessonSchedule::where('academic_year', $academicYear)
+                ->where('day', $todayDay)
+                ->where('start_period', '<=', $detectedPeriod)
+                ->where('end_period', '>=', $detectedPeriod)
+                ->with(['classroom', 'subject', 'teacher'])
+                ->get();
 
-                $text .= "• <b>{$className}:</b> {$subjectName}\n"
-                    ."  👨‍🏫 {$teacherName}\n";
+            if ($schedules->isEmpty()) {
+                $daftarJadwal = "<i>Tidak ada data jadwal pelajaran untuk Jam ke-{$detectedPeriod}.</i>";
+            } else {
+                foreach ($schedules as $s) {
+                    $className = $s->classroom?->name ?? 'Kelas ?';
+                    $subjectName = $s->subject?->name ?? 'Mapel ?';
+                    $teacherName = $s->teacher?->formatted_short_name ?? ($s->teacher?->name ?? 'Guru ?');
+
+                    $daftarJadwal .= "• <b>{$className}:</b> {$subjectName}\n"
+                        ."  👨‍🏫 {$teacherName}\n";
+                }
+                $daftarJadwal = rtrim($daftarJadwal);
             }
         }
 
-        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Gunakan untuk memeriksa kehadiran guru dan ketertiban kelas.</i>';
+        $text = TelegramMessageTemplate::render('jadwal', [
+            'waktu' => $currentTime,
+            'status_jam' => $periodLabel,
+            'daftar_jadwal' => $daftarJadwal,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -875,12 +875,9 @@ class TelegramBotWebhookController extends Controller
             ->with(['absentTeacher', 'invalTeacher', 'classroom', 'subject'])
             ->get();
 
-        $text = "🚨 <b>STATUS KELAS KOSONG & INVAL HARI INI</b>\n"
-            .'🗓️ <b>'.Carbon::today()->translatedFormat('l, d F Y')."</b>\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $daftarInval = '';
         if ($invals->isEmpty()) {
-            $text .= "✅ <i>Alhamdulillah, belum ada laporan kelas kosong atau guru tidak hadir hari ini. Semua KBM berjalan normal.</i>\n";
+            $daftarInval = '✅ <i>Alhamdulillah, belum ada laporan kelas kosong atau guru tidak hadir hari ini. Semua KBM berjalan normal.</i>';
         } else {
             foreach ($invals as $inv) {
                 $class = $inv->classroom?->name ?? '-';
@@ -890,15 +887,19 @@ class TelegramBotWebhookController extends Controller
                 $period = "Jam ke-{$inv->period_start} s/d {$inv->period_end}";
                 $statusIcon = $inv->inval_teacher_id ? '🔄 Terinval' : '⚠️ Butuh Inval';
 
-                $text .= "• <b>{$class} - {$subject}</b> ({$period})\n"
+                $daftarInval .= "• <b>{$class} - {$subject}</b> ({$period})\n"
                     ."  👤 Guru Berhalangan: {$absent} ({$inv->reason})\n"
                     ."  👮 Guru Pengganti: <b>{$substitute}</b>\n"
                     .($inv->assignment_material ? "  📝 Tugas: {$inv->assignment_material}\n" : '')
                     ."  📌 Status: <code>{$statusIcon}</code>\n\n";
             }
+            $daftarInval = rtrim($daftarInval);
         }
 
-        $text .= '━━━━━━━━━━━━━━━━━━━━';
+        $text = TelegramMessageTemplate::render('inval', [
+            'tanggal' => Carbon::today()->translatedFormat('l, d F Y'),
+            'daftar_inval' => $daftarInval,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -916,16 +917,14 @@ class TelegramBotWebhookController extends Controller
         $totalIncidents = PiketIncident::whereDate('incident_date', $today)->count();
         $totalGuests = PiketGuest::whereDate('visit_date', $today)->count();
 
-        $text = "📊 <b>REKAP CEPAT PIKET HARI INI</b>\n"
-            .'🗓️ <b>'.Carbon::today()->translatedFormat('l, d F Y')."</b>\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n"
-            ."🔔 <b>Siswa Terlambat:</b> {$latePermits} siswa\n"
-            ."🏃 <b>Izin Keluar / Pulang Cepat:</b> {$leavePermits} siswa\n"
-            ."📑 <b>Total Surat Izin Diterbitkan:</b> {$totalPermits} surat\n"
-            ."⚠️ <b>Laporan Kejadian/Kasus:</b> {$totalIncidents} kasus\n"
-            ."👥 <b>Buku Tamu Berkunjung:</b> {$totalGuests} orang\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Data diperbarui secara real-time dari database piket sekolah.</i>';
+        $text = TelegramMessageTemplate::render('rekap', [
+            'tanggal' => Carbon::today()->translatedFormat('l, d F Y'),
+            'total_terlambat' => $latePermits,
+            'total_izin_keluar' => $leavePermits,
+            'total_surat_izin' => $totalPermits,
+            'total_kasus' => $totalIncidents,
+            'total_tamu' => $totalGuests,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -1121,12 +1120,9 @@ class TelegramBotWebhookController extends Controller
             ->take(8)
             ->get();
 
-        $text = "🗓️ <b>AGENDA & KEGIATAN SEKOLAH TERDEKAT</b>\n"
-            ."Periode: {$today->translatedFormat('d M')} s/d {$nextWeek->translatedFormat('d M Y')}\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $daftarAgenda = '';
         if ($events->isEmpty()) {
-            $text .= "✅ <i>Belum ada agenda khusus atau kegiatan kalender akademik dalam 7 hari ke depan. KBM berjalan normal.</i>\n";
+            $daftarAgenda = '✅ <i>Belum ada agenda khusus atau kegiatan kalender akademik dalam 7 hari ke depan. KBM berjalan normal.</i>';
         } else {
             foreach ($events as $ev) {
                 $start = Carbon::parse($ev->start_date)->translatedFormat('d M Y');
@@ -1134,16 +1130,19 @@ class TelegramBotWebhookController extends Controller
                 $dateRange = ($start === $end) ? $start : "{$start} s/d {$end}";
                 $holidayBadge = $ev->is_holiday ? ' 🔴 [LIBUR]' : '';
 
-                $text .= "• <b>{$ev->title}</b>{$holidayBadge}\n"
+                $daftarAgenda .= "• <b>{$ev->title}</b>{$holidayBadge}\n"
                     ."  📅 {$dateRange}\n"
                     .($ev->location ? "  📍 Lokasi: {$ev->location}\n" : '')
                     .($ev->description ? "  📝 <i>{$ev->description}</i>\n" : '')
                     ."\n";
             }
+            $daftarAgenda = rtrim($daftarAgenda);
         }
 
-        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Sumber: Kalender Akademik & Agenda Kegiatan Kurikulum.</i>';
+        $text = TelegramMessageTemplate::render('agenda', [
+            'periode' => "{$today->translatedFormat('d M')} s/d {$nextWeek->translatedFormat('d M Y')}",
+            'daftar_agenda' => $daftarAgenda,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -1159,12 +1158,9 @@ class TelegramBotWebhookController extends Controller
             ->orderBy('check_in_time', 'desc')
             ->get();
 
-        $text = "👥 <b>BUKU TAMU PIKET HARI INI</b>\n"
-            ."🗓️ <b>{$today->translatedFormat('l, d F Y')}</b>\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $daftarTamu = '';
         if ($guests->isEmpty()) {
-            $text .= "📝 <i>Belum ada catatan buku tamu yang masuk hari ini.</i>\n";
+            $daftarTamu = '📝 <i>Belum ada catatan buku tamu yang masuk hari ini.</i>';
         } else {
             foreach ($guests as $idx => $g) {
                 $num = $idx + 1;
@@ -1172,16 +1168,20 @@ class TelegramBotWebhookController extends Controller
                 $out = $g->check_out_time ? substr($g->check_out_time, 0, 5) : 'Belum selesai';
                 $inst = $g->institution ? " ({$g->institution})" : '';
 
-                $text .= "<b>{$num}. {$g->guest_name}</b>{$inst}\n"
+                $daftarTamu .= "<b>{$num}. {$g->guest_name}</b>{$inst}\n"
                     ."   🕐 Waktu: {$in} - {$out} WIB\n"
                     ."   🎯 Keperluan: {$g->purpose}\n"
                     .($g->meet_with ? "   👤 Bertemu: {$g->meet_with}\n" : '')
                     ."\n";
             }
+            $daftarTamu = rtrim($daftarTamu);
         }
 
-        $text .= "━━━━━━━━━━━━━━━━━━━━\n"
-            ."<i>Total tamu berkunjung hari ini: {$guests->count()} orang.</i>";
+        $text = TelegramMessageTemplate::render('tamu', [
+            'tanggal' => $today->translatedFormat('l, d F Y'),
+            'daftar_tamu' => $daftarTamu,
+            'total_tamu' => $guests->count(),
+        ]);
 
         $this->telegramService->sendMessage($chatId, $text, 'bot_reply', $user?->name ?? 'User', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -5050,24 +5050,23 @@ class TelegramBotWebhookController extends Controller
 
         $todayFormatted = $now->translatedFormat('l, d F Y');
 
-        $msg = "🎂 <b>INFO ULANG TAHUN KELUARGA GTK</b>\n"
-            ."📅 <b>Hari Ini:</b> {$todayFormatted}\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $daftarUltah = '';
         if ($birthdayUsers->isEmpty()) {
-            $msg .= "ℹ️ <i>Hari ini tidak ada Bapak/Ibu Guru atau Karyawan yang berulang tahun.</i>\n";
+            $daftarUltah = 'ℹ️ <i>Hari ini tidak ada Bapak/Ibu Guru atau Karyawan yang berulang tahun.</i>';
         } else {
-            $msg .= "🎉 <b>Selamat Ulang Tahun kepada:</b>\n\n";
+            $daftarUltah = "🎉 <b>Selamat Ulang Tahun kepada:</b>\n\n";
             foreach ($birthdayUsers as $u) {
                 $role = $u->role?->name ?? 'GTK';
-                $msg .= "🌟 <b>{$u->name}</b>\n"
+                $daftarUltah .= "🌟 <b>{$u->name}</b>\n"
                     ."   Jabatan: {$role}\n\n";
             }
-            $msg .= "<i>Semoga senantiasa diberikan kesehatan, keberkahan usia, kebahagiaan, serta kemudahan dalam setiap langkah pengabdian di SMK PGRI Kras. Aamiin 🤲</i>\n";
+            $daftarUltah .= '<i>Semoga senantiasa diberikan kesehatan, keberkahan usia, kebahagiaan, serta kemudahan dalam setiap langkah pengabdian di SMK PGRI Kras. Aamiin 🤲</i>';
         }
 
-        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Keluarga Besar SMK PGRI Kras</i>';
+        $msg = TelegramMessageTemplate::render('ultah', [
+            'tanggal' => $todayFormatted,
+            'daftar_ultah' => $daftarUltah,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -5090,21 +5089,18 @@ class TelegramBotWebhookController extends Controller
         $address = $setting?->address ?: 'Jl. Raya Kras No. 123 Kras, Kediri, Jawa Timur';
         $phone = $setting?->phone ?: '(0354) 479xxx';
 
-        $msg = "🏫 <b>PROFIL & INFORMASI RESMI SEKOLAH</b>\n"
-            ."<b>{$schoolName}</b>\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n"
-            ."📌 <b>NPSN:</b> <code>{$npsn}</code>\n"
-            ."👤 <b>Kepala Sekolah:</b> {$principal}\n"
-            ."📅 <b>Tahun Pelajaran:</b> {$academicYear}\n\n"
-            ."📊 <b>Data Statistik Warga Sekolah:</b>\n"
-            ."• 👥 Peserta Didik Aktif: <b>{$totalStudents}</b> siswa\n"
-            ."• 🏫 Rombongan Belajar: <b>{$totalClassrooms}</b> kelas\n"
-            ."• 👨‍🏫 Dewan Guru Pengajar: <b>{$totalTeachers}</b> guru\n"
-            ."• 💼 Tenaga Kependidikan: <b>{$totalStaff}</b> staf/TU\n\n"
-            ."📍 <b>Alamat:</b> {$address}\n"
-            ."📞 <b>Kontak:</b> {$phone}\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+        $msg = TelegramMessageTemplate::render('info_sekolah', [
+            'nama_sekolah' => $schoolName,
+            'npsn' => $npsn,
+            'kepala_sekolah' => $principal,
+            'tahun_ajaran' => $academicYear,
+            'total_siswa' => $totalStudents,
+            'total_rombel' => $totalClassrooms,
+            'total_guru' => $totalTeachers,
+            'total_staf' => $totalStaff,
+            'alamat' => $address,
+            'kontak' => $phone,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
@@ -5119,21 +5115,20 @@ class TelegramBotWebhookController extends Controller
             ->latest()
             ->first();
 
-        $msg = "📢 <b>PENGUMUMAN & EDARAN RESMI TERBARU</b>\n"
-            ."━━━━━━━━━━━━━━━━━━━━\n";
-
+        $isiPengumuman = '';
+        $waktuTerbit = '-';
         if (! $latestBroadcast) {
-            $msg .= "ℹ️ <i>Belum ada siaran pengumuman resmi yang dipublikasikan dalam sistem.</i>\n";
+            $isiPengumuman = 'ℹ️ <i>Belum ada siaran pengumuman resmi yang dipublikasikan dalam sistem.</i>';
         } else {
-            $tgl = $latestBroadcast->created_at ? $latestBroadcast->created_at->translatedFormat('l, d F Y H:i') : '-';
+            $waktuTerbit = $latestBroadcast->created_at ? $latestBroadcast->created_at->translatedFormat('l, d F Y H:i') : '-';
             $isi = strip_tags($latestBroadcast->message);
-
-            $msg .= "🕒 <b>Waktu Terbit:</b> {$tgl} WIB\n\n"
-                ."{$isi}\n\n";
+            $isiPengumuman = "🕒 <b>Waktu Terbit:</b> {$waktuTerbit} WIB\n\n{$isi}";
         }
 
-        $msg .= "━━━━━━━━━━━━━━━━━━━━\n"
-            .'<i>Pemberitahuan Resmi SMK PGRI Kras</i>';
+        $msg = TelegramMessageTemplate::render('pengumuman', [
+            'waktu_terbit' => $waktuTerbit,
+            'isi_pengumuman' => $isiPengumuman,
+        ]);
 
         $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $user?->name ?? 'Petugas', 'HTML', $this->getReplyMarkupForChat($chatId, $user));
     }
