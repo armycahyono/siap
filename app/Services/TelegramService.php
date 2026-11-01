@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Announcement;
+use App\Models\Department;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketDutySwap;
@@ -1493,13 +1494,17 @@ class TelegramService
             }
         } elseif ($announcement->target_type === 'department') {
             $deptIds = $announcement->target_departments ?? [];
-            $deptUsers = User::whereNotNull('telegram_chat_id')
+            $headIds = Department::whereIn('id', $deptIds)
+                ->whereNotNull('head_of_department_id')
+                ->pluck('head_of_department_id')
+                ->filter()
+                ->unique();
+
+            $deptUsers = User::whereIn('id', $headIds)
+                ->whereNotNull('telegram_chat_id')
                 ->where('telegram_chat_id', '!=', '')
                 ->where('is_active', true)
-                ->get()
-                ->filter(function ($u) use ($deptIds) {
-                    return Department::whereIn('id', $deptIds)->where('head_of_department_id', $u->id)->exists();
-                });
+                ->get();
 
             foreach ($deptUsers as $u) {
                 $targetChatIds->push($u->telegram_chat_id);

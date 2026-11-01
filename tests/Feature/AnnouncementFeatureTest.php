@@ -353,4 +353,36 @@ class AnnouncementFeatureTest extends TestCase
                 && str_contains($request['text'], 'Bpk. Kepala Sekolah');
         });
     }
+
+    public function test_announcement_with_target_department_and_send_telegram(): void
+    {
+        $this->kajur->update(['telegram_chat_id' => '999888777']);
+
+        Http::swap(new Factory);
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 999]], 200),
+        ]);
+
+        $response = $this->actingAs($this->principal)->post(route('announcements.store'), [
+            'title' => 'Rapat koordinasi jurusan',
+            'content' => 'persiapan TEVA',
+            'target_type' => 'department',
+            'target_departments' => [$this->department->id],
+            'send_telegram' => '1',
+            'is_pinned' => '0',
+            'is_active' => '1',
+        ]);
+
+        $response->assertRedirect(route('announcements.index'));
+        $this->assertDatabaseHas('announcements', [
+            'title' => 'Rapat koordinasi jurusan',
+            'target_type' => 'department',
+        ]);
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && (string) $request['chat_id'] === '999888777'
+                && str_contains($request['text'], 'Rapat koordinasi jurusan');
+        });
+    }
 }
