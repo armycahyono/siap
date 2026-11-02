@@ -1122,21 +1122,39 @@
                         @include('layouts._notifications_dropdown')
 
                         <!-- Profil Pengguna -->
+                        @php
+                            $webAuthUser = auth()->user();
+                            $hasWebAvatar = !empty($webAuthUser?->avatar) && file_exists(public_path('storage/' . $webAuthUser->avatar));
+                            $webAvatarInitial = strtoupper(substr($webAuthUser?->name ?? 'U', 0, 1));
+                        @endphp
                         <div class="nav-item dropdown">
                             <a href="#" class="nav-link d-flex lh-1 text-reset p-1 rounded-2 hover-shadow-xs" data-bs-toggle="dropdown" aria-label="Menu Pengguna" style="transition: background 0.15s ease;">
-                                <span class="avatar avatar-sm text-white rounded-2 shadow-xs fw-bold" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); width: 34px; height: 34px;">
-                                    {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                                </span>
+                                @if($hasWebAvatar)
+                                    <span class="avatar avatar-sm rounded-2 shadow-xs border flex-shrink-0" style="width: 34px; height: 34px; background-image: url('{{ asset('storage/' . $webAuthUser->avatar) }}'); background-size: cover; background-position: center;"></span>
+                                @else
+                                    <span class="avatar avatar-sm text-white rounded-2 shadow-xs fw-bold flex-shrink-0" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                                        {{ $webAvatarInitial }}
+                                    </span>
+                                @endif
                                 <div class="d-none d-xl-block ps-2 text-start">
-                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.82rem; max-width: 150px;">{{ auth()->user()->name }}</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">{{ auth()->user()->role?->name ?? 'Pengguna' }}</div>
+                                    <div class="fw-bold text-dark text-truncate" style="font-size: 0.82rem; max-width: 150px;">{{ $webAuthUser?->name }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">{{ $webAuthUser?->role?->name ?? 'Pengguna' }}</div>
                                 </div>
                                 <i class="ti ti-chevron-down ms-1 text-muted fs-4 d-none d-xl-inline"></i>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow shadow-md border" style="border-radius: 10px;">
-                                <div class="px-3 py-2 border-bottom bg-light-subtle">
-                                    <div class="fw-bold text-dark small">{{ auth()->user()->name }}</div>
-                                    <div class="text-muted" style="font-size: 0.72rem;">{{ auth()->user()->email ?? '-' }}</div>
+                                <div class="px-3 py-2 border-bottom bg-light-subtle d-flex align-items-center gap-2">
+                                    @if($hasWebAvatar)
+                                        <span class="avatar avatar-md rounded-2 shadow-xs border flex-shrink-0" style="width: 36px; height: 36px; background-image: url('{{ asset('storage/' . $webAuthUser->avatar) }}'); background-size: cover; background-position: center;"></span>
+                                    @else
+                                        <span class="avatar avatar-md text-white rounded-2 shadow-xs fw-bold flex-shrink-0" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem;">
+                                            {{ $webAvatarInitial }}
+                                        </span>
+                                    @endif
+                                    <div class="overflow-hidden">
+                                        <div class="fw-bold text-dark small text-truncate">{{ $webAuthUser?->name }}</div>
+                                        <div class="text-muted text-truncate" style="font-size: 0.72rem;">{{ $webAuthUser?->email ?? '-' }}</div>
+                                    </div>
                                 </div>
                                 <a href="{{ route('profile') }}" class="dropdown-item py-2">
                                     <i class="ti ti-user me-2 text-primary"></i> Profil Saya

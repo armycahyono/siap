@@ -12,11 +12,11 @@
                 <small class="text-white-50">{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') }}</small>
             </div>
             <div class="d-flex align-items-center gap-3">
-                @if($user->avatar)
-                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="avatar avatar-md rounded-circle border border-2 border-white shadow-sm flex-shrink-0" style="object-fit: cover;">
+                @if(!empty($user->avatar) && file_exists(public_path('storage/' . $user->avatar)))
+                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="avatar avatar-md rounded-circle border border-2 border-white shadow-sm flex-shrink-0" style="object-fit: cover; width: 44px; height: 44px;">
                 @else
-                    <span class="avatar avatar-md rounded-circle bg-warning text-dark fw-bold border border-2 border-white shadow-sm flex-shrink-0">
-                        {{ strtoupper(substr($user->name, 0, 2)) }}
+                    <span class="avatar avatar-md rounded-circle text-white fw-bold border border-2 border-white shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.15rem; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important; display: inline-flex; align-items: center; justify-content: center;">
+                        {{ strtoupper(substr($user->name, 0, 1)) }}
                     </span>
                 @endif
                 <div class="text-truncate">

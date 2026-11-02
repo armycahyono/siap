@@ -25,8 +25,37 @@
                 <h3 class="card-title fw-bold text-dark mb-0">Informasi Pribadi</h3>
             </div>
             <div class="card-body p-4">
-                <form action="{{ route('profile.update') }}" method="POST">
+                <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    <!-- Foto Profil Pengguna -->
+                    <div class="d-flex align-items-center gap-3 p-3 mb-4 rounded-3 bg-light border border-dashed">
+                        @php
+                            $hasProfileAvatar = !empty($user->avatar) && file_exists(public_path('storage/' . $user->avatar));
+                            $userInitial = strtoupper(substr($user->name, 0, 1));
+                        @endphp
+                        <div class="position-relative flex-shrink-0">
+                            @if($hasProfileAvatar)
+                                <img id="webAvatarPreview" src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="avatar avatar-xl rounded-3 border shadow-sm" style="width: 72px; height: 72px; object-fit: cover;">
+                            @else
+                                <div id="webAvatarPreview" class="avatar avatar-xl rounded-3 text-white fw-bold shadow-sm d-flex align-items-center justify-content-center" style="width: 72px; height: 72px; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); font-size: 1.8rem;">
+                                    {{ $userInitial }}
+                                </div>
+                            @endif
+                        </div>
+                        <div class="flex-grow-1">
+                            <label class="form-label fw-bold mb-1 d-flex align-items-center justify-content-between">
+                                <span><i class="ti ti-photo me-1 text-primary"></i> Foto Profil Pengguna</span>
+                                @if($hasProfileAvatar)
+                                    <span class="badge bg-success-lt"><i class="ti ti-check me-1"></i> Foto Terpasang</span>
+                                @else
+                                    <span class="badge bg-secondary-lt">Inisial Huruf</span>
+                                @endif
+                            </label>
+                            <input type="file" name="avatar" id="avatarInput" class="form-control form-control-sm" accept="image/jpeg,image/png,image/jpg,image/webp">
+                            <small class="text-muted d-block mt-1">Format: JPG, PNG, atau WebP (Maks. 2MB). Foto akan otomatis tersinkronkan di Web dan HP.</small>
+                        </div>
+                    </div>
+
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label required">Nama Lengkap &amp; Gelar</label>
@@ -141,3 +170,30 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.getElementById('avatarInput')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const preview = document.getElementById('webAvatarPreview');
+                if (preview) {
+                    if (preview.tagName === 'IMG') {
+                        preview.src = evt.target.result;
+                    } else {
+                        const img = document.createElement('img');
+                        img.id = 'webAvatarPreview';
+                        img.src = evt.target.result;
+                        img.className = 'avatar avatar-xl rounded-3 border shadow-sm';
+                        img.style.cssText = 'width: 72px; height: 72px; object-fit: cover;';
+                        preview.parentNode.replaceChild(img, preview);
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+@endpush

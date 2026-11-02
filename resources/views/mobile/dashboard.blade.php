@@ -19,11 +19,11 @@
 <div class="card border-0 shadow-sm rounded-3 text-white" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important; margin-top: 6px !important; margin-bottom: 8px !important; cursor: pointer;" onclick="window.location.href='{{ route('profile') }}'">
     <div class="card-body p-2 px-3">
         <div class="d-flex align-items-center gap-2.5">
-            @if($user->avatar)
+            @if(!empty($user->avatar) && file_exists(public_path('storage/' . $user->avatar)))
                 <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="avatar avatar-md rounded-circle border border-2 border-white shadow-sm flex-shrink-0" style="width: 44px; height: 44px; object-fit: cover;">
             @else
-                <span class="avatar avatar-md rounded-circle bg-warning text-dark fw-bold border border-2 border-white shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 1rem; background-color: var(--brand-gold) !important; color: #fff !important;">
-                    {{ strtoupper(substr($user->name, 0, 2)) }}
+                <span class="avatar avatar-md rounded-circle text-white fw-bold border border-2 border-white shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.15rem; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important; display: inline-flex; align-items: center; justify-content: center;">
+                    {{ strtoupper(substr($user->name, 0, 1)) }}
                 </span>
             @endif
             <div class="overflow-hidden flex-fill">

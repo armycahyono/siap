@@ -717,7 +717,7 @@
                                 @if(!empty($currentUser?->avatar) && file_exists(public_path('storage/' . $currentUser->avatar)))
                                     <span class="avatar avatar-sm rounded-circle shadow-xs" style="width: 28px; height: 28px; background-image: url('{{ asset('storage/' . $currentUser->avatar) }}'); background-size: cover; background-position: center; border: 1.5px solid rgba(255, 255, 255, 0.85);"></span>
                                 @else
-                                    <span class="avatar avatar-sm rounded-circle shadow-xs bg-white text-primary fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem; border: 1.5px solid rgba(255, 255, 255, 0.85); display: inline-flex; align-items: center; justify-content: center;">
+                                    <span class="avatar avatar-sm rounded-circle shadow-xs text-white fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%); border: 1.5px solid rgba(255, 255, 255, 0.85); display: inline-flex; align-items: center; justify-content: center;">
                                         {{ $avatarInitial }}
                                     </span>
                                 @endif

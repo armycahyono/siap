@@ -68,15 +68,15 @@
         <div class="d-flex align-items-start gap-3">
             <!-- Kolom Kiri: Foto Bentuk Kotak Round (Sejajar Puncak Kolom Kanan) -->
             <div class="flex-shrink-0" style="width: 88px;">
-                @if($user->avatar)
+                @if(!empty($user->avatar) && file_exists(public_path('storage/' . $user->avatar)))
                     <img id="avatarProfileDisplay" src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" 
                          class="border border-2 border-white shadow-sm d-block" 
                          style="width: 88px; height: 88px; border-radius: 14px; object-fit: cover;">
                 @else
                     <div id="avatarProfileDisplayPlaceholder" 
-                         class="border border-2 border-white shadow-sm d-flex align-items-center justify-content-center fw-bold fs-1" 
-                         style="width: 88px; height: 88px; border-radius: 14px; background-color: var(--brand-gold) !important; color: #fff !important;">
-                        {{ strtoupper(substr($user->name, 0, 2)) }}
+                         class="border border-2 border-white shadow-sm d-flex align-items-center justify-content-center fw-bold fs-1 text-white" 
+                         style="width: 88px; height: 88px; border-radius: 14px; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%) !important;">
+                        {{ strtoupper(substr($user->name, 0, 1)) }}
                     </div>
                 @endif
             </div>

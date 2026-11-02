@@ -49,7 +49,7 @@
             <!-- Bagian Unggah & Sesuaikan Letak Foto Profil -->
             <div class="d-flex align-items-center gap-3 p-2.5 mb-3 rounded-3" style="background: #f8fafc; border: 1.5px dashed #cbd5e1;">
                 <div class="position-relative flex-shrink-0">
-                    @if($user->avatar)
+                    @if(!empty($user->avatar) && file_exists(public_path('storage/' . $user->avatar)))
                         <img id="avatarEditPreviewImg" src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" 
                              class="border shadow-sm d-block" 
                              style="width: 72px; height: 72px; border-radius: 12px; object-fit: cover; border-color: #cbd5e1 !important;">
@@ -57,7 +57,7 @@
                         <div id="avatarEditPreviewPlaceholder" 
                              class="border shadow-sm d-flex align-items-center justify-content-center text-white fw-bold fs-2" 
                              style="width: 72px; height: 72px; border-radius: 12px; background: linear-gradient(135deg, #102d52 0%, #195b9e 100%);">
-                            {{ strtoupper(substr($user->name, 0, 2)) }}
+                            {{ strtoupper(substr($user->name, 0, 1)) }}
                         </div>
                     @endif
                 </div>
