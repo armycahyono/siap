@@ -539,24 +539,11 @@ class TelegramBotWebhookController extends Controller
 
         // Jika ada konfigurasi saluran jalur pribadi aktif
         if ($privateChannel && ! empty($privateChannel->enabled_commands)) {
-            $isPiket = $user->canOperatePiket();
-            $isHomeroom = $user->isHomeroomTeacher();
-            $canCheckAttendance = $this->canCheckStudentAttendance($user);
+            $allowedCommands = $this->telegramService->getAllowedCommandsForUser($user, $privateChannel);
 
             $selectedButtons = [];
-            foreach ($privateChannel->enabled_commands as $cmd) {
+            foreach ($allowedCommands as $cmd) {
                 if (! $privateChannel->isReplyButtonEnabled($cmd)) {
-                    continue;
-                }
-
-                // Filter hak akses peran khusus
-                if ($cmd === '/izin_gtk' && ! $isPiket && ! $user->isSystemAdmin()) {
-                    continue;
-                }
-                if ($cmd === '/izin_siswa' && ! $isHomeroom && ! $isPiket && ! $user->isSystemAdmin()) {
-                    continue;
-                }
-                if ($cmd === '/cek_absen_siswa' && ! $canCheckAttendance) {
                     continue;
                 }
 
@@ -736,6 +723,13 @@ class TelegramBotWebhookController extends Controller
             ."Gunakan tombol menu interaktif di bawah untuk memilih aksi dengan cepat, atau ketik <code>/help</code> untuk membuka buku panduan lengkap fitur bot.\n"
             ."━━━━━━━━━━━━━━━━━━━━\n"
             .'<i>💡 Tips: Ketik <code>/batal</code> kapan saja jika ingin membatalkan proses pengisian formulir interaktif.</i>';
+
+        if ($user && ! str_starts_with($chatId, '-')) {
+            try {
+                $this->telegramService->syncUserCommands($user);
+            } catch (Throwable) {
+            }
+        }
 
         $this->telegramService->sendMessage(
             $chatId,
@@ -1576,6 +1570,11 @@ class TelegramBotWebhookController extends Controller
             ."• Tembusan izin siswa yang berada di jam KBM Anda\n"
             ."• Tembusan penugasan kelas / inval\n"
             .'• Pengingat jadwal piket & informasi kurikulum';
+
+        try {
+            $this->telegramService->syncUserCommands($teacher);
+        } catch (Throwable) {
+        }
 
         $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $teacher->name, 'HTML', $this->getMainMenuKeyboard($teacher));
     }

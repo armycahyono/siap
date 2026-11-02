@@ -1718,7 +1718,128 @@ class TelegramService
     }
 
     /**
-     * Daftarkan perintah bot khusus jalur pribadi (BotCommandScopeAllPrivateChats).
+     * Dapatkan daftar perintah yang diizinkan untuk pengguna tertentu di jalur pribadi.
+     */
+    public function getAllowedCommandsForUser(User $user, ?TelegramChannel $channel = null): array
+    {
+        if (! $channel) {
+            $channel = TelegramChannel::getOrCreatePrivateChatChannel();
+        }
+
+        $enabled = $channel->enabled_commands ?? [
+            '/presensi', '/jadwalsaya', '/ajukan_izin', '/piket', '/jadwal', '/inval', '/rekap', '/agenda', '/bantuan', '/id',
+        ];
+
+        $isAdmin = $user->isSystemAdmin();
+        $isPiket = $user->canOperatePiket();
+        $isHomeroom = $user->isHomeroomTeacher();
+        $isBK = method_exists($user, 'isCounselingBK') && $user->isCounselingBK();
+        $isDiscipline = method_exists($user, 'canManageDiscipline') && $user->canManageDiscipline();
+        $isSupervisor = method_exists($user, 'isSupervisor') && $user->isSupervisor();
+        $isPrincipal = method_exists($user, 'isPrincipal') && $user->isPrincipal();
+        $hasPiketSchedule = PiketSchedule::where('teacher_id', $user->id)
+            ->orWhere('teacher_id', $user->gtk?->id)
+            ->exists();
+
+        $allowed = [];
+        foreach ($enabled as $cmd) {
+            // Perizinan GTK Meja Piket
+            if ($cmd === '/izin_gtk' && ! $isPiket && ! $isAdmin) {
+                continue;
+            }
+            // Perizinan Siswa
+            if ($cmd === '/izin_siswa' && ! $isHomeroom && ! $isPiket && ! $isAdmin) {
+                continue;
+            }
+            // Operasional meja piket
+            if (in_array($cmd, ['/guru_izin', '/izin_keluar', '/serah_terima']) && ! $isPiket && ! $isAdmin) {
+                continue;
+            }
+            if ($cmd === '/tamu' && ! $isPiket && ! $isAdmin) {
+                continue;
+            }
+            if ($cmd === '/tukar' && ! $hasPiketSchedule && ! $isPiket && ! $isAdmin) {
+                continue;
+            }
+            // Kedisiplinan & BK
+            if (in_array($cmd, ['/terlambat', '/bolos', '/top_kasus']) && ! $isDiscipline && ! $isBK && ! $isAdmin) {
+                continue;
+            }
+            if ($cmd === '/lapor' && ! $isPiket && ! $isDiscipline && ! $isBK && ! $isAdmin) {
+                continue;
+            }
+            if ($cmd === '/poin' && ! $isDiscipline && ! $isBK && ! $isHomeroom && ! $isAdmin) {
+                continue;
+            }
+            if ($cmd === '/cek_absen_siswa' && ! $isHomeroom && ! $isPiket && ! $isDiscipline && ! $isBK && ! $isPrincipal && ! $isAdmin) {
+                continue;
+            }
+            // Supervisi
+            if ($cmd === '/supervisi' && ! $isSupervisor && ! $isPrincipal && ! $isAdmin) {
+                continue;
+            }
+
+            $allowed[] = $cmd;
+        }
+
+        return $allowed;
+    }
+
+    /**
+     * Daftarkan perintah khusus untuk user tertentu ke Telegram API (BotCommandScopeChat).
+     */
+    public function syncUserCommands(User $user, ?TelegramChannel $channel = null): array
+    {
+        if (empty($this->botToken) || empty($user->telegram_chat_id)) {
+            return ['success' => false, 'message' => 'Token Bot atau Chat ID pengguna belum valid.'];
+        }
+
+        if (! $channel) {
+            $channel = TelegramChannel::getOrCreatePrivateChatChannel();
+        }
+
+        $allowedCommands = $this->getAllowedCommandsForUser($user, $channel);
+
+        $commandsPayload = [];
+        foreach ($allowedCommands as $cmd) {
+            $cmdKey = ltrim($cmd, '/');
+            if (empty($cmdKey)) {
+                continue;
+            }
+
+            $desc = $channel->getCommandDescription($cmd);
+            $commandsPayload[] = [
+                'command' => $cmdKey,
+                'description' => mb_substr($desc, 0, 256),
+            ];
+        }
+
+        if (! collect($commandsPayload)->contains('command', 'start')) {
+            array_unshift($commandsPayload, ['command' => 'start', 'description' => 'Buka menu utama bot & cek akun']);
+        }
+
+        $url = "https://api.telegram.org/bot{$this->botToken}/setMyCommands";
+
+        try {
+            $response = Http::timeout(6)->post($url, [
+                'commands' => array_values($commandsPayload),
+                'scope' => [
+                    'type' => 'chat',
+                    'chat_id' => $user->telegram_chat_id,
+                ],
+            ]);
+
+            return [
+                'success' => $response->successful() && $response->json('ok') === true,
+                'message' => $response->successful() ? "Perintah khusus untuk {$user->name} berhasil disinkronkan." : ($response->json('description') ?? 'Gagal.'),
+            ];
+        } catch (Throwable $e) {
+            return ['success' => false, 'message' => 'Koneksi gagal: '.$e->getMessage()];
+        }
+    }
+
+    /**
+     * Daftarkan perintah bot khusus jalur pribadi (BotCommandScopeAllPrivateChats & per akun).
      */
     public function syncPrivateChatCommands(?TelegramChannel $channel = null): array
     {
@@ -1730,19 +1851,17 @@ class TelegramService
             $channel = TelegramChannel::getOrCreatePrivateChatChannel();
         }
 
-        $enabled = $channel->enabled_commands ?? [
-            '/presensi', '/jadwalsaya', '/ajukan_izin', '/piket', '/jadwal', '/inval', '/rekap', '/agenda', '/tamu', '/tukar', '/bantuan', '/id',
+        // 1. Daftarkan perintah umum/dasar GTK yang aman untuk scope global all_private_chats
+        $basePrivateCommands = [
+            '/presensi', '/jadwalsaya', '/ajukan_izin', '/piket', '/jadwal', '/inval', '/agenda', '/kaldik', '/rekap', '/bantuan', '/id',
         ];
 
         $commandsPayload = [];
-        $defs = TelegramChannel::getDefaultCommandDefinitions();
-
-        foreach ($enabled as $cmd) {
-            $cmdKey = ltrim($cmd, '/');
-            if (empty($cmdKey)) {
+        foreach ($basePrivateCommands as $cmd) {
+            if ($channel && ! in_array($cmd, $channel->enabled_commands ?? [])) {
                 continue;
             }
-
+            $cmdKey = ltrim($cmd, '/');
             $desc = $channel->getCommandDescription($cmd);
             $commandsPayload[] = [
                 'command' => $cmdKey,
@@ -1757,6 +1876,7 @@ class TelegramService
 
         $url = "https://api.telegram.org/bot{$this->botToken}/setMyCommands";
 
+        $globalSuccess = false;
         try {
             $response = Http::timeout(6)->post($url, [
                 'commands' => array_values($commandsPayload),
@@ -1764,21 +1884,28 @@ class TelegramService
                     'type' => 'all_private_chats',
                 ],
             ]);
-
-            if ($response->successful() && $response->json('ok') === true) {
-                return [
-                    'success' => true,
-                    'message' => 'Daftar perintah jalur pribadi berhasil disinkronkan ke Telegram (Menu Pribadi)!',
-                ];
-            }
-
-            return [
-                'success' => false,
-                'message' => 'Telegram Error: '.($response->json('description') ?? $response->body()),
-            ];
+            $globalSuccess = $response->successful() && $response->json('ok') === true;
         } catch (Throwable $e) {
-            return ['success' => false, 'message' => 'Koneksi gagal: '.$e->getMessage()];
+            Log::warning('Gagal sinkronisasi all_private_chats: '.$e->getMessage());
         }
+
+        // 2. Sinkronkan perintah khusus masing-masing user yang sudah menautkan akun Telegram
+        $syncedUsers = 0;
+        $connectedUsers = User::whereNotNull('telegram_chat_id')
+            ->where('telegram_chat_id', '!=', '')
+            ->get();
+
+        foreach ($connectedUsers as $u) {
+            $res = $this->syncUserCommands($u, $channel);
+            if ($res['success']) {
+                $syncedUsers++;
+            }
+        }
+
+        return [
+            'success' => $globalSuccess || $syncedUsers > 0,
+            'message' => "Daftar perintah jalur pribadi berhasil disinkronkan ke Telegram (Global + {$syncedUsers} akun GTK terhubung)!",
+        ];
     }
 
     /**
