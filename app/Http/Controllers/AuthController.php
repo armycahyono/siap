@@ -6,6 +6,7 @@ use App\Models\GtkDecree;
 use App\Models\LessonSchedule;
 use App\Models\SchoolSetting;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Services\ActivityLogger;
 use App\Services\DeviceDetector;
 use App\Services\TelegramService;
@@ -108,6 +109,12 @@ class AuthController extends Controller
             ->where('is_active', true)
             ->get();
 
+        // 10 Catatan aktivitas akun terakhir
+        $recentActivities = UserActivityLog::where('user_id', $user->id)
+            ->latest()
+            ->take(10)
+            ->get();
+
         $telegramService = app(TelegramService::class);
         $telegramBotUsername = $telegramService->getBotUsername() ?? 'smkpgrikras_bot';
         $telegramBotUrl = 'https://t.me/'.$telegramBotUsername;
@@ -124,6 +131,7 @@ class AuthController extends Controller
             'activeDecrees',
             'activeStructuralPositions',
             'activeHomeroom',
+            'recentActivities',
             'telegramBotUsername',
             'telegramBotUrl',
             'telegramQrCode'
@@ -155,6 +163,7 @@ class AuthController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone' => ['nullable', 'string', 'max:30'],
+            'address' => ['nullable', 'string', 'max:500'],
             'nip' => ['nullable', 'string', 'max:50'],
             'nuptk' => ['nullable', 'string', 'max:50'],
             'telegram_chat_id' => ['nullable', 'string', 'max:50'],

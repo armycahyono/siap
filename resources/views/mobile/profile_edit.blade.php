@@ -102,6 +102,11 @@
                 </div>
             </div>
 
+            <div class="mb-2.5">
+                <label class="form-label small fw-bold">Alamat Lengkap / Tinggal</label>
+                <textarea name="address" class="form-control" rows="2" placeholder="Alamat domisili tempat tinggal...">{{ old('address', $user->address) }}</textarea>
+            </div>
+
             <div class="mb-4">
                 <label class="form-label small fw-bold d-flex justify-content-between align-items-center">
                     <span><i class="ti ti-brand-telegram text-info me-1"></i> Telegram Chat ID</span>

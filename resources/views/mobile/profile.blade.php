@@ -158,6 +158,16 @@
             </span>
         </div>
 
+        <!-- Alamat Domisili / Tinggal -->
+        <div class="d-flex align-items-start justify-content-between py-1.5 border-bottom gap-2">
+            <span class="text-muted small fw-semibold flex-shrink-0" style="font-size: 0.76rem; width: 105px;">
+                <i class="ti ti-map-pin me-1 text-danger"></i> Alamat
+            </span>
+            <span class="fw-semibold text-dark small text-end text-break" style="font-size: 0.76rem;">
+                {{ $user->address ?: '-' }}
+            </span>
+        </div>
+
         <!-- Mata Pelajaran -->
         <div class="d-flex align-items-start justify-content-between pt-1.5 gap-2">
             <span class="text-muted small fw-semibold flex-shrink-0" style="font-size: 0.76rem; width: 105px;">
@@ -306,6 +316,50 @@
         @else
             <div class="text-center py-2 text-muted" style="font-size: 0.72rem;">
                 <i class="ti ti-info-circle me-1"></i> Belum ada dokumen SK tersinkronisasi.
+            </div>
+        @endif
+    </div>
+</div>
+
+<!-- =========================================================================
+     2C. KARTU RIWAYAT AKTIVITAS AKUN
+     ========================================================================= -->
+@php
+    $activitiesList = $recentActivities ?? collect();
+@endphp
+<div class="card border-0 shadow-sm rounded-3 mb-2.5 bg-white" style="border: 1.5px solid #cbd5e1 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2 pb-1.5 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm rounded-circle flex-shrink-0 text-white" style="width: 28px; height: 28px; background: #0284c7;">
+                    <i class="ti ti-history fs-3"></i>
+                </span>
+                <span class="fw-bold text-dark small" style="font-size: 0.82rem;">Riwayat Aktivitas Akun</span>
+            </div>
+            <span class="badge bg-light text-muted" style="font-size: 0.65rem;">10 Terakhir</span>
+        </div>
+
+        @if($activitiesList->isNotEmpty())
+            <div class="d-flex flex-column gap-1.5">
+                @foreach($activitiesList as $act)
+                    <div class="p-2 rounded-2 border d-flex align-items-start gap-2" style="background: #f8fafc; border-color: #e2e8f0 !important;">
+                        <span class="badge {{ $act->action_badge_class }} flex-shrink-0 mt-0.5" style="font-size: 0.62rem; padding: 2px 5px;">
+                            {{ $act->action_label }}
+                        </span>
+                        <div class="min-w-0 flex-fill">
+                            <div class="text-dark small" style="font-size: 0.73rem; line-height: 1.35; word-break: break-word;">
+                                {{ $act->description }}
+                            </div>
+                            <div class="text-muted small mt-0.5" style="font-size: 0.65rem;">
+                                <i class="ti ti-clock me-0.5"></i> {{ $act->created_at->translatedFormat('d M Y, H:i') }} WIB &bull; {{ $act->created_at->diffForHumans() }}
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="text-center py-2 text-muted" style="font-size: 0.72rem;">
+                <i class="ti ti-info-circle me-1"></i> Belum ada catatan aktivitas tercatat.
             </div>
         @endif
     </div>

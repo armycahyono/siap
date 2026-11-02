@@ -80,12 +80,19 @@
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">Mata Pelajaran</label>
-                            <input type="text" name="subject" class="form-control" value="{{ old('subject', $user->subject) }}">
+                            <label class="form-label">Nomor WhatsApp / HP</label>
+                            <input type="text" name="phone" class="form-control" value="{{ old('phone', $user->phone) }}" placeholder="08xxxxxxxxxx">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Nomor WhatsApp / HP</label>
-                            <input type="text" name="phone" class="form-control" value="{{ old('phone', $user->phone) }}">
+                            <label class="form-label">Status GTK (Kepegawaian)</label>
+                            <input type="text" class="form-control bg-light" value="{{ $user->gtk_status ?: 'GTY' }} (Aktif)" readonly>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label class="form-label">Alamat Lengkap / Tinggal</label>
+                            <textarea name="address" class="form-control" rows="2" placeholder="Alamat domisili tempat tinggal saat ini...">{{ old('address', $user->address) }}</textarea>
                         </div>
                     </div>
 
@@ -118,6 +125,200 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Kartu 2: Penugasan Aktif & Mata Pelajaran (Otomatis dari Sistem) -->
+        @php
+            $userSubjectsList = $userSubjects ?? collect();
+            $activeDecreesList = $activeDecrees ?? collect();
+            $activeStructuralList = $activeStructuralPositions ?? collect();
+            $activeHomeroomList = $activeHomeroom ?? collect();
+            $activitiesList = $recentActivities ?? collect();
+            $primaryPosition = $user->position ?: ($user->role?->name ?? 'GTK');
+        @endphp
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="avatar avatar-sm rounded-circle flex-shrink-0 text-white" style="width: 32px; height: 32px; background: #195b9e;">
+                        <i class="ti ti-briefcase fs-3"></i>
+                    </span>
+                    <div>
+                        <h4 class="card-title fw-bold text-dark mb-0" style="font-size: 0.95rem;">Penugasan Aktif &amp; Mata Pelajaran</h4>
+                        <div class="text-muted" style="font-size: 0.72rem;">Informasi resmi berdasarkan jadwal KBM &amp; SK penetapan</div>
+                    </div>
+                </div>
+                <span class="badge bg-blue-lt fw-bold">{{ $primaryPosition }}</span>
+            </div>
+            <div class="card-body p-4">
+                <!-- Mata Pelajaran yang Diampu -->
+                <div class="mb-3.5 pb-3 border-bottom">
+                    <div class="text-muted small fw-bold text-uppercase tracking-wider mb-2" style="font-size: 0.72rem;">
+                        <i class="ti ti-book text-warning me-1"></i> Mata Pelajaran yang Diampu (Jadwal KBM)
+                    </div>
+                    @if($userSubjectsList->isNotEmpty())
+                        <div class="d-flex flex-wrap gap-1.5">
+                            @foreach($userSubjectsList as $sbj)
+                                <span class="badge bg-primary-lt text-primary fw-semibold px-2.5 py-1.5" style="font-size: 0.78rem;">
+                                    <i class="ti ti-book-2 me-1"></i> {{ $sbj }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-muted small fst-italic">
+                            <i class="ti ti-info-circle me-1"></i> Belum ada mata pelajaran pada jadwal KBM aktif.
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Tugas Tambahan & Peran Struktural -->
+                <div class="mb-2">
+                    <div class="text-muted small fw-bold text-uppercase tracking-wider mb-2" style="font-size: 0.72rem;">
+                        <i class="ti ti-award text-indigo me-1"></i> Tugas Tambahan &amp; Peran Aktif
+                    </div>
+                    @if($activeHomeroomList->isNotEmpty() || $activeStructuralList->isNotEmpty())
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($activeHomeroomList as $homeroom)
+                                <span class="badge bg-success-lt text-success fw-bold px-2.5 py-1.5" style="font-size: 0.78rem;">
+                                    <i class="ti ti-school me-1"></i> Wali Kelas {{ $homeroom->name }}
+                                </span>
+                            @endforeach
+                            @foreach($activeStructuralList as $stPos)
+                                <span class="badge bg-indigo-lt text-indigo fw-bold px-2.5 py-1.5" style="font-size: 0.78rem;">
+                                    <i class="ti ti-briefcase me-1"></i> {{ $stPos->structuralPosition?->name ?? 'Jabatan Struktural' }}
+                                </span>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-muted small fst-italic">
+                            <i class="ti ti-info-circle me-1"></i> Tidak ada tugas tambahan struktural saat ini.
+                        </div>
+                    @endif
+                </div>
+
+                <div class="alert alert-info py-2 px-3 mt-3 mb-0 small border-0 bg-info-subtle text-info-emphasis rounded-2 d-flex align-items-center gap-2" style="font-size: 0.75rem;">
+                    <i class="ti ti-info-circle fs-3 flex-shrink-0"></i>
+                    <span>Data penugasan KBM dan mata pelajaran tersinkron otomatis dari master Kurikulum &amp; Jadwal.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kartu 3: Dokumen SK GTK Resmi -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="avatar avatar-sm rounded-circle flex-shrink-0 text-white" style="width: 32px; height: 32px; background: #4f46e5;">
+                        <i class="ti ti-certificate fs-3"></i>
+                    </span>
+                    <div>
+                        <h4 class="card-title fw-bold text-dark mb-0" style="font-size: 0.95rem;">Dokumen Surat Keputusan (SK) GTK</h4>
+                        <div class="text-muted" style="font-size: 0.72rem;">Arsip berkas SK penugasan resmi dari Yayasan / Sekolah</div>
+                    </div>
+                </div>
+                <a href="{{ route('gtk-decrees.index') }}" class="btn btn-sm btn-outline-primary fw-semibold">
+                    Semua SK <i class="ti ti-chevron-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                @if($activeDecreesList->isNotEmpty())
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table table-hover mb-0">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Nomor &amp; Judul SK</th>
+                                    <th>TMT / Berlaku</th>
+                                    <th class="text-end">Dokumen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($activeDecreesList as $decree)
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold text-dark">{{ $decree->number }}</div>
+                                            <div class="text-muted small text-truncate" style="max-width: 300px;">{{ $decree->title }}</div>
+                                        </td>
+                                        <td class="small text-muted">
+                                            {{ $decree->tmt_date ? $decree->tmt_date->translatedFormat('d M Y') : '-' }}
+                                        </td>
+                                        <td class="text-end">
+                                            @if($decree->file_path && $decree->hasPrivateDocument())
+                                                <a href="{{ route('gtk-decrees.document', $decree) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-bold">
+                                                    <i class="ti ti-download me-1"></i> Unduh PDF
+                                                </a>
+                                            @else
+                                                <span class="badge bg-light text-muted">Belum ada file</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4 text-muted small">
+                        <i class="ti ti-file-certificate fs-1 d-block mb-1 text-muted opacity-50"></i>
+                        Belum ada dokumen SK GTK aktif yang tersinkronisasi dengan akun Anda.
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Kartu 4: Riwayat Aktivitas Akun (Audit Trail) -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="avatar avatar-sm rounded-circle flex-shrink-0 text-white" style="width: 32px; height: 32px; background: #0284c7;">
+                        <i class="ti ti-history fs-3"></i>
+                    </span>
+                    <div>
+                        <h4 class="card-title fw-bold text-dark mb-0" style="font-size: 0.95rem;">Riwayat Aktivitas Akun</h4>
+                        <div class="text-muted" style="font-size: 0.72rem;">Catatan 10 aktivitas keamanan &amp; operasional terakhir</div>
+                    </div>
+                </div>
+                <span class="badge bg-light text-muted fw-bold">Audit Trail</span>
+            </div>
+            <div class="card-body p-0">
+                @if($activitiesList->isNotEmpty())
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table table-hover mb-0">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Aktivitas</th>
+                                    <th>Deskripsi Kejadian</th>
+                                    <th>Waktu</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($activitiesList as $act)
+                                    <tr>
+                                        <td style="width: 140px;">
+                                            <span class="badge {{ $act->action_badge_class }}">
+                                                {{ $act->action_label }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="text-dark small" style="line-height: 1.4; max-width: 380px; word-break: break-word;">
+                                                {{ $act->description }}
+                                            </div>
+                                            @if($act->ip_address)
+                                                <div class="text-muted small" style="font-size: 0.68rem;">IP: {{ $act->ip_address }}</div>
+                                            @endif
+                                        </td>
+                                        <td class="small text-muted" style="width: 160px;">
+                                            <div class="fw-semibold text-dark">{{ $act->created_at->translatedFormat('d M Y, H:i') }} WIB</div>
+                                            <div style="font-size: 0.7rem;">{{ $act->created_at->diffForHumans() }}</div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4 text-muted small">
+                        <i class="ti ti-activity fs-1 d-block mb-1 text-muted opacity-50"></i>
+                        Belum ada riwayat aktivitas tercatat pada akun ini.
+                    </div>
+                @endif
             </div>
         </div>
     </div>
