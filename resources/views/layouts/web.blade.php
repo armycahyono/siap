@@ -432,6 +432,56 @@
                 transform: translateY(-50%) scale(1);
             }
         }
+
+        /* Modern Native View Transitions (Seamless Page Navigation) */
+        @view-transition {
+            navigation: auto;
+        }
+
+        ::view-transition-old(root) {
+            animation: 160ms cubic-bezier(0.4, 0, 1, 1) both siap-fade-out;
+        }
+        ::view-transition-new(root) {
+            animation: 220ms cubic-bezier(0, 0, 0.2, 1) 40ms both siap-fade-in;
+        }
+
+        @keyframes siap-fade-out {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        @keyframes siap-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Persistent Sidebar during Page Transitions */
+        #main-sidebar {
+            view-transition-name: siap-main-sidebar;
+        }
+
+        /* Top Progress Bar Indicator */
+        #web-top-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--brand-gold, #c99a3b) 0%, #38bdf8 50%, var(--brand-blue, #195b9e) 100%);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+            z-index: 9999999;
+            pointer-events: none;
+            opacity: 0;
+            transition: width 0.3s cubic-bezier(0.1, 0.8, 0.3, 1), opacity 0.2s ease;
+        }
+        #web-top-loader.loading {
+            opacity: 1;
+            width: 82%;
+        }
+        #web-top-loader.finishing {
+            opacity: 1;
+            width: 100%;
+            transition: width 0.15s ease-out, opacity 0.3s ease-out 0.15s;
+        }
     </style>
     <script>
         (function() {
@@ -448,6 +498,9 @@
     @stack('styles')
 </head>
 <body>
+    <!-- Web Top Page Loading Bar -->
+    <div id="web-top-loader" aria-hidden="true"></div>
+
     <div class="page">
         <!-- Sidebar -->
         <aside class="navbar navbar-vertical navbar-expand" id="main-sidebar" style="background: var(--brand-navy);" data-bs-theme="dark">
@@ -1345,6 +1398,109 @@
             if (!navigator.onLine) {
                 updateNetworkStatus();
             }
+        })();
+    </script>
+
+    <!-- Speculation Rules API (Chrome / Edge / Chromium Native Instant Navigation) -->
+    <script type="speculationrules">
+    {
+        "prefetch": [
+            {
+                "where": {
+                    "and": [
+                        { "href_matches": "/*" },
+                        { "not": { "href_matches": "*/logout" } },
+                        { "not": { "href_matches": "*export*" } },
+                        { "not": { "href_matches": "*print*" } },
+                        { "not": { "href_matches": "*download*" } },
+                        { "not": { "href_matches": "*.pdf" } },
+                        { "not": { "href_matches": "*.xlsx" } }
+                    ]
+                },
+                "eagerness": "moderate"
+            }
+        ]
+    }
+    </script>
+
+    <!-- Instant Hover Prefetch & Navigation Loader for Web -->
+    <script>
+        (function() {
+            var loader = document.getElementById('web-top-loader');
+            var prefetchedUrls = new Set();
+
+            function prefetchUrl(url) {
+                if (!url || prefetchedUrls.has(url)) return;
+                try {
+                    var parsed = new URL(url, window.location.href);
+                    if (parsed.origin !== window.location.origin) return;
+                    if (parsed.pathname === window.location.pathname && parsed.search === window.location.search) return;
+                    
+                    var lower = parsed.href.toLowerCase();
+                    if (lower.includes('logout') || lower.includes('delete') || lower.includes('destroy') || 
+                        lower.includes('export') || lower.includes('print') || lower.includes('download') || 
+                        lower.endsWith('.pdf') || lower.endsWith('.xlsx')) {
+                        return;
+                    }
+
+                    prefetchedUrls.add(url);
+                    var linkEl = document.createElement('link');
+                    linkEl.rel = 'prefetch';
+                    linkEl.href = url;
+                    linkEl.as = 'document';
+                    document.head.appendChild(linkEl);
+                } catch(e) {}
+            }
+
+            var hoverTimer = null;
+            document.addEventListener('mouseover', function(e) {
+                var target = e.target.closest('a');
+                if (!target || !target.href) return;
+                if (target.target === '_blank' || target.hasAttribute('download')) return;
+
+                clearTimeout(hoverTimer);
+                hoverTimer = setTimeout(function() {
+                    prefetchUrl(target.href);
+                }, 65);
+            }, { passive: true });
+
+            document.addEventListener('mouseout', function(e) {
+                var target = e.target.closest('a');
+                if (target) {
+                    clearTimeout(hoverTimer);
+                }
+            }, { passive: true });
+
+            document.addEventListener('click', function(e) {
+                var target = e.target.closest('a');
+                if (!target || !target.href || e.defaultPrevented) return;
+                
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                if (target.target === '_blank' || target.hasAttribute('download')) return;
+                var href = target.getAttribute('href') || '';
+                if (href.startsWith('#') || href.startsWith('javascript:')) return;
+
+                try {
+                    var parsed = new URL(target.href, window.location.href);
+                    if (parsed.origin !== window.location.origin) return;
+
+                    if (loader) {
+                        loader.classList.remove('finishing');
+                        loader.classList.add('loading');
+                    }
+                } catch(e) {}
+            });
+
+            window.addEventListener('pageshow', function() {
+                if (loader && loader.classList.contains('loading')) {
+                    loader.classList.remove('loading');
+                    loader.classList.add('finishing');
+                    setTimeout(function() {
+                        loader.classList.remove('finishing');
+                        loader.style.width = '0%';
+                    }, 350);
+                }
+            });
         })();
     </script>
 
