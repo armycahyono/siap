@@ -321,7 +321,7 @@ class TelegramBotWebhookController extends Controller
         }
 
         switch (true) {
-            case $cmd === '/start' || $cmd === '/menu' || $cmd === '/keyboard' || $cmd === 'menu' || $cmd === 'keyboard':
+            case $cmd === '/start' || str_starts_with($cmd, '/start') || $cmd === '/menu' || $cmd === '/keyboard' || $cmd === 'menu' || $cmd === 'keyboard':
                 $this->commandStart($chatId, $user, $senderName);
                 break;
 

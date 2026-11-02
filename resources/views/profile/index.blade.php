@@ -88,14 +88,20 @@
                             <label class="form-label d-flex justify-content-between align-items-center">
                                 <span><i class="ti ti-brand-telegram text-primary me-1"></i> Telegram Chat ID (Untuk Notifikasi & Tembusan)</span>
                                 @if($user->telegram_chat_id)
-                                    <span class="badge bg-success-lt"><i class="ti ti-check me-1"></i> Terhubung</span>
+                                    <span class="badge bg-success-lt"><i class="ti ti-check me-1"></i> Terhubung (ID: {{ $user->telegram_chat_id }})</span>
                                 @else
                                     <span class="badge bg-warning-lt">Belum Terhubung</span>
                                 @endif
                             </label>
-                            <input type="text" name="telegram_chat_id" class="form-control font-monospace" value="{{ old('telegram_chat_id', $user->telegram_chat_id) }}" placeholder="Contoh: 123456789">
-                            <small class="text-muted">
-                                Dapatkan Chat ID dengan membuka bot Telegram sekolah lalu ketik <code>/id</code> atau klik menu <b>🆔 Cek Chat ID</b>.
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted"><i class="ti ti-id"></i></span>
+                                <input type="text" name="telegram_chat_id" class="form-control font-monospace" value="{{ old('telegram_chat_id', $user->telegram_chat_id) }}" placeholder="Contoh: 123456789">
+                                <a href="{{ $telegramBotUrl ?? 'https://t.me/smkpgrikras_bot' }}" target="_blank" class="btn btn-outline-info d-flex align-items-center gap-1" title="Buka bot di Telegram">
+                                    <i class="ti ti-brand-telegram"></i> Buka Bot
+                                </a>
+                            </div>
+                            <small class="text-muted mt-1 d-block">
+                                Dapatkan Chat ID dengan membuka bot lalu ketik <code>/id</code>, atau ketik <code>/hubungkan {{ $user->nip ?: ($user->username ?: $user->email) }}</code> langsung di bot.
                             </small>
                         </div>
                     </div>
@@ -110,8 +116,66 @@
         </div>
     </div>
 
-    <!-- Password Change Form -->
+    <!-- Right Column: Telegram Bot & Password Change -->
     <div class="col-lg-5">
+        <!-- Kartu Integrasi Bot Telegram SIAP -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="avatar avatar-sm bg-info-lt text-info rounded-circle flex-shrink-0" style="width: 34px; height: 34px;">
+                        <i class="ti ti-brand-telegram fs-2"></i>
+                    </span>
+                    <div>
+                        <h4 class="card-title fw-bold text-dark mb-0" style="font-size: 0.95rem;">Bot Telegram SIAP</h4>
+                        <div class="text-muted" style="font-size: 0.72rem;">SMK PGRI KRAS &bull; &#64;{{ $telegramBotUsername ?? 'smkpgrikras_bot' }}</div>
+                    </div>
+                </div>
+                @if($user->telegram_chat_id)
+                    <span class="badge bg-success-lt"><i class="ti ti-check me-1"></i> Terhubung</span>
+                @else
+                    <span class="badge bg-warning-lt">Belum Terhubung</span>
+                @endif
+            </div>
+            <div class="card-body p-3 text-center">
+                @php
+                    $tgBotUrl = $telegramBotUrl ?? ('https://t.me/' . ($telegramBotUsername ?? 'smkpgrikras_bot'));
+                    $tgQr = $telegramQrCode ?? null;
+                    if (!$tgQr) {
+                        try {
+                            $tgQr = (new \chillerlan\QRCode\QRCode)->render($tgBotUrl);
+                        } catch (\Throwable $e) {}
+                    }
+                @endphp
+
+                <!-- QR Code Box -->
+                @if(!empty($tgQr))
+                    <div class="p-2.5 bg-white border rounded-3 d-inline-block shadow-xs mb-2">
+                        <img src="{{ $tgQr }}" alt="QR Code Bot Telegram SIAP" style="width: 140px; height: 140px; display: block;" class="mx-auto">
+                    </div>
+                    <div class="text-muted small mb-3" style="font-size: 0.76rem; line-height: 1.35;">
+                        <i class="ti ti-scan text-primary me-1"></i> Pindai QR Code menggunakan kamera HP untuk langsung membuka bot di Telegram
+                    </div>
+                @endif
+
+                <a href="{{ $tgBotUrl }}" target="_blank" class="btn btn-info text-white w-100 fw-bold py-2 mb-3 shadow-xs d-flex align-items-center justify-content-center gap-2">
+                    <i class="ti ti-brand-telegram fs-2"></i>
+                    <span>Hubungkan ke Bot Telegram</span>
+                </a>
+
+                <div class="bg-light p-2.5 rounded-3 text-start border">
+                    <div class="fw-bold text-dark mb-1 d-flex align-items-center gap-1 small">
+                        <i class="ti ti-info-circle text-primary"></i> Langkah Menautkan Akun:
+                    </div>
+                    <ol class="ps-3 mb-0 text-muted" style="font-size: 0.75rem; line-height: 1.5;">
+                        <li>Buka bot melalui tombol di atas atau scan QR Code.</li>
+                        <li>Tekan tombol <b>START</b> pada bot.</li>
+                        <li>Ketik perintah: <code class="user-select-all">/hubungkan {{ $user->nip ?: ($user->username ?: $user->email) }}</code></li>
+                        <li>Atau ketik <code class="user-select-all">/id</code> lalu salin nomor Chat ID ke form sebelah kiri.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
                 <h3 class="card-title fw-bold text-dark mb-0">Ubah Kata Sandi</h3>

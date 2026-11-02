@@ -177,6 +177,71 @@
 </div>
 
 <!-- =========================================================================
+     2A. KARTU INTEGRASI BOT TELEGRAM SIAP
+     ========================================================================= -->
+@php
+    $tgBotUrlMobile = $telegramBotUrl ?? ('https://t.me/' . ($telegramBotUsername ?? 'smkpgrikras_bot'));
+    $tgQrMobile = $telegramQrCode ?? null;
+    if (!$tgQrMobile) {
+        try {
+            $tgQrMobile = (new \chillerlan\QRCode\QRCode)->render($tgBotUrlMobile);
+        } catch (\Throwable $e) {}
+    }
+@endphp
+<div class="card border-0 shadow-sm rounded-3 mb-2.5 bg-white" style="border: 1.5px solid #cbd5e1 !important;">
+    <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm bg-info-lt text-info rounded-circle flex-shrink-0" style="width: 30px; height: 30px;">
+                    <i class="ti ti-brand-telegram fs-2"></i>
+                </span>
+                <div>
+                    <div class="fw-bold text-dark small" style="line-height: 1.2;">Bot Telegram SIAP</div>
+                    <div class="text-muted" style="font-size: 0.7rem;">&#64;{{ $telegramBotUsername ?? 'smkpgrikras_bot' }}</div>
+                </div>
+            </div>
+            @if($user->telegram_chat_id)
+                <span class="badge bg-success-lt text-success" style="font-size: 0.65rem; padding: 2px 7px;">
+                    <i class="ti ti-check me-0.5"></i> Terhubung
+                </span>
+            @else
+                <span class="badge bg-warning-lt text-warning" style="font-size: 0.65rem; padding: 2px 7px;">
+                    Belum Terhubung
+                </span>
+            @endif
+        </div>
+
+        <p class="text-muted small mb-2.5" style="font-size: 0.75rem; line-height: 1.35;">
+            Dapatkan notifikasi presensi, tugas harian, dan agenda sekolah secara real-time langsung di akun Telegram Anda.
+        </p>
+
+        <a href="{{ $tgBotUrlMobile }}" target="_blank" class="btn btn-info text-white w-100 rounded-pill py-2 fw-bold d-flex align-items-center justify-content-center gap-1.5 external shadow-xs mb-2" style="font-size: 0.82rem;">
+            <i class="ti ti-brand-telegram fs-2"></i>
+            <span>Hubungkan ke Bot Telegram</span>
+        </a>
+
+        @if(!empty($tgQrMobile))
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100 rounded-pill py-1.5 fw-semibold d-flex align-items-center justify-content-center gap-1" onclick="toggleMobileTgQr()" style="font-size: 0.75rem;">
+                <i class="ti ti-qrcode"></i>
+                <span id="btnToggleTgQrText">Tampilkan QR Code Bot</span>
+            </button>
+            <div id="mobileTgQrContainer" class="d-none text-center p-3 mt-2 bg-light rounded-3 border">
+                <div class="p-2 bg-white border rounded-3 d-inline-block shadow-xs mb-2">
+                    <img src="{{ $tgQrMobile }}" alt="QR Code Bot Telegram" style="width: 140px; height: 140px; display: block;" class="mx-auto">
+                </div>
+                <div class="small text-muted mb-2" style="font-size: 0.72rem; line-height: 1.3;">
+                    Pindai QR ini atau bagikan ke HP lain untuk membuka bot Telegram <b>&#64;{{ $telegramBotUsername ?? 'smkpgrikras_bot' }}</b>
+                </div>
+                <div class="text-start p-2 rounded bg-white border" style="font-size: 0.72rem;">
+                    <b>Perintah Tautkan Akun:</b><br>
+                    <code class="user-select-all">/hubungkan {{ $user->nip ?: ($user->username ?: $user->email) }}</code>
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
+
+<!-- =========================================================================
      2B. KARTU PENUGASAN & SK GTK RESMI
      ========================================================================= -->
 @php
@@ -669,6 +734,20 @@
         } else {
             const el = document.getElementById('sheet-logout-confirm');
             if (el) el.classList.remove('modal-in');
+        }
+    }
+
+    // 5. Toggle QR Code Telegram Bot
+    function toggleMobileTgQr() {
+        const el = document.getElementById('mobileTgQrContainer');
+        const txt = document.getElementById('btnToggleTgQrText');
+        if (!el) return;
+        if (el.classList.contains('d-none')) {
+            el.classList.remove('d-none');
+            if (txt) txt.textContent = 'Sembunyikan QR Code';
+        } else {
+            el.classList.add('d-none');
+            if (txt) txt.textContent = 'Tampilkan QR Code Bot';
         }
     }
 </script>

@@ -8,10 +8,13 @@ use App\Models\SchoolSetting;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\DeviceDetector;
+use App\Services\TelegramService;
+use chillerlan\QRCode\QRCode;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -105,23 +108,32 @@ class AuthController extends Controller
             ->where('is_active', true)
             ->get();
 
-        if (DeviceDetector::isMobile()) {
-            return view('mobile.profile', compact(
-                'user',
-                'userSubjects',
-                'activeDecrees',
-                'activeStructuralPositions',
-                'activeHomeroom'
-            ));
+        $telegramService = app(TelegramService::class);
+        $telegramBotUsername = $telegramService->getBotUsername() ?? 'smkpgrikras_bot';
+        $telegramBotUrl = 'https://t.me/'.$telegramBotUsername;
+        $telegramQrCode = null;
+        try {
+            $telegramQrCode = (new QRCode)->render($telegramBotUrl);
+        } catch (\Throwable $e) {
+            Log::warning('QR Code Telegram bot generation error: '.$e->getMessage());
         }
 
-        return view('web.profile', compact(
+        $viewData = compact(
             'user',
             'userSubjects',
             'activeDecrees',
             'activeStructuralPositions',
-            'activeHomeroom'
-        ));
+            'activeHomeroom',
+            'telegramBotUsername',
+            'telegramBotUrl',
+            'telegramQrCode'
+        );
+
+        if (DeviceDetector::isMobile()) {
+            return view('mobile.profile', $viewData);
+        }
+
+        return view('web.profile', $viewData);
     }
 
     public function editProfile(): View
