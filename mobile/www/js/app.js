@@ -84,13 +84,21 @@
     // USER AVATAR GENERATOR & RESOLVER
     // ==========================================
     function getUserAvatar(user, fallbackName = '') {
-        if (user && typeof user === 'object' && user.avatar_url && !user.avatar_url.includes('logo.png') && !user.avatar_url.includes('avatar-default.png')) {
+        if (!user && window.SIAP_ROUTER) {
+            user = window.SIAP_ROUTER.getCurrentUser();
+        }
+        if (user && typeof user === 'object' && user.avatar_url &&
+            !user.avatar_url.includes('logo.png') &&
+            !user.avatar_url.includes('avatar-default.png') &&
+            !user.avatar_url.includes('default-avatar') &&
+            !user.avatar_url.includes('assets/default')) {
             return user.avatar_url;
         }
         const name = (typeof user === 'string' ? user : (user?.name || user?.username || fallbackName || '')).trim();
         if (name) {
             const initial = name.charAt(0).toUpperCase();
             const colors = [
+                ['#102d52', '#195b9e'],
                 ['#2563eb', '#1d4ed8'],
                 ['#7c3aed', '#6d28d9'],
                 ['#059669', '#047857'],
@@ -2270,10 +2278,18 @@
             const inputName = container.querySelector('#edit-prof-name');
             const inputEmail = container.querySelector('#edit-prof-email');
             const inputPhone = container.querySelector('#edit-prof-phone');
+            const inputNip = container.querySelector('#edit-prof-nip');
+            const inputNuptk = container.querySelector('#edit-prof-nuptk');
+            const inputAddress = container.querySelector('#edit-prof-address');
+            const inputTelegram = container.querySelector('#edit-prof-telegram');
 
             if (inputName) inputName.value = u.name || '';
             if (inputEmail) inputEmail.value = u.email || '';
             if (inputPhone) inputPhone.value = u.phone || '';
+            if (inputNip) inputNip.value = (u.nip && u.nip !== '-') ? u.nip : '';
+            if (inputNuptk) inputNuptk.value = (u.nuptk && u.nuptk !== '-') ? u.nuptk : '';
+            if (inputAddress) inputAddress.value = (u.address && u.address !== '-') ? u.address : '';
+            if (inputTelegram) inputTelegram.value = (u.telegram_chat_id && u.telegram_chat_id !== '-') ? u.telegram_chat_id : '';
 
             if (bottomNav) bottomNav.classList.add('hidden');
             modalEditProfile.classList.remove('hidden');
@@ -2300,9 +2316,13 @@
         if (formEditProfile) {
             formEditProfile.onsubmit = async function(e) {
                 e.preventDefault();
-                const name = container.querySelector('#edit-prof-name').value.trim();
-                const email = container.querySelector('#edit-prof-email').value.trim();
-                const phone = container.querySelector('#edit-prof-phone').value.trim();
+                const name = container.querySelector('#edit-prof-name')?.value.trim() || '';
+                const email = container.querySelector('#edit-prof-email')?.value.trim() || '';
+                const phone = container.querySelector('#edit-prof-phone')?.value.trim() || '';
+                const nip = container.querySelector('#edit-prof-nip')?.value.trim() || '';
+                const nuptk = container.querySelector('#edit-prof-nuptk')?.value.trim() || '';
+                const address = container.querySelector('#edit-prof-address')?.value.trim() || '';
+                const telegram_chat_id = container.querySelector('#edit-prof-telegram')?.value.trim() || '';
                 const btnSubmit = container.querySelector('#btn-save-profile');
 
                 if (!name || !email) {
@@ -2319,7 +2339,15 @@
                 `;
 
                 try {
-                    const res = await SIAP_API.updateProfile({ name, email, phone });
+                    const res = await SIAP_API.updateProfile({
+                        name,
+                        email,
+                        phone,
+                        nip,
+                        nuptk,
+                        address,
+                        telegram_chat_id,
+                    });
                     if (res.success && res.data?.user) {
                         const updatedUser = res.data.user;
                         SIAP_ROUTER.setCurrentUser(updatedUser);
@@ -2418,6 +2446,7 @@
         const birthEl = container.querySelector('#prof-birth');
         const emailEl = container.querySelector('#prof-email');
         const phoneWrap = container.querySelector('#prof-phone-wrap');
+        const addressEl = container.querySelector('#prof-address');
         const avatarEl = container.querySelector('#prof-avatar');
 
         if (nameEl) nameEl.textContent = u.name || '-';
@@ -2431,6 +2460,7 @@
             birthEl.title = u.birth_info || '-';
         }
         if (emailEl) emailEl.textContent = u.email || '-';
+        if (addressEl) addressEl.textContent = u.address || 'Belum diisi';
         if (avatarEl) avatarEl.src = getUserAvatar(u);
 
         // WhatsApp Phone with direct link
@@ -2452,6 +2482,15 @@
         const tgBadge = container.querySelector('#prof-telegram-status-badge');
         const tgId = container.querySelector('#prof-telegram-id');
         const tgAction = container.querySelector('#prof-telegram-action');
+        const tgQrContainer = container.querySelector('#prof-telegram-qr-container');
+        const tgQrImg = container.querySelector('#prof-telegram-qr-img');
+        const tgQrLink = container.querySelector('#prof-telegram-qr-link');
+
+        window.toggleTelegramQrModal = function() {
+            if (tgQrContainer) {
+                tgQrContainer.classList.toggle('hidden');
+            }
+        };
 
         if (tgBox && tgBadge && tgId && tgAction) {
             if (u.is_telegram_connected) {
@@ -2461,16 +2500,23 @@
                 const unameStr = u.telegram_username ? ` <span class="text-slate-500 font-normal">(@${escapeHtml(u.telegram_username)})</span>` : '';
                 tgId.innerHTML = `ID: <span class="text-emerald-800 font-mono">${escapeHtml(u.telegram_chat_id)}</span>${unameStr}`;
                 tgAction.innerHTML = '<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5"><span>✅</span><span>Aktif</span></span>';
+                if (tgQrContainer) tgQrContainer.classList.add('hidden');
             } else {
                 tgBox.className = 'mt-2 p-2 rounded-xl border border-amber-100 bg-amber-50/30 flex items-center justify-between gap-2';
                 tgBadge.textContent = 'Belum Terhubung';
                 tgBadge.className = 'px-1.5 py-0.2 rounded-full text-[8px] font-bold bg-amber-100 text-amber-800';
                 tgId.textContent = 'Notifikasi Telegram belum aktif';
+
+                let actionHtml = '';
                 if (u.telegram_connect_url) {
-                    tgAction.innerHTML = `<a href="${u.telegram_connect_url}" target="_blank" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] active:scale-95 transition flex items-center gap-1 shadow-2xs"><span>Hubungkan</span><span>↗</span></a>`;
-                } else {
-                    tgAction.innerHTML = '<span class="text-[9px] text-slate-400 font-medium">Belum Diatur</span>';
+                    actionHtml += `<a href="${u.telegram_connect_url}" target="_blank" class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] active:scale-95 transition flex items-center gap-0.5 shadow-2xs"><span>Hubungkan</span><span>↗</span></a>`;
                 }
+                if (u.telegram_qr_url) {
+                    actionHtml += `<button type="button" onclick="toggleTelegramQrModal()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] active:scale-95 transition flex items-center gap-0.5 shadow-2xs" title="Tampilkan QR Code Telegram"><span>📱 QR</span></button>`;
+                    if (tgQrImg) tgQrImg.src = u.telegram_qr_url;
+                    if (tgQrLink && u.telegram_connect_url) tgQrLink.href = u.telegram_connect_url;
+                }
+                tgAction.innerHTML = `<div class="flex items-center gap-1">${actionHtml || '<span class="text-[9px] text-slate-400 font-medium">Belum Diatur</span>'}</div>`;
             }
         }
 

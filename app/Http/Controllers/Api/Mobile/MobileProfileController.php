@@ -120,6 +120,8 @@ class MobileProfileController extends Controller
         $setting = SchoolSetting::getSetting();
 
         $avatarUrl = $user->avatar_url;
+        $telegramDeepLinkUrl = $setting->telegram_bot_username ? "https://t.me/{$setting->telegram_bot_username}?start={$user->telegram_verification_code}" : null;
+        $telegramQrUrl = $telegramDeepLinkUrl ? 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='.urlencode($telegramDeepLinkUrl) : null;
 
         return response()->json([
             'success' => true,
@@ -150,7 +152,9 @@ class MobileProfileController extends Controller
                     'telegram_username' => $user->telegram_username,
                     'is_telegram_connected' => ! empty($user->telegram_chat_id),
                     'telegram_bot_username' => $setting->telegram_bot_username,
-                    'telegram_connect_url' => $setting->telegram_bot_username ? "https://t.me/{$setting->telegram_bot_username}" : null,
+                    'telegram_verification_code' => $user->telegram_verification_code,
+                    'telegram_connect_url' => $telegramDeepLinkUrl,
+                    'telegram_qr_url' => $telegramQrUrl,
                 ],
                 'subjects' => $userSubjects,
                 'structural_positions' => $activeStructuralPositions,
