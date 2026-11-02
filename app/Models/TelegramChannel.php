@@ -198,6 +198,59 @@ class TelegramChannel extends Model
     public static function getDefaultCommandDefinitions(): array
     {
         return [
+            // 1. Layanan & Menu Pribadi GTK (Jalur Pribadi)
+            '/presensi' => [
+                'command' => '/presensi',
+                'name' => 'presensi',
+                'label' => '📍 Cek Presensi Saya',
+                'description' => 'Cek log kehadiran presensi mandiri saya hari ini',
+                'icon' => 'ti-map-pin',
+                'category' => 'pribadi',
+            ],
+            '/jadwalsaya' => [
+                'command' => '/jadwalsaya',
+                'name' => 'jadwalsaya',
+                'label' => '📅 Jadwal Mengajar Saya',
+                'description' => 'Jadwal tatap muka KBM mengajar saya di rombel',
+                'icon' => 'ti-calendar',
+                'category' => 'pribadi',
+            ],
+            '/ajukan_izin' => [
+                'command' => '/ajukan_izin',
+                'name' => 'ajukan_izin',
+                'label' => '📝 Ajukan Izin Saya',
+                'description' => 'Formulir pengajuan izin GTK mandiri & titip materi KBM',
+                'icon' => 'ti-file-pencil',
+                'category' => 'pribadi',
+            ],
+            '/tukar' => [
+                'command' => '/tukar',
+                'name' => 'tukar',
+                'label' => '🔄 Tukar Jadwal Piket',
+                'description' => 'Pengajuan tukar jadwal tugas jaga piket ke rekan guru',
+                'icon' => 'ti-arrows-left-right',
+                'category' => 'pribadi',
+            ],
+
+            // 2. Formulir Perizinan Siswa & GTK
+            '/izin_siswa' => [
+                'command' => '/izin_siswa',
+                'name' => 'izin_siswa',
+                'label' => '🎫 Perizinan Siswa',
+                'description' => 'Formulir input izin/dispensasi siswa oleh Wali Kelas / Piket',
+                'icon' => 'ti-ticket',
+                'category' => 'perizinan',
+            ],
+            '/izin_gtk' => [
+                'command' => '/izin_gtk',
+                'name' => 'izin_gtk',
+                'label' => '📋 Perizinan GTK / Guru',
+                'description' => 'Pencatatan perizinan GTK oleh Tim Piket sekolah',
+                'icon' => 'ti-clipboard-list',
+                'category' => 'perizinan',
+            ],
+
+            // 3. Operasional Piket & KBM Harian
             '/piket' => [
                 'command' => '/piket',
                 'name' => 'piket',
@@ -294,6 +347,14 @@ class TelegramChannel extends Model
                 'icon' => 'ti-chart-bar',
                 'category' => 'disiplin',
             ],
+            '/cek_absen_siswa' => [
+                'command' => '/cek_absen_siswa',
+                'name' => 'cek_absen_siswa',
+                'label' => '📊 Cek Absensi Siswa',
+                'description' => 'Pantau absensi harian dan presensi rombel kelas',
+                'icon' => 'ti-user-check',
+                'category' => 'disiplin',
+            ],
             '/agenda' => [
                 'command' => '/agenda',
                 'name' => 'agenda',
@@ -383,6 +444,16 @@ class TelegramChannel extends Model
     public static function getCommandCategories(): array
     {
         return [
+            'pribadi' => [
+                'name' => 'Layanan & Menu Pribadi GTK',
+                'icon' => 'ti-user-check',
+                'badge' => 'bg-indigo text-white',
+            ],
+            'perizinan' => [
+                'name' => 'Perizinan Siswa & GTK',
+                'icon' => 'ti-ticket',
+                'badge' => 'bg-azure text-white',
+            ],
             'piket' => [
                 'name' => 'Operasional Piket & KBM Harian',
                 'icon' => 'ti-calendar-user',
@@ -404,7 +475,7 @@ class TelegramChannel extends Model
                 'badge' => 'bg-success text-white',
             ],
             'utilitas' => [
-                'name' => 'Bantuan & Utilitas Grup',
+                'name' => 'Bantuan & Utilitas Bot',
                 'icon' => 'ti-settings',
                 'badge' => 'bg-secondary text-white',
             ],
@@ -412,11 +483,23 @@ class TelegramChannel extends Model
     }
 
     /**
-     * Preset pilihan cepat perintah untuk masing-masing jenis grup.
+     * Preset pilihan cepat perintah untuk masing-masing jenis grup & jalur pribadi.
      */
     public static function getCommandPresets(): array
     {
         return [
+            'private_standard' => [
+                'name' => 'Paket Standar Jalur Pribadi',
+                'icon' => 'ti-user-check',
+                'color' => 'btn-outline-indigo',
+                'commands' => ['/presensi', '/jadwalsaya', '/ajukan_izin', '/piket', '/jadwal', '/inval', '/rekap', '/agenda', '/tamu', '/tukar', '/bantuan', '/id'],
+            ],
+            'private_complete' => [
+                'name' => 'Paket Lengkap Jalur Pribadi',
+                'icon' => 'ti-sparkles',
+                'color' => 'btn-outline-primary',
+                'commands' => ['/presensi', '/jadwalsaya', '/ajukan_izin', '/izin_siswa', '/izin_gtk', '/lapor', '/poin', '/piket', '/jadwal', '/inval', '/cek_absen_siswa', '/rekap', '/agenda', '/tamu', '/tukar', '/kaldik', '/ultah', '/pengumuman', '/info_sekolah', '/bantuan', '/id'],
+            ],
             'piket' => [
                 'name' => 'Paket Piket Harian',
                 'icon' => 'ti-calendar-user',
@@ -427,7 +510,7 @@ class TelegramChannel extends Model
                 'name' => 'Paket Kedisiplinan & BK',
                 'icon' => 'ti-shield-check',
                 'color' => 'btn-outline-warning',
-                'commands' => ['/lapor', '/poin', '/terlambat', '/bolos', '/top_kasus', '/rekap', '/bantuan', '/id'],
+                'commands' => ['/lapor', '/poin', '/terlambat', '/bolos', '/top_kasus', '/cek_absen_siswa', '/rekap', '/bantuan', '/id'],
             ],
             'kegiatan' => [
                 'name' => 'Paket Kegiatan & Kaldik',
@@ -442,6 +525,40 @@ class TelegramChannel extends Model
                 'commands' => ['/piket', '/jadwal', '/agenda', '/ultah', '/pengumuman', '/info_sekolah', '/rekap', '/bantuan', '/id'],
             ],
         ];
+    }
+
+    /**
+     * Dapatkan atau buat saluran khusus untuk konfigurasi Bot Jalur Pribadi (Direct Message).
+     */
+    public static function getOrCreatePrivateChatChannel(): self
+    {
+        return self::firstOrCreate(
+            ['code' => 'private_chat'],
+            [
+                'name' => 'Jalur Pribadi (Direct Message Bot)',
+                'description' => 'Konfigurasi menu perintah dan tombol interaktif yang tampil saat GTK/guru chat langsung dengan Bot SIAP.',
+                'allowed_roles' => ['semua_gtk'],
+                'enabled_commands' => [
+                    '/presensi',
+                    '/jadwalsaya',
+                    '/ajukan_izin',
+                    '/izin_siswa',
+                    '/piket',
+                    '/jadwal',
+                    '/inval',
+                    '/cek_absen_siswa',
+                    '/rekap',
+                    '/agenda',
+                    '/tamu',
+                    '/tukar',
+                    '/bantuan',
+                    '/id',
+                ],
+                'show_reply_keyboard' => true,
+                'custom_buttons' => [],
+                'is_active' => true,
+            ]
+        );
     }
 
     /**

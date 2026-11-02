@@ -238,6 +238,121 @@
             </div>
         </div>
 
+        @php
+            $defs = $commandDefinitions ?? \App\Models\TelegramChannel::getDefaultCommandDefinitions();
+            $categories = $commandCategories ?? \App\Models\TelegramChannel::getCommandCategories();
+            $presets = $commandPresets ?? \App\Models\TelegramChannel::getCommandPresets();
+        @endphp
+
+        <!-- KARTU PENGATURAN MENU & TOMBOL BOT JALUR PRIBADI (DIRECT MESSAGE GTK) -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h4 class="card-title fw-bold text-dark m-0 d-flex align-items-center">
+                        <i class="ti ti-user-check text-indigo me-2 fs-2"></i>
+                        Menu &amp; Tombol Bot Jalur Pribadi (Direct Message GTK)
+                    </h4>
+                    <div class="text-muted small mt-1">
+                        Kelola seluruh perintah aktif, susunan tombol Reply Keyboard, dan label kustom saat GTK/guru berinteraksi langsung secara pribadi dengan Bot SIAP.
+                    </div>
+                </div>
+                <div class="card-actions d-flex flex-wrap gap-2">
+                    <form action="{{ route('telegram.private-channel.sync-commands') }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-outline-info shadow-sm" title="Sinkronkan perintah menu chat pribadi langsung ke API Telegram (Menu Button)">
+                            <i class="ti ti-refresh me-1"></i> Sinkronkan Menu ke Telegram
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-sm btn-outline-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-test-private-keyboard" title="Kirim uji coba reply keyboard ke Telegram">
+                        <i class="ti ti-send me-1"></i> Uji Coba Kirim ke Akun Saya
+                    </button>
+                    <button type="button" class="btn btn-sm btn-indigo shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-edit-jalur-pribadi">
+                        <i class="ti ti-adjustments me-1"></i> Konfigurasi Menu Jalur Pribadi
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-3">
+                <div class="row g-3 align-items-center">
+                    <!-- Kolom 1: Status & Ringkasan -->
+                    <div class="col-lg-4 col-md-5">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-bold small text-muted">Status Layanan Pribadi:</span>
+                                @if($privateChannel->is_active)
+                                    <span class="badge bg-success-lt fw-bold"><i class="ti ti-check me-1"></i> Aktif</span>
+                                @else
+                                    <span class="badge bg-danger-lt fw-bold"><i class="ti ti-x me-1"></i> Nonaktif</span>
+                                @endif
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-bold small text-muted">Reply Keyboard di Layar:</span>
+                                @if($privateChannel->show_reply_keyboard)
+                                    <span class="badge bg-primary-lt fw-bold"><i class="ti ti-keyboard me-1"></i> Tampil di Bawah Chat</span>
+                                @else
+                                    <span class="badge bg-secondary-lt fw-bold"><i class="ti ti-keyboard-off me-1"></i> Hanya Perintah Teks</span>
+                                @endif
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-bold small text-muted">Total Perintah Diaktifkan:</span>
+                                <span class="badge bg-indigo text-white fw-bold">{{ count($privateChannel->enabled_commands ?? []) }} Perintah</span>
+                            </div>
+                            @php
+                                $privateActiveButtons = collect($privateChannel->enabled_commands ?? [])
+                                    ->filter(fn($c) => $privateChannel->isReplyButtonEnabled($c))
+                                    ->map(fn($c) => $privateChannel->getButtonLabel($c))
+                                    ->values();
+                            @endphp
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="fw-bold small text-muted">Tombol Keyboard Tampil:</span>
+                                <span class="badge bg-teal text-white fw-bold">{{ $privateActiveButtons->count() }} Tombol</span>
+                            </div>
+                            <div class="mt-3 pt-2 border-top text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modal-edit-jalur-pribadi">
+                                    <i class="ti ti-edit me-1"></i> Edit Menu &amp; Label Tombol
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kolom 2: Pratinjau Tampilan Keyboard di HP -->
+                    <div class="col-lg-8 col-md-7">
+                        <div class="border rounded-3 p-3 bg-white shadow-2xs">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
+                                <span class="small fw-bold text-dark d-flex align-items-center">
+                                    <i class="ti ti-device-mobile text-primary me-1"></i>
+                                    Pratinjau Tombol Keyboard di Layar Ponsel GTK:
+                                </span>
+                                <span class="text-muted" style="font-size: 0.75rem;">Simulasi Tampilan Telegram</span>
+                            </div>
+                            @if($privateChannel->show_reply_keyboard && $privateActiveButtons->isNotEmpty())
+                                <div class="p-2.5 rounded-2 bg-slate-100 border border-slate-200" style="background-color: #f1f5f9;">
+                                    <div class="row g-1.5">
+                                        @foreach($privateActiveButtons as $btnLabel)
+                                            <div class="col-6">
+                                                <div class="p-2 text-center rounded-2 bg-white border border-slate-300 shadow-2xs text-dark fw-bold text-truncate" style="font-size: 0.8rem; cursor: default;" title="{{ $btnLabel }}">
+                                                    {{ $btnLabel }}
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @elseif(!$privateChannel->show_reply_keyboard)
+                                <div class="text-center py-4 text-muted small bg-light rounded border border-dashed">
+                                    <i class="ti ti-keyboard-off fs-1 d-block text-secondary mb-1"></i>
+                                    Tombol Reply Keyboard dinonaktifkan. Pengguna mengakses menu via tombol perintah Telegram (Menu Button) atau mengetik perintah <code>/cmd</code>.
+                                </div>
+                            @else
+                                <div class="text-center py-4 text-muted small bg-light rounded border border-dashed">
+                                    <i class="ti ti-alert-circle fs-1 d-block text-warning mb-1"></i>
+                                    Belum ada tombol yang dipilih untuk ditampilkan pada Reply Keyboard.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Baris Bawah: Pengelolaan Saluran Grup Telegram Sekolah -->
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
@@ -966,6 +1081,261 @@
     $categories = $commandCategories ?? \App\Models\TelegramChannel::getCommandCategories();
     $presets = $commandPresets ?? \App\Models\TelegramChannel::getCommandPresets();
 @endphp
+
+<!-- ========================================================================= -->
+<!-- MODAL: KONFIGURASI MENU & TOMBOL BOT JALUR PRIBADI -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-edit-jalur-pribadi" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form action="{{ route('telegram.private-channel.update') }}" method="POST" class="modal-content shadow">
+            @csrf
+            @method('PUT')
+            <div class="modal-header bg-indigo text-white">
+                <h5 class="modal-title fw-bold d-flex align-items-center">
+                    <i class="ti ti-user-check me-2 fs-2"></i>
+                    Konfigurasi Menu Perintah &amp; Tombol Bot Jalur Pribadi (Direct Message)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 modal-body-scrollable">
+                <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
+                    <i class="ti ti-info-circle fs-2 mt-1"></i>
+                    <div>
+                        <strong>Pengaturan Khusus Chat Pribadi (1-on-1):</strong>
+                        Perintah dan tombol di bawah ini akan tampil saat GTK/guru memulai percakapan pribadi langsung dengan bot (misalnya via perintah <code>/start</code> atau <code>/menu</code>). Tombol menu disesuaikan otomatis dengan hak akses masing-masing GTK (Wali Kelas, Petugas Piket, atau Guru Umum).
+                    </div>
+                </div>
+
+                <!-- Toggle Switch Status & Keyboard -->
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="is_active" value="1" id="private_is_active" {{ $privateChannel->is_active ? 'checked' : '' }}>
+                                <label class="form-check-label fw-bold text-dark" for="private_is_active">
+                                    Aktifkan Layanan Bot Jalur Pribadi
+                                </label>
+                                <small class="text-muted d-block">Jika dinonaktifkan, bot tidak akan merespons menu pada chat pribadi.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="show_reply_keyboard" value="1" id="private_show_reply_keyboard" {{ $privateChannel->show_reply_keyboard ? 'checked' : '' }}>
+                                <label class="form-check-label fw-bold text-dark" for="private_show_reply_keyboard">
+                                    Tampilkan Tombol Reply Keyboard di Bawah Layar
+                                </label>
+                                <small class="text-muted d-block">Tombol keyboard akan otomatis muncul di bawah bilah chat ponsel pengguna.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preset Kelompok Perintah Siap Pakai -->
+                <div class="p-3 bg-light border rounded-3 mb-3">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <span class="fw-bold small text-dark d-flex align-items-center">
+                            <i class="ti ti-bookmarks me-1 text-primary fs-3"></i> 
+                            Pilih Cepat Kelompok Perintah (Preset Paket Jalur Pribadi):
+                        </span>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-xs btn-outline-dark btn-preset-all" data-target="private">
+                                <i class="ti ti-check-all me-1"></i> Pilih Semua
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-danger btn-preset-clear" data-target="private">
+                                <i class="ti ti-trash me-1"></i> Kosongkan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach($presets as $pKey => $p)
+                            <button type="button" class="btn btn-sm {{ $p['color'] }} shadow-none btn-apply-preset" 
+                                data-target="private" 
+                                data-commands='@json($p['commands'])'
+                                title="Pilih kelompok perintah {{ $p['name'] }}">
+                                <i class="ti {{ $p['icon'] }} me-1"></i> {{ $p['name'] }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Tips Shortcut & Pulihkan Teks Default -->
+                <div class="px-3 py-2 bg-blue-lt border rounded-top d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-info-circle text-primary fs-2"></i>
+                        <div class="small">
+                            <strong class="text-primary">💡 Tips Mengetik Emoticon di PC / Laptop:</strong>
+                            Gunakan shortcut <kbd class="bg-dark text-white px-1 rounded">Win</kbd> + <kbd class="bg-dark text-white px-1 rounded">.</kbd> (titik), atau klik emoticon di bilah sisipkan cepat.
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-all-labels" data-target="private" title="Kembalikan seluruh teks label & deskripsi ke bawaan sistem">
+                            <i class="ti ti-rotate-clockwise me-1"></i> Pulihkan Semua Teks Default
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Baris Cepat Emoticon -->
+                <div class="px-3 py-2 bg-light border-start border-end border-bottom d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <span class="small fw-bold text-secondary d-flex align-items-center gap-1">
+                        <i class="ti ti-mood-smile text-primary"></i> Sisipkan Cepat:
+                    </span>
+                    <div class="d-flex flex-wrap gap-1 align-items-center emoji-quick-bar">
+                        @foreach(['📍', '📅', '📝', '🎫', '📋', '⚠️', '🚨', '📊', '🏫', '👥', '🗓️', '🔄', '🆔', 'ℹ️', '🔍', '🏃', '⏰', '🤝', '🎂', '📢', '✅', '💡', '📖', '🔒'] as $em)
+                            <button type="button" class="btn btn-xs btn-white border shadow-none px-2 py-1 fs-5 btn-quick-insert-emoji" data-emoji="{{ $em }}" title="Sisipkan {{ $em }} ke kolom yang aktif">
+                                {{ $em }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Tabel Perintah & Tombol Keyboard -->
+                <div class="table-responsive border rounded-3">
+                    <table class="table table-vcenter table-sm table-striped mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 140px;">Perintah Bot</th>
+                                <th style="width: 120px;" class="text-center bg-primary-lt" title="Perintah ini aktif dan bisa digunakan via ketik teks /cmd">
+                                    <span class="badge bg-primary text-white">1. Perintah Aktif</span>
+                                </th>
+                                <th style="width: 130px;" class="text-center bg-teal-lt" title="Tampilkan sebagai tombol di keyboard bawah Telegram">
+                                    <span class="badge bg-teal text-white">2. Tombol Keyboard</span>
+                                </th>
+                                <th style="min-width: 280px;">Teks Label Tombol (Kustom)</th>
+                                <th style="min-width: 250px;">Deskripsi Menu Telegram</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php
+                                $privateEnabledCmds = $privateChannel->enabled_commands ?? [];
+                                $privateCustomBtns = $privateChannel->custom_buttons ?? [];
+                            @endphp
+                            @foreach($categories as $catKey => $cat)
+                                @php
+                                    $catDefs = collect($defs)->filter(fn($d) => ($d['category'] ?? 'utilitas') === $catKey);
+                                @endphp
+                                @if($catDefs->isNotEmpty())
+                                    <tr class="table-light border-top border-bottom border-2">
+                                        <td colspan="5" class="py-2 px-3 bg-light">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div class="fw-bold text-dark d-flex align-items-center">
+                                                    <span class="badge {{ $cat['badge'] }} p-2 me-2">
+                                                        <i class="ti {{ $cat['icon'] }}"></i>
+                                                    </span>
+                                                    <span class="fs-4">{{ $cat['name'] }}</span>
+                                                    <span class="badge bg-secondary-lt ms-2">{{ $catDefs->count() }} Perintah</span>
+                                                </div>
+                                                <div class="d-flex gap-1">
+                                                    <button type="button" class="btn btn-xs btn-outline-primary btn-group-toggle" data-action="check" data-cat="{{ $catKey }}" data-target="private">
+                                                        <i class="ti ti-check me-1"></i> Pilih Kelompok Ini
+                                                    </button>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary btn-group-toggle" data-action="uncheck" data-cat="{{ $catKey }}" data-target="private">
+                                                        <i class="ti ti-x me-1"></i> Batal
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @foreach($catDefs as $cmd => $def)
+                                        @php
+                                            $isCmdEnabled = in_array($cmd, $privateEnabledCmds);
+                                            $conf = $privateCustomBtns[$cmd] ?? [];
+                                            $showBtn = isset($conf['show_reply_button']) ? (bool)$conf['show_reply_button'] : true;
+                                            $customLabel = $conf['label'] ?? $def['label'];
+                                            $customDesc = $conf['description'] ?? $def['description'];
+                                        @endphp
+                                        <tr class="private-cmd-row cat-{{ $catKey }}" data-cmd="{{ $cmd }}" data-default-label="{{ $def['label'] }}" data-default-desc="{{ $def['description'] }}">
+                                            <td class="font-monospace fw-bold text-dark">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti {{ $def['icon'] ?? 'ti-command' }} text-muted me-1.5 fs-3"></i>
+                                                    <span>{{ $cmd }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-center align-middle bg-primary-lt">
+                                                <input class="form-check-input private-cmd-cb" type="checkbox" name="enabled_commands[]" value="{{ $cmd }}" {{ $isCmdEnabled ? 'checked' : '' }}>
+                                            </td>
+                                            <td class="text-center align-middle bg-teal-lt">
+                                                <input class="form-check-input private-btn-cb" type="checkbox" name="custom_buttons[{{ $cmd }}][show_reply_button]" value="1" {{ $showBtn ? 'checked' : '' }}>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="text" name="custom_buttons[{{ $cmd }}][label]" class="form-control private-label-input" value="{{ $customLabel }}" placeholder="{{ $def['label'] }}">
+                                                    <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="Sisipkan Emoticon">
+                                                        <span class="visually-hidden">Emoticon</span>
+                                                        😀
+                                                    </button>
+                                                    <div class="dropdown-menu dropdown-menu-end p-2 shadow" style="min-width: 220px;">
+                                                        <div class="small fw-bold text-muted mb-1">Pilih Emoticon:</div>
+                                                        <div class="d-flex flex-wrap gap-1">
+                                                            @foreach(['📍', '📅', '📝', '🎫', '📋', '⚠️', '🚨', '📊', '🏫', '👥', '🗓️', '🔄', '🆔', 'ℹ️', '🔍', '🏃', '⏰', '🤝', '🎂', '📢', '✅', '💡'] as $em)
+                                                                <button type="button" class="btn btn-xs btn-light fs-5 px-1.5 py-0.5 border btn-insert-row-emoji" data-emoji="{{ $em }}">{{ $em }}</button>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-outline-secondary btn-reset-row-label" title="Pulihkan label default">
+                                                        <i class="ti ti-rotate-clockwise"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="custom_buttons[{{ $cmd }}][description]" class="form-control form-control-sm private-desc-input" value="{{ $customDesc }}" placeholder="{{ $def['description'] }}">
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-indigo fw-bold">
+                    <i class="ti ti-check me-1"></i> Simpan Konfigurasi Jalur Pribadi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: UJI COBA KIRIM KEYBOARD KE AKUN SAYA -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-test-private-keyboard" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('telegram.private-channel.test-keyboard') }}" method="POST" class="modal-content shadow">
+            @csrf
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold d-flex align-items-center">
+                    <i class="ti ti-send me-2 fs-2"></i>
+                    Uji Coba Kirim Menu Keyboard ke Telegram
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small">
+                    Bot akan mengirimkan pesan sapaan resmi beserta tombol <b>Reply Keyboard</b> yang telah Anda atur ke akun Telegram tujuan.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label required">Chat ID Telegram Tujuan</label>
+                    <input type="text" name="target_chat_id" class="form-control font-monospace" value="{{ auth()->user()->telegram_chat_id }}" placeholder="Contoh: 123456789" required>
+                    <small class="text-muted d-block mt-1">
+                        @if(auth()->user()->telegram_chat_id)
+                            <span class="text-success"><i class="ti ti-check me-1"></i> Terisi otomatis dari Chat ID akun Anda ({{ auth()->user()->telegram_chat_id }}).</span>
+                        @else
+                            <span class="text-warning"><i class="ti ti-alert-circle me-1"></i> Akun Anda belum memiliki Chat ID tersimpan. Masukkan nomor Chat ID Anda manual.</span>
+                        @endif
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-success fw-bold">
+                    <i class="ti ti-send me-1"></i> Kirim Uji Coba Sekarang
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- ========================================================================= -->
 <!-- MODAL: TAMBAH SALURAN GRUP -->
@@ -1812,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // -------------------------------------------------------------
     document.querySelectorAll('.btn-apply-preset').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            const target = this.dataset.target; // 'add' or 'edit'
+            const target = this.dataset.target; // 'add', 'edit', or 'private'
             let selectedCmds = [];
             try {
                 selectedCmds = JSON.parse(this.dataset.commands || '[]');
@@ -1820,17 +2190,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 selectedCmds = [];
             }
 
-            const prefix = target === 'add' ? '.add-' : '.edit-';
+            const prefix = target === 'add' ? '.add-' : (target === 'private' ? '.private-' : '.edit-');
             document.querySelectorAll(prefix + 'cmd-row').forEach(function (row) {
                 const cmd = row.dataset.cmd;
                 const isSelected = selectedCmds.includes(cmd);
 
-                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : (target === 'private' ? '.private-cmd-cb' : '.edit-command-checkbox'));
                 if (cmdCb) {
                     cmdCb.checked = isSelected;
                 }
 
-                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : (target === 'private' ? '.private-btn-cb' : '.edit-show-btn-checkbox'));
                 if (btnCb) {
                     btnCb.checked = isSelected;
                 }
@@ -1841,11 +2211,11 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.btn-preset-all').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const target = this.dataset.target;
-            const prefix = target === 'add' ? '.add-' : '.edit-';
+            const prefix = target === 'add' ? '.add-' : (target === 'private' ? '.private-' : '.edit-');
             document.querySelectorAll(prefix + 'cmd-row').forEach(function (row) {
-                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : (target === 'private' ? '.private-cmd-cb' : '.edit-command-checkbox'));
                 if (cmdCb) cmdCb.checked = true;
-                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : (target === 'private' ? '.private-btn-cb' : '.edit-show-btn-checkbox'));
                 if (btnCb) btnCb.checked = true;
             });
         });
@@ -1854,11 +2224,11 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.btn-preset-clear').forEach(function (btn) {
         btn.addEventListener('click', function () {
             const target = this.dataset.target;
-            const prefix = target === 'add' ? '.add-' : '.edit-';
+            const prefix = target === 'add' ? '.add-' : (target === 'private' ? '.private-' : '.edit-');
             document.querySelectorAll(prefix + 'cmd-row').forEach(function (row) {
-                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : (target === 'private' ? '.private-cmd-cb' : '.edit-command-checkbox'));
                 if (cmdCb) cmdCb.checked = false;
-                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : (target === 'private' ? '.private-btn-cb' : '.edit-show-btn-checkbox'));
                 if (btnCb) btnCb.checked = false;
             });
         });
@@ -1869,13 +2239,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const cat = this.dataset.cat;
             const action = this.dataset.action;
             const target = this.dataset.target;
-            const prefix = target === 'add' ? '.add-' : '.edit-';
+            const prefix = target === 'add' ? '.add-' : (target === 'private' ? '.private-' : '.edit-');
             const shouldCheck = (action === 'check');
 
             document.querySelectorAll(prefix + 'cmd-row.cat-' + cat).forEach(function (row) {
-                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : '.edit-command-checkbox');
+                const cmdCb = row.querySelector(target === 'add' ? '.add-cmd-cb' : (target === 'private' ? '.private-cmd-cb' : '.edit-command-checkbox'));
                 if (cmdCb) cmdCb.checked = shouldCheck;
-                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : '.edit-show-btn-checkbox');
+                const btnCb = row.querySelector(target === 'add' ? '.add-btn-cb' : (target === 'private' ? '.private-btn-cb' : '.edit-show-btn-checkbox'));
                 if (btnCb) btnCb.checked = shouldCheck;
             });
         });
@@ -2002,7 +2372,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // -------------------------------------------------------------
     let lastFocusedChannelInput = null;
     document.addEventListener('focusin', function (e) {
-        if (e.target && e.target.matches('.edit-label-input, .add-label-input, .edit-desc-input, .add-desc-input')) {
+        if (e.target && e.target.matches('.edit-label-input, .add-label-input, .private-label-input, .edit-desc-input, .add-desc-input, .private-desc-input')) {
             lastFocusedChannelInput = e.target;
         }
     });
@@ -2027,7 +2397,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let targetInput = lastFocusedChannelInput;
 
             if (!targetInput || !targetModal || !targetModal.contains(targetInput)) {
-                targetInput = targetModal ? targetModal.querySelector('.edit-label-input, .add-label-input') : null;
+                targetInput = targetModal ? targetModal.querySelector('.edit-label-input, .add-label-input, .private-label-input') : null;
             }
 
             if (targetInput) {
@@ -2050,9 +2420,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Tombol Reset Per Kolom Input
-    document.querySelectorAll('.btn-reset-field').forEach(function (btn) {
+    document.querySelectorAll('.btn-reset-field, .btn-reset-row-label').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
             e.preventDefault();
+            const row = this.closest('tr');
+            if (row) {
+                const defaultLabel = row.dataset.defaultLabel || '';
+                const defaultDesc = row.dataset.defaultDesc || '';
+                const labelInput = row.querySelector('input[name*="[label]"]');
+                if (labelInput) labelInput.value = defaultLabel;
+                const descInput = row.querySelector('input[name*="[description]"]');
+                if (descInput) descInput.value = defaultDesc;
+                return;
+            }
             const defaultVal = this.dataset.default || '';
             const inputGroup = this.closest('.input-group');
             const input = inputGroup ? inputGroup.querySelector('input') : null;
@@ -2068,11 +2448,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.btn-reset-all-labels').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
             e.preventDefault();
-            const target = this.dataset.target; // 'add' or 'edit'
-            const modal = target === 'add' ? document.getElementById('modal-tambah-saluran') : document.getElementById('modal-edit-saluran');
+            const target = this.dataset.target; // 'add', 'edit', or 'private'
+            const modal = target === 'add' 
+                ? document.getElementById('modal-tambah-saluran') 
+                : (target === 'private' ? document.getElementById('modal-edit-jalur-pribadi') : document.getElementById('modal-edit-saluran'));
             if (!modal) return;
 
             if (confirm('Pulihkan semua teks label tombol dan deskripsi ke bawaan sistem?')) {
+                modal.querySelectorAll('.' + target + '-cmd-row').forEach(function (row) {
+                    const labelInput = row.querySelector('.' + target + '-label-input');
+                    if (labelInput && row.dataset.defaultLabel) labelInput.value = row.dataset.defaultLabel;
+                    const descInput = row.querySelector('.' + target + '-desc-input');
+                    if (descInput && row.dataset.defaultDesc) descInput.value = row.dataset.defaultDesc;
+                });
                 modal.querySelectorAll('.' + target + '-label-input').forEach(function (input) {
                     if (input.dataset.default) input.value = input.dataset.default;
                 });

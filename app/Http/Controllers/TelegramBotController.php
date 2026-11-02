@@ -49,7 +49,8 @@ class TelegramBotController extends Controller
         $webhookInfo = $this->telegramService->getWebhookInfo();
 
         // Saluran Grup Dinamis, Daftar Peran, & Definisi Perintah
-        $channels = TelegramChannel::orderBy('id')->get();
+        $privateChannel = TelegramChannel::getOrCreatePrivateChatChannel();
+        $channels = TelegramChannel::where('code', '!=', 'private_chat')->orderBy('id')->get();
         $availableRoles = Role::orderBy('name')->get();
         $commandDefinitions = TelegramChannel::getDefaultCommandDefinitions();
         $commandCategories = TelegramChannel::getCommandCategories();
@@ -67,6 +68,7 @@ class TelegramBotController extends Controller
             'totalTeachersWithId',
             'targetType',
             'webhookInfo',
+            'privateChannel',
             'channels',
             'availableRoles',
             'commandDefinitions',
@@ -702,5 +704,100 @@ class TelegramBotController extends Controller
 
         return redirect()->route('telegram.index', ['tab' => 'logs', '#tab-logs'])
             ->with('success', $message);
+    }
+
+    /**
+     * Perbarui konfigurasi menu perintah & tombol keyboard bot untuk Jalur Pribadi (Direct Message).
+     */
+    public function updatePrivateChannel(Request $request): RedirectResponse
+    {
+        $channel = TelegramChannel::getOrCreatePrivateChatChannel();
+
+        $validated = $request->validate([
+            'enabled_commands' => 'nullable|array',
+            'is_active' => 'nullable|boolean',
+            'show_reply_keyboard' => 'nullable|boolean',
+        ]);
+
+        $customButtons = [];
+        if ($request->has('custom_buttons') && is_array($request->input('custom_buttons'))) {
+            foreach ($request->input('custom_buttons') as $cmd => $btnData) {
+                if (! is_array($btnData)) {
+                    continue;
+                }
+                $customButtons[$cmd] = [
+                    'label' => ! empty($btnData['label']) ? trim($btnData['label']) : null,
+                    'description' => ! empty($btnData['description']) ? trim($btnData['description']) : null,
+                    'show_reply_button' => ! empty($btnData['show_reply_button']),
+                ];
+            }
+        }
+
+        $channel->update([
+            'enabled_commands' => $validated['enabled_commands'] ?? [],
+            'show_reply_keyboard' => $request->has('show_reply_keyboard'),
+            'custom_buttons' => $customButtons,
+            'is_active' => $request->has('is_active'),
+        ]);
+
+        if (config('services.telegram.enabled') !== false && $channel->is_active && ! empty($channel->enabled_commands)) {
+            $this->telegramService->syncPrivateChatCommands($channel);
+        }
+
+        return back()->with('success', 'Konfigurasi menu & tombol bot Jalur Pribadi berhasil disimpan.');
+    }
+
+    /**
+     * Sinkronkan daftar perintah khusus jalur pribadi ke Telegram API (Menu Pribadi).
+     */
+    public function syncPrivateCommands(): RedirectResponse
+    {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
+        $channel = TelegramChannel::getOrCreatePrivateChatChannel();
+        $res = $this->telegramService->syncPrivateChatCommands($channel);
+
+        if ($res['success']) {
+            return back()->with('success', $res['message']);
+        }
+
+        return back()->with('error', $res['message']);
+    }
+
+    /**
+     * Kirim pesan uji coba beserta menu reply keyboard jalur pribadi ke Telegram.
+     */
+    public function sendPrivateTestKeyboard(Request $request): RedirectResponse
+    {
+        if ($guard = $this->ensureTelegramAllowed()) {
+            return $guard;
+        }
+
+        $user = auth()->user();
+        $chatId = $request->input('target_chat_id') ?: $user?->telegram_chat_id;
+
+        if (empty($chatId)) {
+            return back()->with('error', 'Chat ID Telegram tujuan belum ada. Pastikan akun Anda sudah terhubung ke Telegram atau masukkan Chat ID tujuan.');
+        }
+
+        $channel = TelegramChannel::getOrCreatePrivateChatChannel();
+        $keyboard = $channel->buildReplyKeyboard();
+
+        $senderName = $user?->name ?? 'Administrator SIAP';
+        $msg = "🤖 <b>UJI COBA MENU KEYBOARD JALUR PRIBADI</b>\n"
+            ."━━━━━━━━━━━━━━━━━━━━\n"
+            ."Halo Bpk/Ibu <b>{$senderName}</b>,\n\n"
+            ."Ini adalah pesan uji coba pengiriman tombol <b>Reply Keyboard Jalur Pribadi Bot SIAP SMK PGRI Kras</b>.\n\n"
+            .'Tombol menu di bawah layar ponsel Anda saat ini telah disesuaikan dengan konfigurasi menu jalur pribadi di panel admin SIAP.';
+
+        $res = $this->telegramService->sendMessage($chatId, $msg, 'bot_reply', $senderName, 'HTML', $keyboard);
+
+        if ($res) {
+            return back()->with('success', "Menu keyboard jalur pribadi berhasil dikirimkan ke Chat ID {$chatId}!");
+        }
+
+        return back()->with('error', 'Gagal mengirimkan menu keyboard ke Telegram. Pastikan Chat ID valid dan bot sudah pernah Anda mulai (/start).');
     }
 }

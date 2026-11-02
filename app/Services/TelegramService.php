@@ -1718,13 +1718,79 @@ class TelegramService
     }
 
     /**
+     * Daftarkan perintah bot khusus jalur pribadi (BotCommandScopeAllPrivateChats).
+     */
+    public function syncPrivateChatCommands(?TelegramChannel $channel = null): array
+    {
+        if (empty($this->botToken)) {
+            return ['success' => false, 'message' => 'Token Bot belum dikonfigurasi.'];
+        }
+
+        if (! $channel) {
+            $channel = TelegramChannel::getOrCreatePrivateChatChannel();
+        }
+
+        $enabled = $channel->enabled_commands ?? [
+            '/presensi', '/jadwalsaya', '/ajukan_izin', '/piket', '/jadwal', '/inval', '/rekap', '/agenda', '/tamu', '/tukar', '/bantuan', '/id',
+        ];
+
+        $commandsPayload = [];
+        $defs = TelegramChannel::getDefaultCommandDefinitions();
+
+        foreach ($enabled as $cmd) {
+            $cmdKey = ltrim($cmd, '/');
+            if (empty($cmdKey)) {
+                continue;
+            }
+
+            $desc = $channel->getCommandDescription($cmd);
+            $commandsPayload[] = [
+                'command' => $cmdKey,
+                'description' => mb_substr($desc, 0, 256),
+            ];
+        }
+
+        // Pastikan /start selalu tersedia
+        if (! collect($commandsPayload)->contains('command', 'start')) {
+            array_unshift($commandsPayload, ['command' => 'start', 'description' => 'Buka menu utama bot & cek akun']);
+        }
+
+        $url = "https://api.telegram.org/bot{$this->botToken}/setMyCommands";
+
+        try {
+            $response = Http::timeout(6)->post($url, [
+                'commands' => array_values($commandsPayload),
+                'scope' => [
+                    'type' => 'all_private_chats',
+                ],
+            ]);
+
+            if ($response->successful() && $response->json('ok') === true) {
+                return [
+                    'success' => true,
+                    'message' => 'Daftar perintah jalur pribadi berhasil disinkronkan ke Telegram (Menu Pribadi)!',
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Telegram Error: '.($response->json('description') ?? $response->body()),
+            ];
+        } catch (Throwable $e) {
+            return ['success' => false, 'message' => 'Koneksi gagal: '.$e->getMessage()];
+        }
+    }
+
+    /**
      * Sinkronkan perintah default dan seluruh grup aktif ke Telegram API.
      */
     public function syncAllChannelCommands(): array
     {
         $this->setDefaultBotCommands();
+        $this->syncPrivateChatCommands();
 
-        $channels = TelegramChannel::where('is_active', true)
+        $channels = TelegramChannel::where('code', '!=', 'private_chat')
+            ->where('is_active', true)
             ->whereNotNull('chat_id')
             ->where('chat_id', '!=', '')
             ->get();

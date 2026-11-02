@@ -400,6 +400,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/set-webhook', [TelegramBotController::class, 'setWebhook'])->name('telegram.set-webhook');
         Route::post('/delete-webhook', [TelegramBotController::class, 'deleteWebhook'])->name('telegram.delete-webhook');
 
+        // Menu & Tombol Bot Jalur Pribadi (Direct Message / Japri GTK)
+        Route::put('/jalur-pribadi', [TelegramBotController::class, 'updatePrivateChannel'])->name('telegram.private-channel.update');
+        Route::post('/jalur-pribadi/sync-commands', [TelegramBotController::class, 'syncPrivateCommands'])->name('telegram.private-channel.sync-commands');
+        Route::post('/jalur-pribadi/test-keyboard', [TelegramBotController::class, 'sendPrivateTestKeyboard'])->name('telegram.private-channel.test-keyboard');
+
         // Saluran Grup Dinamis (Kelompok, Menu, dan Undangan)
         Route::post('/saluran-grup', [TelegramBotController::class, 'storeChannel'])->name('telegram.channel.store');
         Route::put('/saluran-grup/{channel}', [TelegramBotController::class, 'updateChannel'])->name('telegram.channel.update');

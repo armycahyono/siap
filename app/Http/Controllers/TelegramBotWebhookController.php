@@ -260,6 +260,17 @@ class TelegramBotWebhookController extends Controller
             $cmd = preg_replace('/@[a-z0-9_]+/i', '', $cmd);
         }
 
+        // Normalisasi teks kustom tombol ke kode perintah internal sistem
+        $channelForContext = $isGroup ? $channel : TelegramChannel::findByCode('private_chat');
+        if ($channelForContext && ! empty($channelForContext->custom_buttons)) {
+            foreach ($channelForContext->custom_buttons as $origCmd => $btnData) {
+                if (! empty($btnData['label']) && mb_strtolower(trim($btnData['label'])) === $cmd) {
+                    $cmd = mb_strtolower(trim($origCmd));
+                    break;
+                }
+            }
+        }
+
         // Jika /start membawa parameter deep linking di chat pribadi (contoh: /start izin_siswa)
         if (str_starts_with($cmd, '/start ') && ! $isGroup) {
             $deepLink = trim(substr($cmd, 7));
@@ -302,7 +313,7 @@ class TelegramBotWebhookController extends Controller
             }
         }
 
-        // 2. Filter izin perintah per grup (sesuai konfigurasi menu saluran grup)
+        // 2. Filter izin perintah per grup / jalur pribadi
         if ($isGroup && $channel && ! empty($channel->enabled_commands)) {
             $baseCmd = explode(' ', $cmd)[0];
             $allowed = array_map(fn ($c) => mb_strtolower(trim($c)), $channel->enabled_commands);
@@ -317,6 +328,37 @@ class TelegramBotWebhookController extends Controller
             if (! in_array($baseCmd, $allowed)) {
                 // Perintah tidak diaktifkan pada grup ini, abaikan dengan tenang
                 return;
+            }
+        } elseif (! $isGroup) {
+            $privateChannel = TelegramChannel::findByCode('private_chat');
+            if ($privateChannel && ! empty($privateChannel->enabled_commands)) {
+                $baseCmd = explode(' ', $cmd)[0];
+                $allowed = array_map(fn ($c) => mb_strtolower(trim($c)), $privateChannel->enabled_commands);
+                $allowed[] = '/help';
+                $allowed[] = '/bantuan';
+                $allowed[] = '/panduan';
+                $allowed[] = '/id';
+                $allowed[] = '/chatid';
+                $allowed[] = '/start';
+                $allowed[] = '/menu';
+                $allowed[] = '/keyboard';
+                $allowed[] = '/batal';
+                $allowed[] = '/cancel';
+
+                $isLinkCmd = str_starts_with($cmd, '/hubungkan') || str_starts_with($cmd, '/link') || str_starts_with($cmd, '/tautkan');
+
+                if (str_starts_with($cmd, '/') && ! in_array($baseCmd, $allowed) && ! $isLinkCmd) {
+                    $this->telegramService->sendMessage(
+                        $chatId,
+                        "⚠️ Perintah <code>{$baseCmd}</code> saat ini tidak diaktifkan pada jalur pribadi oleh Administrator.\n\nKetik <code>/menu</code> untuk membuka menu yang tersedia.",
+                        'bot_reply',
+                        $senderName,
+                        'HTML',
+                        $this->getMainMenuKeyboard($user)
+                    );
+
+                    return;
+                }
             }
         }
 
@@ -457,7 +499,35 @@ class TelegramBotWebhookController extends Controller
      */
     protected function getMainMenuKeyboard(?User $user = null): array
     {
+        $privateChannel = TelegramChannel::findByCode('private_chat');
+
+        if ($privateChannel && ! $privateChannel->show_reply_keyboard) {
+            return ['remove_keyboard' => true];
+        }
+
         if (! $user) {
+            if ($privateChannel && ! empty($privateChannel->enabled_commands)) {
+                $unlinkedButtons = [];
+                $allowedUnlinked = ['/bantuan', '/id', '/info_sekolah'];
+                foreach ($privateChannel->enabled_commands as $cmd) {
+                    if (in_array($cmd, $allowedUnlinked) && $privateChannel->isReplyButtonEnabled($cmd)) {
+                        $unlinkedButtons[] = $privateChannel->getButtonLabel($cmd);
+                    }
+                }
+                if (! empty($unlinkedButtons)) {
+                    $rows = [];
+                    foreach (array_chunk($unlinkedButtons, 2) as $chunk) {
+                        $rows[] = array_map(fn ($text) => ['text' => $text], $chunk);
+                    }
+
+                    return [
+                        'keyboard' => $rows,
+                        'resize_keyboard' => true,
+                        'is_persistent' => true,
+                    ];
+                }
+            }
+
             return [
                 'keyboard' => [
                     [['text' => 'ℹ️ Panduan Bantuan'], ['text' => '🆔 Cek Chat ID']],
@@ -465,6 +535,46 @@ class TelegramBotWebhookController extends Controller
                 'resize_keyboard' => true,
                 'is_persistent' => true,
             ];
+        }
+
+        // Jika ada konfigurasi saluran jalur pribadi aktif
+        if ($privateChannel && ! empty($privateChannel->enabled_commands)) {
+            $isPiket = $user->canOperatePiket();
+            $isHomeroom = $user->isHomeroomTeacher();
+            $canCheckAttendance = $this->canCheckStudentAttendance($user);
+
+            $selectedButtons = [];
+            foreach ($privateChannel->enabled_commands as $cmd) {
+                if (! $privateChannel->isReplyButtonEnabled($cmd)) {
+                    continue;
+                }
+
+                // Filter hak akses peran khusus
+                if ($cmd === '/izin_gtk' && ! $isPiket && ! $user->isSystemAdmin()) {
+                    continue;
+                }
+                if ($cmd === '/izin_siswa' && ! $isHomeroom && ! $isPiket && ! $user->isSystemAdmin()) {
+                    continue;
+                }
+                if ($cmd === '/cek_absen_siswa' && ! $canCheckAttendance) {
+                    continue;
+                }
+
+                $selectedButtons[] = $privateChannel->getButtonLabel($cmd);
+            }
+
+            if (! empty($selectedButtons)) {
+                $rows = [];
+                foreach (array_chunk($selectedButtons, 2) as $chunk) {
+                    $rows[] = array_map(fn ($text) => ['text' => $text], $chunk);
+                }
+
+                return [
+                    'keyboard' => $rows,
+                    'resize_keyboard' => true,
+                    'is_persistent' => true,
+                ];
+            }
         }
 
         $canOperate = $user && $user->canOperatePiket();
