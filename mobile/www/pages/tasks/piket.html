@@ -28,8 +28,8 @@
                     🛡️
                 </div>
                 <div>
-                    <span id="piket-shift-status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white">Memeriksa...</span>
-                    <p id="piket-shift-detail" class="text-[10px] text-slate-500 mt-0.5">Memuat jadwal shift...</p>
+                    <span id="piket-shift-status-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white">Petugas Piket Hari Ini</span>
+                    <p id="piket-shift-detail" class="hidden text-[10px] text-slate-500 mt-0.5"></p>
                 </div>
             </div>
             <div id="piket-journal-badge-container" class="text-right">
@@ -39,10 +39,7 @@
 
         <!-- Tim Piket Petugas Bertugas -->
         <div class="space-y-1">
-            <div class="flex items-center justify-between text-[10px] text-slate-500">
-                <span class="font-bold text-slate-700">Petugas Hari Ini:</span>
-                <span id="piket-officers-count" class="font-mono text-purple-700">0 Petugas</span>
-            </div>
+            <span id="piket-officers-count" class="hidden font-mono text-purple-700">0 Petugas</span>
             <div id="piket-officers-chips" class="flex flex-wrap gap-1">
                 <span class="text-[10px] text-slate-400">Memuat daftar petugas...</span>
             </div>

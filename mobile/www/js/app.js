@@ -1690,11 +1690,11 @@
                 }
             } else if (isAdminOrManagement) {
                 if (badgePiketToday) {
-                    badgePiketToday.textContent = 'Akses Manajemen';
-                    badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800';
+                    badgePiketToday.textContent = 'Petugas Piket Hari Ini';
+                    badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white';
                 }
                 if (piketLocationSub) {
-                    piketLocationSub.textContent = 'Akses Penuh Manajemen & Meja Piket';
+                    piketLocationSub.textContent = 'Meja Piket Utama & Operasional';
                 }
             } else {
                 if (badgePiketToday) {
@@ -4015,14 +4015,11 @@
         const badgeShift = currentPiketContainer.querySelector('#piket-shift-status-badge');
         const detailShift = currentPiketContainer.querySelector('#piket-shift-detail');
         if (badgeShift && detailShift) {
-            if (data.is_on_duty_today) {
-                badgeShift.textContent = 'Bertugas Hari Ini';
+            if (data.is_on_duty_today || data.is_management) {
+                badgeShift.textContent = 'Petugas Piket Hari Ini';
                 badgeShift.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs';
-                detailShift.textContent = 'Anda aktif bertugas di Meja Piket & Gerbang hari ini.';
-            } else if (data.is_management) {
-                badgeShift.textContent = 'Supervisi Manajemen';
-                badgeShift.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs';
-                detailShift.textContent = 'Akses Penuh Manajemen: Hak supervisi, operasional, & penutupan jurnal.';
+                detailShift.textContent = '';
+                detailShift.classList.add('hidden');
             } else {
                 badgeShift.textContent = 'Tidak Bertugas Hari Ini';
                 badgeShift.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800';
