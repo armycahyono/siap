@@ -1844,6 +1844,10 @@
                 btnHomeroomRecap.href = `/attendance/homeroom-recap?classroom_id=${data.homeroom.classroom.id}&date=${data.target_date?.current}`;
             }
 
+            if (window.closeHomeroomDrawer) {
+                window.closeHomeroomDrawer();
+            }
+
             const s = data.homeroom.summary || {};
             const setVal = (id, val) => {
                 const el = container.querySelector(id);
@@ -2078,20 +2082,84 @@
         }
     }
 
+    let currentHomeroomDrawerCat = null;
     window.selectHomeroomCategory = function(cat) {
-        if (!tasksDataCache?.homeroom) return;
-        const s = tasksDataCache.homeroom.summary || {};
-        const labels = {
-            hadir: `Hadir: ${s.hadir_count || 0} siswa aktif di kelas.`,
-            late: `Terlambat: ${s.late_count || 0} siswa izin masuk gerbang terlambat.`,
-            sakit: `Sakit: ${s.sakit_count || 0} siswa tercatat sakit.`,
-            izin: `Izin: ${s.izin_count || 0} siswa berhalangan izin.`,
-            dispen: `Dispensasi: ${s.dispen_count || 0} siswa dispensasi tugas/lomba.`,
-            pulang: `Pulang: ${s.pulang_count || 0} siswa izin pulang lebih awal.`,
-            alfa: `Alfa: ${s.alfa_count || 0} siswa tidak hadir tanpa keterangan.`,
-            truancy: `Indikasi Bolos: ${s.truancy_count || 0} siswa terdeteksi alfa di tengah jam KBM.`,
+        const drawer = document.getElementById('homeroom-drawer-detail');
+        const drawerTitle = document.getElementById('homeroom-drawer-title');
+        const drawerList = document.getElementById('homeroom-drawer-list');
+        if (!drawer || !drawerList) return;
+
+        // Toggle jika kategori yang sama diklik
+        if (currentHomeroomDrawerCat === cat && !drawer.classList.contains('hidden')) {
+            window.closeHomeroomDrawer();
+            return;
+        }
+
+        currentHomeroomDrawerCat = cat;
+
+        // Highlight chip yang aktif
+        document.querySelectorAll('[data-homeroom-chip]').forEach(c => {
+            c.classList.remove('ring-2', 'ring-amber-500', 'ring-offset-1');
+        });
+        const activeChip = document.querySelector(`[data-homeroom-chip="${cat}"]`);
+        if (activeChip) {
+            activeChip.classList.add('ring-2', 'ring-amber-500', 'ring-offset-1');
+        }
+
+        const h = tasksDataCache?.homeroom;
+        const details = h?.details || {};
+        const items = details[cat] || (cat === 'late' ? details.telat : null) || (cat === 'truancy' ? details.bolos : null) || [];
+
+        const categoryTitles = {
+            hadir: 'Siswa Hadir di Kelas',
+            late: 'Siswa Terlambat Masuk',
+            telat: 'Siswa Terlambat Masuk',
+            sakit: 'Siswa Sakit',
+            izin: 'Siswa Izin Tidak Masuk',
+            dispen: 'Siswa Dispensasi Lomba/Tugas',
+            pulang: 'Siswa Izin Pulang Lebih Awal',
+            alfa: 'Siswa Alfa (Tanpa Keterangan)',
+            truancy: 'Siswa Terindikasi Bolos KBM',
+            bolos: 'Siswa Terindikasi Bolos KBM',
         };
-        showToast(labels[cat] || `Kategori ${cat}`, 'info');
+
+        const title = categoryTitles[cat] || `Kategori ${cat}`;
+        if (drawerTitle) {
+            drawerTitle.innerHTML = `<span>👥 ${escapeHtml(title)}</span> <span class="text-amber-800 font-mono text-[10px]">(${items.length} Siswa)</span>`;
+        }
+
+        if (items.length === 0) {
+            drawerList.innerHTML = `
+                <div class="text-center py-3 text-slate-400 text-[11px] bg-white rounded-lg border border-dashed border-amber-200">
+                    <span class="text-base block mb-0.5">ℹ️</span>
+                    Tidak ada catatan ${escapeHtml(title.toLowerCase())} hari ini.
+                </div>
+            `;
+        } else {
+            drawerList.innerHTML = items.map(item => `
+                <div class="p-2 rounded-lg bg-white border border-amber-100 shadow-2xs flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <span class="font-bold text-slate-800 text-[11px] block truncate">${escapeHtml(item.name || 'Siswa')}</span>
+                        <span class="text-[9px] text-slate-500 block truncate">
+                            ${item.nis ? `<span class="font-mono text-slate-400 font-semibold mr-1">${escapeHtml(item.nis)}</span>` : ''}
+                            ${item.reason ? `<span class="text-amber-900">${escapeHtml(item.reason)}</span>` : ''}
+                        </span>
+                    </div>
+                    ${item.time && item.time !== '-' ? `<span class="text-[9px] font-mono font-bold text-amber-900 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">${escapeHtml(item.time)}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        drawer.classList.remove('hidden');
+    };
+
+    window.closeHomeroomDrawer = function() {
+        const drawer = document.getElementById('homeroom-drawer-detail');
+        if (drawer) drawer.classList.add('hidden');
+        document.querySelectorAll('[data-homeroom-chip]').forEach(c => {
+            c.classList.remove('ring-2', 'ring-amber-500', 'ring-offset-1');
+        });
+        currentHomeroomDrawerCat = null;
     };
 
     window.quickUpdateBkStatus = async function(incidentId, status) {

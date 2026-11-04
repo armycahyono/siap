@@ -128,44 +128,55 @@
             </div>
         </div>
 
-        <!-- Bilah 8 Chip Status Siswa Rombel (Bisa Diklik untuk Filter) -->
+        <!-- Bilah 8 Chip Status Siswa Rombel (Bisa Diklik untuk Filter & Rincian) -->
         <div class="space-y-1.5 mb-3">
             <div class="grid grid-cols-4 gap-1.5 text-center">
-                <div onclick="selectHomeroomCategory('hadir')" class="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition active:scale-95">
+                <div data-homeroom-chip="hadir" onclick="selectHomeroomCategory('hadir')" class="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-emerald-700 block">Hadir</span>
                     <p id="stat-hadir" class="text-xs font-black text-emerald-950 font-mono">0</p>
                 </div>
-                <div onclick="selectHomeroomCategory('late')" class="p-1.5 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer hover:bg-amber-100 transition active:scale-95">
+                <div data-homeroom-chip="late" onclick="selectHomeroomCategory('late')" class="p-1.5 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer hover:bg-amber-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-amber-700 block">Telat</span>
                     <p id="stat-terlambat" class="text-xs font-black text-amber-950 font-mono">0</p>
                 </div>
-                <div onclick="selectHomeroomCategory('sakit')" class="p-1.5 rounded-xl bg-blue-50 border border-blue-200 cursor-pointer hover:bg-blue-100 transition active:scale-95">
+                <div data-homeroom-chip="sakit" onclick="selectHomeroomCategory('sakit')" class="p-1.5 rounded-xl bg-blue-50 border border-blue-200 cursor-pointer hover:bg-blue-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-blue-700 block">Sakit</span>
                     <p id="stat-sakit" class="text-xs font-black text-blue-950 font-mono">0</p>
                 </div>
-                <div onclick="selectHomeroomCategory('izin')" class="p-1.5 rounded-xl bg-cyan-50 border border-cyan-200 cursor-pointer hover:bg-cyan-100 transition active:scale-95">
+                <div data-homeroom-chip="izin" onclick="selectHomeroomCategory('izin')" class="p-1.5 rounded-xl bg-cyan-50 border border-cyan-200 cursor-pointer hover:bg-cyan-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-cyan-700 block">Izin</span>
                     <p id="stat-izin" class="text-xs font-black text-cyan-950 font-mono">0</p>
                 </div>
             </div>
             <div class="grid grid-cols-4 gap-1.5 text-center">
-                <div onclick="selectHomeroomCategory('dispen')" class="p-1.5 rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer hover:bg-indigo-100 transition active:scale-95">
+                <div data-homeroom-chip="dispen" onclick="selectHomeroomCategory('dispen')" class="p-1.5 rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer hover:bg-indigo-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-indigo-700 block">Dispen</span>
                     <p id="stat-dispen" class="text-xs font-black text-indigo-950 font-mono">0</p>
                 </div>
-                <div onclick="selectHomeroomCategory('pulang')" class="p-1.5 rounded-xl bg-purple-50 border border-purple-200 cursor-pointer hover:bg-purple-100 transition active:scale-95">
+                <div data-homeroom-chip="pulang" onclick="selectHomeroomCategory('pulang')" class="p-1.5 rounded-xl bg-purple-50 border border-purple-200 cursor-pointer hover:bg-purple-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-purple-700 block">Pulang</span>
                     <p id="stat-pulang" class="text-xs font-black text-purple-950 font-mono">0</p>
                 </div>
-                <div onclick="selectHomeroomCategory('alfa')" class="p-1.5 rounded-xl bg-rose-50 border border-rose-200 cursor-pointer hover:bg-rose-100 transition active:scale-95">
+                <div data-homeroom-chip="alfa" onclick="selectHomeroomCategory('alfa')" class="p-1.5 rounded-xl bg-rose-50 border border-rose-200 cursor-pointer hover:bg-rose-100 transition active:scale-95">
                     <span class="text-[9px] font-bold text-rose-700 block">Alfa</span>
                     <p id="stat-alfa" class="text-xs font-black text-rose-950 font-mono">0</p>
                 </div>
-                <div onclick="selectHomeroomCategory('truancy')" class="p-1.5 rounded-xl bg-slate-900 text-white cursor-pointer hover:bg-slate-800 transition active:scale-95 shadow-xs">
+                <div data-homeroom-chip="truancy" onclick="selectHomeroomCategory('truancy')" class="p-1.5 rounded-xl bg-slate-900 text-white cursor-pointer hover:bg-slate-800 transition active:scale-95 shadow-xs">
                     <span class="text-[9px] font-bold text-rose-400 block">Bolos</span>
                     <p id="stat-bolos" class="text-xs font-black text-white font-mono">0</p>
                 </div>
             </div>
+        </div>
+
+        <!-- Drawer Rincian Siswa Saat Chip Diklik (In-Place) -->
+        <div id="homeroom-drawer-detail" class="hidden mb-3 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 shadow-2xs transition-all">
+            <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-amber-200/80">
+                <span id="homeroom-drawer-title" class="text-[11px] font-black text-amber-950 flex items-center gap-1.5">
+                    <span>👥 Rincian Siswa</span>
+                </span>
+                <button type="button" onclick="closeHomeroomDrawer()" class="text-amber-800 hover:text-amber-950 text-xs font-bold px-1.5 py-0.5 rounded-lg hover:bg-amber-200/60 transition" aria-label="Tutup Rincian">&times; Tutup</button>
+            </div>
+            <div id="homeroom-drawer-list" class="max-h-56 overflow-y-auto space-y-1.5 text-xs"></div>
         </div>
 
         <!-- 3 Tombol Aksi Cepat Wali Kelas -->

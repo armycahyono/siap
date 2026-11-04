@@ -253,4 +253,41 @@ class MobileHomeroomRecapTest extends TestCase
         $pdfRes->assertStatus(200)
             ->assertHeader('content-type', 'application/pdf');
     }
+
+    public function test_tasks_overview_returns_homeroom_monitoring_details(): void
+    {
+        $response = $this->actingAs($this->homeroomTeacher)
+            ->getJson('/api/v1/mobile/tasks');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonStructure([
+                'data' => [
+                    'homeroom' => [
+                        'classroom' => ['id', 'name'],
+                        'summary' => [
+                            'total_students',
+                            'hadir_count',
+                            'late_count',
+                            'sakit_count',
+                            'izin_count',
+                            'dispen_count',
+                            'pulang_count',
+                            'alfa_count',
+                            'truancy_count',
+                        ],
+                        'details' => [
+                            'hadir',
+                            'late',
+                            'sakit',
+                            'izin',
+                            'dispen',
+                            'pulang',
+                            'alfa',
+                            'truancy',
+                        ],
+                    ],
+                ],
+            ]);
+    }
 }

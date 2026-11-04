@@ -230,6 +230,133 @@ class MobileTasksController extends Controller
                 ->orderBy('incident_time', 'desc')
                 ->get();
 
+            $homeroomStudents = $myHomeroomClassroom->students()->get()->keyBy('id');
+
+            // 1. Hadir
+            $hadirDetails = collect();
+            foreach ($latestStatusPerStudent->where('status', 'h') as $rec) {
+                $st = $rec->student ?? $homeroomStudents->get($rec->student_id);
+                if ($st) {
+                    $hadirDetails->put($st->id, [
+                        'student_id' => $st->id,
+                        'name' => $st->name,
+                        'nis' => $st->nis ?? '',
+                        'time' => $rec->created_at ? $rec->created_at->format('H:i') : '-',
+                        'reason' => 'Hadir di '.($rec->session?->subject?->name ?? 'KBM'),
+                    ]);
+                }
+            }
+            foreach ($studentFingerprintLogs as $fId) {
+                if (! $hadirDetails->has($fId) && $homeroomStudents->has($fId)) {
+                    if (! $allSakitStudentIds->contains($fId) && ! $allMurniIzinStudentIds->contains($fId) && ! $allDispenStudentIds->contains($fId) && ! $pureAlfaRecords->pluck('student_id')->contains($fId)) {
+                        $st = $homeroomStudents->get($fId);
+                        $hadirDetails->put($fId, [
+                            'student_id' => $fId,
+                            'name' => $st->name,
+                            'nis' => $st->nis ?? '',
+                            'time' => '-',
+                            'reason' => 'Presensi Masuk Gerbang',
+                        ]);
+                    }
+                }
+            }
+
+            // 2. Late / Telat
+            $lateDetails = $homeroomLatePermits->map(function ($lp) use ($homeroomStudents) {
+                $st = $lp->student ?? $homeroomStudents->get($lp->student_id);
+
+                return [
+                    'student_id' => $lp->student_id,
+                    'name' => $st?->name ?? 'Siswa',
+                    'nis' => $st?->nis ?? '',
+                    'time' => ! empty($lp->entry_time) ? substr($lp->entry_time, 0, 5) : ($lp->created_at ? $lp->created_at->format('H:i') : '-'),
+                    'reason' => $lp->reason ?: ('Terlambat masuk (Jam ke-'.($lp->period_assigned ?? '1').')'),
+                ];
+            })->values();
+
+            // 3. Sakit
+            $sakitDetails = collect();
+            foreach ($allSakitStudentIds as $sId) {
+                $p = $homeroomSakitPermits->firstWhere('student_id', $sId);
+                $r = $homeroomSakitRecords->firstWhere('student_id', $sId);
+                $st = $p?->student ?? $r?->student ?? $homeroomStudents->get($sId);
+                $sakitDetails->push([
+                    'student_id' => $sId,
+                    'name' => $st?->name ?? 'Siswa',
+                    'nis' => $st?->nis ?? '',
+                    'time' => $p?->created_at ? $p->created_at->format('H:i') : ($r?->created_at ? $r->created_at->format('H:i') : '-'),
+                    'reason' => $p?->reason ?: ($r?->notes ?: 'Keterangan Sakit'),
+                ]);
+            }
+
+            // 4. Izin
+            $izinDetails = collect();
+            foreach ($allMurniIzinStudentIds as $sId) {
+                $p = $homeroomMurniIzinPermits->firstWhere('student_id', $sId);
+                $r = $homeroomMurniIzinRecords->firstWhere('student_id', $sId);
+                $st = $p?->student ?? $r?->student ?? $homeroomStudents->get($sId);
+                $izinDetails->push([
+                    'student_id' => $sId,
+                    'name' => $st?->name ?? 'Siswa',
+                    'nis' => $st?->nis ?? '',
+                    'time' => $p?->created_at ? $p->created_at->format('H:i') : ($r?->created_at ? $r->created_at->format('H:i') : '-'),
+                    'reason' => $p?->reason ?: ($r?->notes ?: 'Izin Berhalangan'),
+                ]);
+            }
+
+            // 5. Dispen
+            $dispenDetails = collect();
+            foreach ($allDispenStudentIds as $sId) {
+                $r = $homeroomDispenRecords->firstWhere('student_id', $sId);
+                $st = $r?->student ?? $homeroomStudents->get($sId);
+                $dispenDetails->push([
+                    'student_id' => $sId,
+                    'name' => $st?->name ?? 'Siswa',
+                    'nis' => $st?->nis ?? '',
+                    'time' => $r?->created_at ? $r->created_at->format('H:i') : '-',
+                    'reason' => $r?->notes ?: 'Dispensasi Tugas/Lomba',
+                ]);
+            }
+
+            // 6. Pulang
+            $pulangDetails = $homeroomEarlyLeavePermits->map(function ($ep) use ($homeroomStudents) {
+                $st = $ep->student ?? $homeroomStudents->get($ep->student_id);
+
+                return [
+                    'student_id' => $ep->student_id,
+                    'name' => $st?->name ?? 'Siswa',
+                    'nis' => $st?->nis ?? '',
+                    'time' => ! empty($ep->entry_time) ? substr($ep->entry_time, 0, 5) : ($ep->created_at ? $ep->created_at->format('H:i') : '-'),
+                    'reason' => $ep->reason ?: 'Izin Pulang Lebih Awal',
+                ];
+            })->values();
+
+            // 7. Alfa
+            $alfaDetails = collect();
+            $pureAlfaStudentIds = $pureAlfaRecords->pluck('student_id')->unique();
+            foreach ($pureAlfaStudentIds as $sId) {
+                $r = $pureAlfaRecords->firstWhere('student_id', $sId);
+                $st = $r?->student ?? $homeroomStudents->get($sId);
+                $alfaDetails->push([
+                    'student_id' => $sId,
+                    'name' => $st?->name ?? 'Siswa',
+                    'nis' => $st?->nis ?? '',
+                    'time' => $r?->created_at ? $r->created_at->format('H:i') : '-',
+                    'reason' => $r?->notes ?: 'Tanpa Keterangan (Alfa)',
+                ]);
+            }
+
+            // 8. Truancy / Bolos
+            $truancyDetails = $truancyStudents->map(function ($ts) {
+                return [
+                    'student_id' => $ts['student_id'],
+                    'name' => $ts['student_name'],
+                    'nis' => '',
+                    'time' => '-',
+                    'reason' => 'Alfa di '.$ts['alfa_subjects'].' (Hadir di '.$ts['present_subjects'].')',
+                ];
+            })->values();
+
             $homeroomStudentEvents = collect();
 
             foreach ($homeroomIncidents as $inc) {
@@ -315,6 +442,18 @@ class MobileTasksController extends Controller
                     'alfa_count' => $pureAlfaCount,
                     'truancy_count' => $truancyStudents->count(),
                     'attendance_rate' => $attendanceRate,
+                ],
+                'details' => [
+                    'hadir' => $hadirDetails->values(),
+                    'late' => $lateDetails->values(),
+                    'telat' => $lateDetails->values(),
+                    'sakit' => $sakitDetails->values(),
+                    'izin' => $izinDetails->values(),
+                    'dispen' => $dispenDetails->values(),
+                    'pulang' => $pulangDetails->values(),
+                    'alfa' => $alfaDetails->values(),
+                    'truancy' => $truancyDetails->values(),
+                    'bolos' => $truancyDetails->values(),
                 ],
                 'truancy_list' => $truancyStudents->values(),
                 'student_events' => $homeroomStudentEvents->values(),
