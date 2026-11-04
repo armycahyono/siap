@@ -355,6 +355,18 @@
         </table>
     @endif
 
+    <!-- KETERANGAN SINGKATAN STATUS PRESENSI -->
+    <div style="font-size: 8.5px; margin-top: 6px; margin-bottom: 12px; color: #334155; page-break-inside: avoid;">
+        <strong>Keterangan:</strong>
+        <span style="margin-left: 6px;"><strong>H</strong> = Hadir</span>,
+        <span style="margin-left: 6px;"><strong>S</strong> = Sakit</span>,
+        <span style="margin-left: 6px;"><strong>I</strong> = Izin</span>,
+        <span style="margin-left: 6px;"><strong>D</strong> = Dispensasi</span>,
+        <span style="margin-left: 6px;"><strong>T</strong> = Terlambat</span>,
+        <span style="margin-left: 6px;"><strong>A</strong> = Alfa</span>,
+        <span style="margin-left: 6px;"><strong>B</strong> = Bolos</span>
+    </div>
+
     <!-- TANDA TANGAN WALI KELAS & KEPALA SEKOLAH -->
     <table class="signature-table">
         <tr>
@@ -362,15 +374,13 @@
                 Mengetahui,<br>
                 Kepala Sekolah
                 <div style="height: 50px;"></div>
-                <strong>{{ $setting->principal_name ?? 'Kepala Sekolah' }}</strong><br>
-                <span>NIP. {{ $setting->principal_nip ?? '-' }}</span>
+                <strong>{{ $setting->principal_name ?? 'Kepala Sekolah' }}</strong>
             </td>
             <td>
-                {{ $setting->school_city ?? 'Kota' }}, {{ now()->translatedFormat('d F Y') }}<br>
+                Kediri, {{ now()->translatedFormat('d F Y') }}<br>
                 Wali Kelas {{ $selectedClassroom?->name }}
                 <div style="height: 50px;"></div>
-                <strong>{{ $selectedClassroom?->homeroomTeacher?->name ?? 'Wali Kelas' }}</strong><br>
-                <span>NIP. {{ $selectedClassroom?->homeroomTeacher?->nip ?? '-' }}</span>
+                <strong>{{ $selectedClassroom?->homeroomTeacher?->name ?? 'Wali Kelas' }}</strong>
             </td>
         </tr>
     </table>
