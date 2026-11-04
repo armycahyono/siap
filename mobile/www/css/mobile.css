@@ -19,15 +19,31 @@ input, textarea, select {
 
 body {
     background-color: var(--slate-bg);
-    background-image: radial-gradient(at 0% 0%, rgba(219, 234, 254, 0.45) 0px, transparent 50%),
-                      radial-gradient(at 100% 0%, rgba(224, 231, 255, 0.35) 0px, transparent 50%);
-    background-attachment: fixed;
     color: #0f172a;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Plus Jakarta Sans", system-ui, sans-serif;
     padding-top: var(--safe-top);
     padding-bottom: calc(var(--safe-bottom) + 90px);
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+    position: relative;
+    min-height: 100vh;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Isolated GPU fixed background layer (replaces laggy background-attachment: fixed) */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(at 0% 0%, rgba(219, 234, 254, 0.45) 0px, transparent 50%),
+                      radial-gradient(at 100% 0%, rgba(224, 231, 255, 0.35) 0px, transparent 50%);
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 /* App View Container & Panes */
@@ -114,20 +130,22 @@ body {
     color: #ffffff !important;
 }
 
-/* Cupertino Inset Grouped Cards */
+/* Cupertino Inset Grouped Cards (Optimized for 60-120fps smooth scrolling) */
 .card-elevated {
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: #ffffff;
     border-radius: 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 3px -1px rgba(15, 23, 42, 0.02);
+    content-visibility: auto;
+    contain-intrinsic-size: 0 80px;
 }
 
 .card-subtle {
-    background: rgba(248, 250, 252, 0.85);
+    background: #f8fafc;
     border-radius: 1rem;
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    content-visibility: auto;
+    contain-intrinsic-size: 0 60px;
 }
 
 /* Skeleton Loading Animation */
