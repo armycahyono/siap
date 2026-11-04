@@ -7250,14 +7250,15 @@
     // ==========================================
     let schoolScheduleCurrentDay = 'Senin';
     let schoolScheduleDataCache = null;
-    let schoolScheduleFilterActiveOnly = true;
+    let schoolScheduleCurrentFilter = 'active'; // 'active', 'unattended', 'all'
 
     window.initSchoolSchedule = async function(container, params) {
         const todayDay = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
         schoolScheduleCurrentDay = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'].includes(todayDay) ? todayDay : 'Senin';
-        schoolScheduleFilterActiveOnly = true;
 
         const isInvalMode = (params?.inval === '1') || window.location.hash.includes('inval=1');
+        schoolScheduleCurrentFilter = isInvalMode ? 'unattended' : 'active';
+
         const invalBanner = container?.querySelector('#sch-inval-mode-banner');
         if (invalBanner) {
             if (isInvalMode) {
@@ -7267,34 +7268,50 @@
             }
         }
 
-        const btnAll = container?.querySelector('#btn-sch-filter-all');
-        const btnActive = container?.querySelector('#btn-sch-filter-active');
-        if (btnAll && btnActive) {
-            btnAll.className = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition';
-            btnActive.className = 'px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1';
-        }
-
+        updateSchoolScheduleFilterButtons(container);
         await loadSchoolScheduleData();
     };
 
-    window.toggleSchoolScheduleActiveFilter = function(activeOnly) {
-        schoolScheduleFilterActiveOnly = Boolean(activeOnly);
-        const container = document.getElementById('app-view-container');
-        if (container) {
-            const btnAll = container.querySelector('#btn-sch-filter-all');
-            const btnActive = container.querySelector('#btn-sch-filter-active');
-            if (btnAll && btnActive) {
-                if (schoolScheduleFilterActiveOnly) {
-                    btnAll.className = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition';
-                    btnActive.className = 'px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1';
-                } else {
-                    btnAll.className = 'px-2.5 py-1 rounded-xl bg-blue-600 text-white font-bold transition shadow-xs';
-                    btnActive.className = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition flex items-center gap-1';
-                }
-            }
-        }
+    window.setSchoolScheduleFilter = function(filter) {
+        schoolScheduleCurrentFilter = filter;
+        updateSchoolScheduleFilterButtons();
         renderSchoolSchedulesList();
     };
+
+    // Backward compatibility helper
+    window.toggleSchoolScheduleActiveFilter = function(activeOnly) {
+        window.setSchoolScheduleFilter(activeOnly ? 'active' : 'all');
+    };
+
+    function updateSchoolScheduleFilterButtons(targetContainer) {
+        const container = targetContainer || document.getElementById('app-view-container');
+        if (!container) return;
+
+        const btnActive = container.querySelector('#btn-sch-filter-active');
+        const btnUnattended = container.querySelector('#btn-sch-filter-unattended');
+        const btnAll = container.querySelector('#btn-sch-filter-all');
+
+        const activeClass = 'px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1 shrink-0';
+        const unattendedActiveClass = 'px-2.5 py-1 rounded-xl bg-rose-600 text-white font-bold transition shadow-xs flex items-center gap-1 shrink-0';
+        const allActiveClass = 'px-2.5 py-1 rounded-xl bg-blue-600 text-white font-bold transition shadow-xs shrink-0';
+        const inactiveClass = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition shrink-0';
+
+        if (btnActive) {
+            btnActive.className = (schoolScheduleCurrentFilter === 'active')
+                ? activeClass
+                : inactiveClass + ' flex items-center gap-1';
+        }
+        if (btnUnattended) {
+            btnUnattended.className = (schoolScheduleCurrentFilter === 'unattended')
+                ? unattendedActiveClass
+                : inactiveClass + ' flex items-center gap-1';
+        }
+        if (btnAll) {
+            btnAll.className = (schoolScheduleCurrentFilter === 'all')
+                ? allActiveClass
+                : inactiveClass;
+        }
+    }
 
     async function loadSchoolScheduleData() {
         const container = document.getElementById('app-view-container');
@@ -7335,9 +7352,13 @@
             const filterOptions = res.data.filter_options || {};
 
             if (titleEl) {
-                titleEl.textContent = schoolScheduleFilterActiveOnly
-                    ? `Jadwal Hari ${schoolScheduleCurrentDay} (Sedang Berlangsung)`
-                    : `Jadwal Hari ${schoolScheduleCurrentDay}`;
+                if (schoolScheduleCurrentFilter === 'active') {
+                    titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay} (Sedang Berlangsung)`;
+                } else if (schoolScheduleCurrentFilter === 'unattended') {
+                    titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay} (Belum Diabsen)`;
+                } else {
+                    titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay} (Semua Jam)`;
+                }
             }
             if (countEl) countEl.textContent = `${schedules.length} jadwal`;
             if (ayEl) ayEl.textContent = `TP ${res.data.academic_year || '2026/2027'} • Seluruh Kelas & Guru`;
@@ -7395,25 +7416,38 @@
         if (!listEl) return;
 
         let schedules = schoolScheduleDataCache.schedules || [];
-        if (schoolScheduleFilterActiveOnly) {
+        if (schoolScheduleCurrentFilter === 'active') {
             schedules = schedules.filter(s => s.is_active_now);
+        } else if (schoolScheduleCurrentFilter === 'unattended') {
+            schedules = schedules.filter(s => !s.is_attended);
         }
 
         if (titleEl) {
-            titleEl.textContent = schoolScheduleFilterActiveOnly
-                ? `Jadwal Hari ${schoolScheduleCurrentDay} (Sedang Berlangsung)`
-                : `Jadwal Hari ${schoolScheduleCurrentDay}`;
+            if (schoolScheduleCurrentFilter === 'active') {
+                titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay} (Sedang Berlangsung)`;
+            } else if (schoolScheduleCurrentFilter === 'unattended') {
+                titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay} (Belum Diabsen)`;
+            } else {
+                titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay} (Semua Jam)`;
+            }
         }
         if (countEl) countEl.textContent = `${schedules.length} jadwal`;
 
         if (schedules.length === 0) {
+            let emptyMsg = 'Tidak ada jadwal KBM yang sesuai filter.';
+            if (schoolScheduleCurrentFilter === 'active') {
+                emptyMsg = 'Tidak ada kelas yang sedang aktif/berlangsung pada jam ini.';
+            } else if (schoolScheduleCurrentFilter === 'unattended') {
+                emptyMsg = 'Semua kelas hari ini sudah diabsen (tidak ada jam kosong).';
+            }
+
             listEl.innerHTML = `
                 <div class="card-elevated p-8 text-center text-xs text-slate-400 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 space-y-2.5">
                     <svg class="w-8 h-8 text-slate-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <p class="font-medium">${schoolScheduleFilterActiveOnly ? 'Tidak ada kelas yang sedang aktif/berlangsung pada jam ini.' : 'Tidak ada jadwal KBM yang sesuai filter.'}</p>
-                    ${schoolScheduleFilterActiveOnly ? `
+                    <p class="font-medium">${emptyMsg}</p>
+                    ${schoolScheduleCurrentFilter !== 'all' ? `
                         <div class="pt-1">
-                            <button type="button" onclick="toggleSchoolScheduleActiveFilter(false)" class="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[11px] font-bold transition active:scale-95 shadow-xs">
+                            <button type="button" onclick="setSchoolScheduleFilter('all')" class="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[11px] font-bold transition active:scale-95 shadow-xs">
                                 <span>Lihat Semua Jam Hari ${schoolScheduleCurrentDay} &rarr;</span>
                             </button>
                         </div>
@@ -7429,30 +7463,76 @@
         listEl.innerHTML = schedules.map(s => {
             const isMySchedule = Boolean(s.teacher_id && currentUser.id && Number(s.teacher_id) === Number(currentUser.id));
             const activeBadge = s.is_active_now ? `
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-amber-950 animate-pulse shadow-xs">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-900"></span>SEDANG BERLANGSUNG
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-amber-950 shadow-xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-900"></span>JP AKTIF
                 </span>
             ` : '';
 
-            const actionButton = isMySchedule ? `
-                <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition active:scale-95 flex items-center gap-1 shadow-2xs">
-                    <span>Buka Jadwal Anda</span>
-                </button>
-            ` : `
-                <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black transition active:scale-95 flex items-center gap-1 shadow-xs">
-                    <span>⚡ Inval Kelas Ini</span>
-                </button>
-            `;
+            let attendanceBadge = '';
+            if (s.is_today) {
+                if (s.is_attended) {
+                    const byText = s.attended_by ? ` (${escapeHtml(s.attended_by)})` : '';
+                    attendanceBadge = `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen${byText}
+                        </span>
+                    `;
+                } else {
+                    attendanceBadge = s.is_active_now ? `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-800 animate-pulse border border-rose-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>Belum Diabsen (Jam Kosong)
+                        </span>
+                    ` : `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-600">
+                            Belum Diabsen
+                        </span>
+                    `;
+                }
+            }
+
+            let actionButton = '';
+            if (s.is_attended) {
+                if (isMySchedule || (currentUser.id && s.attended_by_id && Number(currentUser.id) === Number(s.attended_by_id))) {
+                    actionButton = `
+                        <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition active:scale-95 flex items-center gap-1 shadow-2xs">
+                            <span>Buka Presensi Anda</span>
+                        </button>
+                    `;
+                } else {
+                    actionButton = `
+                        <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[10px] font-semibold transition active:scale-95 flex items-center gap-1">
+                            <span>Lihat Detail</span>
+                        </button>
+                    `;
+                }
+            } else {
+                if (isMySchedule) {
+                    actionButton = `
+                        <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition active:scale-95 shadow-xs flex items-center gap-1">
+                            <span>Buka Presensi</span>
+                        </button>
+                    `;
+                } else {
+                    actionButton = `
+                        <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black transition active:scale-95 flex items-center gap-1 shadow-xs">
+                            <span>⚡ Inval Kelas Ini</span>
+                        </button>
+                    `;
+                }
+            }
 
             return `
-                <div class="card-elevated p-3.5 rounded-2xl bg-white border ${s.is_active_now ? 'border-amber-400 ring-2 ring-amber-100 shadow-md' : 'border-slate-100 shadow-xs'} transition">
+                <div class="card-elevated p-3.5 rounded-2xl bg-white border ${s.is_active_now ? (s.is_attended ? 'border-emerald-300 ring-2 ring-emerald-50 shadow-sm' : 'border-rose-400 ring-2 ring-rose-50 shadow-md') : 'border-slate-100 shadow-xs'} transition">
                     <div class="flex items-start justify-between gap-2 mb-1.5">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-blue-600 text-white uppercase">${escapeHtml(s.classroom_name || 'Kelas')}</span>
                             <span class="text-[10px] font-bold text-slate-600 font-mono">Jam ke-${s.start_period}-${s.end_period}</span>
                             ${s.start_time && s.end_time ? `<span class="text-[10px] text-slate-400 font-mono">(${s.start_time}-${s.end_time})</span>` : ''}
                         </div>
-                        ${activeBadge}
+                        <div class="flex items-center gap-1 flex-wrap justify-end">
+                            ${activeBadge}
+                            ${attendanceBadge}
+                        </div>
                     </div>
                     <h5 class="text-xs font-bold text-slate-900 leading-tight">${escapeHtml(s.subject_name || 'Mapel')}</h5>
                     <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">

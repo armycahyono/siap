@@ -912,7 +912,10 @@ class MobileKbmController extends Controller
         $currentTime = now()->format('H:i');
         $activePeriod = null;
 
-        if ($todayDay === $selectedDay) {
+        $todayStr = now()->toDateString();
+        $isToday = ($todayDay === $selectedDay);
+
+        if ($isToday) {
             foreach ($periodTimes as $p => $times) {
                 if ($currentTime >= $times['start'] && $currentTime <= $times['end']) {
                     $activePeriod = (int) $p;
@@ -921,8 +924,33 @@ class MobileKbmController extends Controller
             }
         }
 
-        $formattedSchedules = $schedules->map(function ($s) use ($activePeriod) {
+        $scheduleIds = $schedules->pluck('id')->filter()->all();
+        $todaySessions = collect();
+        $todaySessionsBySlot = collect();
+
+        if ($isToday && ! empty($scheduleIds)) {
+            $sessions = SubjectAttendanceSession::with(['teacher'])
+                ->whereDate('attendance_date', $todayStr)
+                ->where(function ($q) use ($scheduleIds) {
+                    $q->whereIn('lesson_schedule_id', $scheduleIds);
+                })
+                ->get();
+
+            $todaySessions = $sessions->keyBy('lesson_schedule_id');
+            $todaySessionsBySlot = $sessions->keyBy(fn ($session) => "{$session->classroom_id}_{$session->start_period}");
+        }
+
+        $formattedSchedules = $schedules->map(function ($s) use ($activePeriod, $isToday, $todaySessions, $todaySessionsBySlot) {
             $isActive = $activePeriod && ($activePeriod >= $s->start_period && $activePeriod <= $s->end_period);
+
+            $session = null;
+            if ($isToday) {
+                $session = $todaySessions->get($s->id)
+                    ?? $todaySessionsBySlot->get("{$s->classroom_id}_{$s->start_period}");
+            }
+
+            $isAttended = (bool) $session;
+            $attendedTeacherName = $session?->teacher?->formatted_short_name ?? $session?->teacher?->name;
 
             return [
                 'id' => $s->id,
@@ -937,6 +965,12 @@ class MobileKbmController extends Controller
                 'start_time' => $s->start_time ? substr((string) $s->start_time, 0, 5) : null,
                 'end_time' => $s->end_time ? substr((string) $s->end_time, 0, 5) : null,
                 'is_active_now' => (bool) $isActive,
+                'is_today' => (bool) $isToday,
+                'is_attended' => $isAttended,
+                'attended_by' => $attendedTeacherName,
+                'attended_by_id' => $session?->teacher_id,
+                'is_swap' => (bool) $session?->is_swap,
+                'session_id' => $session?->id,
             ];
         });
 

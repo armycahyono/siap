@@ -63,11 +63,17 @@
             <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
         </div>
 
-        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 text-[10px]">
-            <button type="button" id="btn-sch-filter-all" onclick="toggleSchoolScheduleActiveFilter(false)" class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition">Semua Jam</button>
-            <button type="button" id="btn-sch-filter-active" onclick="toggleSchoolScheduleActiveFilter(true)" class="px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1">
+        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 text-[10px] overflow-x-auto no-scrollbar">
+            <button type="button" id="btn-sch-filter-active" onclick="setSchoolScheduleFilter('active')" class="px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1 shrink-0">
                 <span>⚡</span>
-                <span>Jam Sedang Berlangsung</span>
+                <span>Jam Berlangsung</span>
+            </button>
+            <button type="button" id="btn-sch-filter-unattended" onclick="setSchoolScheduleFilter('unattended')" class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition flex items-center gap-1 shrink-0">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                <span>Belum Diabsen</span>
+            </button>
+            <button type="button" id="btn-sch-filter-all" onclick="setSchoolScheduleFilter('all')" class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition shrink-0">
+                Semua Jam
             </button>
         </div>
     </div>
