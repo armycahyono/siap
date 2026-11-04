@@ -1,0 +1,329 @@
+<div class="space-y-3.5 pb-24">
+    <!-- Header Navigasi Sub-Halaman Kembali ke Kalender -->
+    <div class="card-elevated p-3 flex items-center justify-between shadow-xs border-indigo-100 bg-white rounded-2xl">
+        <div class="flex items-center gap-2.5">
+            <button type="button" onclick="SIAP_ROUTER.navigate('/calendar')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95 shadow-xs" title="Kembali ke Kalender">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Tambah Agenda Kegiatan</h3>
+                <p class="text-[10px] text-slate-500">Kalender Pendidikan &amp; Kegiatan Sekolah</p>
+            </div>
+        </div>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/calendar')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition flex items-center gap-1 active:scale-95">
+            <span>✕</span>
+            <span>Batal</span>
+        </button>
+    </div>
+
+    <!-- Stepper / Tab Navigasi 4 Tahap -->
+    <div class="sticky top-0 z-30 bg-slate-100/90 backdrop-blur-md pt-1 pb-1">
+        <div class="flex bg-white rounded-2xl p-1 shadow-xs border border-slate-200 text-[11px] font-bold overflow-x-auto no-scrollbar gap-1">
+            <button type="button" onclick="switchCalCreateTab(1)" id="cal-create-tab-btn-1" class="flex-1 min-w-[95px] py-2 px-2 rounded-xl bg-blue-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs">
+                <span>1. Info &amp; Waktu</span>
+            </button>
+            <button type="button" onclick="switchCalCreateTab(2)" id="cal-create-tab-btn-2" class="flex-1 min-w-[95px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
+                <span>2. GTK Terlibat</span>
+            </button>
+            <button type="button" onclick="switchCalCreateTab(3)" id="cal-create-tab-btn-3" class="flex-1 min-w-[95px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
+                <span>3. Siswa Terlibat</span>
+            </button>
+            <button type="button" onclick="switchCalCreateTab(4)" id="cal-create-tab-btn-4" class="flex-1 min-w-[105px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
+                <span>4. Tidak Terlibat</span>
+            </button>
+        </div>
+    </div>
+
+    <form id="form-create-calendar-event" onsubmit="submitCreateCalendarEvent(event)">
+        <!-- ============================================== -->
+        <!-- TAB 1: INFORMASI KEGIATAN & WAKTU PELAKSANAAN  -->
+        <!-- ============================================== -->
+        <div id="cal-create-pane-1" class="space-y-3">
+            <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
+                <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">1</div>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Informasi Pokok Kegiatan</h4>
+                        <p class="text-[10px] text-slate-500">Nama agenda, kategori bidang, dan lokasi</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama / Judul Kegiatan <span class="text-rose-500">*</span></label>
+                    <input type="text" id="create-event-title" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium" placeholder="Contoh: Asesmen Sumatif Akhir Semester (ASAS)">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori / Bidang <span class="text-rose-500">*</span></label>
+                    <select id="create-event-category" required onchange="onCreateCalendarCategoryChange(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                        <option value="">-- Pilih Kategori Kegiatan --</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Lokasi / Tempat Pelaksanaan (Opsional)</label>
+                    <input type="text" id="create-event-location" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Contoh: Aula Sekolah, Lab Komputer, DUDI Mitra">
+                </div>
+            </div>
+
+            <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
+                <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">📅</div>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Waktu &amp; Tanggal Pelaksanaan</h4>
+                        <p class="text-[10px] text-slate-500">Rentang tanggal dan jam pelaksanaan kegiatan</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Mulai <span class="text-rose-500">*</span></label>
+                        <input type="date" id="create-event-start-date" required class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+                        <input type="date" id="create-event-end-date" class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="create-event-is-all-day" checked onchange="toggleCreateEventAllDay(this.checked)" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                        <span class="text-[11px] font-bold text-slate-700">Sepanjang Hari (All Day)</span>
+                    </label>
+                </div>
+
+                <div id="box-create-event-time" class="hidden grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Jam Mulai (WIB)</label>
+                        <input type="time" id="create-event-start-time" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-center">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Jam Selesai (WIB)</label>
+                        <input type="time" id="create-event-end-time" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-center">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: GTK YANG DITUGASKAN / TERLIBAT          -->
+        <!-- ============================================== -->
+        <div id="cal-create-pane-2" class="hidden space-y-3">
+            <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">2</div>
+                        <div>
+                            <h4 class="text-xs font-black text-slate-800">GTK yang Terlibat Langsung</h4>
+                            <p class="text-[10px] text-slate-500">Guru &amp; staf yang bertugas (panitia/pengawas/pembimbing)</p>
+                        </div>
+                    </div>
+                    <span id="cal-create-gtk-selected-count" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">0 Dipilih</span>
+                </div>
+
+                <!-- Tombol Aksi Cepat Checklist -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <button type="button" onclick="toggleSelectGtkCreate('teachers')" class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] active:scale-95 transition shadow-xs">
+                        Semua Guru
+                    </button>
+                    <button type="button" onclick="toggleSelectGtkCreate('staff')" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] active:scale-95 transition shadow-xs">
+                        Semua Staf
+                    </button>
+                    <button type="button" onclick="toggleSelectGtkCreate('none')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] active:scale-95 transition">
+                        Kosongkan
+                    </button>
+                </div>
+
+                <!-- Pengaturan GTK Terlibat -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-700 mb-1">Status Mengajar GTK Terlibat:</label>
+                        <select id="create-event-teacher-impact" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:ring-1 focus:ring-indigo-500">
+                            <option value="bebas_mengajar_tugas" selected>Gugur Kewajiban Mengajar (Tugas Khusus / Panitia)</option>
+                            <option value="normal">Tetap Mengajar Reguler Sesuai Jadwal</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-700 mb-1">Jam Pelaksanaan Tugas GTK (WIB):</label>
+                        <div class="flex items-center gap-1">
+                            <input type="time" id="create-event-gtk-checkin" value="07:00" class="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-center">
+                            <span class="text-[10px] text-slate-500 font-bold">s/d</span>
+                            <input type="time" id="create-event-gtk-checkout" value="13:30" class="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search & Checklist GTK -->
+                <div class="space-y-1.5">
+                    <input type="text" id="cal-create-gtk-search" oninput="filterGtkListCreate(this.value)" placeholder="🔍 Cari nama guru atau staf..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <div id="cal-create-gtk-checks" class="max-h-60 overflow-y-auto space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
+                        <p class="text-slate-400 text-center py-4 text-xs">Memuat daftar GTK...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: SISWA YANG TERLIBAT LANGSUNG            -->
+        <!-- ============================================== -->
+        <div id="cal-create-pane-3" class="hidden space-y-3">
+            <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
+                <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">3</div>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Sasaran Siswa yang Terlibat</h4>
+                        <p class="text-[10px] text-slate-500">Tentukan kelompok siswa dan pengaruh kegiatan terhadap KBM</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Pilih Kelompok Siswa Terlibat:</label>
+                    <select id="create-event-target-audience" onchange="onCreateTargetAudienceChange(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                        <option value="guru_staf">👨‍🏫 Tidak Ada Siswa Terlibat (Hanya GTK)</option>
+                        <option value="semua" selected>👥 Semua Siswa (Seluruh Sekolah)</option>
+                        <option value="tingkat">🎓 Tingkat Tertentu (Contoh: Hanya Kelas XII)</option>
+                        <option value="rombel">🏫 Rombel Tertentu (Pilih Kelas Spesifik)</option>
+                    </select>
+                </div>
+
+                <!-- Pilihan Tingkat Tertentu -->
+                <div id="box-create-target-grade-levels" class="hidden space-y-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <label class="block text-[10px] font-bold text-slate-700">Pilih Tingkat Kelas yang Terlibat:</label>
+                    <div id="cal-create-grade-level-checks" class="flex items-center gap-2 flex-wrap bg-white p-2 rounded-xl border border-slate-200"></div>
+                </div>
+
+                <!-- Pilihan Rombel Tertentu -->
+                <div id="box-create-target-classrooms" class="hidden space-y-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <label class="block text-[10px] font-bold text-slate-700">Pilih Rombel Kelas yang Terlibat:</label>
+                    <div id="cal-create-classroom-checks" class="max-h-48 overflow-y-auto space-y-1 bg-white p-2 rounded-xl border border-slate-200 text-xs"></div>
+                </div>
+
+                <!-- Dampak Pembelajaran Siswa Terlibat -->
+                <div id="box-create-student-learning-impact" class="space-y-2.5 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Status KBM bagi Siswa Terlibat:</label>
+                        <select id="create-event-learning-impact" onchange="onCreateLearningImpactChange(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                            <option value="bebas_kbm_kegiatan" selected>🟣 Bebas KBM (Ujian / PKL / KI / Gladi / Dispensasi Tugas)</option>
+                            <option value="pembelajaran_daring">🔵 Pembelajaran Daring (Dari Rumah)</option>
+                            <option value="pulang_cepat">🟡 Pulang Cepat (KBM Dibatasi)</option>
+                            <option value="normal">🟢 KBM Normal (Sesuai Jadwal Penuh)</option>
+                            <option value="libur_khusus">🔴 Libur Sekolah Penuh</option>
+                        </select>
+                    </div>
+
+                    <!-- Pilihan Jam Pulang Cepat Siswa Terlibat -->
+                    <div id="box-create-max-period" class="hidden space-y-1 p-2 rounded-xl bg-amber-50 border border-amber-200">
+                        <label class="block text-[10px] font-bold text-slate-700">KBM Siswa Selesai Jam Ke-:</label>
+                        <select id="create-event-max-period" class="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono">
+                            <option value="4">Jam ke-4 (± 10:30 WIB)</option>
+                            <option value="5">Jam ke-5 (± 11:10 WIB)</option>
+                            <option value="6">Jam ke-6 (± 11:50 WIB)</option>
+                            <option value="7">Jam ke-7 (± 12:30 WIB)</option>
+                        </select>
+                    </div>
+
+                    <!-- Jam Pelaksanaan Siswa Terlibat -->
+                    <div id="box-create-student-time" class="space-y-1 p-2 rounded-xl bg-slate-50 border border-slate-200">
+                        <label class="block text-[10px] font-bold text-slate-700">Jam Pelaksanaan Siswa (WIB):</label>
+                        <div class="flex items-center gap-1">
+                            <input type="time" id="create-event-student-start-time" value="07:00" class="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-center">
+                            <span class="text-[10px] text-slate-500 font-bold">s/d</span>
+                            <input type="time" id="create-event-student-end-time" value="12:00" class="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-center">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: PIHAK TIDAK TERLIBAT & CATATAN          -->
+        <!-- ============================================== -->
+        <div id="cal-create-pane-4" class="hidden space-y-3">
+            <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
+                <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                    <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">4</div>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Guru, Staf &amp; Siswa yang TIDAK Terlibat</h4>
+                        <p class="text-[10px] text-slate-500">Penetapan status bagi warga sekolah yang tidak terlibat dalam agenda</p>
+                    </div>
+                </div>
+
+                <!-- Baris 1: Guru Lain yang Tidak Terlibat -->
+                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <span class="text-[10px] font-bold text-slate-800 block">👨‍🏫 Guru Lain (Tidak Terlibat):</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <select id="create-event-disengaged-teacher-impact" onchange="onCreateDisengagedTeacherImpactChange(this.value)" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium">
+                            <option value="masuk_normal" selected>Masuk Normal (Sesuai Jadwal)</option>
+                            <option value="pulang_cepat">Pulang Cepat</option>
+                            <option value="libur">Libur</option>
+                        </select>
+                        <div id="box-create-disengaged-teacher-period" class="hidden">
+                            <select id="create-event-disengaged-teacher-max-period" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-mono">
+                                <option value="">-- Pulang Jam Pelajaran Ke- --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Baris 2: Staf TU yang Tidak Terlibat -->
+                <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <span class="text-[10px] font-bold text-slate-800 block">💼 Staf TU:</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <select id="create-event-disengaged-staff-impact" onchange="onCreateDisengagedStaffImpactChange(this.value)" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium">
+                            <option value="masuk_normal" selected>Masuk Normal</option>
+                            <option value="pulang_cepat">Pulang Cepat</option>
+                            <option value="libur">Libur</option>
+                        </select>
+                        <div id="box-create-disengaged-staff-time" class="hidden">
+                            <input type="time" id="create-event-disengaged-staff-time" value="12:00" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Baris 3: Siswa Tingkat/Kelas Lain yang Tidak Terlibat -->
+                <div id="row-create-disengaged-students" class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <span class="text-[10px] font-bold text-slate-800 block">🎓 Siswa Lain (Tidak Terlibat):</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <select id="create-event-disengaged-student-impact" onchange="onCreateDisengagedStudentImpactChange(this.value)" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-medium">
+                            <option value="kbm_normal" selected>KBM Normal</option>
+                            <option value="pembelajaran_daring">Pembelajaran Daring</option>
+                            <option value="pulang_cepat">Pulang Cepat</option>
+                            <option value="bebas_kbm">Bebas KBM</option>
+                            <option value="libur_khusus">Libur Khusus</option>
+                        </select>
+                        <div id="box-create-disengaged-student-period" class="hidden">
+                            <select id="create-event-disengaged-student-max-period" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-mono">
+                                <option value="">-- KBM Selesai Jam Ke- --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Catatan & Instruksi Tambahan -->
+            <div class="card-elevated p-3.5 space-y-2 bg-white rounded-2xl shadow-xs border border-slate-100">
+                <label class="block text-[11px] font-bold text-slate-700">Keterangan / Instruksi Tambahan (Opsional)</label>
+                <textarea id="create-event-description" rows="3" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Catatan pakaian seragam, perlengkapan, atau instruksi guru/siswa..."></textarea>
+            </div>
+        </div>
+
+        <!-- Sticky Bottom Navigation Buttons -->
+        <div class="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 max-w-md mx-auto">
+            <div class="flex items-center gap-2">
+                <button type="button" id="cal-create-btn-prev" onclick="stepCalCreateTab(-1)" class="hidden px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Kembali</span>
+                </button>
+                <button type="button" id="cal-create-btn-next" onclick="stepCalCreateTab(1)" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <span>Lanjut ke GTK Terlibat</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="submit" id="cal-create-btn-submit" class="hidden flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white text-xs font-bold transition shadow-md flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    <span>Simpan Agenda Kegiatan</span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

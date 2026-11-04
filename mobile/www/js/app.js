@@ -7203,108 +7203,404 @@
     };
 
     window.openAddEventModal = function() {
-        const modal = document.getElementById('modal-add-calendar-event');
-        const bottomNav = document.getElementById('mobile-bottom-nav');
-        if (!modal) return;
-
-        if (bottomNav) bottomNav.classList.add('hidden');
-
-        if (calendarDataCache) {
-            populateCalendarModalOptions(calendarDataCache);
-        }
-
-        const startDateInput = document.getElementById('add-event-start-date');
-        const endDateInput = document.getElementById('add-event-end-date');
-        if (startDateInput && !startDateInput.value) {
-            const defaultDate = calendarSelectedDate || new Date().toISOString().split('T')[0];
-            startDateInput.value = defaultDate;
-            if (endDateInput) endDateInput.value = defaultDate;
-        }
-
-        modal.classList.remove('hidden');
+        SIAP_ROUTER.navigate('/calendar/create');
     };
 
     window.closeAddEventModal = function() {
-        const modal = document.getElementById('modal-add-calendar-event');
-        const bottomNav = document.getElementById('mobile-bottom-nav');
-        if (modal) modal.classList.add('hidden');
-        if (bottomNav) bottomNav.classList.remove('hidden');
+        SIAP_ROUTER.navigate('/calendar');
     };
 
-    window.submitAddCalendarEvent = async function(e) {
+    // ==========================================
+    // 6.5.1 CALENDAR CREATE VIEW CONTROLLER (FULL PAGE & TABS)
+    // ==========================================
+    let calCreateCurrentStep = 1;
+
+    window.initCalendarCreate = async function(container, query) {
+        calCreateCurrentStep = 1;
+        switchCalCreateTab(1);
+
+        // Ensure calendar metadata is loaded
+        let meta = calendarDataCache;
+        if (!meta || !meta.all_gtk) {
+            try {
+                const res = await SIAP_API.getCalendarMonth(calendarCurrentMonth || new Date().toISOString().substring(0, 7));
+                if (res.success) {
+                    calendarDataCache = res;
+                    meta = res;
+                }
+            } catch (err) {
+                console.error('Failed to load calendar metadata:', err);
+            }
+        }
+
+        if (meta) {
+            populateCreateFormOptions(meta);
+        }
+
+        // Set default date if provided or today
+        const startDateInput = container.querySelector('#create-event-start-date');
+        const endDateInput = container.querySelector('#create-event-end-date');
+        const defaultDate = query?.date || calendarSelectedDate || new Date().toISOString().split('T')[0];
+        if (startDateInput && !startDateInput.value) {
+            startDateInput.value = defaultDate;
+            if (endDateInput) endDateInput.value = defaultDate;
+        }
+    };
+
+    function populateCreateFormOptions(data) {
+        // Grouped Categories
+        const catSelect = document.getElementById('create-event-category');
+        if (catSelect && data.categories) {
+            const categories = data.categories || [];
+            const groupDefs = {
+                'Kurikulum & Asesmen': ['akademik_ujian', 'kegiatan_kurikulum', 'kts', 'tugas_guru'],
+                'Kesiswaan & Ekstrakurikuler': ['kesiswaan', 'ke'],
+                'Humas & Hubungan Industri': ['smk_khusus'],
+                'Manajemen & Rapat': ['manajemen', 'supervisi'],
+                'Libur & Kaldik Resmi': ['lhb', 'lu', 'ls1', 'ls2', 'cb', 'lhr', 'kpp', 'kaldik'],
+                'Lainnya': ['lainnya'],
+            };
+
+            let html = '<option value="">-- Pilih Kategori Kegiatan --</option>';
+            const renderedKeys = new Set();
+
+            Object.keys(groupDefs).forEach(grpName => {
+                const keys = groupDefs[grpName];
+                const matching = categories.filter(c => keys.includes(c.key));
+                if (matching.length > 0) {
+                    html += `<optgroup label="-- ${escapeHtml(grpName)} --">`;
+                    matching.forEach(c => {
+                        renderedKeys.add(c.key);
+                        html += `<option value="${c.key}">${escapeHtml(c.label)}</option>`;
+                    });
+                    html += `</optgroup>`;
+                }
+            });
+
+            const rest = categories.filter(c => !renderedKeys.has(c.key));
+            if (rest.length > 0) {
+                html += `<optgroup label="-- Kategori Lainnya --">`;
+                rest.forEach(c => {
+                    html += `<option value="${c.key}">${escapeHtml(c.label)}</option>`;
+                });
+                html += `</optgroup>`;
+            }
+
+            catSelect.innerHTML = html;
+        }
+
+        // Grade levels
+        const gradeContainer = document.getElementById('cal-create-grade-level-checks');
+        if (gradeContainer && data.grade_levels) {
+            gradeContainer.innerHTML = data.grade_levels.map(g => `
+                <label class="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer select-none">
+                    <input type="checkbox" name="create_target_grade_levels[]" value="${g.level}" class="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5">
+                    <span class="font-medium text-slate-800 text-xs">Kelas ${escapeHtml(g.name || g.level)}</span>
+                </label>
+            `).join('');
+        }
+
+        // Classrooms
+        const classContainer = document.getElementById('cal-create-classroom-checks');
+        if (classContainer && data.classrooms) {
+            classContainer.innerHTML = data.classrooms.map(c => `
+                <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer select-none">
+                    <input type="checkbox" name="create_target_classroom_ids[]" value="${c.id}" class="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5">
+                    <span class="font-medium text-slate-800">${escapeHtml(c.name)}</span>
+                </label>
+            `).join('');
+        }
+
+        // GTK Checklist
+        const gtkContainer = document.getElementById('cal-create-gtk-checks');
+        if (gtkContainer && data.all_gtk) {
+            gtkContainer.innerHTML = data.all_gtk.map(g => `
+                <label class="flex items-center gap-2 p-2 hover:bg-white rounded-xl cursor-pointer text-xs transition border border-transparent hover:border-slate-200 gtk-create-item" data-name="${escapeHtml(g.name).toLowerCase()}" data-type="${g.is_staff ? 'staff' : 'teacher'}">
+                    <input type="checkbox" name="create_user_ids[]" value="${g.id}" onchange="updateGtkSelectedCountCreate()" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 gtk-create-cb ${g.is_staff ? 'gtk-create-cb-staff' : 'gtk-create-cb-teacher'}">
+                    <div class="flex-1 truncate">
+                        <span class="font-bold text-slate-800 block truncate">${escapeHtml(g.name)}</span>
+                        <span class="text-[10px] text-slate-500 block truncate">${escapeHtml(g.position || '')}</span>
+                    </div>
+                    <span class="text-[9px] px-2 py-0.5 rounded-full font-bold ${g.is_staff ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}">${escapeHtml(g.type)}</span>
+                </label>
+            `).join('');
+            updateGtkSelectedCountCreate();
+        }
+
+        // Period options
+        if (data.period_schedule_map) {
+            const pMap = data.period_schedule_map;
+            const periodOptions = Object.keys(pMap).map(p => {
+                const info = pMap[p];
+                return `<option value="${p}">${escapeHtml(info.label)} (± ${info.time} WIB)</option>`;
+            }).join('');
+
+            const periodSelect = document.getElementById('create-event-max-period');
+            if (periodSelect) periodSelect.innerHTML = periodOptions;
+
+            const disTeacherSelect = document.getElementById('create-event-disengaged-teacher-max-period');
+            if (disTeacherSelect) disTeacherSelect.innerHTML = '<option value="">-- Pulang Jam Pelajaran Ke- --</option>' + periodOptions;
+
+            const disStudentSelect = document.getElementById('create-event-disengaged-student-max-period');
+            if (disStudentSelect) disStudentSelect.innerHTML = '<option value="">-- KBM Selesai Jam Ke- --</option>' + periodOptions;
+        }
+    }
+
+    window.switchCalCreateTab = function(step) {
+        calCreateCurrentStep = step;
+        for (let i = 1; i <= 4; i++) {
+            const pane = document.getElementById(`cal-create-pane-${i}`);
+            const btn = document.getElementById(`cal-create-tab-btn-${i}`);
+            if (pane) {
+                if (i === step) pane.classList.remove('hidden');
+                else pane.classList.add('hidden');
+            }
+            if (btn) {
+                if (i === step) {
+                    btn.className = 'flex-1 min-w-[95px] py-2 px-2 rounded-xl bg-blue-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs font-black';
+                } else {
+                    btn.className = 'flex-1 min-w-[95px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 font-bold';
+                }
+            }
+        }
+
+        // Bottom buttons
+        const prevBtn = document.getElementById('cal-create-btn-prev');
+        const nextBtn = document.getElementById('cal-create-btn-next');
+        const submitBtn = document.getElementById('cal-create-btn-submit');
+
+        if (prevBtn) {
+            if (step > 1) prevBtn.classList.remove('hidden');
+            else prevBtn.classList.add('hidden');
+        }
+
+        const nextLabels = {
+            1: 'Lanjut ke GTK Terlibat',
+            2: 'Lanjut ke Siswa Terlibat',
+            3: 'Lanjut ke Warga Tidak Terlibat',
+        };
+
+        if (nextBtn) {
+            if (step < 4) {
+                nextBtn.classList.remove('hidden');
+                const span = nextBtn.querySelector('span');
+                if (span) span.textContent = nextLabels[step] || 'Lanjut';
+            } else {
+                nextBtn.classList.add('hidden');
+            }
+        }
+
+        if (submitBtn) {
+            if (step === 4) submitBtn.classList.remove('hidden');
+            else submitBtn.classList.add('hidden');
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.stepCalCreateTab = function(delta) {
+        const nextStep = calCreateCurrentStep + delta;
+        if (delta > 0 && calCreateCurrentStep === 1) {
+            const title = document.getElementById('create-event-title')?.value;
+            const category = document.getElementById('create-event-category')?.value;
+            const startDate = document.getElementById('create-event-start-date')?.value;
+            if (!title || !category || !startDate) {
+                showToast('Lengkapi nama kegiatan, kategori, dan tanggal mulai terlebih dahulu.', 'warning');
+                return;
+            }
+        }
+
+        if (nextStep >= 1 && nextStep <= 4) {
+            switchCalCreateTab(nextStep);
+        }
+    };
+
+    window.toggleSelectGtkCreate = function(type) {
+        const cbs = document.querySelectorAll('#cal-create-gtk-checks .gtk-create-cb');
+        cbs.forEach(cb => {
+            if (type === 'teachers') {
+                cb.checked = cb.classList.contains('gtk-create-cb-teacher');
+            } else if (type === 'staff') {
+                cb.checked = cb.classList.contains('gtk-create-cb-staff');
+            } else if (type === 'none') {
+                cb.checked = false;
+            }
+        });
+        updateGtkSelectedCountCreate();
+    };
+
+    window.filterGtkListCreate = function(keyword) {
+        const kw = (keyword || '').toLowerCase().trim();
+        const items = document.querySelectorAll('#cal-create-gtk-checks .gtk-create-item');
+        items.forEach(it => {
+            const name = it.dataset.name || '';
+            if (!kw || name.includes(kw)) {
+                it.classList.remove('hidden');
+            } else {
+                it.classList.add('hidden');
+            }
+        });
+    };
+
+    window.updateGtkSelectedCountCreate = function() {
+        const checkedCount = document.querySelectorAll('#cal-create-gtk-checks .gtk-create-cb:checked').length;
+        const badge = document.getElementById('cal-create-gtk-selected-count');
+        if (badge) badge.textContent = checkedCount + ' Dipilih';
+    };
+
+    window.toggleCreateEventAllDay = function(isAllDay) {
+        const box = document.getElementById('box-create-event-time');
+        if (box) {
+            if (isAllDay) box.classList.add('hidden');
+            else box.classList.remove('hidden');
+        }
+    };
+
+    window.onCreateTargetAudienceChange = function(audience) {
+        const boxTingkat = document.getElementById('box-create-target-grade-levels');
+        const boxRombel = document.getElementById('box-create-target-classrooms');
+        const boxStudentImpact = document.getElementById('box-create-student-learning-impact');
+        const rowDisengagedStudents = document.getElementById('row-create-disengaged-students');
+
+        if (boxTingkat) {
+            if (audience === 'tingkat') boxTingkat.classList.remove('hidden');
+            else boxTingkat.classList.add('hidden');
+        }
+
+        if (boxRombel) {
+            if (audience === 'rombel') boxRombel.classList.remove('hidden');
+            else boxRombel.classList.add('hidden');
+        }
+
+        if (boxStudentImpact) {
+            if (audience === 'guru_staf') boxStudentImpact.classList.add('hidden');
+            else boxStudentImpact.classList.remove('hidden');
+        }
+
+        if (rowDisengagedStudents) {
+            if (audience === 'semua') rowDisengagedStudents.classList.add('hidden');
+            else rowDisengagedStudents.classList.remove('hidden');
+        }
+    };
+
+    window.onCreateLearningImpactChange = function(impact) {
+        const boxPeriod = document.getElementById('box-create-max-period');
+        if (boxPeriod) {
+            if (impact === 'pulang_cepat') boxPeriod.classList.remove('hidden');
+            else boxPeriod.classList.add('hidden');
+        }
+    };
+
+    window.onCreateCalendarCategoryChange = function(catKey) {
+        const holidayCodes = ['lhb', 'lu', 'ls1', 'ls2', 'cb', 'lhr', 'kpp', 'kaldik'];
+        const impactSelect = document.getElementById('create-event-learning-impact');
+        if (holidayCodes.includes(catKey) && impactSelect) {
+            impactSelect.value = 'libur_khusus';
+            onCreateLearningImpactChange('libur_khusus');
+        }
+    };
+
+    window.onCreateDisengagedTeacherImpactChange = function(val) {
+        const box = document.getElementById('box-create-disengaged-teacher-period');
+        if (box) {
+            if (val === 'pulang_cepat') box.classList.remove('hidden');
+            else box.classList.add('hidden');
+        }
+    };
+
+    window.onCreateDisengagedStaffImpactChange = function(val) {
+        const box = document.getElementById('box-create-disengaged-staff-time');
+        if (box) {
+            if (val === 'pulang_cepat') box.classList.remove('hidden');
+            else box.classList.add('hidden');
+        }
+    };
+
+    window.onCreateDisengagedStudentImpactChange = function(val) {
+        const box = document.getElementById('box-create-disengaged-student-period');
+        if (box) {
+            if (val === 'pulang_cepat') box.classList.remove('hidden');
+            else box.classList.add('hidden');
+        }
+    };
+
+    window.submitCreateCalendarEvent = async function(e) {
         e.preventDefault();
 
-        const title = document.getElementById('add-event-title')?.value;
-        const category = document.getElementById('add-event-category')?.value;
-        const start_date = document.getElementById('add-event-start-date')?.value;
-        const end_date = document.getElementById('add-event-end-date')?.value || null;
-        const location = document.getElementById('add-event-location')?.value || null;
-        const description = document.getElementById('add-event-description')?.value || null;
+        const title = document.getElementById('create-event-title')?.value;
+        const category = document.getElementById('create-event-category')?.value;
+        const start_date = document.getElementById('create-event-start-date')?.value;
+        const end_date = document.getElementById('create-event-end-date')?.value || null;
+        const location = document.getElementById('create-event-location')?.value || null;
+        const description = document.getElementById('create-event-description')?.value || null;
 
         if (!title || !category || !start_date) {
             showToast('Lengkapi nama kegiatan, kategori, dan tanggal mulai.', 'warning');
+            switchCalCreateTab(1);
             return;
         }
 
-        const is_all_day = document.getElementById('add-event-is-all-day')?.checked ?? true;
-        const start_time = !is_all_day ? (document.getElementById('add-event-start-time')?.value || null) : null;
-        const end_time = !is_all_day ? (document.getElementById('add-event-end-time')?.value || null) : null;
+        const is_all_day = document.getElementById('create-event-is-all-day')?.checked ?? true;
+        const start_time = !is_all_day ? (document.getElementById('create-event-start-time')?.value || null) : null;
+        const end_time = !is_all_day ? (document.getElementById('create-event-end-time')?.value || null) : null;
 
         // GTK Terlibat
         const user_ids = [];
-        document.querySelectorAll('#cal-gtk-checks .gtk-cb:checked').forEach(cb => {
+        document.querySelectorAll('#cal-create-gtk-checks .gtk-create-cb:checked').forEach(cb => {
             user_ids.push(Number(cb.value));
         });
-        const teacher_impact = document.getElementById('add-event-teacher-impact')?.value || 'bebas_mengajar_tugas';
-        const gtk_checkin_time = document.getElementById('add-event-gtk-checkin')?.value || null;
-        const gtk_checkout_time = document.getElementById('add-event-gtk-checkout')?.value || null;
+        const teacher_impact = document.getElementById('create-event-teacher-impact')?.value || 'bebas_mengajar_tugas';
+        const gtk_checkin_time = document.getElementById('create-event-gtk-checkin')?.value || null;
+        const gtk_checkout_time = document.getElementById('create-event-gtk-checkout')?.value || null;
 
         // Siswa Terlibat
-        const target_audience = document.getElementById('add-event-target-audience')?.value || 'guru_staf';
+        const target_audience = document.getElementById('create-event-target-audience')?.value || 'guru_staf';
         let target_grade_levels = [];
         if (target_audience === 'tingkat') {
-            document.querySelectorAll('#cal-grade-level-checks input:checked').forEach(cb => {
+            document.querySelectorAll('#cal-create-grade-level-checks input:checked').forEach(cb => {
                 target_grade_levels.push(cb.value);
             });
             if (target_grade_levels.length === 0) {
                 showToast('Pilih minimal satu tingkat kelas sasaran.', 'warning');
+                switchCalCreateTab(3);
                 return;
             }
         }
 
         let target_classroom_ids = [];
         if (target_audience === 'rombel') {
-            document.querySelectorAll('#cal-classroom-checks input:checked').forEach(cb => {
+            document.querySelectorAll('#cal-create-classroom-checks input:checked').forEach(cb => {
                 target_classroom_ids.push(Number(cb.value));
             });
             if (target_classroom_ids.length === 0) {
                 showToast('Pilih minimal satu rombel kelas sasaran.', 'warning');
+                switchCalCreateTab(3);
                 return;
             }
         }
 
-        const student_start_time = document.getElementById('add-event-student-start-time')?.value || null;
-        const student_end_time = document.getElementById('add-event-student-end-time')?.value || null;
-        const learning_impact = document.getElementById('add-event-learning-impact')?.value || 'normal';
-        const max_period = (learning_impact === 'pulang_cepat') ? Number(document.getElementById('add-event-max-period')?.value || 4) : null;
+        const student_start_time = document.getElementById('create-event-student-start-time')?.value || null;
+        const student_end_time = document.getElementById('create-event-student-end-time')?.value || null;
+        const learning_impact = document.getElementById('create-event-learning-impact')?.value || 'normal';
+        const max_period = (learning_impact === 'pulang_cepat') ? Number(document.getElementById('create-event-max-period')?.value || 4) : null;
 
         // Pihak Tidak Terlibat
-        const disengaged_teacher_impact = document.getElementById('add-event-disengaged-teacher-impact')?.value || 'masuk_normal';
-        const disengaged_teacher_max_period = (disengaged_teacher_impact === 'pulang_cepat' && document.getElementById('add-event-disengaged-teacher-max-period')?.value)
-            ? Number(document.getElementById('add-event-disengaged-teacher-max-period').value)
+        const disengaged_teacher_impact = document.getElementById('create-event-disengaged-teacher-impact')?.value || 'masuk_normal';
+        const disengaged_teacher_max_period = (disengaged_teacher_impact === 'pulang_cepat' && document.getElementById('create-event-disengaged-teacher-max-period')?.value)
+            ? Number(document.getElementById('create-event-disengaged-teacher-max-period').value)
             : null;
 
-        const disengaged_staff_impact = document.getElementById('add-event-disengaged-staff-impact')?.value || 'masuk_normal';
+        const disengaged_staff_impact = document.getElementById('create-event-disengaged-staff-impact')?.value || 'masuk_normal';
         const disengaged_staff_dismissal_time = (disengaged_staff_impact === 'pulang_cepat')
-            ? (document.getElementById('add-event-disengaged-staff-time')?.value || '12:00')
+            ? (document.getElementById('create-event-disengaged-staff-time')?.value || '12:00')
             : null;
 
-        const disengaged_student_impact = document.getElementById('add-event-disengaged-student-impact')?.value || 'kbm_normal';
-        const disengaged_student_max_period = (disengaged_student_impact === 'pulang_cepat' && document.getElementById('add-event-disengaged-student-max-period')?.value)
-            ? Number(document.getElementById('add-event-disengaged-student-max-period').value)
+        const disengaged_student_impact = document.getElementById('create-event-disengaged-student-impact')?.value || 'kbm_normal';
+        const disengaged_student_max_period = (disengaged_student_impact === 'pulang_cepat' && document.getElementById('create-event-disengaged-student-max-period')?.value)
+            ? Number(document.getElementById('create-event-disengaged-student-max-period').value)
             : null;
 
-        const btn = document.getElementById('btn-submit-add-event');
+        const btn = document.getElementById('cal-create-btn-submit');
         if (btn) btn.disabled = true;
 
         try {
@@ -7339,16 +7635,8 @@
 
             if (res.success) {
                 showToast(res.message || 'Agenda berhasil disimpan ke kalender', 'success');
-                closeAddEventModal();
-                document.getElementById('form-add-calendar-event')?.reset();
-                toggleEventAllDay(true);
-                onTargetAudienceChange('semua');
-                onLearningImpactChange('bebas_kbm_kegiatan');
-                onDisengagedTeacherImpactChange('masuk_normal');
-                onDisengagedStaffImpactChange('masuk_normal');
-                onDisengagedStudentImpactChange('kbm_normal');
-                updateGtkSelectedCount();
-                await loadCalendarData();
+                calendarDataCache = null; // force fresh reload
+                SIAP_ROUTER.navigate('/calendar');
             } else {
                 showToast(res.message || 'Gagal menyimpan agenda', 'error');
             }

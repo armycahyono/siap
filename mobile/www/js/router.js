@@ -26,6 +26,15 @@ const SIAP_ROUTER = (function() {
             tabKey: 'dashboard',
             hasBack: true,
         },
+        '/calendar/create': {
+            page: 'pages/calendar_create.html',
+            requiresAuth: true,
+            title: 'Tambah Agenda Kegiatan',
+            init: 'initCalendarCreate',
+            tabKey: 'dashboard',
+            hasBack: true,
+            hideNav: true,
+        },
         '/kbm': {
             page: 'pages/kbm.html',
             requiresAuth: true,
