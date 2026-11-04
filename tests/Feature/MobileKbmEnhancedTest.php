@@ -262,4 +262,33 @@ class MobileKbmEnhancedTest extends TestCase
                 ],
             ]);
     }
+
+    public function test_vice_principals_can_access_live_monitoring_including_gtk(): void
+    {
+        $wakaRole = Role::firstOrCreate(['slug' => 'waka_sarpras'], ['name' => 'Waka Sarpras']);
+        $wakaSarpras = User::create([
+            'name' => 'Waka Sarpras Test',
+            'username' => 'wakasarprastest',
+            'email' => 'wakasarpras@test.sch.id',
+            'password' => bcrypt('password'),
+            'role_id' => $wakaRole->id,
+            'position' => 'Waka Bidang Sarpras',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($wakaSarpras)
+            ->getJson('/api/v1/mobile/kbm');
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $liveMonitoring = $response->json('data.live_monitoring');
+        $this->assertNotNull($liveMonitoring);
+        $this->assertTrue($liveMonitoring['can_view_gtk']);
+        $this->assertTrue($liveMonitoring['can_view_student_all']);
+        $this->assertArrayHasKey('gtk', $liveMonitoring);
+        $this->assertArrayHasKey('siswa', $liveMonitoring);
+    }
 }

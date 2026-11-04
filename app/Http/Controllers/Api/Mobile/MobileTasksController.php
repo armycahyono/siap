@@ -694,6 +694,9 @@ class MobileTasksController extends Controller
                 'roles_operational' => [
                     'can_manage_discipline' => $user->canManageDiscipline(),
                     'is_waka_kesiswaan' => $user->isWakaKesiswaan(),
+                    'is_vice_principal' => $user->isVicePrincipal(),
+                    'is_waka_sarpras' => $user->isWakaSarpras(),
+                    'is_waka_humas' => $user->isWakaHumas(),
                     'can_operate_bk' => $user->canOperateBk(),
                     'can_access_teacher_report' => $user->canAccessTeacherAttendanceReport(),
                 ],

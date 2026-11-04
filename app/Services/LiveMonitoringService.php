@@ -34,11 +34,14 @@ class LiveMonitoringService
     ): ?array {
         $isPrincipal = $user->isPrincipal() || $user->isSuperAdmin();
         $isKurikulum = $user->isWakaKurikulum();
+        $isSarpras = $user->isWakaSarpras();
+        $isHumas = $user->isWakaHumas();
         $isKesiswaan = $user->isWakaKesiswaan() || $user->canManageDiscipline($operationalAcademicYear);
+        $isVicePrincipal = $user->isVicePrincipal() || $isKurikulum || $isKesiswaan || $isSarpras || $isHumas;
         $isHomeroom = (bool) $myHomeroomClassroom;
         $isBk = $user->canOperateBk($operationalAcademicYear);
 
-        if (! $isPrincipal && ! $isKurikulum && ! $isKesiswaan && ! $isHomeroom && ! $isBk) {
+        if (! $isPrincipal && ! $isVicePrincipal && ! $isHomeroom && ! $isBk) {
             return null;
         }
 
@@ -46,6 +49,9 @@ class LiveMonitoringService
             $isPrincipal => 'principal',
             $isKurikulum => 'kurikulum',
             $isKesiswaan => 'kesiswaan',
+            $isSarpras => 'sarpras',
+            $isHumas => 'humas',
+            $isVicePrincipal => 'vice_principal',
             $isBk => 'bk',
             default => 'homeroom',
         };
@@ -53,14 +59,17 @@ class LiveMonitoringService
         $roleLabel = match ($roleKey) {
             'principal' => 'Kepala Sekolah',
             'kurikulum' => 'Waka Kurikulum',
-            'kesiswaan' => 'Kedisiplinan & Kesiswaan',
+            'kesiswaan' => 'Waka Kesiswaan',
+            'sarpras' => 'Waka Sarpras',
+            'humas' => 'Waka Humas / Hubin',
+            'vice_principal' => 'Wakil Kepala Sekolah',
             'bk' => 'Guru BK',
             default => 'Wali Kelas ('.($myHomeroomClassroom?->name ?? 'Perwalian').')',
         };
 
-        $canViewStudentAll = $isPrincipal || $isKurikulum || $isKesiswaan || $isBk;
-        $canViewGtk = $isPrincipal || $isKurikulum;
-        $canViewBk = $isPrincipal || $isKurikulum || $isKesiswaan || $isBk;
+        $canViewStudentAll = $isPrincipal || $isVicePrincipal || $isBk;
+        $canViewGtk = $isPrincipal || $isVicePrincipal;
+        $canViewBk = $isPrincipal || $isVicePrincipal || $isBk;
 
         $targetDateStr = $date->toDateString();
         $isToday = $date->isToday();

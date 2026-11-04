@@ -600,7 +600,11 @@ class User extends Authenticatable
 
     public function isVicePrincipal(): bool
     {
-        if ($this->hasRole('waka_kurikulum')) {
+        if ($this->hasRole(['waka_kurikulum', 'waka_kesiswaan', 'waka_sarpras', 'waka_humas', 'vice_principal'])) {
+            return true;
+        }
+
+        if ($this->isWakaKurikulum() || $this->isWakaKesiswaan() || $this->isWakaSarpras() || $this->isWakaHumas()) {
             return true;
         }
 

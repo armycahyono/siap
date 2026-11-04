@@ -223,7 +223,7 @@ class MobileKbmController extends Controller
             ->first();
 
         $tasksController = app(MobileTasksController::class);
-        $isManagementKbm = $user->isPrincipal() || $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->isWakaKesiswaan() || $user->canManageDiscipline($academicYear) || $user->canOperateBk($academicYear);
+        $isManagementKbm = $user->isPrincipal() || $user->isSuperAdmin() || $user->isVicePrincipal() || $user->isWakaKurikulum() || $user->isWakaKesiswaan() || $user->isWakaSarpras() || $user->isWakaHumas() || $user->canManageDiscipline($academicYear) || $user->canOperateBk($academicYear);
         $liveMonitoring = $isManagementKbm
             ? $this->liveMonitoringService->buildLiveMonitoringData($user, $date, $academicYear, null)
             : null;
