@@ -7054,16 +7054,74 @@
             `).join('');
         }
 
+        // Populate GTK Checklist
+        const gtkContainer = document.getElementById('cal-gtk-checks');
+        if (gtkContainer && data.all_gtk) {
+            gtkContainer.innerHTML = data.all_gtk.map(g => `
+                <label class="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs transition gtk-item" data-name="${escapeHtml(g.name).toLowerCase()}" data-type="${g.is_staff ? 'staff' : 'teacher'}">
+                    <input type="checkbox" name="user_ids[]" value="${g.id}" onchange="updateGtkSelectedCount()" class="rounded text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 gtk-cb ${g.is_staff ? 'gtk-cb-staff' : 'gtk-cb-teacher'}">
+                    <span class="truncate flex-1 font-medium text-slate-800">${escapeHtml(g.name)}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${g.is_staff ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}">${escapeHtml(g.type)}</span>
+                </label>
+            `).join('');
+            updateGtkSelectedCount();
+        }
+
         // Populate Period map if available
-        const periodSelect = document.getElementById('add-event-max-period');
-        if (periodSelect && data.period_schedule_map) {
+        if (data.period_schedule_map) {
             const pMap = data.period_schedule_map;
-            periodSelect.innerHTML = Object.keys(pMap).map(p => {
+            const periodOptions = Object.keys(pMap).map(p => {
                 const info = pMap[p];
                 return `<option value="${p}">${escapeHtml(info.label)} (± ${info.time} WIB)</option>`;
             }).join('');
+
+            const periodSelect = document.getElementById('add-event-max-period');
+            if (periodSelect) periodSelect.innerHTML = periodOptions;
+
+            const disTeacherPeriodSelect = document.getElementById('add-event-disengaged-teacher-max-period');
+            if (disTeacherPeriodSelect) {
+                disTeacherPeriodSelect.innerHTML = '<option value="">-- Pulang Jam Pelajaran Ke- --</option>' + periodOptions;
+            }
+
+            const disStudentPeriodSelect = document.getElementById('add-event-disengaged-student-max-period');
+            if (disStudentPeriodSelect) {
+                disStudentPeriodSelect.innerHTML = '<option value="">-- KBM Selesai Jam Ke- --</option>' + periodOptions;
+            }
         }
     }
+
+    window.toggleSelectGtk = function(type) {
+        const cbs = document.querySelectorAll('#cal-gtk-checks .gtk-cb');
+        cbs.forEach(cb => {
+            if (type === 'teachers') {
+                cb.checked = cb.classList.contains('gtk-cb-teacher');
+            } else if (type === 'staff') {
+                cb.checked = cb.classList.contains('gtk-cb-staff');
+            } else if (type === 'none') {
+                cb.checked = false;
+            }
+        });
+        updateGtkSelectedCount();
+    };
+
+    window.filterGtkList = function(keyword) {
+        const kw = (keyword || '').toLowerCase().trim();
+        const items = document.querySelectorAll('#cal-gtk-checks .gtk-item');
+        items.forEach(it => {
+            const name = it.dataset.name || '';
+            if (!kw || name.includes(kw)) {
+                it.classList.remove('hidden');
+            } else {
+                it.classList.add('hidden');
+            }
+        });
+    };
+
+    window.updateGtkSelectedCount = function() {
+        const checkedCount = document.querySelectorAll('#cal-gtk-checks .gtk-cb:checked').length;
+        const badge = document.getElementById('cal-gtk-selected-count');
+        if (badge) badge.textContent = checkedCount + ' Dipilih';
+    };
 
     window.toggleEventAllDay = function(isAllDay) {
         const box = document.getElementById('box-event-time');
@@ -7079,6 +7137,8 @@
     window.onTargetAudienceChange = function(audience) {
         const boxTingkat = document.getElementById('box-target-grade-levels');
         const boxRombel = document.getElementById('box-target-classrooms');
+        const boxStudentImpact = document.getElementById('box-student-learning-impact');
+        const rowDisengagedStudents = document.getElementById('row-disengaged-students');
 
         if (boxTingkat) {
             if (audience === 'tingkat') boxTingkat.classList.remove('hidden');
@@ -7088,6 +7148,40 @@
         if (boxRombel) {
             if (audience === 'rombel') boxRombel.classList.remove('hidden');
             else boxRombel.classList.add('hidden');
+        }
+
+        if (boxStudentImpact) {
+            if (audience === 'guru_staf') boxStudentImpact.classList.add('hidden');
+            else boxStudentImpact.classList.remove('hidden');
+        }
+
+        if (rowDisengagedStudents) {
+            if (audience === 'semua') rowDisengagedStudents.classList.add('hidden');
+            else rowDisengagedStudents.classList.remove('hidden');
+        }
+    };
+
+    window.onDisengagedTeacherImpactChange = function(val) {
+        const box = document.getElementById('box-disengaged-teacher-period');
+        if (box) {
+            if (val === 'pulang_cepat') box.classList.remove('hidden');
+            else box.classList.add('hidden');
+        }
+    };
+
+    window.onDisengagedStaffImpactChange = function(val) {
+        const box = document.getElementById('box-disengaged-staff-time');
+        if (box) {
+            if (val === 'pulang_cepat') box.classList.remove('hidden');
+            else box.classList.add('hidden');
+        }
+    };
+
+    window.onDisengagedStudentImpactChange = function(val) {
+        const box = document.getElementById('box-disengaged-student-period');
+        if (box) {
+            if (val === 'pulang_cepat') box.classList.remove('hidden');
+            else box.classList.add('hidden');
         }
     };
 
@@ -7156,7 +7250,17 @@
         const start_time = !is_all_day ? (document.getElementById('add-event-start-time')?.value || null) : null;
         const end_time = !is_all_day ? (document.getElementById('add-event-end-time')?.value || null) : null;
 
-        const target_audience = document.getElementById('add-event-target-audience')?.value || 'semua';
+        // GTK Terlibat
+        const user_ids = [];
+        document.querySelectorAll('#cal-gtk-checks .gtk-cb:checked').forEach(cb => {
+            user_ids.push(Number(cb.value));
+        });
+        const teacher_impact = document.getElementById('add-event-teacher-impact')?.value || 'bebas_mengajar_tugas';
+        const gtk_checkin_time = document.getElementById('add-event-gtk-checkin')?.value || null;
+        const gtk_checkout_time = document.getElementById('add-event-gtk-checkout')?.value || null;
+
+        // Siswa Terlibat
+        const target_audience = document.getElementById('add-event-target-audience')?.value || 'guru_staf';
         let target_grade_levels = [];
         if (target_audience === 'tingkat') {
             document.querySelectorAll('#cal-grade-level-checks input:checked').forEach(cb => {
@@ -7179,8 +7283,26 @@
             }
         }
 
+        const student_start_time = document.getElementById('add-event-student-start-time')?.value || null;
+        const student_end_time = document.getElementById('add-event-student-end-time')?.value || null;
         const learning_impact = document.getElementById('add-event-learning-impact')?.value || 'normal';
         const max_period = (learning_impact === 'pulang_cepat') ? Number(document.getElementById('add-event-max-period')?.value || 4) : null;
+
+        // Pihak Tidak Terlibat
+        const disengaged_teacher_impact = document.getElementById('add-event-disengaged-teacher-impact')?.value || 'masuk_normal';
+        const disengaged_teacher_max_period = (disengaged_teacher_impact === 'pulang_cepat' && document.getElementById('add-event-disengaged-teacher-max-period')?.value)
+            ? Number(document.getElementById('add-event-disengaged-teacher-max-period').value)
+            : null;
+
+        const disengaged_staff_impact = document.getElementById('add-event-disengaged-staff-impact')?.value || 'masuk_normal';
+        const disengaged_staff_dismissal_time = (disengaged_staff_impact === 'pulang_cepat')
+            ? (document.getElementById('add-event-disengaged-staff-time')?.value || '12:00')
+            : null;
+
+        const disengaged_student_impact = document.getElementById('add-event-disengaged-student-impact')?.value || 'kbm_normal';
+        const disengaged_student_max_period = (disengaged_student_impact === 'pulang_cepat' && document.getElementById('add-event-disengaged-student-max-period')?.value)
+            ? Number(document.getElementById('add-event-disengaged-student-max-period').value)
+            : null;
 
         const btn = document.getElementById('btn-submit-add-event');
         if (btn) btn.disabled = true;
@@ -7196,11 +7318,23 @@
                 end_time,
                 location,
                 description,
+                user_ids: user_ids.length > 0 ? user_ids : null,
+                teacher_impact,
+                gtk_checkin_time,
+                gtk_checkout_time,
                 target_audience,
                 target_grade_levels: target_grade_levels.length > 0 ? target_grade_levels : null,
                 target_classroom_ids: target_classroom_ids.length > 0 ? target_classroom_ids : null,
+                student_start_time,
+                student_end_time,
                 learning_impact,
                 max_period,
+                disengaged_teacher_impact,
+                disengaged_teacher_max_period,
+                disengaged_staff_impact,
+                disengaged_staff_dismissal_time,
+                disengaged_student_impact,
+                disengaged_student_max_period,
             });
 
             if (res.success) {
@@ -7209,7 +7343,11 @@
                 document.getElementById('form-add-calendar-event')?.reset();
                 toggleEventAllDay(true);
                 onTargetAudienceChange('semua');
-                onLearningImpactChange('normal');
+                onLearningImpactChange('bebas_kbm_kegiatan');
+                onDisengagedTeacherImpactChange('masuk_normal');
+                onDisengagedStaffImpactChange('masuk_normal');
+                onDisengagedStudentImpactChange('kbm_normal');
+                updateGtkSelectedCount();
                 await loadCalendarData();
             } else {
                 showToast(res.message || 'Gagal menyimpan agenda', 'error');

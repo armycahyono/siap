@@ -234,4 +234,67 @@ class MobileCalendarTest extends TestCase
             'max_period' => 5,
         ]);
     }
+
+    public function test_can_store_event_with_selected_gtk_and_disengaged_impacts(): void
+    {
+        $teacher2 = User::create([
+            'name' => 'Guru Tambahan Cal Test',
+            'username' => 'gurutambahancal',
+            'email' => 'guru.tambahan@test.sch.id',
+            'password' => bcrypt('password'),
+            'role_id' => $this->teacher->role_id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->curriculumUser)
+            ->postJson('/api/v1/mobile/calendar/store', [
+                'title' => 'Simulasi Asesmen Nasional (ANBK)',
+                'category' => 'kegiatan_kurikulum',
+                'start_date' => '2026-11-26',
+                'end_date' => '2026-11-26',
+                'is_all_day' => false,
+                'start_time' => '07:30',
+                'end_time' => '12:00',
+                'location' => 'Lab Komputer 1 & 2',
+                'description' => 'Siswa kelas XI mengikuti simulasi',
+
+                // GTK Terlibat
+                'user_ids' => [$this->teacher->id, $teacher2->id],
+                'teacher_impact' => 'bebas_mengajar_tugas',
+                'gtk_checkin_time' => '07:00',
+                'gtk_checkout_time' => '13:00',
+
+                // Siswa Terlibat
+                'target_audience' => 'tingkat',
+                'target_grade_levels' => ['11'],
+                'learning_impact' => 'bebas_kbm_kegiatan',
+                'student_start_time' => '07:30',
+                'student_end_time' => '12:00',
+
+                // Pihak Tidak Terlibat
+                'disengaged_teacher_impact' => 'pulang_cepat',
+                'disengaged_teacher_max_period' => 6,
+                'disengaged_staff_impact' => 'pulang_cepat',
+                'disengaged_staff_dismissal_time' => '12:30',
+                'disengaged_student_impact' => 'pembelajaran_daring',
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $event = CurriculumEvent::where('title', 'Simulasi Asesmen Nasional (ANBK)')->first();
+        $this->assertNotNull($event);
+        $this->assertEquals('bebas_mengajar_tugas', $event->teacher_impact);
+        $this->assertEquals('pulang_cepat', $event->disengaged_teacher_impact);
+        $this->assertEquals(6, $event->disengaged_teacher_max_period);
+        $this->assertEquals('11:50', $event->disengaged_teacher_dismissal_time);
+        $this->assertEquals('pulang_cepat', $event->disengaged_staff_impact);
+        $this->assertEquals('12:30', $event->disengaged_staff_dismissal_time);
+        $this->assertEquals('pembelajaran_daring', $event->disengaged_student_impact);
+        $this->assertCount(2, $event->users);
+        $this->assertTrue($event->users->contains('id', $this->teacher->id));
+        $this->assertTrue($event->users->contains('id', $teacher2->id));
+    }
 }

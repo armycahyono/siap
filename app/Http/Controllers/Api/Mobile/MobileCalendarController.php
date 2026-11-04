@@ -11,6 +11,7 @@ use App\Models\SchoolSetting;
 use App\Models\User;
 use App\Services\AcademicCalendarService;
 use App\Services\AcademicYearContext;
+use App\Services\DailyKbmSnapshotService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
@@ -236,6 +237,16 @@ class MobileCalendarController extends Controller
         $learningImpacts = CurriculumEvent::learningImpactDefinitions();
         $periodMap = CurriculumEvent::periodScheduleMap();
 
+        $allGtk = User::operationalPersonnel()->orderBy('name')->get()->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'is_staff' => (bool) $u->isStaff(),
+                'type' => $u->isStaff() ? 'Staf' : 'Guru',
+                'position' => $u->position ?? ($u->isStaff() ? 'Staf TU' : 'Guru'),
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'academic_year' => $academicYear,
@@ -262,7 +273,12 @@ class MobileCalendarController extends Controller
             'grade_levels' => $gradeLevels,
             'classrooms' => $classrooms,
             'learning_impacts' => $learningImpacts,
+            'teacher_impacts' => CurriculumEvent::teacherImpactDefinitions(),
+            'disengaged_teacher_impacts' => CurriculumEvent::disengagedTeacherImpactDefinitions(),
+            'disengaged_staff_impacts' => CurriculumEvent::disengagedStaffImpactDefinitions(),
+            'disengaged_student_impacts' => CurriculumEvent::disengagedStudentImpactDefinitions(),
             'period_schedule_map' => $periodMap,
+            'all_gtk' => $allGtk,
             'can_create' => (bool) $this->canManageCalendar($user),
         ]);
     }
@@ -334,12 +350,33 @@ class MobileCalendarController extends Controller
             'end_time' => 'nullable|string|max:10',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+
+            // GTK Terlibat
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'exists:users,id',
+            'teacher_impact' => 'nullable|string|in:normal,bebas_mengajar_tugas,diliburkan_penuh',
+            'gtk_checkin_time' => 'nullable|string|max:10',
+            'gtk_checkout_time' => 'nullable|string|max:10',
+
+            // Siswa Terlibat
             'target_audience' => 'nullable|string|in:semua,guru_staf,tingkat,rombel',
             'target_grade_levels' => 'nullable|array',
             'target_classroom_ids' => 'nullable|array',
+            'student_start_time' => 'nullable|string|max:10',
+            'student_end_time' => 'nullable|string|max:10',
             'learning_impact' => 'nullable|string|in:normal,pulang_cepat,pembelajaran_daring,bebas_kbm_kegiatan,libur_khusus',
             'max_period' => 'nullable|integer|min:1|max:12',
             'dismissal_time' => 'nullable|string|max:10',
+
+            // Pihak Tidak Terlibat
+            'disengaged_teacher_impact' => 'nullable|string|in:masuk_normal,pulang_cepat,libur',
+            'disengaged_teacher_max_period' => 'nullable|integer|min:1|max:10',
+            'disengaged_teacher_dismissal_time' => 'nullable|string|max:10',
+            'disengaged_staff_impact' => 'nullable|string|in:masuk_normal,pulang_cepat,libur',
+            'disengaged_staff_dismissal_time' => 'nullable|string|max:10',
+            'disengaged_student_impact' => 'nullable|string|in:kbm_normal,pembelajaran_daring,pulang_cepat,bebas_kbm,libur_khusus',
+            'disengaged_student_max_period' => 'nullable|integer|min:1|max:10',
+            'disengaged_student_dismissal_time' => 'nullable|string|max:10',
         ]);
 
         try {
@@ -360,15 +397,28 @@ class MobileCalendarController extends Controller
             $learningImpact = 'libur_khusus';
         }
 
-        $targetAudience = $validated['target_audience'] ?? 'semua';
+        $targetAudience = $validated['target_audience'] ?? 'guru_staf';
+        $isNoStudents = ($targetAudience === 'guru_staf');
+
         $targetGradeLevels = ($targetAudience === 'tingkat') ? ($validated['target_grade_levels'] ?? null) : null;
         $targetClassroomIds = ($targetAudience === 'rombel') ? ($validated['target_classroom_ids'] ?? null) : null;
+
+        $periodMap = CurriculumEvent::periodScheduleMap();
 
         $maxPeriod = ($learningImpact === 'pulang_cepat') ? ($validated['max_period'] ?? null) : null;
         $dismissalTime = $validated['dismissal_time'] ?? null;
         if ($maxPeriod && empty($dismissalTime)) {
-            $periodMap = CurriculumEvent::periodScheduleMap();
             $dismissalTime = $periodMap[$maxPeriod]['time'] ?? null;
+        }
+
+        $disengagedTeacherDismissalTime = $validated['disengaged_teacher_dismissal_time'] ?? null;
+        if (! empty($validated['disengaged_teacher_max_period']) && isset($periodMap[$validated['disengaged_teacher_max_period']])) {
+            $disengagedTeacherDismissalTime = $disengagedTeacherDismissalTime ?: $periodMap[$validated['disengaged_teacher_max_period']]['time'];
+        }
+
+        $disengagedStudentDismissalTime = $validated['disengaged_student_dismissal_time'] ?? null;
+        if (! empty($validated['disengaged_student_max_period']) && isset($periodMap[$validated['disengaged_student_max_period']])) {
+            $disengagedStudentDismissalTime = $disengagedStudentDismissalTime ?: $periodMap[$validated['disengaged_student_max_period']]['time'];
         }
 
         $event = CurriculumEvent::create([
@@ -386,11 +436,33 @@ class MobileCalendarController extends Controller
             'target_audience' => $targetAudience,
             'target_grade_levels' => $targetGradeLevels,
             'target_classroom_ids' => $targetClassroomIds,
-            'learning_impact' => $learningImpact,
+            'learning_impact' => $isNoStudents ? 'normal' : $learningImpact,
             'max_period' => $maxPeriod,
             'dismissal_time' => $dismissalTime,
+            'teacher_impact' => $validated['teacher_impact'] ?? 'bebas_mengajar_tugas',
+            'gtk_checkin_time' => $validated['gtk_checkin_time'] ?? null,
+            'gtk_checkout_time' => $validated['gtk_checkout_time'] ?? null,
+            'student_start_time' => $isNoStudents ? null : ($validated['student_start_time'] ?? null),
+            'student_end_time' => $isNoStudents ? null : ($validated['student_end_time'] ?? null),
+            'disengaged_teacher_impact' => $validated['disengaged_teacher_impact'] ?? 'masuk_normal',
+            'disengaged_teacher_max_period' => $validated['disengaged_teacher_max_period'] ?? null,
+            'disengaged_teacher_dismissal_time' => $disengagedTeacherDismissalTime,
+            'disengaged_staff_impact' => $validated['disengaged_staff_impact'] ?? 'masuk_normal',
+            'disengaged_staff_dismissal_time' => $validated['disengaged_staff_dismissal_time'] ?? null,
+            'disengaged_student_impact' => $validated['disengaged_student_impact'] ?? 'kbm_normal',
+            'disengaged_student_max_period' => $validated['disengaged_student_max_period'] ?? null,
+            'disengaged_student_dismissal_time' => $disengagedStudentDismissalTime,
             'created_by' => $user->id,
         ]);
+
+        if (! empty($validated['user_ids'])) {
+            $event->users()->sync($validated['user_ids']);
+        }
+
+        try {
+            app(DailyKbmSnapshotService::class)->invalidateSnapshotRange($event->start_date, $event->end_date);
+        } catch (Throwable) {
+        }
 
         return response()->json([
             'success' => true,
