@@ -7110,7 +7110,10 @@
 
     window.openAddEventModal = function() {
         const modal = document.getElementById('modal-add-calendar-event');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         if (!modal) return;
+
+        if (bottomNav) bottomNav.classList.add('hidden');
 
         if (calendarDataCache) {
             populateCalendarModalOptions(calendarDataCache);
@@ -7129,7 +7132,9 @@
 
     window.closeAddEventModal = function() {
         const modal = document.getElementById('modal-add-calendar-event');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
     };
 
     window.submitAddCalendarEvent = async function(e) {
