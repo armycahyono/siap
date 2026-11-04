@@ -4,56 +4,25 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header Dashboard Kedisiplinan -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <span class="avatar avatar-md bg-danger-lt text-danger rounded-circle">
-                    <i class="ti ti-shield-exclamation fs-1"></i>
-                </span>
-            </div>
-            <div class="col">
-                <div class="page-pretitle text-uppercase fw-bold text-danger" style="letter-spacing: 0.05rem;">
-                    SISTEM INFORMASI KETERTIBAN &amp; KEDISIPLINAN SISWA
-                </div>
-                <h2 class="page-title text-dark fw-bold">
-                    Dashboard Kedisiplinan
-                </h2>
-                <div class="text-muted small mt-1">
-                    Pemantauan ketertiban siswa, penanganan pelanggaran, verifikasi sanksi, dan koordinasi Tim Kedisiplinan.
-                </div>
-            </div>
-            <div class="col-12 col-md-auto mt-2 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                <!-- Selector Tahun Ajaran -->
-                <form action="{{ Route::has('discipline.dashboard') ? route('discipline.dashboard') : url('/kedisiplinan') }}" method="GET" class="d-flex align-items-center gap-1">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0 text-muted">
-                            <i class="ti ti-calendar me-1"></i> Tahun Ajaran:
-                        </span>
-                        <select name="academic_year" class="form-select form-select-sm fw-bold border-start-0 ps-0" onchange="this.form.submit()" style="min-width: 140px;">
-                            @foreach($availableYears as $ay)
-                                <option value="{{ $ay->name }}" {{ $ay->name === $academicYear ? 'selected' : '' }}>
-                                    {{ $ay->name }} {{ $ay->is_active ? '(Aktif)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </form>
-
-                @if(auth()->user()->canRecordPiketIncident())
-                <a href="{{ route('piket.incidents.create') }}" class="btn btn-sm btn-danger shadow-xs fw-bold">
-                    <i class="ti ti-plus me-1"></i> Catat Kasus Baru
-                </a>
-                @endif
-                <a href="{{ route('piket.incidents.index') }}" class="btn btn-sm btn-outline-secondary shadow-xs">
-                    <i class="ti ti-list me-1"></i> Daftar Kasus
-                </a>
-                <a href="{{ route('piket.reports.index', ['tab' => 'incidents']) }}" class="btn btn-sm btn-outline-secondary shadow-xs">
-                    <i class="ti ti-report me-1"></i> Rekap Pelanggaran
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $discActions = '';
+        if (auth()->user()->canRecordPiketIncident()) {
+            $discActions .= '<a href="' . route('piket.incidents.create') . '" class="btn btn-sm btn-danger shadow-xs fw-bold"><i class="ti ti-plus me-1"></i> Catat Kasus Baru</a> ';
+        }
+        $discActions .= '
+            <a href="' . route('piket.incidents.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-list me-1 text-info"></i> Daftar Kasus</a>
+            <a href="' . route('piket.reports.index', ['tab' => 'incidents']) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-report me-1 text-info"></i> Rekap Pelanggaran</a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Dashboard Kedisiplinan & Ketertiban',
+        'subtitle' => 'Pemantauan ketertiban siswa, penanganan pelanggaran, verifikasi sanksi, dan koordinasi Tim Kedisiplinan TP ' . $academicYear . '.',
+        'icon' => 'ti ti-shield-exclamation',
+        'category' => 'KETERTIBAN & KEDISIPLINAN SISWA',
+        'academicYear' => $academicYear,
+        'actions' => $discActions,
+    ])
 
     <!-- 4 Kartu Metrik Utama -->
     <div class="row row-cards mb-4">

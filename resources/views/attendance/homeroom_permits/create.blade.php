@@ -4,26 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-muted text-uppercase">Wali Kelas &bull; Input Izin Siswa</div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-file-pencil text-primary me-2 fs-1"></i>
-                    Formulir Laporan Izin Siswa Perwalian
-                </h2>
-                <div class="text-secondary mt-1">
-                    Kelas: <strong>{{ $selectedClassroom->name }}</strong> &bull; Wali Kelas: <strong>{{ auth()->user()->name }}</strong>
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <a href="{{ route('attendance.homeroom-permits.index') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Riwayat
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Formulir Laporan Izin Siswa Perwalian',
+        'subtitle' => 'Kelas: ' . $selectedClassroom->name . ' • Wali Kelas: ' . auth()->user()->name . ' • Pencatatan izin sakit, izin keperluan keluarga, atau tugas sekolah.',
+        'icon' => 'ti ti-file-pencil',
+        'category' => 'WALI KELAS • INPUT IZIN SISWA',
+        'actions' => '<a href="' . route('attendance.homeroom-permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Riwayat</a>',
+    ])
 
     <div class="row justify-content-center">
         <div class="col-lg-8">

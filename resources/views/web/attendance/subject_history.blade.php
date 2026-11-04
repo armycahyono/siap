@@ -3,27 +3,21 @@
 @section('title', 'Riwayat Presensi Mengajar — SMK PGRI Kras')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a href="{{ route('attendance.subject.index') }}" class="btn btn-sm btn-icon btn-outline-secondary">
-                <i class="ti ti-arrow-left"></i>
-            </a>
-            <h2 class="page-title fw-bold text-dark mb-0">
-                <i class="ti ti-history me-2 text-primary"></i>
-                Riwayat Presensi Mengajar Saya
-            </h2>
-        </div>
-        <div class="text-muted small">
-            Daftar seluruh sesi presensi kelas dan pembelajaran yang pernah Anda laksanakan.
-        </div>
-    </div>
-    <div class="col-auto ms-auto">
-        <a href="{{ route('attendance.subject.index') }}" class="btn btn-sm btn-primary">
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Riwayat Presensi Mengajar Saya',
+    'subtitle' => 'Daftar seluruh sesi presensi kelas dan kegiatan belajar mengajar (KBM) yang telah Anda laksanakan.',
+    'icon' => 'ti ti-history',
+    'category' => 'JURNAL & PRESENSI KBM',
+    'actions' => '
+        <a href="' . route('attendance.subject.index') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
             <i class="ti ti-plus me-1"></i> Presensi Hari Ini
         </a>
-    </div>
-</div>
+        <a href="' . route('attendance.subject.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+            <i class="ti ti-arrow-left me-1"></i> Kembali ke Menu KBM
+        </a>
+    ',
+])
 
 <!-- Filter Pencarian -->
 <div class="card border-0 shadow-sm mb-3">

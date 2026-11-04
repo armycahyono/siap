@@ -4,35 +4,32 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <a href="{{ route('piket.permits.index') }}" class="btn btn-link text-secondary p-0 mb-1">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Perizinan
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $permitShowActions = '';
+        if ($permit->batch_id) {
+            $permitShowActions .= '
+                <a href="' . route('piket.permits.slip', ['permit' => $permit->id, 'batch' => 1]) . '" target="_blank" class="btn btn-sm btn-outline-light shadow-xs">
+                    <i class="ti ti-printer me-1 text-info"></i> Cetak Slip Rombongan
                 </a>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-file-certificate text-primary me-2 fs-1"></i>
-                    Surat Izin: {{ $permit->permit_number }}
-                </h2>
-                <div class="text-secondary mt-1">
-                    Diterbitkan pada {{ $permit->permit_date?->translatedFormat('d F Y') }} oleh {{ $permit->givenBy?->name ?? 'Petugas Piket' }}
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex gap-2">
-                @if($permit->batch_id)
-                    <a href="{{ route('piket.permits.slip', ['permit' => $permit->id, 'batch' => 1]) }}" target="_blank" class="btn btn-sm btn-indigo shadow-sm">
-                        <i class="ti ti-printer me-1"></i> Cetak Slip Rombongan (Per Rombel)
-                    </a>
-                @endif
-                <a href="{{ route('piket.permits.slip', $permit) }}" target="_blank" class="btn btn-sm btn-primary shadow-sm">
-                    <i class="ti ti-printer me-1"></i> Cetak Slip Izin (Individu)
-                </a>
-                <a href="{{ route('piket.permits.create') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-plus me-1"></i> Buat Izin Baru
-                </a>
-            </div>
-        </div>
-    </div>
+            ';
+        }
+        $permitShowActions .= '
+            <a href="' . route('piket.permits.slip', $permit) . '" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1">
+                <i class="ti ti-printer me-1"></i> Cetak Slip Izin
+            </a>
+            <a href="' . route('piket.permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar
+            </a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Surat Izin: ' . $permit->permit_number,
+        'subtitle' => 'Diterbitkan pada ' . $permit->permit_date?->translatedFormat('d F Y') . ' oleh ' . ($permit->givenBy?->name ?? 'Petugas Piket') . ' • Siswa: ' . $permit->student_name . ' (' . ($permit->classroom?->name ?? '-') . ').',
+        'icon' => 'ti ti-file-certificate',
+        'category' => 'DETAIL SURAT IZIN SISWA',
+        'actions' => $permitShowActions,
+    ])
 
     <div class="row justify-content-center">
         <div class="col-lg-8">

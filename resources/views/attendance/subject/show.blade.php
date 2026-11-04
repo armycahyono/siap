@@ -3,33 +3,21 @@
 @section('title', 'Detail Presensi Kelas — ' . $session->classroom->name)
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a href="{{ route('attendance.subject.index', ['date' => $session->attendance_date->toDateString()]) }}" class="btn btn-sm btn-icon btn-outline-secondary">
-                <i class="ti ti-arrow-left"></i>
-            </a>
-            <h2 class="page-title fw-bold text-dark mb-0">
-                Detail Presensi Kelas: {{ $session->classroom->name }}
-            </h2>
-            @if($session->is_swap)
-                <span class="badge bg-warning text-dark px-2 py-1">
-                    <i class="ti ti-arrows-left-right me-1"></i> Mode Tukar Jam
-                </span>
-            @endif
-        </div>
-        <div class="text-muted small">
-            Mapel: <strong>{{ $session->subject->name }}</strong> &bull;
-            Guru: <strong>{{ $session->teacher->name }}</strong> &bull;
-            Tanggal: <strong>{{ $session->attendance_date->translatedFormat('l, d F Y') }}</strong> (Jam Ke-{{ $session->start_period }} s/d {{ $session->end_period }})
-        </div>
-    </div>
-    <div class="col-auto ms-auto d-flex gap-2">
-        <a href="{{ route('attendance.subject.take', ['schedule_id' => $session->lesson_schedule_id, 'date' => $session->attendance_date->toDateString(), 'classroom_id' => $session->classroom_id, 'subject_id' => $session->subject_id, 'start_period' => $session->start_period, 'end_period' => $session->end_period, 'is_swap' => $session->is_swap ? 1 : 0]) }}" class="btn btn-sm btn-outline-warning">
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Detail Presensi Kelas: ' . $session->classroom->name,
+    'subtitle' => 'Mapel: ' . $session->subject->name . ' • Guru: ' . $session->teacher->name . ' • Tanggal: ' . $session->attendance_date->translatedFormat('l, d F Y') . ' (Jam Ke-' . $session->start_period . ' s/d ' . $session->end_period . ')' . ($session->is_swap ? ' • Mode Tukar Jam' : ''),
+    'icon' => 'ti ti-file-text',
+    'category' => 'DETAIL PRESENSI KBM',
+    'actions' => '
+        <a href="' . route('attendance.subject.take', ['schedule_id' => $session->lesson_schedule_id, 'date' => $session->attendance_date->toDateString(), 'classroom_id' => $session->classroom_id, 'subject_id' => $session->subject_id, 'start_period' => $session->start_period, 'end_period' => $session->end_period, 'is_swap' => $session->is_swap ? 1 : 0]) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
             <i class="ti ti-edit me-1"></i> Edit Data Presensi
         </a>
-    </div>
-</div>
+        <a href="' . route('attendance.subject.index', ['date' => $session->attendance_date->toDateString()]) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+            <i class="ti ti-arrow-left me-1"></i> Kembali
+        </a>
+    ',
+])
 
 <!-- Statistik Ringkasan Kehadiran Sesi Ini -->
 <div class="row row-cards mb-3 g-2">

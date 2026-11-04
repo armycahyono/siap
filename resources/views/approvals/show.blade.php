@@ -3,21 +3,18 @@
 @section('title', 'Tinjau & Pengesahan Supervisi: ' . $supervision->teacher->name)
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-certificate me-2 text-warning"></i> Lembar Verifikasi & Persetujuan Supervisi
-        </h2>
-        <div class="text-muted small">
-            Periksa seluruh hasil supervisi sebelum menyetujui, menandatangani, dan menerbitkan dokumen resmi.
-        </div>
-    </div>
-    <div class="col-auto d-flex gap-2">
-        <a href="{{ route('approvals.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Antrean
+@include('layouts._hero_header', [
+    'title' => 'Lembar Verifikasi & Persetujuan Supervisi',
+    'subtitle' => 'Periksa seluruh hasil supervisi sebelum menyetujui, menandatangani, dan menerbitkan dokumen resmi.',
+    'icon' => 'ti ti-certificate',
+    'category' => 'PENGESAHAN SUPERVISI',
+    'actions' => '
+        <a href="' . route('approvals.index') . '" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm">
+            <i class="ti ti-arrow-left"></i>
+            <span>Kembali ke Antrean</span>
         </a>
-    </div>
-</div>
+    '
+])
 
 <div class="row g-4">
     <!-- Main Review Summary -->

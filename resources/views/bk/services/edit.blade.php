@@ -4,11 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="mb-3">
-        <a href="{{ route('bk.services.show', $service) }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Detail Sesi
-        </a>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Edit Sesi Layanan BK',
+        'subtitle' => 'Perbarui data pelaksanaan, catatan konseling, rekomendasi, dan tindak lanjut layanan bimbingan konseling.',
+        'icon' => 'ti ti-edit',
+        'category' => 'LAYANAN KONSELING BK',
+        'actions' => '<a href="' . route('bk.services.show', $service) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Detail Sesi</a>',
+    ])
 
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">

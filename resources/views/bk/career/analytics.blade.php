@@ -4,51 +4,22 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header Dashboard Karir -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <span class="avatar avatar-md bg-teal-lt text-teal rounded-circle">
-                    <i class="ti ti-briefcase fs-1"></i>
-                </span>
-            </div>
-            <div class="col">
-                <div class="page-pretitle text-uppercase fw-bold text-teal" style="letter-spacing: 0.05rem;">
-                    BIMBINGAN KARIR &amp; BURSA KERJA KHUSUS (BKK)
-                </div>
-                <h2 class="page-title text-dark fw-bold">
-                    Analisis Karir &amp; Penyaluran Siswa
-                </h2>
-                <div class="text-muted small mt-1">
-                    Pemetaan rencana pasca-kelulusan (Bekerja, Melanjutkan, Wirausaha), intelijen industri target, dan data penyaluran kerja DUDI.
-                </div>
-            </div>
-            <div class="col-12 col-md-auto mt-2 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                <!-- Selector Tahun Ajaran -->
-                <form action="{{ route('bk.career.analytics') }}" method="GET" class="d-flex align-items-center gap-1">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0 text-muted">
-                            <i class="ti ti-calendar me-1"></i> TP:
-                        </span>
-                        <select name="academic_year" class="form-select form-select-sm fw-bold border-start-0 ps-0" onchange="this.form.submit()" style="min-width: 140px;">
-                            @foreach($availableYears as $ay)
-                                <option value="{{ $ay->name }}" {{ $ay->name === $academicYear ? 'selected' : '' }}>
-                                    {{ $ay->name }} {{ $ay->is_active ? '(Aktif)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </form>
-
-                <a href="{{ route('bk.dashboard', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Dashboard BK
-                </a>
-                <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-primary d-none d-md-inline-flex">
-                    <i class="ti ti-printer me-1"></i> Cetak Laporan Karir
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Analisis Karir & Penyaluran Siswa (BKK)',
+        'subtitle' => 'Pemetaan rencana pasca-kelulusan (Bekerja, Melanjutkan, Wirausaha), intelijen industri target, dan data penyaluran kerja DUDI TP ' . $academicYear . '.',
+        'icon' => 'ti ti-briefcase',
+        'category' => 'BIMBINGAN KARIR & BURSA KERJA KHUSUS',
+        'academicYear' => $academicYear,
+        'actions' => '
+            <button type="button" onclick="window.print()" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-printer me-1"></i> Cetak Laporan Karir
+            </button>
+            <a href="' . route('bk.dashboard', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Dashboard BK
+            </a>
+        ',
+    ])
 
     <!-- 4 Kartu Metrik Utama Pola BMW (Bekerja, Melanjutkan, Wirausaha) -->
     <div class="row row-cards mb-4">

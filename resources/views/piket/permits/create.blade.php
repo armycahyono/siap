@@ -4,26 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header Standar Tabler -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-muted text-uppercase">Piket Harian &bull; Perizinan Siswa</div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-file-certificate text-primary me-2 fs-1"></i>
-                    Penerbitan Surat Izin Siswa
-                </h2>
-                <div class="text-secondary mt-1">
-                    Isi formulir berikut untuk mencatat izin siswa serta mengirimkan notifikasi otomatis ke Guru Mapel & Wali Kelas.
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <a href="{{ route('piket.permits.index') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Penerbitan Surat Izin Siswa',
+        'subtitle' => 'Pencatatan izin siswa masuk terlambat, izin keluar sementara, izin pulang cepat, atau tidak masuk dengan notifikasi otomatis ke Guru Mapel & Wali Kelas.',
+        'icon' => 'ti ti-file-certificate',
+        'category' => 'PIKET HARIAN • PERIZINAN SISWA',
+        'actions' => '<a href="' . route('piket.permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar</a>',
+    ])
 
     <div class="row justify-content-center">
         <div class="col-lg-9">

@@ -43,82 +43,88 @@
     </div>
 @endif
 
-<!-- Pintasan Rutinitas Harian GTK -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%);">
-        <div class="card-body text-white p-4">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $guruActions = '';
+    if (!empty($myCheckInToday)) {
+        $guruActions .= '
+            <div class="d-flex align-items-center gap-2 bg-success text-white px-3 py-1.5 rounded-3 shadow-xs">
+                <i class="ti ti-circle-check fs-2"></i>
                 <div>
-                    <span class="badge bg-white-lt text-white px-2 py-1 mb-1">
-                        <i class="ti ti-device-mobile me-1"></i> Rutinitas Harian GTK
-                    </span>
-                    <h3 class="mb-0 text-white fw-bold">Selamat Datang, {{ $user->name }}</h3>
-                    <small class="text-white-50">{{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') }} &bull; {{ $setting->school_name }}</small>
-                </div>
-                <div>
-                    @if(!empty($myCheckInToday))
-                        <div class="d-flex align-items-center gap-2 bg-success text-white px-3 py-2 rounded-3 shadow-sm">
-                            <i class="ti ti-circle-check fs-2"></i>
-                            <div>
-                                <div class="small fw-semibold" style="font-size: 0.75rem;">Presensi Hari Ini</div>
-                                <div class="fw-bold font-monospace">{{ $myCheckInToday->scanned_at->format('H:i') }} WIB</div>
-                            </div>
-                        </div>
-                    @else
-                        <a href="{{ route('attendance.geotag.index') }}" class="btn btn-warning fw-bold shadow-sm px-3 py-2">
-                            <i class="ti ti-map-pin me-1"></i> Absen GPS Sekarang
-                        </a>
-                    @endif
+                    <div class="small fw-semibold" style="font-size: 0.72rem;">Presensi Hari Ini</div>
+                    <div class="fw-bold font-monospace">' . $myCheckInToday->scanned_at->format('H:i') . ' WIB</div>
                 </div>
             </div>
+        ';
+    } else {
+        $guruActions .= '
+            <a href="' . route('attendance.geotag.index') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-map-pin me-1"></i> Absen GPS Sekarang
+            </a>
+        ';
+    }
+@endphp
 
-            <div class="row g-2 pt-2 border-top border-white-subtle">
-                <div class="col-6 col-md-3">
-                    <a href="{{ route('attendance.geotag.index') }}" class="btn btn-white w-100 text-start py-2 px-3 border-0 shadow-sm h-100">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="avatar avatar-xs bg-primary-lt text-primary rounded-circle"><i class="ti ti-map-pin"></i></span>
-                            <div class="text-truncate">
-                                <div class="fw-bold text-dark small text-truncate">Presensi GPS</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Geotagging HP</div>
-                            </div>
+@include('layouts._hero_header', [
+    'title' => 'Selamat Datang, ' . $user->name,
+    'subtitle' => \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') . ' • Portal Operasional Mandiri GTK ' . $setting->school_name . '.',
+    'icon' => 'ti ti-user-check',
+    'category' => 'PORTAL GTK & GURU',
+    'academicYear' => $setting->academic_year,
+    'actions' => $guruActions,
+])
+
+<!-- Pintasan Cepat Rutinitas GTK -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+        <div class="row g-2">
+            <div class="col-6 col-md-3">
+                <a href="{{ route('attendance.geotag.index') }}" class="btn btn-light w-100 text-start py-2 px-3 border shadow-xs h-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-xs bg-primary-lt text-primary rounded-circle"><i class="ti ti-map-pin"></i></span>
+                        <div class="text-truncate">
+                            <div class="fw-bold text-dark small text-truncate">Presensi GPS</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Geotagging HP</div>
                         </div>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3">
-                    <a href="{{ route('attendance.subject.index') }}" class="btn btn-white w-100 text-start py-2 px-3 border-0 shadow-sm h-100">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="avatar avatar-xs bg-success-lt text-success rounded-circle"><i class="ti ti-book"></i></span>
-                            <div class="text-truncate">
-                                <div class="fw-bold text-dark small text-truncate">Jurnal KBM</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Absensi Kelas</div>
-                            </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ route('attendance.subject.index') }}" class="btn btn-light w-100 text-start py-2 px-3 border shadow-xs h-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-xs bg-success-lt text-success rounded-circle"><i class="ti ti-book"></i></span>
+                        <div class="text-truncate">
+                            <div class="fw-bold text-dark small text-truncate">Jurnal KBM</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Absensi Kelas</div>
                         </div>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3">
-                    <a href="{{ route('attendance.homeroom-permits.index') }}" class="btn btn-white w-100 text-start py-2 px-3 border-0 shadow-sm h-100">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="avatar avatar-xs bg-warning-lt text-warning rounded-circle"><i class="ti ti-clipboard-list"></i></span>
-                            <div class="text-truncate">
-                                <div class="fw-bold text-dark small text-truncate">Izin Perwalian</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Siswa Rombel</div>
-                            </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ route('attendance.homeroom-permits.index') }}" class="btn btn-light w-100 text-start py-2 px-3 border shadow-xs h-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-xs bg-warning-lt text-warning rounded-circle"><i class="ti ti-clipboard-list"></i></span>
+                        <div class="text-truncate">
+                            <div class="fw-bold text-dark small text-truncate">Izin Perwalian</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Siswa Rombel</div>
                         </div>
-                    </a>
-                </div>
-                <div class="col-6 col-md-3">
-                    <a href="{{ route('piket.dashboard') }}" class="btn btn-white w-100 text-start py-2 px-3 border-0 shadow-sm h-100">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="avatar avatar-xs bg-teal-lt text-teal rounded-circle"><i class="ti ti-shield-check"></i></span>
-                            <div class="text-truncate">
-                                <div class="fw-bold text-dark small text-truncate">Piket Sekolah</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Buku Tamu &amp; Inval</div>
-                            </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{{ route('piket.dashboard') }}" class="btn btn-light w-100 text-start py-2 px-3 border shadow-xs h-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="avatar avatar-xs bg-teal-lt text-teal rounded-circle"><i class="ti ti-shield-check"></i></span>
+                        <div class="text-truncate">
+                            <div class="fw-bold text-dark small text-truncate">Piket Sekolah</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Buku Tamu &amp; Inval</div>
                         </div>
-                    </a>
-                </div>
+                    </div>
+                </a>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Portal Supervisi Guru (Desktop View) -->
     <div class="row g-3 mb-4 align-items-center">

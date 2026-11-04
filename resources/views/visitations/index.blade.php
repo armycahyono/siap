@@ -4,32 +4,18 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header Hero -->
-    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-        <div class="card-body p-4 position-relative" style="background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);">
-            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="avatar avatar-xl rounded-circle bg-teal text-white fw-bold fs-1 shadow-sm flex-shrink-0">
-                        <i class="ti ti-home-heart fs-1"></i>
-                    </span>
-                    <div>
-                        <span class="badge bg-teal text-white fw-semibold mb-1" style="letter-spacing: 0.05rem;">
-                            KESISWAAN &amp; BIMBINGAN KONSELING
-                        </span>
-                        <h1 class="h2 fw-bold mb-1 text-dark">Visitasi &amp; Pemantauan Siswa</h1>
-                        <p class="text-muted small mb-0">
-                            Pencatatan kunjungan rumah (home visit), pemantauan berkala, penanganan kehadiran, dan koordinasi multi-petugas (Wali Kelas, Guru BK, Kesiswaan).
-                        </p>
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{{ route('visitations.create') }}" class="btn btn-teal text-white shadow-xs fw-semibold">
-                        <i class="ti ti-plus me-1"></i> Jadwalkan Visitasi Baru
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Visitasi & Pemantauan Siswa',
+        'subtitle' => 'Pencatatan kunjungan rumah (home visit), pemantauan berkala, penanganan kehadiran, dan koordinasi multi-petugas (Wali Kelas, Guru BK, Kesiswaan).',
+        'icon' => 'ti ti-home-heart',
+        'category' => 'KESISWAAN & BIMBINGAN KONSELING',
+        'actions' => '
+            <a href="' . route('visitations.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-plus me-1"></i> Jadwalkan Visitasi Baru
+            </a>
+        ',
+    ])
 
     <!-- Statistik Ringkas -->
     <div class="row row-cards mb-4">

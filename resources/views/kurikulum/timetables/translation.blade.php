@@ -3,46 +3,41 @@
 @section('title', 'Hasil Terjemahan Jadwal: ' . $upload->title)
 
 @section('content')
-<div class="row g-3 mb-3 align-items-center justify-content-between">
-    <div class="col-md-7">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a href="{{ route('kurikulum.timetables.index') }}" class="btn btn-sm btn-outline-secondary">
-                <i class="ti ti-arrow-left me-1"></i> Kembali ke Arsip
-            </a>
-            <span class="badge bg-blue-lt fw-bold">{{ $upload->academic_year }} &bull; Semester {{ $upload->semester }}</span>
-            @if($upload->is_active)
-                <span class="badge bg-teal text-white"><i class="ti ti-check me-1"></i> Sedang Aktif di Jadwal</span>
-            @else
-                <span class="badge bg-secondary-lt text-muted">Draft / Belum Diterapkan</span>
-            @endif
-        </div>
-        <h2 class="page-title text-navy fw-bold m-0" style="color: #102d52;">
-            <i class="ti ti-table-options me-2 text-primary"></i> Tabel Hasil Terjemahan Jadwal
-        </h2>
-        <div class="text-muted small mt-1">
-            Dokumen Sumber: <strong>{{ $upload->original_filename }}</strong> &mdash; Periksa dan koreksi data sebelum diterapkan menjadi jadwal aktif.
-        </div>
-    </div>
-    <div class="col-md-5 text-md-end d-flex flex-wrap gap-2 justify-content-md-end">
-        <form action="{{ route('kurikulum.timetables.translation.reparse', $upload) }}" method="POST" onsubmit="return confirm('Terjemahkan ulang dari file PDF asli? Data koreksi manual yang belum diterapkan akan di-reset sesuai isi PDF asli.')">
-            @csrf
-            <button type="submit" class="btn btn-outline-secondary" title="Ekstrak ulang dari file PDF asli">
-                <i class="ti ti-refresh me-1"></i> Terjemahkan Ulang PDF
+@php
+    $transActions = '
+        <a href="' . route('kurikulum.timetables.index') . '" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm">
+            <i class="ti ti-arrow-left"></i>
+            <span>Kembali ke Arsip</span>
+        </a>
+        <form action="' . route('kurikulum.timetables.translation.reparse', $upload) . '" method="POST" class="d-inline" onsubmit="return confirm(\'Terjemahkan ulang dari file PDF asli? Data koreksi manual yang belum diterapkan akan di-reset sesuai isi PDF asli.\')">
+            ' . csrf_field() . '
+            <button type="submit" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm" title="Ekstrak ulang dari file PDF asli">
+                <i class="ti ti-refresh"></i>
+                <span>Terjemahkan Ulang</span>
             </button>
         </form>
-
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalAddSlot">
-            <i class="ti ti-plus me-1"></i> Tambah Slot
+        <button type="button" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAddSlot">
+            <i class="ti ti-plus"></i>
+            <span>Tambah Slot</span>
         </button>
-
-        <form action="{{ route('kurikulum.timetables.translation.apply', $upload) }}" method="POST" onsubmit="return confirm('Terapkan hasil terjemahan ini menjadi Jadwal Pelajaran Aktif? Jadwal aktif sebelumnya untuk semester ini akan digantikan.')">
-            @csrf
-            <button type="submit" class="btn btn-success shadow-sm" {{ $invalidItems > 0 ? 'title=Peringatan: Masih ada slot yang perlu dikoreksi' : '' }}>
-                <i class="ti ti-checks me-1"></i> Terapkan ke Jadwal Aktif
+        <form action="' . route('kurikulum.timetables.translation.apply', $upload) . '" method="POST" class="d-inline" onsubmit="return confirm(\'Terapkan hasil terjemahan ini menjadi Jadwal Pelajaran Aktif? Jadwal aktif sebelumnya untuk semester ini akan digantikan.\')">
+            ' . csrf_field() . '
+            <button type="submit" class="btn btn-success fw-bold d-flex align-items-center gap-1 shadow-sm" ' . ($invalidItems > 0 ? 'title="Peringatan: Masih ada slot yang perlu dikoreksi"' : '') . '>
+                <i class="ti ti-checks"></i>
+                <span>Terapkan ke Jadwal</span>
             </button>
         </form>
-    </div>
-</div>
+    ';
+@endphp
+
+@include('layouts._hero_header', [
+    'title' => 'Tabel Hasil Terjemahan Jadwal: ' . $upload->title,
+    'subtitle' => 'Dokumen Sumber: ' . e($upload->original_filename) . ' — Periksa dan koreksi data sebelum diterapkan menjadi jadwal aktif.',
+    'icon' => 'ti ti-table-options',
+    'category' => 'KURIKULUM & ROSTER KBM',
+    'academicYear' => $upload->academic_year . ' • Sem. ' . $upload->semester . ($upload->is_active ? ' (Aktif)' : ' (Draft)'),
+    'actions' => $transActions
+])
 
 <!-- Stat Cards -->
 <div class="row g-3 mb-4">

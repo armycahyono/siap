@@ -42,58 +42,36 @@
     </div>
     @endif
 
-    <!-- Page Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    @if($isPersonalScope)
-                        <span class="badge bg-indigo text-white px-2 py-1"><i class="ti ti-user me-1"></i> Data Mandiri GTK</span>
-                    @else
-                        <span class="badge text-white px-2 py-1" style="background-color: #102d52;"><i class="ti ti-building-community me-1"></i> Panel Manajerial &amp; Persetujuan</span>
-                    @endif
-                </div>
-                <div class="d-flex align-items-center gap-2 mt-1">
-                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                        <i class="ti ti-arrow-left"></i>
-                    </a>
-                    <h2 class="page-title fw-bold mb-0" style="color: {{ $isPersonalScope ? '#4f46e5' : '#102d52' }};">
-                        @if($isPersonalScope)
-                            <i class="ti ti-user-check me-1 text-indigo"></i> Izin &amp; Cuti Saya
-                        @else
-                            <i class="ti ti-file-certificate me-1" style="color: #102d52;"></i> Daftar Izin &amp; Cuti GTK
-                        @endif
-                    </h2>
-                </div>
-                <div class="text-secondary mt-1">
-                    @if($isPersonalScope)
-                        Riwayat pengajuan izin, sakit, cuti, atau dinas luar atas nama Anda (<strong>{{ auth()->user()->name }}</strong>).
-                    @else
-                        Monitoring dan persetujuan resmi Perizinan &amp; Cuti Guru serta Tenaga Kependidikan (Sakit, Izin, Cuti, dan Dinas Luar).
-                    @endif
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                @if(!$isPersonalScope)
-                    <form action="{{ route('attendance.gtk-permits.sync-piket') }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-info" title="Sinkronkan perizinan yang dicatat oleh petugas piket">
-                            <i class="ti ti-refresh me-1"></i> Sinkron Jurnal Piket
-                        </button>
-                    </form>
-                    <a href="{{ route('attendance.report.teachers') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-report me-1"></i> Rekap Presensi GTK
-                    </a>
-                @endif
-                
-                <button type="button" class="btn btn-sm fw-bold {{ $isPersonalScope ? 'btn-indigo text-white' : 'btn-primary' }}" 
-                        style="{{ $isPersonalScope ? 'background-color: #4f46e5; border-color: #4f46e5;' : '' }}"
-                        onclick="openCreatePermitModal()">
-                    <i class="ti ti-plus me-1"></i> {{ $isPersonalScope ? '+ Ajukan Izin / Cuti Saya' : '+ Catat Izin / Cuti GTK' }}
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $gtkPermitActions = '';
+        if (!$isPersonalScope) {
+            $gtkPermitActions .= '
+                <form action="' . route('attendance.gtk-permits.sync-piket') . '" method="POST" class="d-inline">
+                    ' . csrf_field() . '
+                    <button type="submit" class="btn btn-sm btn-outline-light shadow-xs" title="Sinkronkan perizinan yang dicatat oleh petugas piket">
+                        <i class="ti ti-refresh me-1 text-info"></i> Sinkron Jurnal Piket
+                    </button>
+                </form>
+                <a href="' . route('attendance.report.teachers') . '" class="btn btn-sm btn-outline-light shadow-xs">
+                    <i class="ti ti-report me-1 text-info"></i> Rekap Presensi GTK
+                </a>
+            ';
+        }
+        $btnLabel = $isPersonalScope ? '+ Ajukan Izin / Cuti Saya' : '+ Catat Izin / Cuti GTK';
+        $gtkPermitActions .= '
+            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs" onclick="openCreatePermitModal()">
+                <i class="ti ti-plus me-1"></i> ' . $btnLabel . '
+            </button>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => $isPersonalScope ? 'Izin & Cuti Saya' : 'Daftar Izin & Cuti GTK',
+        'subtitle' => $isPersonalScope ? 'Riwayat pengajuan izin, sakit, cuti, atau dinas luar atas nama Anda (' . auth()->user()->name . ').' : 'Monitoring dan persetujuan resmi Perizinan & Cuti Guru serta Tenaga Kependidikan (Sakit, Izin, Cuti, dan Dinas Luar).',
+        'icon' => $isPersonalScope ? 'ti ti-user-check' : 'ti ti-file-certificate',
+        'category' => $isPersonalScope ? 'DATA MANDIRI GTK' : 'PANEL MANAJERIAL & PERSETUJUAN',
+        'actions' => $gtkPermitActions,
+    ])
 
     <!-- Alert Success -->
     @if(session('success'))

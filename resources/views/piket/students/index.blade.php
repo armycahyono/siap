@@ -4,34 +4,27 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                    Master Data Siswa
-                </div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-school text-primary me-2 fs-1"></i>
-                    Data Siswa Sekolah
-                </h2>
-                <div class="text-secondary mt-1">
-                    Database induk siswa per rombel untuk integrasi perizinan piket, keterlambatan, dan buku kasus.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2">
-                <a href="{{ route('piket.students.template') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-download me-1"></i> Download Format Template
-                </a>
-                <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modal-import-student">
-                    <i class="ti ti-file-upload me-1"></i> Import Siswa (Excel/CSV)
-                </button>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-add-student">
-                    <i class="ti ti-plus me-1"></i> Tambah Siswa Manual
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $studentActions = '
+            <a href="' . route('piket.students.template') . '" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-download me-1 text-info"></i> Template Excel
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-light shadow-xs ms-1" data-bs-toggle="modal" data-bs-target="#modal-import-student">
+                <i class="ti ti-file-upload me-1 text-success"></i> Import Siswa
+            </button>
+            <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1" data-bs-toggle="modal" data-bs-target="#modal-add-student">
+                <i class="ti ti-plus me-1"></i> Tambah Siswa Manual
+            </button>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Data Siswa Sekolah',
+        'subtitle' => 'Database induk siswa per rombel untuk integrasi perizinan piket, keterlambatan, presensi, dan buku kasus.',
+        'icon' => 'ti ti-school',
+        'category' => 'MASTER DATA SISWA',
+        'actions' => $studentActions,
+    ])
 
     <!-- Filter & Search -->
     <div class="card shadow-sm border-0 mb-4">

@@ -3,41 +3,27 @@
 @section('title', 'Bank Master Biometrik (Sidik Jari & Wajah)')
 
 @section('content')
-<div class="page-header d-print-none mb-3">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-1">
-                        <li class="breadcrumb-item"><a href="{{ route('attendance.index') }}">Presensi</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('attendance.devices.index') }}">Mesin Absensi</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Bank Master Biometrik</li>
-                    </ol>
-                </nav>
-                <div class="page-pretitle d-flex align-items-center gap-2">
-                    <span>Brankas Data Terpusat</span>
-                    <span class="badge bg-indigo-lt text-indigo font-monospace">Centralized Biometric Master</span>
-                </div>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-fingerprint text-indigo me-2"></i> Bank Master Biometrik Sekolah
-                </h2>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="{{ route('attendance.devices.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Mesin
-                    </a>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-pull-biometrics">
-                        <i class="ti ti-download me-1"></i> Tarik & Perbarui Master dari Mesin
-                    </button>
-                    <button type="button" class="btn btn-sm btn-indigo shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-broadcast-biometrics" {{ $totalTemplates == 0 ? 'disabled' : '' }}>
-                        <i class="ti ti-send me-1"></i> Distribusikan ke Mesin Cabang
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $bioActions = '
+        <button type="button" class="btn btn-sm btn-primary shadow-xs" data-bs-toggle="modal" data-bs-target="#modal-pull-biometrics">
+            <i class="ti ti-download me-1"></i> Tarik dari Mesin
+        </button>
+        <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1" data-bs-toggle="modal" data-bs-target="#modal-broadcast-biometrics" ' . ($totalTemplates == 0 ? 'disabled' : '') . '>
+            <i class="ti ti-send me-1"></i> Distribusikan ke Cabang
+        </button>
+        <a href="' . route('attendance.devices.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+            <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Mesin
+        </a>
+    ';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Bank Master Biometrik Sekolah',
+    'subtitle' => 'Brankas data sidik jari dan wajah terpusat (Centralized Biometric Master) untuk sinkronisasi otomatis antar mesin presensi.',
+    'icon' => 'ti ti-fingerprint',
+    'category' => 'INFRASTRUKTUR PRESENSI',
+    'actions' => $bioActions,
+])
 
 <div class="page-body">
     <div class="container-xl">

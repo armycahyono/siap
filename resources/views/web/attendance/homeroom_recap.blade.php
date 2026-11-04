@@ -4,42 +4,30 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header Halaman -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-muted text-uppercase">
-                    Wali Kelas &bull; Presensi Terpadu
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-icon btn-outline-secondary" title="Kembali ke Beranda">
-                        <i class="ti ti-arrow-left"></i>
-                    </a>
-                    <h2 class="page-title text-dark fw-bold mb-0">
-                        <i class="ti ti-clipboard-list text-primary me-1 fs-1"></i>
-                        Rekap Presensi Siswa Kelas {{ $selectedClassroom?->name ?? '' }}
-                    </h2>
-                </div>
-                <div class="text-secondary mt-1">
-                    Penggabungan absensi seluruh guru mata pelajaran per jam pelajaran (JP), rekap mingguan, dan rekapitulasi bulanan.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                <a href="{{ route('attendance.homeroom-recap.export-excel', request()->query()) }}" class="btn btn-sm btn-outline-success">
-                    <i class="ti ti-file-spreadsheet me-1"></i> Ekspor Excel
-                </a>
-                <a href="{{ route('attendance.homeroom-recap.download-pdf', request()->query()) }}" class="btn btn-sm btn-outline-danger">
-                    <i class="ti ti-file-text me-1"></i> Unduh PDF
-                </a>
-                <a href="{{ route('attendance.homeroom-permits.index', ['classroom_id' => $selectedClassroomId]) }}" class="btn btn-sm btn-outline-primary">
-                    <i class="ti ti-file-certificate me-1"></i> Izin Siswa Perwalian
-                </a>
-                <a href="{{ route('attendance.homeroom-recap.download-pdf', array_merge(request()->query(), ['action' => 'print'])) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-printer me-1"></i> Cetak Dokumen
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $recapActions = '
+            <a href="' . route('attendance.homeroom-recap.export-excel', request()->query()) . '" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor Excel
+            </a>
+            <a href="' . route('attendance.homeroom-recap.download-pdf', request()->query()) . '" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-file-text me-1 text-danger"></i> Unduh PDF
+            </a>
+            <a href="' . route('attendance.homeroom-permits.index', ['classroom_id' => $selectedClassroomId]) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-file-certificate me-1"></i> Izin Siswa Perwalian
+            </a>
+            <a href="' . route('attendance.homeroom-recap.download-pdf', array_merge(request()->query(), ['action' => 'print'])) . '" target="_blank" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-printer me-1 text-info"></i> Cetak Dokumen
+            </a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Rekap Presensi Siswa Kelas ' . ($selectedClassroom?->name ?? ''),
+        'subtitle' => 'Penggabungan absensi seluruh guru mata pelajaran per jam pelajaran (JP), rekap mingguan, dan rekapitulasi bulanan.',
+        'icon' => 'ti ti-clipboard-list',
+        'category' => 'WALI KELAS • PRESENSI TERPADU',
+        'actions' => $recapActions,
+    ])
 
     @if($myClassrooms->isEmpty())
         <div class="card border-0 shadow-sm">

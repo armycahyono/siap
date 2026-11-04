@@ -4,11 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="mb-3">
-        <a href="{{ $incident ? route('bk.referrals.show', $incident) : route('bk.services.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali
-        </a>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Catat Sesi Layanan Bimbingan & Konseling',
+        'subtitle' => 'Formulir dokumentasi konseling individual, bimbingan kelompok, bimbingan karir, atau tindak lanjut rujukan kasus siswa.',
+        'icon' => 'ti ti-heart-handshake',
+        'category' => 'LAYANAN KONSELING BK',
+        'actions' => '<a href="' . ($incident ? route('bk.referrals.show', $incident) : route('bk.services.index')) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali</a>',
+    ])
 
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">

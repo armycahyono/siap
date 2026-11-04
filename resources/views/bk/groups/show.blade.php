@@ -4,38 +4,25 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <span class="avatar avatar-md bg-{{ $group->category_badge_color }}-lt text-{{ $group->category_badge_color }} rounded-circle">
-                    <i class="ti ti-users-group fs-1"></i>
-                </span>
-            </div>
-            <div class="col">
-                <div class="page-pretitle text-uppercase fw-bold text-{{ $group->category_badge_color }}" style="letter-spacing: 0.05rem;">
-                    {{ $group->category_label }} &bull; TP. {{ $group->academic_year }}
-                </div>
-                <h2 class="page-title text-dark fw-bold">
-                    {{ $group->name }}
-                </h2>
-                <div class="text-muted small mt-1">
-                    Pembimbing: <strong>{{ $group->counselor?->name ?? 'Guru BK' }}</strong> &bull; Total: <strong>{{ $group->students->count() }} Siswa Binaan</strong>
-                </div>
-            </div>
-            <div class="col-12 col-md-auto mt-2 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                <a href="{{ route('bk.groups.index', ['academic_year' => $group->academic_year]) }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar
-                </a>
-                <button type="button" class="btn btn-sm btn-outline-teal" data-bs-toggle="modal" data-bs-target="#modalAddStudents">
-                    <i class="ti ti-user-plus me-1"></i> Tambah Anggota Siswa
-                </button>
-                <a href="{{ route('bk.services.create', ['service_mode' => 'kelompok', 'bk_group_id' => $group->id, 'academic_year' => $group->academic_year]) }}" class="btn btn-sm btn-primary fw-bold shadow-xs">
-                    <i class="ti ti-message-2-share me-1"></i> Catat Sesi Bimbingan Kelompok
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => $group->name,
+        'subtitle' => 'Pembimbing: ' . ($group->counselor?->name ?? 'Guru BK') . ' • Total: ' . $group->students->count() . ' Siswa Binaan • Kategori: ' . $group->category_label . '.',
+        'icon' => 'ti ti-users-group',
+        'category' => 'KELOMPOK BINAAN BK',
+        'academicYear' => $group->academic_year,
+        'actions' => '
+            <button type="button" class="btn btn-sm btn-outline-light shadow-xs" data-bs-toggle="modal" data-bs-target="#modalAddStudents">
+                <i class="ti ti-user-plus me-1 text-info"></i> Tambah Anggota Siswa
+            </button>
+            <a href="' . route('bk.services.create', ['service_mode' => 'kelompok', 'bk_group_id' => $group->id, 'academic_year' => $group->academic_year]) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1">
+                <i class="ti ti-message-2-share me-1"></i> Catat Sesi Kelompok
+            </a>
+            <a href="' . route('bk.groups.index', ['academic_year' => $group->academic_year]) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar
+            </a>
+        ',
+    ])
 
     <!-- Info Banner & Target -->
     <div class="row g-3 mb-3">

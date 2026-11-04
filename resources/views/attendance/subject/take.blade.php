@@ -15,34 +15,21 @@
     @endif
     <input type="hidden" name="is_swap" value="{{ $isSwap ? '1' : '0' }}">
 
-    <!-- Header & Action Buttons -->
-    <div class="row g-2 align-items-center mb-3">
-        <div class="col">
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <a href="{{ route('attendance.subject.index', ['date' => $date->toDateString()]) }}" class="btn btn-sm btn-icon btn-outline-secondary">
-                    <i class="ti ti-arrow-left"></i>
-                </a>
-                <h2 class="page-title fw-bold text-dark mb-0">
-                    Lembar Presensi Kelas: {{ $classroom->name }}
-                </h2>
-                @if($isSwap)
-                    <span class="badge bg-warning text-dark px-2 py-1">
-                        <i class="ti ti-arrows-left-right me-1"></i> Mode Tukar Jam / Guru Pengganti
-                    </span>
-                @endif
-            </div>
-            <div class="text-muted small">
-                Mata Pelajaran: <strong>{{ $subject->name }}</strong> &bull;
-                Jam Ke-{{ $startPeriod }} s/d {{ $endPeriod }} &bull;
-                Tanggal: <strong>{{ $date->translatedFormat('l, d F Y') }}</strong>
-            </div>
-        </div>
-        <div class="col-auto ms-auto d-flex gap-2 mt-2 mt-md-0">
-            <button type="submit" class="btn btn-sm btn-primary shadow-sm px-3">
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Lembar Presensi Kelas: ' . $classroom->name,
+        'subtitle' => 'Mata Pelajaran: ' . $subject->name . ' • Jam Ke-' . $startPeriod . ' s/d ' . $endPeriod . ' • Tanggal: ' . $date->translatedFormat('l, d F Y') . ($isSwap ? ' (Mode Tukar Jam / Guru Pengganti)' : ''),
+        'icon' => 'ti ti-clipboard-check',
+        'category' => 'PRESENSI KBM KELAS',
+        'actions' => '
+            <a href="' . route('attendance.subject.index', ['date' => $date->toDateString()]) . '" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-arrow-left me-1"></i> Kembali
+            </a>
+            <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs px-3 ms-1">
                 <i class="ti ti-device-floppy me-1"></i> Simpan Presensi Siswa
             </button>
-        </div>
-    </div>
+        ',
+    ])
 
     <!-- Informasi Tukar Jam / Guru Pengganti (Jika Ada) -->
     @if($isSwap || ($scheduledTeacher && $scheduledTeacher->id !== auth()->id()))

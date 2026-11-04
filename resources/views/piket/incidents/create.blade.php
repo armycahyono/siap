@@ -4,25 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-muted text-uppercase">Piket Harian &bull; Kasus Siswa</div>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-alert-triangle text-danger me-2 fs-1"></i>
-                    Catat Kejadian / Kasus Siswa
-                </h2>
-                <div class="text-secondary mt-1">
-                    Dokumentasikan pelanggaran tata tertib, konflik, atau kejadian darurat siswa.
-                </div>
-            </div>
-            <div class="col-auto ms-auto">
-                <a href="{{ route('piket.incidents.index') }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Buku Kasus
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Catat Kejadian / Kasus Siswa',
+        'subtitle' => 'Dokumentasikan pelanggaran tata tertib, konflik, atau kejadian darurat siswa untuk penanganan piket & tim kedisiplinan.',
+        'icon' => 'ti ti-alert-triangle',
+        'category' => 'PIKET HARIAN • KASUS SISWA',
+        'actions' => '<a href="' . route('piket.incidents.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Buku Kasus</a>',
+    ])
 
     <div class="row justify-content-center">
         <div class="col-lg-8">

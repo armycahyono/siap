@@ -3,16 +3,15 @@
 @section('title', 'Dashboard Supervisor')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-eye-check me-2"></i> Dashboard Penilai (Supervisor)
-        </h2>
-        <div class="text-muted small">
-            Anda ditugaskan menilai guru-guru berikut pada Tahun Pelajaran {{ $setting->academic_year }} (Semester {{ $setting->semester }}).
-        </div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Dashboard Penilai (Supervisor)',
+    'subtitle' => 'Pemantauan dan pelaksanaan supervisi pembelajaran bagi guru binaan Anda pada Tahun Pelajaran ' . $setting->academic_year . ' (Semester ' . $setting->semester . ').',
+    'icon' => 'ti ti-eye-check',
+    'category' => 'SUPERVISOR PEMBELAJARAN',
+    'academicYear' => $setting->academic_year,
+    'actions' => '<a href="' . route('schedules.index') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-calendar me-1"></i> Lihat Jadwal Supervisi</a>',
+])
 
 <div class="row row-cards mb-4">
     <div class="col-sm-6 col-lg-3">

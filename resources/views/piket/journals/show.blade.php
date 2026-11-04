@@ -4,42 +4,38 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-4">
-        <div class="row align-items-center">
-            <div class="col">
-                <a href="{{ route('piket.journals.index') }}" class="btn btn-link text-secondary p-0 mb-1">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Riwayat Jurnal
-                </a>
-                <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                    <i class="ti ti-notebook text-primary me-2 fs-1"></i>
-                    Jurnal Piket: {{ $journal->date?->translatedFormat('l, d F Y') }}
-                </h2>
-                <div class="text-secondary mt-1">
-                    <span class="badge bg-purple-lt me-1">TP {{ $journal->academic_year }} ({{ $journal->semester }})</span>
-                    @if($journal->isCompleted())
-                        <span class="badge bg-success text-white"><i class="ti ti-check me-1"></i> Selesai & Divalidasi</span>
-                        <span class="text-muted small ms-1">Ditutup oleh {{ $journal->completer?->name ?? 'Petugas' }} pada {{ $journal->completed_at?->format('H:i') }} WIB</span>
-                    @else
-                        <span class="badge bg-warning text-dark"><i class="ti ti-clock me-1"></i> Sedang Berlangsung</span>
-                    @endif
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-                <a href="{{ route('piket.journals.print', $journal) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-printer me-1"></i> Cetak Format Dinas
-                </a>
-                @if(!$journal->isCompleted())
-                    <form action="{{ route('piket.journals.complete', $journal) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menyelesaikan dan memvalidasi Jurnal Piket hari ini? Data tidak akan bisa diubah kembali.')">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-success shadow-sm">
-                            <i class="ti ti-circle-check me-1"></i> Selesaikan & Tutup Jurnal
-                        </button>
-                    </form>
-                @endif
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $journalActions = '
+            <a href="' . route('piket.journals.print', $journal) . '" target="_blank" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-printer me-1 text-info"></i> Cetak Format Dinas
+            </a>
+        ';
+        if (!$journal->isCompleted()) {
+            $journalActions .= '
+                <form action="' . route('piket.journals.complete', $journal) . '" method="POST" class="d-inline ms-1" onsubmit="return confirm(\'Apakah Anda yakin ingin menyelesaikan dan memvalidasi Jurnal Piket hari ini? Data tidak akan bisa diubah kembali.\')">
+                    ' . csrf_field() . '
+                    <button type="submit" class="btn btn-sm btn-success text-white fw-bold shadow-xs">
+                        <i class="ti ti-circle-check me-1"></i> Selesaikan & Tutup Jurnal
+                    </button>
+                </form>
+            ';
+        }
+        $journalActions .= '
+            <a href="' . route('piket.journals.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Riwayat Jurnal
+            </a>
+        ';
+        $statusText = $journal->isCompleted() ? ' (Selesai & Divalidasi)' : ' (Sedang Berlangsung)';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Jurnal Piket: ' . $journal->date?->translatedFormat('l, d F Y') . $statusText,
+        'subtitle' => 'Rekap operasional harian piket sekolah: penanganan kelas inval, buku tamu, perizinan siswa, dan catatan kedisiplinan TP ' . $journal->academic_year . '.',
+        'icon' => 'ti ti-notebook',
+        'category' => 'LAYANAN & JURNAL PIKET',
+        'academicYear' => $journal->academic_year,
+        'actions' => $journalActions,
+    ])
 
     <!-- Section 1 & 2: Guru Inval & Perizinan Siswa -->
     <div class="row g-4 mb-4">

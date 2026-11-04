@@ -3,38 +3,21 @@
 @section('title', 'Presensi GTK Susulan (Kendala Listrik/Server) — SIAP')
 
 @section('content')
-<div class="page-header d-print-none mb-3">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb breadcrumb-arrows mb-1">
-                        <li class="breadcrumb-item"><a href="{{ route('attendance.index') }}">Presensi Sekolah</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('attendance.report.teachers') }}">Presensi Guru</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Presensi Susulan GTK</li>
-                    </ol>
-                </nav>
-                <h2 class="page-title d-flex align-items-center">
-                    <i class="ti ti-bolt-off text-warning me-2 fs-1"></i>
-                    Presensi Susulan GTK (Kendala Listrik / Server)
-                </h2>
-                <div class="text-secondary small mt-1">
-                    Formulir darurat untuk mencatat kehadiran guru &amp; staf yang hadir saat terjadi pemadaman listrik atau server lokal sekolah offline.
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="{{ route('attendance.index') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="ti ti-arrow-left me-1"></i> Kembali ke Presensi Harian
-                    </a>
-                    <a href="{{ route('attendance.report.teachers') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="ti ti-file-text me-1"></i> Rekap Presensi Guru
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@include('layouts._hero_header', [
+    'title' => 'Presensi Susulan GTK (Kendala Listrik / Server)',
+    'subtitle' => 'Formulir darurat untuk mencatat kehadiran guru & staf yang hadir saat terjadi kendala pemadaman listrik atau server lokal offline.',
+    'icon' => 'ti ti-bolt-off',
+    'category' => 'PRESENSI DARURAT GTK',
+    'actions' => '
+        <a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs">
+            <i class="ti ti-arrow-left me-1"></i> Kembali ke Presensi Harian
+        </a>
+        <a href="' . route('attendance.report.teachers') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1">
+            <i class="ti ti-file-text me-1"></i> Rekap Presensi Guru
+        </a>
+    ',
+])
 
 <div class="page-body">
     <div class="container-xl">

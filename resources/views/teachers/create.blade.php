@@ -3,19 +3,18 @@
 @section('title', 'Tambah Guru Baru')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-user-plus me-2"></i> Tambah Data Guru Baru
-        </h2>
-        <div class="text-muted small">Tambahkan profil guru serta akun login untuk akses aplikasi.</div>
-    </div>
-    <div class="col-auto">
-        <a href="{{ route('teachers.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Data Guru
+@include('layouts._hero_header', [
+    'title' => 'Tambah Data Guru Baru',
+    'subtitle' => 'Tambahkan profil guru serta akun login untuk akses aplikasi SIAP.',
+    'icon' => 'ti ti-user-plus',
+    'category' => 'DATA GTK & PENGGUNA',
+    'actions' => '
+        <a href="' . route('teachers.index') . '" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm">
+            <i class="ti ti-arrow-left"></i>
+            <span>Kembali ke Data Guru</span>
         </a>
-    </div>
-</div>
+    '
+])
 
 <div class="card border-0 shadow-sm" style="max-width: 850px;">
     <div class="card-body p-4">

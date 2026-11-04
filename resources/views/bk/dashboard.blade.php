@@ -4,60 +4,34 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header Dashboard BK -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <span class="avatar avatar-md bg-primary-lt text-primary rounded-circle">
-                    <i class="ti ti-heart-handshake fs-1"></i>
-                </span>
-            </div>
-            <div class="col">
-                <div class="page-pretitle text-uppercase fw-bold text-primary" style="letter-spacing: 0.05rem;">
-                    BIMBINGAN &amp; KONSELING SISWA DIGITAL
-                </div>
-                <h2 class="page-title text-dark fw-bold">
-                    Dashboard BK
-                </h2>
-                <div class="text-muted small mt-1">
-                    Pusat layanan konseling, agenda pembinaan, monitoring perkembangan siswa, dan tindak lanjut rujukan piket.
-                </div>
-            </div>
-            <div class="col-12 col-md-auto mt-2 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                <!-- Selector Tahun Ajaran -->
-                <form action="{{ Route::has('bk.dashboard') ? route('bk.dashboard') : url('/bk/dashboard') }}" method="GET" class="d-flex align-items-center gap-1">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0 text-muted">
-                            <i class="ti ti-calendar me-1"></i> Tahun Ajaran:
-                        </span>
-                        <select name="academic_year" class="form-select form-select-sm fw-bold border-start-0 ps-0" onchange="this.form.submit()" style="min-width: 140px;">
-                            @foreach($availableYears as $ay)
-                                <option value="{{ $ay->name }}" {{ $ay->name === $academicYear ? 'selected' : '' }}>
-                                    {{ $ay->name }} {{ $ay->is_active ? '(Aktif)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </form>
-
-                <a href="{{ route('bk.services.create') }}" class="btn btn-sm btn-primary shadow-xs fw-bold">
-                    <i class="ti ti-plus me-1"></i> Catat Sesi Layanan
-                </a>
-                <a href="{{ route('bk.groups.index', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-teal shadow-xs fw-bold">
-                    <i class="ti ti-users-group me-1"></i> Kelompok Binaan
-                </a>
-                <a href="{{ route('bk.career.analytics', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-primary shadow-xs fw-bold">
-                    <i class="ti ti-chart-pie me-1"></i> Analisis Karir &amp; BKK
-                </a>
-                <a href="{{ route('bk.referrals.index') }}" class="btn btn-sm btn-outline-secondary shadow-xs">
-                    <i class="ti ti-bell-ringing me-1"></i> Rujukan Piket
-                </a>
-                <a href="{{ route('bk.students.index') }}" class="btn btn-sm btn-outline-secondary shadow-xs">
-                    <i class="ti ti-address-book me-1"></i> Buku Pribadi Siswa
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $bkDashActions = '
+            <a href="' . route('bk.services.create') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-plus me-1"></i> Catat Sesi Layanan
+            </a>
+            <a href="' . route('bk.groups.index', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-users-group me-1 text-info"></i> Kelompok Binaan
+            </a>
+            <a href="' . route('bk.career.analytics', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-chart-pie me-1 text-info"></i> Analisis Karir &amp; BKK
+            </a>
+            <a href="' . route('bk.referrals.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-bell-ringing me-1 text-warning"></i> Rujukan Piket
+            </a>
+            <a href="' . route('bk.students.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-address-book me-1 text-info"></i> Buku Pribadi
+            </a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Dashboard Bimbingan & Konseling',
+        'subtitle' => 'Pusat layanan konseling, agenda pembinaan, monitoring perkembangan siswa, dan tindak lanjut rujukan piket TP ' . $academicYear . '.',
+        'icon' => 'ti ti-heart-handshake',
+        'category' => 'BIMBINGAN & KONSELING SISWA',
+        'academicYear' => $academicYear,
+        'actions' => $bkDashActions,
+    ])
 
     <!-- 4 Kartu Metrik Utama BK -->
     <div class="row row-cards mb-4">

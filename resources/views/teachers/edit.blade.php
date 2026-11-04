@@ -3,19 +3,18 @@
 @section('title', 'Edit Data Guru')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-pencil me-2"></i> Edit Data Guru: {{ $teacher->name }}
-        </h2>
-        <div class="text-muted small">Perbarui data profil atau status aktif guru.</div>
-    </div>
-    <div class="col-auto">
-        <a href="{{ route('teachers.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Data Guru
+@include('layouts._hero_header', [
+    'title' => 'Edit Data Guru: ' . $teacher->name,
+    'subtitle' => 'Perbarui data profil atau status aktif guru di sistem SIAP.',
+    'icon' => 'ti ti-pencil',
+    'category' => 'DATA GTK & PENGGUNA',
+    'actions' => '
+        <a href="' . route('teachers.index') . '" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm">
+            <i class="ti ti-arrow-left"></i>
+            <span>Kembali ke Data Guru</span>
         </a>
-    </div>
-</div>
+    '
+])
 
 <div class="card border-0 shadow-sm" style="max-width: 850px;">
     <div class="card-body p-4">

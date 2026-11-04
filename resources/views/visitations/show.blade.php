@@ -4,66 +4,41 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <a href="{{ route('visitations.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Visitasi
-        </a>
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('visitations.pdf', $visitation) }}" class="btn btn-sm btn-outline-danger">
-                <i class="ti ti-file-text me-1"></i> Cetak Berita Acara (PDF)
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $visShowActions = '
+            <a href="' . route('visitations.pdf', $visitation) . '" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-file-text me-1 text-danger"></i> Unduh PDF
             </a>
-            @if(auth()->user()->canOperateBk())
-                <a href="{{ route('bk.students.history', $visitation->student) }}" class="btn btn-sm btn-outline-primary">
-                    <i class="ti ti-address-book me-1"></i> Buka Buku Pribadi Siswa
+        ';
+        if (auth()->user()->canOperateBk()) {
+            $visShowActions .= '
+                <a href="' . route('bk.students.history', $visitation->student) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                    <i class="ti ti-address-book me-1 text-info"></i> Buku Pribadi
                 </a>
-            @endif
-            @if($canEdit)
-                <a href="{{ route('visitations.edit', $visitation) }}" class="btn btn-sm btn-teal text-white">
-                    <i class="ti ti-edit me-1"></i> Perbarui Laporan Hasil
+            ';
+        }
+        if ($canEdit) {
+            $visShowActions .= '
+                <a href="' . route('visitations.edit', $visitation) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1">
+                    <i class="ti ti-edit me-1"></i> Perbarui Laporan
                 </a>
-            @endif
-        </div>
-    </div>
-
-    <!-- Hero Card -->
-    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-        <div class="card-body p-4" style="background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);">
-            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="avatar avatar-xl rounded-circle bg-teal text-white fw-bold fs-1 shadow-sm flex-shrink-0">
-                        {{ strtoupper(substr($visitation->student->name, 0, 2)) }}
-                    </span>
-                    <div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                            <span class="badge {{ $visitation->status_badge_class }} fs-4 px-2 py-1">
-                                {{ $visitation->status_label }}
-                            </span>
-                            <span class="badge bg-teal-lt text-teal fw-semibold">
-                                {{ $visitation->visit_type_label }}
-                            </span>
-                        </div>
-                        <h1 class="h2 fw-bold mb-1 text-dark">{{ $visitation->student->name }}</h1>
-                        <div class="text-muted small d-flex flex-wrap align-items-center gap-3">
-                            <span><i class="ti ti-id me-1"></i>NISN: <strong>{{ $visitation->student->nisn ?? '-' }}</strong></span>
-                            <span><i class="ti ti-school me-1"></i>Kelas: <strong>{{ $visitation->student->classroom?->name ?? 'Belum ada rombel' }}</strong></span>
-                            <span><i class="ti ti-calendar me-1"></i>TP {{ $visitation->academic_year }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-md-end">
-                    <div class="text-muted small">Rencana Pelaksanaan</div>
-                    <span class="badge bg-blue text-white fs-3 px-3 py-1 shadow-xs">
-                        {{ $visitation->planned_date?->format('d F Y') }}
-                    </span>
-                    @if($visitation->executed_date)
-                        <div class="text-success small mt-1">
-                            <i class="ti ti-check me-1"></i>Terlaksana: {{ $visitation->executed_date->format('d/m/Y') }}
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
+            ';
+        }
+        $visShowActions .= '
+            <a href="' . route('visitations.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Kembali
+            </a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => $visitation->student->name . ' (' . $visitation->status_label . ')',
+        'subtitle' => 'Jenis: ' . $visitation->visit_type_label . ' • NISN: ' . ($visitation->student->nisn ?? '-') . ' • Kelas: ' . ($visitation->student->classroom?->name ?? 'Belum ada rombel') . ' • Rencana: ' . ($visitation->planned_date?->format('d F Y') ?? '-') . ($visitation->executed_date ? ' • Terlaksana: ' . $visitation->executed_date->format('d/m/Y') : '') . '.',
+        'icon' => 'ti ti-home-heart',
+        'category' => 'DETAIL VISITASI SISWA',
+        'academicYear' => $visitation->academic_year,
+        'actions' => $visShowActions,
+    ])
 
     <div class="row g-4">
         <!-- Kolom Kiri: Detail Informasi & Penugasan -->

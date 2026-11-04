@@ -35,47 +35,23 @@
         </div>
     @endif
 
-    <!-- Profile & Header Card -->
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-3" style="background: linear-gradient(135deg, #102d52 0%, #195b9e 100%);">
-        <div class="card-body text-white p-3 p-md-4">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <div class="d-flex flex-wrap align-items-center gap-1 gap-md-2">
-                    <a href="{{ route('dashboard') }}" class="btn btn-sm btn-white-lt text-white px-2 py-1 me-1 text-decoration-none" title="Kembali ke Beranda">
-                        <i class="ti ti-arrow-left me-1"></i> Beranda
-                    </a>
-                    <span class="badge bg-white-lt text-white px-2 py-1">
-                        <i class="ti ti-device-mobile me-1"></i> Presensi Mandiri GTK
-                    </span>
-                    <span class="badge bg-azure-lt text-white px-2 py-1">
-                        {{ \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') }}
-                    </span>
-                </div>
-                <div class="text-end ms-auto">
-                    <div id="liveClock" class="fw-bold font-monospace fs-2 lh-1 text-warning">--:--:--</div>
-                    <small class="text-white-50" style="font-size: 0.72rem;">WIB</small>
-                </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $geotagActions = '
+            <div class="text-end text-lg-start ms-auto">
+                <div id="liveClock" class="fw-bold font-monospace fs-2 lh-1 text-warning">--:--:--</div>
+                <small class="text-white-50" style="font-size: 0.72rem;">WIB</small>
             </div>
-
-            <div class="d-flex align-items-center gap-3">
-                @if($user->avatar)
-                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}" class="avatar avatar-lg rounded-circle border border-2 border-white shadow-sm flex-shrink-0" style="object-fit: cover;">
-                @else
-                    <span class="avatar avatar-lg rounded-circle bg-warning text-dark fw-bold border border-2 border-white shadow-sm fs-2 flex-shrink-0">
-                        {{ strtoupper(substr($user->name, 0, 2)) }}
-                    </span>
-                @endif
-                <div class="flex-fill text-truncate">
-                    <h3 class="mb-0 text-white fw-bold text-truncate">{{ $user->name }}</h3>
-                    <div class="text-white-50 small mt-1 d-flex flex-wrap gap-2 align-items-center">
-                        @if($user->nigs)
-                            <span><i class="ti ti-id me-1"></i>NIGS: {{ $user->nigs }}</span>
-                        @endif
-                        <span><i class="ti ti-briefcase me-1"></i>{{ $user->position ?: 'Guru / Staf' }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+            <a href="' . route('dashboard') . '" class="btn btn-sm btn-outline-light shadow-xs ms-2"><i class="ti ti-arrow-left me-1"></i> Beranda</a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Presensi Geotagging GPS GTK',
+        'subtitle' => $user->name . ' (' . ($user->position ?: 'Guru / Staf') . ') • ' . \Carbon\Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y') . ' • Presensi mandiri berbasis radius koordinat lokasi sekolah.',
+        'icon' => 'ti ti-map-pin',
+        'category' => 'PRESENSI MANDIRI GTK',
+        'actions' => $geotagActions,
+    ])
 
     <!-- GPS Geolocation Radar Card -->
     <div class="card border-0 shadow-sm rounded-4 mb-3">

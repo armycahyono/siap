@@ -3,37 +3,24 @@
 @section('title', 'Pusat Komando & Operasional Sekolah')
 
 @section('content')
-<!-- Page Header -->
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <h2 class="page-title text-navy fw-bold mb-0" style="color: #102d52;">
-                <i class="ti ti-layout-dashboard me-2"></i> Dashboard Pusat Komando Sekolah
-            </h2>
-            <span class="badge bg-primary-lt">TP {{ $setting->academic_year }} (Semester {{ $setting->semester }})</span>
-        </div>
-        <div class="text-muted small">
-            Pusat kendali harian operasional KBM, presensi GTK, ketertiban piket, dan kesiswaan — {{ now()->translatedFormat('l, d F Y') }}.
-        </div>
-    </div>
-    <div class="col-auto d-flex flex-wrap gap-2 mt-2 mt-md-0">
-        <a href="{{ route('kurikulum.schedules.index') }}" class="btn btn-outline-primary btn-sm">
-            <i class="ti ti-calendar-time me-1"></i> Roster KBM
-        </a>
-        <a href="{{ route('attendance.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="ti ti-fingerprint me-1"></i> Presensi GTK
-        </a>
-        <a href="{{ route('piket.dashboard') }}" class="btn btn-outline-warning btn-sm text-dark">
-            <i class="ti ti-shield-check me-1"></i> Layanan Piket
-        </a>
-        <a href="{{ route('kurikulum.calendar.index') }}" class="btn btn-outline-info btn-sm">
-            <i class="ti ti-calendar-event me-1"></i> Kalender Sekolah
-        </a>
-        <a href="{{ route('students.index') }}" class="btn btn-outline-indigo btn-sm">
-            <i class="ti ti-school me-1"></i> Data Siswa
-        </a>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $dashActions = '
+        <a href="' . route('kurikulum.schedules.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-time me-1 text-info"></i> Roster KBM</a>
+        <a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-fingerprint me-1 text-info"></i> Presensi GTK</a>
+        <a href="' . route('piket.dashboard') . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-shield-check me-1"></i> Layanan Piket</a>
+        <a href="' . route('kurikulum.calendar.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-event me-1 text-info"></i> Kalender Sekolah</a>
+        <a href="' . route('students.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-school me-1 text-info"></i> Data Siswa</a>
+    ';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Dashboard Pusat Komando Sekolah',
+    'subtitle' => 'Pusat kendali harian operasional KBM, presensi GTK, ketertiban piket, dan kesiswaan — ' . now()->translatedFormat('l, d F Y') . '.',
+    'icon' => 'ti ti-layout-dashboard',
+    'category' => 'PUSAT KOMANDO OPERASIONAL',
+    'academicYear' => $setting->academic_year,
+    'actions' => $dashActions,
+])
 
 @php
     $dashboardAnnouncement = \App\Models\Announcement::active()

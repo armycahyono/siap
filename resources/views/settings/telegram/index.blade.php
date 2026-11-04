@@ -4,30 +4,22 @@
 
 @section('content')
 <!-- Header Halaman -->
-<div class="page-header d-print-none mb-4">
-    <div class="row align-items-center">
-        <div class="col">
-            <div class="page-pretitle text-uppercase tracking-wider text-muted">
-                Pengaturan Sistem
-            </div>
-            <h2 class="page-title text-dark fw-bold d-flex align-items-center">
-                <i class="ti ti-brand-telegram text-info me-2 fs-1"></i>
-                Pengaturan Bot Telegram & Notifikasi Sekolah
-            </h2>
-            <div class="text-secondary mt-1">
-                Pusat integrasi bot Telegram sekolah untuk notifikasi otomatis tugas piket, supervisi pembelajaran, kegiatan kurikulum, dan siaran pengumuman.
-            </div>
-        </div>
-        <div class="col-auto ms-auto d-flex gap-2">
-            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modal-broadcast-cepat">
-                <i class="ti ti-broadcast me-1"></i> Siaran Pengumuman Cepat
-            </button>
-            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-test-telegram">
-                <i class="ti ti-send me-1"></i> Uji Coba Bot
-            </button>
-        </div>
-    </div>
-</div>
+@include('layouts._hero_header', [
+    'title' => 'Pengaturan Bot Telegram & Notifikasi Sekolah',
+    'subtitle' => 'Pusat integrasi bot Telegram sekolah untuk notifikasi otomatis tugas piket, supervisi pembelajaran, kegiatan kurikulum, dan siaran pengumuman.',
+    'icon' => 'ti ti-brand-telegram',
+    'category' => 'INTEGRASI & NOTIFIKASI SISTEM',
+    'actions' => '
+        <button type="button" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-broadcast-cepat">
+            <i class="ti ti-broadcast"></i>
+            <span>Siaran Pengumuman Cepat</span>
+        </button>
+        <button type="button" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-test-telegram">
+            <i class="ti ti-send"></i>
+            <span>Uji Coba Bot</span>
+        </button>
+    '
+])
 
 @if(config('services.telegram.enabled') === false)
 <div class="alert alert-warning border-start border-warning border-4 shadow-sm mb-4" role="alert">

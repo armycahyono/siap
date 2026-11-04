@@ -4,26 +4,15 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
-                <div class="page-pretitle text-uppercase fw-bold text-teal" style="letter-spacing: 0.05rem;">
-                    BIMBINGAN &amp; KONSELING &bull; KELOMPOK BINAAN
-                </div>
-                <h2 class="page-title text-dark fw-bold">
-                    Buat Kelompok Binaan Siswa
-                </h2>
-                <div class="text-muted small mt-1">
-                    TP. {{ $academicYear }} &bull; Kelompokkan siswa untuk bimbingan karir kelompok, persiapan PTN, magang kerja, atau pembinaan terfokus.
-                </div>
-            </div>
-            <div class="col-auto">
-                <a href="{{ route('bk.groups.index', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Buat Kelompok Binaan Siswa',
+        'subtitle' => 'Kelompokkan siswa untuk bimbingan karir kelompok, persiapan PTN, magang kerja, atau pembinaan terfokus TP ' . $academicYear . '.',
+        'icon' => 'ti ti-users-group',
+        'category' => 'BIMBINGAN & KONSELING • KELOMPOK BINAAN',
+        'academicYear' => $academicYear,
+        'actions' => '<a href="' . route('bk.groups.index', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar</a>',
+    ])
 
     <form action="{{ route('bk.groups.store') }}" method="POST">
         @csrf

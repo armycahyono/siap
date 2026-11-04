@@ -3,54 +3,33 @@
 @section('title', 'Kendali Mesin: ' . $device->name)
 
 @section('content')
-<div class="page-header d-print-none mb-3">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-1">
-                        <li class="breadcrumb-item"><a href="{{ route('attendance.devices.index') }}">Mesin Absensi</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">{{ $device->name }}</li>
-                    </ol>
-                </nav>
-                <div class="d-flex align-items-center gap-2">
-                    <h2 class="page-title fs-2 fw-bold mb-0">
-                        <i class="ti ti-device-cctv text-primary me-2"></i> {{ $device->name }}
-                    </h2>
-                    <span id="liveDeviceBadge" class="badge {{ $device->status === 'online' ? 'bg-success text-white' : 'bg-secondary text-white' }} px-2 py-1 fs-4">
-                        <span class="status-dot {{ $device->status === 'online' ? 'status-dot-animated bg-white' : '' }} me-1"></span>
-                        {{ strtoupper($device->status) }}
-                    </span>
-                    <span class="badge bg-blue-lt font-monospace px-2 py-1">SN: {{ $device->device_sn ?: 'Belum Terdeteksi' }}</span>
-                </div>
-                <div class="text-secondary small mt-1">
-                    IP: <strong>{{ $device->ip_address }}:{{ $device->port }}</strong> &bull; Server ADMS: <strong>{{ $serverIp }}:{{ $device->server_port ?: $serverPort }}</strong> &bull; Terakhir Aktif: <span id="liveDeviceActivity">{{ $device->last_activity_at ? $device->last_activity_at->diffForHumans() : '-' }}</span>
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="btn-list">
-                    <a href="{{ route('attendance.devices.index') }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Mesin
-                    </a>
-                    <!-- Quick Sync Clock -->
-                    <form action="{{ route('attendance.devices.manage.sync-time', $device->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-warning">
-                            <i class="ti ti-clock-check me-1"></i> Sinkronkan Jam RTC
-                        </button>
-                    </form>
-                    <!-- Quick Pull Log -->
-                    <form action="{{ route('attendance.devices.manage.query-logs', $device->id) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-info text-white">
-                            <i class="ti ti-refresh me-1"></i> Tarik Log Scan
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Page Header (Model 2: Hero Context Banner) -->
+@php
+    $deviceActions = '
+        <form action="' . route('attendance.devices.manage.sync-time', $device->id) . '" method="POST" class="d-inline">
+            ' . csrf_field() . '
+            <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-clock-check me-1"></i> Sinkronkan Jam RTC
+            </button>
+        </form>
+        <form action="' . route('attendance.devices.manage.query-logs', $device->id) . '" method="POST" class="d-inline ms-1">
+            ' . csrf_field() . '
+            <button type="submit" class="btn btn-sm btn-info text-white shadow-xs">
+                <i class="ti ti-refresh me-1"></i> Tarik Log Scan
+            </button>
+        </form>
+        <a href="' . route('attendance.devices.index') . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+            <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Mesin
+        </a>
+    ';
+@endphp
+@include('layouts._hero_header', [
+    'title' => 'Kendali Mesin: ' . $device->name . ' (' . strtoupper($device->status) . ')',
+    'subtitle' => 'SN: ' . ($device->device_sn ?: 'Belum Terdeteksi') . ' • IP: ' . $device->ip_address . ':' . $device->port . ' • Server ADMS: ' . $serverIp . ':' . ($device->server_port ?: $serverPort) . ' • Terakhir Aktif: ' . ($device->last_activity_at ? $device->last_activity_at->diffForHumans() : '-'),
+    'icon' => 'ti ti-device-cctv',
+    'category' => 'PANEL KENDALI MESIN ADMS',
+    'actions' => $deviceActions,
+])
 
 <div class="page-body">
     <div class="container-xl">

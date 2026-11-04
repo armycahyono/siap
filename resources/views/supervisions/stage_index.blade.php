@@ -14,22 +14,20 @@
 @section('title', $info['title'] . ' - Sistem Supervisi')
 
 @section('content')
-<div class="row g-2 align-items-center mb-3">
-    <div class="col">
-        <h2 class="page-title fw-bold text-dark">
-            <i class="ti ti-{{ $info['icon'] }} me-2 text-{{ $info['color'] }}"></i>
-            {{ $info['title'] }}
-        </h2>
-        <div class="text-muted small">{{ $info['desc'] }}</div>
-    </div>
-    @if(auth()->user()->hasPermission('manage_schedules'))
-    <div class="col-auto ms-auto d-print-none">
-        <a href="{{ route('schedules.create') }}" class="btn btn-primary shadow-sm">
-            <i class="ti ti-calendar-plus me-1"></i> Tambah Jadwal Baru
-        </a>
-    </div>
-    @endif
-</div>
+@php
+    $headerActions = '';
+    if (auth()->user()->hasPermission('manage_schedules')) {
+        $headerActions .= '<a href="' . route('schedules.create') . '" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-1 shadow-sm"><i class="ti ti-calendar-plus"></i><span>Tambah Jadwal Baru</span></a>';
+    }
+@endphp
+
+@include('layouts._hero_header', [
+    'title' => $info['title'],
+    'subtitle' => $info['desc'],
+    'icon' => 'ti ti-' . $info['icon'],
+    'category' => 'PELAKSANAAN SUPERVISI',
+    'actions' => $headerActions
+])
 
 <!-- Navigasi Alur Supervisi -->
 <div class="card mb-3 border-0 shadow-sm">

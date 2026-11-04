@@ -4,11 +4,14 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="mb-3 d-flex align-items-center justify-content-between">
-        <a href="{{ route('visitations.show', $visitation) }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Detail Visitasi
-        </a>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Perbarui Laporan Visitasi: ' . $visitation->student->name,
+        'subtitle' => 'Pencatatan hasil wawancara orang tua/wali, dokumentasi foto, kesepakatan komitmen, dan rekomendasi tindak lanjut.',
+        'icon' => 'ti ti-edit',
+        'category' => 'LAPORAN HASIL VISITASI',
+        'actions' => '<a href="' . route('visitations.show', $visitation) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-arrow-left me-1"></i> Kembali ke Detail Visitasi</a>',
+    ])
 
     <div class="card shadow-sm border-0">
         <div class="card-header bg-light py-3">

@@ -4,23 +4,24 @@
 
 @section('content')
 <div class="container-xl">
-    <div class="mb-3 d-flex justify-content-between align-items-center">
-        <a href="{{ $service->incident ? route('bk.referrals.show', $service->incident) : route('bk.services.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali
-        </a>
-        <div class="btn-group">
-            <a href="{{ route('bk.services.edit', $service) }}" class="btn btn-sm btn-outline-primary">
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $bkShowActions = '
+            <a href="' . route('bk.services.edit', $service) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
                 <i class="ti ti-edit me-1"></i> Edit Layanan
             </a>
-            <form action="{{ route('bk.services.destroy', $service) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus sesi layanan BK ini?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-sm btn-outline-danger ms-1">
-                    <i class="ti ti-trash me-1"></i> Hapus
-                </button>
-            </form>
-        </div>
-    </div>
+            <a href="' . ($service->incident ? route('bk.referrals.show', $service->incident) : route('bk.services.index')) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Kembali
+            </a>
+        ';
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => 'Detail Sesi: ' . $service->service_type_label . ' (' . $service->service_date?->translatedFormat('d F Y') . ')',
+        'subtitle' => 'Konselor: ' . ($service->counselor?->name ?? 'Guru BK') . ' • Kategori: ' . $service->category_label . ' • Status: ' . $service->status_label . '.',
+        'icon' => 'ti ti-file-certificate',
+        'category' => 'DETAIL LAYANAN KONSELING BK',
+        'actions' => $bkShowActions,
+    ])
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">

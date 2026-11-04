@@ -4,66 +4,29 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Top Action Bar -->
-    <div class="mb-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <a href="{{ url()->previous() ?: route('bk.referrals.index') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali
-        </a>
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('bk.students.history.pdf', ['student' => $student, 'academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-danger shadow-xs">
-                <i class="ti ti-file-text me-1"></i> Cetak Buku Pribadi (PDF)
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @php
+        $bkStudentActions = '
+            <a href="' . route('bk.students.history.pdf', ['student' => $student, 'academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs">
+                <i class="ti ti-file-text me-1 text-danger"></i> Unduh PDF
             </a>
-            <a href="{{ route('bk.services.create', ['student_id' => $student->id, 'academic_year' => $academicYear]) }}" class="btn btn-sm btn-primary shadow-xs">
-                <i class="ti ti-plus me-1"></i> Catat Layanan BK untuk Siswa Ini
+            <a href="' . route('bk.services.create', ['student_id' => $student->id, 'academic_year' => $academicYear]) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs ms-1">
+                <i class="ti ti-plus me-1"></i> Catat Layanan BK
             </a>
-        </div>
-    </div>
-
-    <!-- Header Profil Siswa (Hero Card) -->
-    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-        <div class="card-body p-4 position-relative" style="background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);">
-            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <span class="avatar avatar-xl rounded-circle bg-primary text-white fw-bold fs-1 shadow-sm flex-shrink-0">
-                        {{ strtoupper(substr($student->name, 0, 2)) }}
-                    </span>
-                    <div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                            <span class="badge bg-primary text-white fw-semibold" style="letter-spacing: 0.05rem;">
-                                BUKU PRIBADI SISWA DIGITAL
-                            </span>
-                            @if($student->status === 'aktif')
-                                <span class="badge bg-success-lt text-success"><i class="ti ti-check me-1"></i>Siswa Aktif</span>
-                            @elseif($student->status === 'lulus')
-                                <span class="badge bg-info-lt text-info"><i class="ti ti-school me-1"></i>Alumni / Lulus</span>
-                            @elseif(in_array($student->status, ['mutasi', 'keluar']))
-                                <span class="badge bg-warning-lt text-warning"><i class="ti ti-arrow-right me-1"></i>Mutasi / Keluar</span>
-                            @else
-                                <span class="badge bg-secondary-lt text-secondary">{{ ucfirst($student->status) }}</span>
-                            @endif
-                        </div>
-                        <h1 class="h2 fw-bold mb-1 text-dark">{{ $student->name }}</h1>
-                        <div class="text-muted small d-flex flex-wrap align-items-center gap-3">
-                            <span><i class="ti ti-id me-1"></i>NISN: <strong>{{ $student->nisn ?? '-' }}</strong></span>
-                            <span><i class="ti ti-barcode me-1"></i>NIS: <strong>{{ $student->nis ?? '-' }}</strong></span>
-                            <span>
-                                <i class="ti ti-chalkboard me-1"></i>Kelas (TP {{ $academicYear }}): 
-                                <strong>{{ $currentClassroom?->name ?? ($student->classroom?->name ?? 'Belum terdaftar di rombel') }}</strong>
-                                @if($student->classroom && $currentClassroom && $currentClassroom->id !== $student->classroom->id)
-                                    <span class="badge bg-secondary-lt text-muted ms-1" title="Kelas terkini siswa di rombel aktif">(Terkini: {{ $student->classroom->name }})</span>
-                                @endif
-                            </span>
-                            <span><i class="ti ti-gender-bigender me-1"></i>{{ $student->gender_label }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-md-end">
-                    <div class="text-muted small">Tahun Ajaran Aktif</div>
-                    <span class="badge bg-blue text-white fs-3 px-3 py-1 shadow-xs">TP {{ $academicYear }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
+            <a href="' . (url()->previous() ?: route('bk.referrals.index')) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Kembali
+            </a>
+        ';
+        $classInfo = $currentClassroom?->name ?? ($student->classroom?->name ?? 'Tanpa Rombel');
+    @endphp
+    @include('layouts._hero_header', [
+        'title' => $student->name,
+        'subtitle' => 'NISN: ' . ($student->nisn ?? '-') . ' • NIS: ' . ($student->nis ?? '-') . ' • Kelas: ' . $classInfo . ' • Jenis Kelamin: ' . $student->gender_label . ' • Status: ' . ucfirst($student->status) . '.',
+        'icon' => 'ti ti-address-book',
+        'category' => 'BUKU PRIBADI SISWA DIGITAL',
+        'academicYear' => $academicYear,
+        'actions' => $bkStudentActions,
+    ])
 
     <!-- Antarmuka Berbasis Tab Buku Pribadi Siswa -->
     <div class="card shadow-sm border-0">

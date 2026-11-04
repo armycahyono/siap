@@ -4,51 +4,22 @@
 
 @section('content')
 <div class="container-xl">
-    <!-- Header -->
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <span class="avatar avatar-md bg-teal-lt text-teal rounded-circle">
-                    <i class="ti ti-users-group fs-1"></i>
-                </span>
-            </div>
-            <div class="col">
-                <div class="page-pretitle text-uppercase fw-bold text-teal" style="letter-spacing: 0.05rem;">
-                    BIMBINGAN &amp; KONSELING &bull; KELOMPOK BINAAN
-                </div>
-                <h2 class="page-title text-dark fw-bold">
-                    Kelompok Binaan Siswa
-                </h2>
-                <div class="text-muted small mt-1">
-                    Pengelompokan siswa binaan lintas kelas untuk bimbingan karir, persiapan perguruan tinggi, magang kerja, atau konseling terfokus.
-                </div>
-            </div>
-            <div class="col-12 col-md-auto mt-2 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                <!-- Selector Tahun Ajaran -->
-                <form action="{{ route('bk.groups.index') }}" method="GET" class="d-flex align-items-center gap-1">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0 text-muted">
-                            <i class="ti ti-calendar me-1"></i> TP:
-                        </span>
-                        <select name="academic_year" class="form-select form-select-sm fw-bold border-start-0 ps-0" onchange="this.form.submit()" style="min-width: 140px;">
-                            @foreach($availableYears as $ay)
-                                <option value="{{ $ay->name }}" {{ $ay->name === $academicYear ? 'selected' : '' }}>
-                                    {{ $ay->name }} {{ $ay->is_active ? '(Aktif)' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </form>
-
-                <a href="{{ route('bk.dashboard', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-outline-secondary">
-                    <i class="ti ti-arrow-left me-1"></i> Dashboard BK
-                </a>
-                <a href="{{ route('bk.groups.create', ['academic_year' => $academicYear]) }}" class="btn btn-sm btn-primary shadow-xs fw-bold">
-                    <i class="ti ti-plus me-1"></i> Buat Kelompok Baru
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Page Header (Model 2: Hero Context Banner) -->
+    @include('layouts._hero_header', [
+        'title' => 'Kelompok Binaan Siswa (BK)',
+        'subtitle' => 'Pengelompokan siswa binaan lintas kelas untuk bimbingan karir, persiapan perguruan tinggi, magang kerja, atau konseling terfokus TP ' . $academicYear . '.',
+        'icon' => 'ti ti-users-group',
+        'category' => 'BIMBINGAN & KONSELING • KELOMPOK BINAAN',
+        'academicYear' => $academicYear,
+        'actions' => '
+            <a href="' . route('bk.groups.create', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs">
+                <i class="ti ti-plus me-1"></i> Buat Kelompok Baru
+            </a>
+            <a href="' . route('bk.dashboard', ['academic_year' => $academicYear]) . '" class="btn btn-sm btn-outline-light shadow-xs ms-1">
+                <i class="ti ti-arrow-left me-1"></i> Dashboard BK
+            </a>
+        ',
+    ])
 
     <!-- Filter & Pencarian -->
     <div class="card border-0 shadow-sm mb-3">

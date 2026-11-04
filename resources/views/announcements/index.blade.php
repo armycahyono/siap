@@ -3,47 +3,34 @@
 @section('title', 'Pengumuman Sekolah — SMK PGRI Kras')
 
 @section('content')
-<div class="page-header d-print-none mb-4">
-    <div class="container-xl">
-        <div class="row g-2 align-items-center">
-            <div class="col">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}"><i class="ti ti-home me-1"></i> Beranda</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Pengumuman</li>
-                    </ol>
-                </nav>
-                <h2 class="page-title d-flex align-items-center gap-2">
-                    <span class="avatar bg-danger-lt text-danger rounded">
-                        <i class="ti ti-speakerphone fs-1"></i>
-                    </span>
-                    <span>Pengumuman &amp; Edaran Resmi Sekolah</span>
-                </h2>
-                <div class="text-muted mt-1">
-                    Pusat informasi dan edaran resmi dari Kepala Sekolah, Wakil Kepala Sekolah, dan Ketua Jurusan (Kaprogli).
-                </div>
-            </div>
-            <div class="col-auto ms-auto d-print-none">
-                <div class="d-flex align-items-center gap-2">
-                    @if($unreadCount > 0)
-                        <form action="{{ route('announcements.mark-all-read') }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-outline-secondary shadow-sm" title="Tandai semua pengumuman sebagai sudah dibaca">
-                                <i class="ti ti-checks me-1 text-teal"></i> Tandai Semua Dibaca
-                            </button>
-                        </form>
-                    @endif
+@php
+    $annActions = '';
+    if ($unreadCount > 0) {
+        $annActions .= '
+            <form action="' . route('announcements.mark-all-read') . '" method="POST" class="d-inline">
+                ' . csrf_field() . '
+                <button type="submit" class="btn btn-outline-light shadow-sm" title="Tandai semua pengumuman sebagai sudah dibaca">
+                    <i class="ti ti-checks me-1 text-info"></i> Tandai Semua Dibaca
+                </button>
+            </form>
+        ';
+    }
+    if ($canPublish) {
+        $annActions .= '
+            <button type="button" class="btn btn-warning text-dark fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-create-announcement">
+                <i class="ti ti-plus me-1"></i> Buat Pengumuman Baru
+            </button>
+        ';
+    }
+@endphp
 
-                    @if($canPublish)
-                        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modal-create-announcement">
-                            <i class="ti ti-plus me-1"></i> Buat Pengumuman Baru
-                        </button>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+@include('layouts._hero_header', [
+    'title' => 'Pengumuman & Edaran Resmi Sekolah',
+    'subtitle' => 'Pusat informasi dan edaran resmi dari Kepala Sekolah, Wakil Kepala Sekolah, dan Ketua Jurusan (Kaprogli).',
+    'icon' => 'ti ti-speakerphone',
+    'category' => 'PUSAT INFORMASI SEKOLAH',
+    'actions' => $annActions
+])
 
 <div class="container-xl">
     <!-- Navigasi Tab & Pencarian -->

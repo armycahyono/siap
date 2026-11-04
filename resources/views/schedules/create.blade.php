@@ -3,19 +3,18 @@
 @section('title', 'Buat Jadwal Supervisi')
 
 @section('content')
-<div class="row g-3 mb-4 align-items-center">
-    <div class="col">
-        <h2 class="page-title text-navy fw-bold" style="color: #102d52;">
-            <i class="ti ti-calendar-plus me-2"></i> Buat Jadwal Supervisi Baru
-        </h2>
-        <div class="text-muted small">Pilih guru yang akan disupervisi, hubungkan dengan jadwal mengajarnya, dan tetapkan supervisor penilai.</div>
-    </div>
-    <div class="col-auto">
-        <a href="{{ route('schedules.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i> Kembali ke Daftar Jadwal
+@include('layouts._hero_header', [
+    'title' => 'Buat Jadwal Supervisi Baru',
+    'subtitle' => 'Pilih guru yang akan disupervisi, hubungkan dengan jadwal mengajarnya, dan tetapkan supervisor penilai.',
+    'icon' => 'ti ti-calendar-plus',
+    'category' => 'PERENCANAAN SUPERVISI',
+    'actions' => '
+        <a href="' . route('schedules.index') . '" class="btn btn-outline-light d-flex align-items-center gap-1 shadow-sm">
+            <i class="ti ti-arrow-left"></i>
+            <span>Kembali ke Daftar Jadwal</span>
         </a>
-    </div>
-</div>
+    '
+])
 
 <div class="card border-0 shadow-sm" style="max-width: 920px;">
     <div class="card-body p-4">
