@@ -103,52 +103,128 @@
 
     <!-- Modal Dialog: Tambah Kegiatan Baru -->
     <div id="modal-add-calendar-event" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
-        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
-            <div class="p-4 bg-gradient-to-r from-[#0f2744] to-[#1d4ed8] text-white flex items-center justify-between rounded-t-3xl">
+        <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="p-4 bg-gradient-to-r from-[#0f2744] via-[#103a6b] to-[#1d4ed8] text-white flex items-center justify-between rounded-t-3xl shadow-xs">
                 <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    <h3 class="text-xs font-black tracking-tight">Tambah Kegiatan Sekolah</h3>
+                    <div class="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center text-amber-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-black tracking-tight text-white">Tambah Agenda Kegiatan</h3>
+                        <p class="text-[10px] text-blue-200">Manajemen Kalender Pendidikan &amp; Kegiatan Sekolah</p>
+                    </div>
                 </div>
-                <button type="button" onclick="closeAddEventModal()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center transition">&times;</button>
+                <button type="button" onclick="closeAddEventModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center transition" aria-label="Tutup">&times;</button>
             </div>
-            <form id="form-add-calendar-event" onsubmit="submitAddCalendarEvent(event)" class="p-4 space-y-3 overflow-y-auto">
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama / Judul Kegiatan <span class="text-rose-500">*</span></label>
-                    <input type="text" id="add-event-title" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500" placeholder="Contoh: Asesmen Sumatif Akhir Semester">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori Kegiatan <span class="text-rose-500">*</span></label>
-                    <select id="add-event-category" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500">
-                        <option value="kegiatan_kurikulum">Agenda Kurikulum</option>
-                        <option value="tugas_guru">Tugas & Pengingat Guru</option>
-                        <option value="kts">Kegiatan Tengah Semester (KTS)</option>
-                        <option value="ke">Kegiatan Ekstrakurikuler (KE)</option>
-                        <option value="lhb">Libur Hari Besar (LHB)</option>
-                        <option value="lu">Libur Umum (LU)</option>
-                        <option value="cb">Cuti Bersama (CB)</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
+            <form id="form-add-calendar-event" onsubmit="submitAddCalendarEvent(event)" class="p-4 space-y-3.5 overflow-y-auto text-xs">
+                <!-- 1. INFORMASI DASAR -->
+                <div class="space-y-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 block">1. Informasi Pokok Kegiatan</span>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Mulai <span class="text-rose-500">*</span></label>
-                        <input type="date" id="add-event-start-date" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama / Judul Kegiatan <span class="text-rose-500">*</span></label>
+                        <input type="text" id="add-event-title" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Contoh: Asesmen Sumatif Akhir Semester (ASAS)">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Selesai</label>
-                        <input type="date" id="add-event-end-date" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori / Bidang <span class="text-rose-500">*</span></label>
+                        <select id="add-event-category" required onchange="onCalendarCategoryChange(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                            <option value="">-- Pilih Kategori Kegiatan --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Lokasi / Tempat (Opsional)</label>
+                        <input type="text" id="add-event-location" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Contoh: Aula, Lab Komputer, DUDI Mitra">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Lokasi Kegiatan</label>
-                    <input type="text" id="add-event-location" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500" placeholder="Contoh: Aula SMK PGRI Kras">
+
+                <!-- 2. WAKTU & TANGGAL -->
+                <div class="space-y-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 block">2. Tanggal &amp; Waktu Pelaksanaan</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Mulai <span class="text-rose-500">*</span></label>
+                            <input type="date" id="add-event-start-date" required class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+                            <input type="date" id="add-event-end-date" class="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="add-event-is-all-day" checked onchange="toggleEventAllDay(this.checked)" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                            <span class="text-[11px] font-bold text-slate-700">Sepanjang Hari (All Day)</span>
+                        </label>
+                    </div>
+                    <div id="box-event-time" class="hidden grid grid-cols-2 gap-2 pt-1 border-t border-slate-200">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Jam Mulai</label>
+                            <input type="time" id="add-event-start-time" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Jam Selesai</label>
+                            <input type="time" id="add-event-end-time" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Keterangan / Deskripsi</label>
-                    <textarea id="add-event-description" rows="2" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500" placeholder="Catatan tambahan..."></textarea>
+
+                <!-- 3. SASARAN PESERTA & PENGARUH KBM -->
+                <div class="space-y-2.5 p-3 rounded-2xl bg-blue-50/50 border border-blue-200">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-blue-900 block">3. Sasaran &amp; Pengaruh Terhadap KBM</span>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Sasaran Peserta Kegiatan</label>
+                        <select id="add-event-target-audience" onchange="onTargetAudienceChange(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                            <option value="semua">👥 Seluruh Warga Sekolah (Guru, Staf, Siswa)</option>
+                            <option value="guru_staf">👨‍🏫 Khusus GTK (Hanya Guru &amp; Tenaga Kependidikan)</option>
+                            <option value="tingkat">🎓 Tingkat Kelas Tertentu (Contoh: Hanya Kelas XII)</option>
+                            <option value="rombel">🏫 Rombel / Kelas Tertentu (Pilih Kelas Spesifik)</option>
+                        </select>
+                    </div>
+
+                    <!-- Pilihan Tingkat Tertentu -->
+                    <div id="box-target-grade-levels" class="hidden space-y-1.5 pt-1">
+                        <label class="block text-[10px] font-bold text-slate-700">Pilih Tingkat Kelas yang Terlibat:</label>
+                        <div id="cal-grade-level-checks" class="flex items-center gap-2 flex-wrap bg-white p-2 rounded-xl border border-slate-200"></div>
+                    </div>
+
+                    <!-- Pilihan Rombel Tertentu -->
+                    <div id="box-target-classrooms" class="hidden space-y-1.5 pt-1">
+                        <label class="block text-[10px] font-bold text-slate-700">Pilih Rombel Kelas yang Terlibat:</label>
+                        <div id="cal-classroom-checks" class="max-h-36 overflow-y-auto space-y-1 bg-white p-2 rounded-xl border border-slate-200 text-xs"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Pengaruh Terhadap Pembelajaran (KBM)</label>
+                        <select id="add-event-learning-impact" onchange="onLearningImpactChange(this.value)" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                            <option value="normal">🟢 KBM Normal (Sesuai Jadwal Pelajaran Penuh)</option>
+                            <option value="pulang_cepat">🟡 Pulang Cepat (KBM Dibatasi Hingga Jam Ke-X)</option>
+                            <option value="pembelajaran_daring">🔵 Pembelajaran Daring / BDR (Dari Rumah)</option>
+                            <option value="bebas_kbm_kegiatan">🟣 Bebas KBM / Kegiatan Khusus (PKL / Ujian / Gladi)</option>
+                            <option value="libur_khusus">🔴 Libur Sekolah Penuh (Bebas KBM &amp; Presensi)</option>
+                        </select>
+                    </div>
+
+                    <!-- Pilihan Jam Pulang Cepat -->
+                    <div id="box-max-period" class="hidden space-y-1 pt-1">
+                        <label class="block text-[10px] font-bold text-slate-700">KBM Selesai Hingga Jam Pelajaran Ke:</label>
+                        <select id="add-event-max-period" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono">
+                            <option value="4">Jam ke-4 (± 10:30 WIB)</option>
+                            <option value="5">Jam ke-5 (± 11:10 WIB)</option>
+                            <option value="6">Jam ke-6 (± 11:50 WIB)</option>
+                            <option value="7">Jam ke-7 (± 12:30 WIB)</option>
+                        </select>
+                    </div>
                 </div>
+
+                <!-- 4. KETERANGAN / DESKRIPSI -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Keterangan / Instruksi Tambahan (Opsional)</label>
+                    <textarea id="add-event-description" rows="2" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="Catatan pakaian seragam, perlengkapan, atau instruksi guru/siswa..."></textarea>
+                </div>
+
                 <div class="pt-2">
-                    <button type="submit" id="btn-submit-add-event" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold transition shadow-md">
-                        Simpan Agenda
+                    <button type="submit" id="btn-submit-add-event" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white text-xs font-bold transition shadow-md flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        <span>Simpan Kegiatan ke Kalender</span>
                     </button>
                 </div>
             </form>

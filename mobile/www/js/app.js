@@ -6803,6 +6803,7 @@
         if (fabEl) {
             if (data.can_create) {
                 fabEl.classList.remove('hidden');
+                populateCalendarModalOptions(data);
             } else {
                 fabEl.classList.add('hidden');
             }
@@ -6978,9 +6979,140 @@
         renderCalendarEvents(root);
     };
 
+    function populateCalendarModalOptions(data) {
+        const catSelect = document.getElementById('add-event-category');
+        if (!catSelect || !data) return;
+
+        const categories = data.categories || [];
+        const groupDefs = {
+            'Kurikulum & Asesmen': ['akademik_ujian', 'kegiatan_kurikulum', 'kts', 'tugas_guru'],
+            'Kesiswaan & Ekstrakurikuler': ['kesiswaan', 'ke'],
+            'Humas & Hubungan Industri': ['smk_khusus'],
+            'Manajemen & Rapat': ['manajemen', 'supervisi'],
+            'Libur & Kaldik Resmi': ['lhb', 'lu', 'ls1', 'ls2', 'cb', 'lhr', 'kpp', 'kaldik'],
+            'Lainnya': ['lainnya'],
+        };
+
+        let html = '<option value="">-- Pilih Kategori Kegiatan --</option>';
+        const renderedKeys = new Set();
+
+        Object.keys(groupDefs).forEach(grpName => {
+            const keys = groupDefs[grpName];
+            const matching = categories.filter(c => keys.includes(c.key));
+            if (matching.length > 0) {
+                html += `<optgroup label="-- ${escapeHtml(grpName)} --">`;
+                matching.forEach(c => {
+                    renderedKeys.add(c.key);
+                    html += `<option value="${c.key}">${escapeHtml(c.label)}</option>`;
+                });
+                html += `</optgroup>`;
+            }
+        });
+
+        const rest = categories.filter(c => !renderedKeys.has(c.key));
+        if (rest.length > 0) {
+            html += `<optgroup label="-- Kategori Lainnya --">`;
+            rest.forEach(c => {
+                html += `<option value="${c.key}">${escapeHtml(c.label)}</option>`;
+            });
+            html += `</optgroup>`;
+        }
+
+        catSelect.innerHTML = html;
+
+        // Populate Grade Levels
+        const glContainer = document.getElementById('cal-grade-level-checks');
+        if (glContainer && data.grade_levels) {
+            glContainer.innerHTML = data.grade_levels.map(gl => `
+                <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold cursor-pointer select-none">
+                    <input type="checkbox" name="target_grade_levels[]" value="${gl.level}" class="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5">
+                    <span>Kelas ${escapeHtml(gl.level)}</span>
+                </label>
+            `).join('');
+        }
+
+        // Populate Classrooms
+        const clsContainer = document.getElementById('cal-classroom-checks');
+        if (clsContainer && data.classrooms) {
+            clsContainer.innerHTML = data.classrooms.map(c => `
+                <label class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-50 cursor-pointer select-none">
+                    <input type="checkbox" name="target_classroom_ids[]" value="${c.id}" class="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5">
+                    <span class="font-medium text-slate-800">${escapeHtml(c.name)}</span>
+                </label>
+            `).join('');
+        }
+
+        // Populate Period map if available
+        const periodSelect = document.getElementById('add-event-max-period');
+        if (periodSelect && data.period_schedule_map) {
+            const pMap = data.period_schedule_map;
+            periodSelect.innerHTML = Object.keys(pMap).map(p => {
+                const info = pMap[p];
+                return `<option value="${p}">${escapeHtml(info.label)} (± ${info.time} WIB)</option>`;
+            }).join('');
+        }
+    }
+
+    window.toggleEventAllDay = function(isAllDay) {
+        const box = document.getElementById('box-event-time');
+        if (box) {
+            if (isAllDay) {
+                box.classList.add('hidden');
+            } else {
+                box.classList.remove('hidden');
+            }
+        }
+    };
+
+    window.onTargetAudienceChange = function(audience) {
+        const boxTingkat = document.getElementById('box-target-grade-levels');
+        const boxRombel = document.getElementById('box-target-classrooms');
+
+        if (boxTingkat) {
+            if (audience === 'tingkat') boxTingkat.classList.remove('hidden');
+            else boxTingkat.classList.add('hidden');
+        }
+
+        if (boxRombel) {
+            if (audience === 'rombel') boxRombel.classList.remove('hidden');
+            else boxRombel.classList.add('hidden');
+        }
+    };
+
+    window.onLearningImpactChange = function(impact) {
+        const boxPeriod = document.getElementById('box-max-period');
+        if (boxPeriod) {
+            if (impact === 'pulang_cepat') boxPeriod.classList.remove('hidden');
+            else boxPeriod.classList.add('hidden');
+        }
+    };
+
+    window.onCalendarCategoryChange = function(catKey) {
+        const holidayCodes = ['lhb', 'lu', 'ls1', 'ls2', 'cb', 'lhr', 'kpp', 'kaldik'];
+        const impactSelect = document.getElementById('add-event-learning-impact');
+        if (holidayCodes.includes(catKey) && impactSelect) {
+            impactSelect.value = 'libur_khusus';
+            onLearningImpactChange('libur_khusus');
+        }
+    };
+
     window.openAddEventModal = function() {
         const modal = document.getElementById('modal-add-calendar-event');
-        if (modal) modal.classList.remove('hidden');
+        if (!modal) return;
+
+        if (calendarDataCache) {
+            populateCalendarModalOptions(calendarDataCache);
+        }
+
+        const startDateInput = document.getElementById('add-event-start-date');
+        const endDateInput = document.getElementById('add-event-end-date');
+        if (startDateInput && !startDateInput.value) {
+            const defaultDate = calendarSelectedDate || new Date().toISOString().split('T')[0];
+            startDateInput.value = defaultDate;
+            if (endDateInput) endDateInput.value = defaultDate;
+        }
+
+        modal.classList.remove('hidden');
     };
 
     window.closeAddEventModal = function() {
@@ -6990,12 +7122,48 @@
 
     window.submitAddCalendarEvent = async function(e) {
         e.preventDefault();
+
         const title = document.getElementById('add-event-title')?.value;
         const category = document.getElementById('add-event-category')?.value;
         const start_date = document.getElementById('add-event-start-date')?.value;
         const end_date = document.getElementById('add-event-end-date')?.value || null;
         const location = document.getElementById('add-event-location')?.value || null;
         const description = document.getElementById('add-event-description')?.value || null;
+
+        if (!title || !category || !start_date) {
+            showToast('Lengkapi nama kegiatan, kategori, dan tanggal mulai.', 'warning');
+            return;
+        }
+
+        const is_all_day = document.getElementById('add-event-is-all-day')?.checked ?? true;
+        const start_time = !is_all_day ? (document.getElementById('add-event-start-time')?.value || null) : null;
+        const end_time = !is_all_day ? (document.getElementById('add-event-end-time')?.value || null) : null;
+
+        const target_audience = document.getElementById('add-event-target-audience')?.value || 'semua';
+        let target_grade_levels = [];
+        if (target_audience === 'tingkat') {
+            document.querySelectorAll('#cal-grade-level-checks input:checked').forEach(cb => {
+                target_grade_levels.push(cb.value);
+            });
+            if (target_grade_levels.length === 0) {
+                showToast('Pilih minimal satu tingkat kelas sasaran.', 'warning');
+                return;
+            }
+        }
+
+        let target_classroom_ids = [];
+        if (target_audience === 'rombel') {
+            document.querySelectorAll('#cal-classroom-checks input:checked').forEach(cb => {
+                target_classroom_ids.push(Number(cb.value));
+            });
+            if (target_classroom_ids.length === 0) {
+                showToast('Pilih minimal satu rombel kelas sasaran.', 'warning');
+                return;
+            }
+        }
+
+        const learning_impact = document.getElementById('add-event-learning-impact')?.value || 'normal';
+        const max_period = (learning_impact === 'pulang_cepat') ? Number(document.getElementById('add-event-max-period')?.value || 4) : null;
 
         const btn = document.getElementById('btn-submit-add-event');
         if (btn) btn.disabled = true;
@@ -7006,14 +7174,25 @@
                 category,
                 start_date,
                 end_date,
+                is_all_day,
+                start_time,
+                end_time,
                 location,
                 description,
+                target_audience,
+                target_grade_levels: target_grade_levels.length > 0 ? target_grade_levels : null,
+                target_classroom_ids: target_classroom_ids.length > 0 ? target_classroom_ids : null,
+                learning_impact,
+                max_period,
             });
 
             if (res.success) {
-                showToast(res.message || 'Agenda berhasil disimpan', 'success');
+                showToast(res.message || 'Agenda berhasil disimpan ke kalender', 'success');
                 closeAddEventModal();
                 document.getElementById('form-add-calendar-event')?.reset();
+                toggleEventAllDay(true);
+                onTargetAudienceChange('semua');
+                onLearningImpactChange('normal');
                 await loadCalendarData();
             } else {
                 showToast(res.message || 'Gagal menyimpan agenda', 'error');

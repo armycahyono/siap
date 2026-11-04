@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicCalendarUpload;
+use App\Models\Classroom;
 use App\Models\CurriculumEvent;
+use App\Models\GradeLevel;
 use App\Models\SchoolSetting;
+use App\Models\User;
 use App\Services\AcademicCalendarService;
 use App\Services\AcademicYearContext;
 use Carbon\Carbon;
@@ -228,6 +231,11 @@ class MobileCalendarController extends Controller
             9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
         ];
 
+        $gradeLevels = GradeLevel::orderBy('level')->get(['id', 'level', 'name']);
+        $classrooms = Classroom::where('academic_year', $academicYear)->orderBy('name')->get(['id', 'name']);
+        $learningImpacts = CurriculumEvent::learningImpactDefinitions();
+        $periodMap = CurriculumEvent::periodScheduleMap();
+
         return response()->json([
             'success' => true,
             'academic_year' => $academicYear,
@@ -248,10 +256,36 @@ class MobileCalendarController extends Controller
                     'key' => $key,
                     'label' => $cat['label'] ?? ucfirst($key),
                     'color' => $cat['color'] ?? '#2563eb',
+                    'is_kaldik' => ! empty($cat['is_kaldik']),
                 ];
             })->values(),
-            'can_create' => (bool) $user->canViewAllSchedules(),
+            'grade_levels' => $gradeLevels,
+            'classrooms' => $classrooms,
+            'learning_impacts' => $learningImpacts,
+            'period_schedule_map' => $periodMap,
+            'can_create' => (bool) $this->canManageCalendar($user),
         ]);
+    }
+
+    /**
+     * Cek apakah pengguna memiliki hak akses mengelola agenda kalender sekolah.
+     * Mencakup: Super Admin, Kepala Sekolah (KS), Seluruh Waka, dan Operator Waka.
+     */
+    public function canManageCalendar(User $user): bool
+    {
+        return $user->isSuperAdmin()
+            || $user->isPrincipal()
+            || $user->isVicePrincipal()
+            || $user->isOperator()
+            || $user->isWakaKurikulum()
+            || $user->isWakaKesiswaan()
+            || $user->isWakaSarpras()
+            || $user->isWakaHumas()
+            || $user->isOperatorKurikulum()
+            || $user->isOperatorKesiswaan()
+            || $user->isOperatorSarpras()
+            || $user->isOperatorHumas()
+            || $user->canViewAllSchedules();
     }
 
     /**
@@ -260,7 +294,7 @@ class MobileCalendarController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
-        if (! $user || ! $user->canViewAllSchedules()) {
+        if (! $user || ! $this->canManageCalendar($user)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki hak akses untuk menambahkan agenda kalender.',
@@ -278,7 +312,12 @@ class MobileCalendarController extends Controller
             'end_time' => 'nullable|string|max:10',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'learning_impact' => 'nullable|string',
+            'target_audience' => 'nullable|string|in:semua,guru_staf,tingkat,rombel',
+            'target_grade_levels' => 'nullable|array',
+            'target_classroom_ids' => 'nullable|array',
+            'learning_impact' => 'nullable|string|in:normal,pulang_cepat,pembelajaran_daring,bebas_kbm_kegiatan,libur_khusus',
+            'max_period' => 'nullable|integer|min:1|max:12',
+            'dismissal_time' => 'nullable|string|max:10',
         ]);
 
         try {
@@ -294,6 +333,22 @@ class MobileCalendarController extends Controller
             $isHoliday = true;
         }
 
+        $learningImpact = $validated['learning_impact'] ?? ($isHoliday ? 'libur_khusus' : 'normal');
+        if ($isHoliday && $learningImpact === 'normal') {
+            $learningImpact = 'libur_khusus';
+        }
+
+        $targetAudience = $validated['target_audience'] ?? 'semua';
+        $targetGradeLevels = ($targetAudience === 'tingkat') ? ($validated['target_grade_levels'] ?? null) : null;
+        $targetClassroomIds = ($targetAudience === 'rombel') ? ($validated['target_classroom_ids'] ?? null) : null;
+
+        $maxPeriod = ($learningImpact === 'pulang_cepat') ? ($validated['max_period'] ?? null) : null;
+        $dismissalTime = $validated['dismissal_time'] ?? null;
+        if ($maxPeriod && empty($dismissalTime)) {
+            $periodMap = CurriculumEvent::periodScheduleMap();
+            $dismissalTime = $periodMap[$maxPeriod]['time'] ?? null;
+        }
+
         $event = CurriculumEvent::create([
             'academic_year' => $academicYear,
             'title' => $validated['title'],
@@ -306,7 +361,12 @@ class MobileCalendarController extends Controller
             'end_time' => $isAllDay ? null : ($validated['end_time'] ?? null),
             'location' => $validated['location'] ?? null,
             'description' => $validated['description'] ?? null,
-            'learning_impact' => $validated['learning_impact'] ?? ($isHoliday ? 'libur_khusus' : 'normal'),
+            'target_audience' => $targetAudience,
+            'target_grade_levels' => $targetGradeLevels,
+            'target_classroom_ids' => $targetClassroomIds,
+            'learning_impact' => $learningImpact,
+            'max_period' => $maxPeriod,
+            'dismissal_time' => $dismissalTime,
             'created_by' => $user->id,
         ]);
 
@@ -318,6 +378,7 @@ class MobileCalendarController extends Controller
                 'title' => $event->title,
                 'start_date' => $event->start_date ? $event->start_date->format('Y-m-d') : null,
                 'category' => $event->category,
+                'category_label' => $event->category_label,
             ],
         ], 201);
     }

@@ -165,4 +165,73 @@ class MobileCalendarTest extends TestCase
             'start_date' => '2026-11-25',
         ]);
     }
+
+    public function test_waka_and_operator_can_store_calendar_event_with_audience_and_impact(): void
+    {
+        $wakaRole = Role::firstOrCreate(['slug' => 'waka_sarpras'], ['name' => 'Waka Sarpras']);
+        $wakaSarpras = User::create([
+            'name' => 'Waka Sarpras Cal Test',
+            'username' => 'wakasarprascal',
+            'email' => 'waka.sarpras@test.sch.id',
+            'password' => bcrypt('password'),
+            'role_id' => $wakaRole->id,
+            'position' => 'Waka Bidang Sarpras',
+            'is_active' => true,
+        ]);
+
+        $opRole = Role::firstOrCreate(['slug' => 'operator_kesiswaan'], ['name' => 'Operator Kesiswaan']);
+        $opKesiswaan = User::create([
+            'name' => 'Operator Kesiswaan Cal Test',
+            'username' => 'opkesiswaancal',
+            'email' => 'op.kesiswaan@test.sch.id',
+            'password' => bcrypt('password'),
+            'role_id' => $opRole->id,
+            'is_active' => true,
+        ]);
+
+        // 1. Waka Sarpras adds event
+        $resWaka = $this->actingAs($wakaSarpras)
+            ->postJson('/api/v1/mobile/calendar/store', [
+                'title' => 'Pemeliharaan Lab dan Bengkel',
+                'category' => 'manajemen',
+                'start_date' => '2026-11-28',
+                'is_all_day' => true,
+                'target_audience' => 'guru_staf',
+                'learning_impact' => 'normal',
+            ]);
+
+        $resWaka->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        // 2. Operator Kesiswaan adds event with Tingkat & Pulang Cepat
+        $resOp = $this->actingAs($opKesiswaan)
+            ->postJson('/api/v1/mobile/calendar/store', [
+                'title' => 'Gladi Bersih Pelantikan Penegak Bantara',
+                'category' => 'kesiswaan',
+                'start_date' => '2026-11-29',
+                'end_date' => '2026-11-29',
+                'is_all_day' => false,
+                'start_time' => '07:00',
+                'end_time' => '11:00',
+                'target_audience' => 'tingkat',
+                'target_grade_levels' => ['10'],
+                'learning_impact' => 'pulang_cepat',
+                'max_period' => 5,
+            ]);
+
+        $resOp->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $this->assertDatabaseHas('curriculum_events', [
+            'title' => 'Gladi Bersih Pelantikan Penegak Bantara',
+            'category' => 'kesiswaan',
+            'target_audience' => 'tingkat',
+            'learning_impact' => 'pulang_cepat',
+            'max_period' => 5,
+        ]);
+    }
 }
