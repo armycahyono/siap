@@ -122,7 +122,38 @@ const SIAP_API = (function() {
 
         // Core Data
         getDashboard: () => request('dashboard', { method: 'GET' }),
+        getCalendar: (month = null, category = null) => {
+            const params = new URLSearchParams();
+            if (month) params.append('month', month);
+            if (category && category !== 'all') params.append('category', category);
+            const qs = params.toString();
+            return request(qs ? `calendar?${qs}` : 'calendar', { method: 'GET' });
+        },
+        submitCalendarEvent: (payload) => request('calendar/store', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
         getKbm: (date = null) => request(date ? `kbm?date=${date}` : 'kbm', { method: 'GET' }),
+        getKbmHistory: (params = {}) => {
+            const sp = new URLSearchParams();
+            if (params.classroom_id) sp.append('classroom_id', params.classroom_id);
+            if (params.subject_id) sp.append('subject_id', params.subject_id);
+            if (params.start_date) sp.append('start_date', params.start_date);
+            if (params.end_date) sp.append('end_date', params.end_date);
+            if (params.page) sp.append('page', params.page);
+            const qs = sp.toString();
+            return request(qs ? `kbm/history?${qs}` : 'kbm/history', { method: 'GET' });
+        },
+        getKbmHistoryDetail: (id) => request(`kbm/history/${id}`, { method: 'GET' }),
+        getSchoolSchedule: (params = {}) => {
+            const sp = new URLSearchParams();
+            if (params.day) sp.append('day', params.day);
+            if (params.classroom_id) sp.append('classroom_id', params.classroom_id);
+            if (params.teacher_id) sp.append('teacher_id', params.teacher_id);
+            if (params.search) sp.append('search', params.search);
+            const qs = sp.toString();
+            return request(qs ? `school-schedule?${qs}` : 'school-schedule', { method: 'GET' });
+        },
         getKbmTake: (scheduleId, date = null) => request(`kbm/take?schedule_id=${scheduleId}` + (date ? `&date=${date}` : ''), { method: 'GET' }),
         submitKbmAttendance: (payload) => request('kbm/take/store', {
             method: 'POST',
@@ -270,6 +301,49 @@ const SIAP_API = (function() {
             method: 'POST',
             body: JSON.stringify(payload),
         }),
+
+        // Rekap Presensi Perwalian (Wali Kelas)
+        getHomeroomRecap: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `tasks/homeroom/recap?${qs}` : 'tasks/homeroom/recap', { method: 'GET' });
+        },
+        getHomeroomPermits: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `tasks/homeroom/permits?${qs}` : 'tasks/homeroom/permits', { method: 'GET' });
+        },
+        storeHomeroomPermit: (formData) => request('tasks/homeroom/permits/store', {
+            method: 'POST',
+            body: formData,
+        }),
+        deleteHomeroomPermit: (id) => request(`tasks/homeroom/permits/${id}`, {
+            method: 'DELETE',
+        }),
+
+        // Rekap Presensi Guru & Staf (GTK)
+        getTeacherAttendanceReport: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `attendance/report-teachers?${qs}` : 'attendance/report-teachers', { method: 'GET' });
+        },
+
+        // Meja Piket Lanjutan
+        getPiketLiveKbm: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `tasks/piket/live-kbm?${qs}` : 'tasks/piket/live-kbm', { method: 'GET' });
+        },
+        getPiketSchedules: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `tasks/piket/schedules?${qs}` : 'tasks/piket/schedules', { method: 'GET' });
+        },
+        getPiketJournals: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `tasks/piket/journals?${qs}` : 'tasks/piket/journals', { method: 'GET' });
+        },
+        getPiketJournalDetail: (id) => request(`tasks/piket/journals/${id}`, { method: 'GET' }),
+        returnPiketStudentPermit: (id) => request(`tasks/piket/permits/${id}/return`, { method: 'POST' }),
+        getPiketReports: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return request(qs ? `tasks/piket/reports?${qs}` : 'tasks/piket/reports', { method: 'GET' });
+        },
     };
 })();
 

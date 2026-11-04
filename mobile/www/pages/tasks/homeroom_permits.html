@@ -1,0 +1,144 @@
+<div class="space-y-3 pb-12">
+    <!-- Sub-page Header -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Izin Siswa Perwalian</h3>
+                <p id="homeroom-permits-subtitle" class="text-[10px] text-slate-400">Sinkron Otomatis ke Piket &amp; Guru Mapel</p>
+            </div>
+        </div>
+        <button type="button" onclick="refreshHomeroomPermits()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-amber-50 text-slate-500 hover:text-amber-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+    </div>
+
+    <!-- Banner Catat Izin Baru -->
+    <div class="card-elevated p-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white flex items-center justify-between shadow-xs">
+        <div>
+            <h4 class="text-xs font-black text-white">Lapor Izin Wali Murid</h4>
+            <p class="text-[10px] text-amber-100">Catat izin sakit, izin keperluan, atau dispen siswa.</p>
+        </div>
+        <button type="button" onclick="openCreateHomeroomPermitModal()" class="px-3 py-1.5 rounded-xl bg-white text-amber-900 font-bold text-xs shadow-sm hover:bg-amber-50 active:scale-95 transition flex items-center gap-1">
+            <span>➕</span><span>Catat Izin</span>
+        </button>
+    </div>
+
+    <!-- Filter Bar Card -->
+    <div class="card-elevated p-3 space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Rombel / Kelas</label>
+                <select id="homeroom-permits-class-select" onchange="onHomeroomPermitsClassChange(this.value)" class="w-full text-xs font-bold p-1.5 rounded-xl border border-slate-200 bg-white">
+                    <option value="">Memuat kelas...</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Tanggal</label>
+                <input type="date" id="homeroom-permits-date" onchange="onHomeroomPermitsFilterChange()" class="w-full text-xs font-semibold p-1.5 rounded-xl border border-slate-200 bg-white">
+            </div>
+        </div>
+
+        <div class="relative">
+            <input type="text" id="homeroom-permits-search" placeholder="Cari nama siswa atau alasan..." oninput="debounceHomeroomPermitsSearch()" class="w-full text-xs p-2 pl-8 rounded-xl border border-slate-200 bg-white">
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+    </div>
+
+    <!-- Daftar Surat Izin Container -->
+    <div id="homeroom-permits-list" class="space-y-2">
+        <div class="text-center py-8 text-xs text-slate-400">Memuat data izin siswa...</div>
+    </div>
+
+    <!-- Modal Catat Izin Siswa Baru -->
+    <div id="modal-homeroom-permit-create" onclick="if(event.target === this) closeCreateHomeroomPermitModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-4 max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">📝</span>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-900">Catat Izin Siswa Perwalian</h4>
+                        <p class="text-[10px] text-slate-400">Laporan langsung dari orang tua / wali murid</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCreateHomeroomPermitModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center text-xs">✕</button>
+            </div>
+
+            <form id="form-homeroom-permit" onsubmit="handleHomeroomPermitSubmit(event)" class="space-y-3">
+                <!-- Rombel / Kelas Perwalian -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Rombel / Kelas <span class="text-rose-500">*</span></label>
+                    <select id="form-permit-classroom-id" name="classroom_id" onchange="onModalHomeroomClassChange(this.value)" required class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-amber-500">
+                        <option value="">-- Memuat Kelas Perwalian --</option>
+                    </select>
+                </div>
+
+                <!-- Pilih Siswa -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Siswa <span class="text-rose-500">*</span></label>
+                    <select id="form-permit-student-id" name="student_id" required class="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-amber-500">
+                        <option value="">-- Pilih Siswa Rombel --</option>
+                    </select>
+                </div>
+
+                <!-- Kategori Izin Pills -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori Izin <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="permit_category" value="sakit" checked class="peer hidden">
+                            <div class="p-2 text-center rounded-xl border border-slate-200 font-bold text-xs peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition">
+                                💊 Sakit
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="permit_category" value="izin" class="peer hidden">
+                            <div class="p-2 text-center rounded-xl border border-slate-200 font-bold text-xs peer-checked:bg-amber-600 peer-checked:text-white peer-checked:border-amber-600 transition">
+                                ✉️ Izin
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="permit_category" value="dispen" class="peer hidden">
+                            <div class="p-2 text-center rounded-xl border border-slate-200 font-bold text-xs peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 transition">
+                                🎖️ Dispen
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Tanggal Mulai & Sampai -->
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Mulai <span class="text-rose-500">*</span></label>
+                        <input type="date" id="form-permit-start-date" name="permit_date" required class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Sampai (Opsional)</label>
+                        <input type="date" id="form-permit-end-date" name="end_date" class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+
+                <!-- Alasan / Keterangan -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Alasan / Keterangan Sakit/Izin <span class="text-rose-500">*</span></label>
+                    <textarea id="form-permit-reason" name="reason" rows="2" required placeholder="Contoh: Sakit demam tinggi / rawat inap di RS..." class="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+
+                <!-- Foto Bukti / Surat Dokter -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Foto Bukti / Surat Dokter (Opsional)</label>
+                    <input type="file" id="form-permit-attachment" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf" class="w-full text-xs p-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-amber-600 file:text-white">
+                    <span class="text-[9px] text-slate-400 mt-1 block">Foto surat izin dari orang tua atau surat keterangan dokter.</span>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="btn-submit-homeroom-permit" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-1.5">
+                        <span>Simpan &amp; Sinkronkan ke Piket</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

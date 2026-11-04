@@ -1,0 +1,69 @@
+<div class="space-y-3.5 pb-20">
+    <!-- Header Hero Jadwal Sekolah -->
+    <div class="card-elevated p-3.5 bg-gradient-to-r from-[#0f2744] via-[#103a6b] to-[#1d4ed8] text-white shadow-md rounded-2xl">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-black tracking-tight text-white uppercase">Jadwal Pelajaran Sekolah</h3>
+                    <p id="sch-academic-year" class="text-[10px] text-blue-200 mt-0.5">TP 2026/2027 &bull; Seluruh Kelas &amp; Guru</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span id="sch-current-period-badge" class="hidden px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-amber-950 font-mono">
+                    Jam Aktif: JP -
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 5 Hari (Senin s/d Jumat) -->
+    <div class="card-elevated p-1.5 rounded-2xl bg-white border border-slate-100 flex gap-1">
+        <button type="button" onclick="selectSchoolScheduleDay('Senin')" data-day="Senin" class="sch-day-btn flex-1 py-1.5 text-center text-xs font-bold rounded-xl bg-blue-600 text-white shadow-xs transition">Sen</button>
+        <button type="button" onclick="selectSchoolScheduleDay('Selasa')" data-day="Selasa" class="sch-day-btn flex-1 py-1.5 text-center text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition">Sel</button>
+        <button type="button" onclick="selectSchoolScheduleDay('Rabu')" data-day="Rabu" class="sch-day-btn flex-1 py-1.5 text-center text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition">Rab</button>
+        <button type="button" onclick="selectSchoolScheduleDay('Kamis')" data-day="Kamis" class="sch-day-btn flex-1 py-1.5 text-center text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition">Kam</button>
+        <button type="button" onclick="selectSchoolScheduleDay('Jumat')" data-day="Jumat" class="sch-day-btn flex-1 py-1.5 text-center text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-100 transition">Jum</button>
+    </div>
+
+    <!-- Filter & Pencarian Cepat -->
+    <div class="card-elevated p-3 rounded-2xl bg-white border border-slate-100 shadow-xs space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Filter Kelas</label>
+                <select id="sch-classroom-select" onchange="onSchoolScheduleFilterChange()" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-800 bg-slate-50/60 focus:outline-none focus:border-blue-500">
+                    <option value="">Semua Kelas</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Filter Guru</label>
+                <select id="sch-teacher-select" onchange="onSchoolScheduleFilterChange()" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-800 bg-slate-50/60 focus:outline-none focus:border-blue-500">
+                    <option value="">Semua Guru</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="relative">
+            <input type="text" id="sch-search-input" oninput="onSchoolScheduleSearch(this.value)" placeholder="Cari mata pelajaran, kelas, atau nama guru..." class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50/60 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition">
+            <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
+        </div>
+    </div>
+
+    <!-- Daftar Jadwal Sekolah -->
+    <div class="space-y-2">
+        <div class="flex items-center justify-between px-1">
+            <h4 id="sch-list-title" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Jadwal Hari Senin</h4>
+            <span id="sch-schedules-count" class="text-[10px] text-slate-500 font-mono">0 jadwal</span>
+        </div>
+
+        <div id="sch-schedules-container" class="space-y-2">
+            <!-- Diisi secara dinamis oleh JavaScript -->
+            <div class="card-elevated p-8 text-center text-xs text-slate-400">
+                <svg class="animate-spin h-6 w-6 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                Memuat jadwal pelajaran sekolah...
+            </div>
+        </div>
+    </div>
+</div>

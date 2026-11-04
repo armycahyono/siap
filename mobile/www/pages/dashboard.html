@@ -61,16 +61,33 @@
         </div>
     </div>
 
-    <!-- Agenda Sekolah Hari Ini -->
-    <div id="dash-agenda-card" class="hidden card-elevated p-3.5 bg-emerald-50/70 border-emerald-200/80">
-        <div class="flex items-start gap-2.5">
-            <div class="w-9 h-9 rounded-2xl bg-emerald-200/80 text-emerald-800 flex items-center justify-center text-sm mt-0.5 shadow-xs">
-                <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    <!-- Wali Kelas Quick Card -->
+    <div id="dash-homeroom-card" class="hidden card-elevated p-3.5 bg-amber-50/70 border-amber-200/80">
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-2xl bg-amber-200/80 text-amber-800 flex items-center justify-center font-bold text-sm shadow-xs">
+                <svg class="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
             </div>
-            <div>
-                <h5 id="dash-agenda-title" class="text-xs font-bold text-emerald-900">Agenda Sekolah</h5>
-                <p id="dash-agenda-desc" class="text-[11px] text-emerald-700 mt-0.5 leading-tight">Memuat agenda...</p>
+            <div class="flex-1">
+                <h5 id="dash-homeroom-title" class="text-xs font-bold text-amber-900">Perwalian Siswa</h5>
+                <p id="dash-homeroom-desc" class="text-[11px] text-amber-700 leading-tight">Catat izin siswa rombel &amp; pantau presensi kelas.</p>
             </div>
+            <button onclick="SIAP_ROUTER.navigate('/tasks/homeroom/permits')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-bold shadow-xs active:scale-95 transition" aria-label="Izin Siswa Perwalian">Izin Siswa</button>
+        </div>
+    </div>
+
+    <!-- Agenda Sekolah Hari Ini & Pintasan Kaldik -->
+    <div id="dash-agenda-card" class="card-elevated p-3.5 bg-emerald-50/70 border-emerald-200/80">
+        <div class="flex items-center justify-between gap-2.5">
+            <div class="flex items-start gap-2.5 flex-1">
+                <div class="w-9 h-9 rounded-2xl bg-emerald-200/80 text-emerald-800 flex items-center justify-center text-sm mt-0.5 shadow-xs">
+                    <svg class="w-5 h-5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                    <h5 id="dash-agenda-title" class="text-xs font-bold text-emerald-900">Kalender Pendidikan</h5>
+                    <p id="dash-agenda-desc" class="text-[11px] text-emerald-700 mt-0.5 leading-tight">Lihat hari efektif KBM, hari libur &amp; agenda sekolah.</p>
+                </div>
+            </div>
+            <button onclick="SIAP_ROUTER.navigate('/calendar')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-[10px] font-bold shadow-xs transition shrink-0" aria-label="Buka Kalender Pendidikan">Kaldik</button>
         </div>
     </div>
 

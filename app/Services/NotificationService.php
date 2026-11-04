@@ -524,6 +524,40 @@ class NotificationService
                 }
             }
 
+            // =================================================================
+            // G. PENGINGAT TUTUP JURNAL PIKET (JELANG / SETELAH JAM BERAKHIR)
+            // Sasaran: Koordinator Piket Hari Ini
+            // =================================================================
+            $todayJournalForClosing = PiketJournal::whereDate('date', $todayStr)->first();
+            $isCoordinatorForClosing = $isCoordinatorPiketToday
+                || ($todayJournalForClosing && $todayJournalForClosing->coordinator_id === $user->id)
+                || $user->isSuperAdmin();
+
+            if ($isCoordinatorForClosing && (! $todayJournalForClosing || $todayJournalForClosing->status !== 'selesai')) {
+                $periodTimes = LessonSchedule::periodTimes($todayDay);
+                $lastPeriod = ! empty($periodTimes) ? end($periodTimes) : null;
+                $schoolEndTime = $lastPeriod['end'] ?? '15:00';
+                $endCarbon = Carbon::createFromTimeString($schoolEndTime);
+
+                // Ingatkan 45 menit sebelum jam sekolah berakhir atau setelah jam sekolah berakhir
+                if ($now->greaterThanOrEqualTo($endCarbon->copy()->subMinutes(45))) {
+                    $isPastEnd = $now->greaterThanOrEqualTo($endCarbon);
+                    $timeStatusText = $isPastEnd
+                        ? "Jam sekolah telah berakhir ({$schoolEndTime} WIB)"
+                        : "Jam sekolah segera berakhir ({$schoolEndTime} WIB)";
+
+                    $notifications->push([
+                        'id' => 'piket_close_journal_reminder',
+                        'title' => 'Pengingat Tutup Jurnal Piket',
+                        'message' => "{$timeStatusText}. Sebagai Koordinator Piket, mohon periksa seluruh catatan dan tutup jurnal piket hari ini.",
+                        'badge' => 'Tutup Jurnal',
+                        'badge_class' => 'bg-amber text-white',
+                        'icon' => 'ti ti-notebook text-warning',
+                        'url' => DeviceDetector::isMobile() ? url('/mobile#/tasks/piket') : route('piket.dashboard'),
+                    ]);
+                }
+            }
+
         } catch (\Throwable $e) {
             // Fail safely
         }

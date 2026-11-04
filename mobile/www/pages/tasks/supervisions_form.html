@@ -1,0 +1,433 @@
+<div class="space-y-3.5 pb-24">
+    <!-- Header Navigasi Sub-Halaman Kembali ke Supervisi -->
+    <div class="card-elevated p-3 flex items-center justify-between shadow-xs border-indigo-100 bg-white">
+        <div class="flex items-center gap-2.5">
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/supervisions')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95 shadow-xs" title="Kembali ke Supervisi">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Formulir Supervisi</h3>
+                <p class="text-[10px] text-slate-500">Observasi Kelas &amp; Perangkat Pembelajaran</p>
+            </div>
+        </div>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/supervisions')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition flex items-center gap-1 active:scale-95">
+            <span>✕</span>
+            <span>Kembali</span>
+        </button>
+    </div>
+
+    <!-- Loader Skeleton -->
+    <div id="spv-form-loader" class="space-y-3">
+        <div class="card-elevated p-4">
+            <div class="skeleton h-5 w-1/3 rounded mb-2"></div>
+            <div class="skeleton h-4 w-1/2 rounded mb-3"></div>
+            <div class="grid grid-cols-4 gap-2">
+                <div class="skeleton h-10 rounded-xl"></div>
+                <div class="skeleton h-10 rounded-xl"></div>
+                <div class="skeleton h-10 rounded-xl"></div>
+                <div class="skeleton h-10 rounded-xl"></div>
+            </div>
+        </div>
+        <div class="card-elevated p-4 space-y-2.5">
+            <div class="skeleton h-12 rounded-xl"></div>
+            <div class="skeleton h-12 rounded-xl"></div>
+            <div class="skeleton h-12 rounded-xl"></div>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="spv-form-error" class="hidden card-elevated p-6 text-center text-slate-500">
+        <span class="text-3xl block mb-2">⚠️</span>
+        <h4 id="spv-form-error-title" class="text-sm font-bold text-rose-600 mb-1">Gagal Memuat Berkas</h4>
+        <p id="spv-form-error-msg" class="text-xs text-slate-500 mb-4">Berkas supervisi tidak ditemukan atau Anda tidak memiliki akses.</p>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/supervisions')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+            Kembali ke Supervisi
+        </button>
+    </div>
+
+    <!-- Main Workspace Content -->
+    <div id="spv-form-content" class="hidden space-y-3.5">
+        
+        <!-- 1. Header Ringkasan Supervisi -->
+        <div class="card-elevated p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white relative overflow-hidden shadow-md">
+            <div class="flex items-start justify-between gap-2 mb-2">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/supervisions')" class="px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold flex items-center gap-1 transition active:scale-95" title="Kembali ke Supervisi">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                        <span>Supervisi</span>
+                    </button>
+                    <span id="form-spv-badge-status" class="px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/20 text-white border border-white/20">Draft</span>
+                    <span id="form-spv-score-tag" class="hidden px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500 text-white font-mono">-</span>
+                </div>
+                <span id="form-spv-report-no" class="text-[10px] text-indigo-300 font-mono font-medium truncate max-w-[140px]">-</span>
+            </div>
+
+            <h3 id="form-spv-subject" class="text-sm font-black text-white tracking-tight">Mata Pelajaran</h3>
+            <p id="form-spv-meta" class="text-[11px] text-slate-300 mt-0.5">Kelas &bull; Guru: - &bull; Spv: -</p>
+
+            <div class="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-indigo-200">
+                <div class="flex items-center gap-1">
+                    <span>📅</span>
+                    <span id="form-spv-schedule-time">Jadwal: -</span>
+                </div>
+                <div id="form-spv-draft-indicator" class="hidden flex items-center gap-1 text-emerald-400 font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Draf Tersimpan Otomatis</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Sticky Stepper Navigasi 4 Tahap -->
+        <div class="sticky top-0 z-30 bg-slate-100/90 backdrop-blur-md pt-1 pb-2">
+            <div class="flex bg-white rounded-2xl p-1 shadow-xs border border-slate-200 text-[11px] font-bold overflow-x-auto no-scrollbar">
+                <button type="button" onclick="switchFormStep(1)" id="form-step-btn-1" class="flex-1 min-w-[100px] py-2 px-2.5 rounded-xl bg-indigo-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs">
+                    <span>1. Pra &amp; RPP</span>
+                </button>
+                <button type="button" onclick="switchFormStep(2)" id="form-step-btn-2" class="flex-1 min-w-[105px] py-2 px-2.5 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
+                    <span>2. Observasi</span>
+                </button>
+                <button type="button" onclick="switchFormStep(3)" id="form-step-btn-3" class="flex-1 min-w-[95px] py-2 px-2.5 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
+                    <span>3. Foto KBM</span>
+                </button>
+                <button type="button" onclick="switchFormStep(4)" id="form-step-btn-4" class="flex-1 min-w-[105px] py-2 px-2.5 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
+                    <span>4. Pasca &amp; Sah</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- STEP 1: PRAOBSERVASI & RPP / MODUL AJAR        -->
+        <!-- ============================================== -->
+        <div id="form-step-content-1" class="space-y-3.5">
+            <!-- Info Petugas & Waktu Pelaksanaan -->
+            <div class="card-elevated p-3.5 space-y-2 text-xs">
+                <h4 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                    <span>Informasi Pelaksanaan Supervisi</span>
+                </h4>
+                <div class="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                    <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                        <span class="text-slate-400 block text-[10px]">Guru Yang Dinilai:</span>
+                        <span id="form-step1-teacher-name" class="font-bold text-slate-800 block truncate">-</span>
+                    </div>
+                    <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                        <span class="text-slate-400 block text-[10px]">Supervisor Penilai:</span>
+                        <span id="form-step1-supervisor-name" class="font-bold text-indigo-700 block truncate">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modul Ajar / RPP Section -->
+            <div class="card-elevated p-3.5 space-y-2.5 border-indigo-200 bg-indigo-50/30">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-black text-slate-800">Modul Ajar / RPP</h4>
+                            <p id="form-step1-rpp-filename" class="text-[10px] text-slate-500 truncate max-w-[220px]">Belum diunggah</p>
+                        </div>
+                    </div>
+                    <a id="form-step1-rpp-download" href="#" target="_blank" class="hidden px-3 py-1.5 rounded-xl bg-white border border-indigo-200 text-indigo-700 text-xs font-bold hover:bg-indigo-50 active:scale-95 transition flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Unduh</span>
+                    </a>
+                </div>
+
+                <!-- Form Upload RPP -->
+                <div id="form-step1-rpp-upload-box" class="pt-2.5 border-t border-indigo-100 space-y-2">
+                    <div class="space-y-2">
+                        <div class="relative w-full">
+                            <input type="file" id="form-step1-rpp-input" accept=".pdf,.doc,.docx" class="block w-full text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer border border-indigo-200/90 rounded-xl bg-white p-1 shadow-2xs focus:outline-none">
+                        </div>
+                        <button type="button" onclick="submitFormSupervisionRpp()" class="w-full py-2.5 px-3 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white font-bold text-xs shadow-xs active:scale-98 transition flex items-center justify-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                            <span>Unggah Modul Ajar / RPP</span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-500">Format didukung: PDF, DOC, DOCX (Maksimal 10 MB).</p>
+                </div>
+            </div>
+
+            <!-- Form Refleksi & Wawancara Praobservasi -->
+            <div class="card-elevated p-3.5 space-y-3">
+                <div class="border-b border-slate-100 pb-2">
+                    <h4 class="text-xs font-black text-slate-800">Refleksi Praobservasi Guru</h4>
+                    <p class="text-[10px] text-slate-500">Identifikasi kesiapan materi, metode, dan fokus pengamatan sebelum mengajar di kelas.</p>
+                </div>
+
+                <form id="form-spv-preobs" onsubmit="submitFormSupervisionPreObs(event)" class="space-y-3 text-xs">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Materi Pokok Pembelajaran <span class="text-rose-500">*</span></label>
+                        <input type="text" id="form-step1-material" required placeholder="Contoh: Pembuatan REST API dengan Autentikasi JWT" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Tujuan / Capaian Pembelajaran <span class="text-rose-500">*</span></label>
+                        <textarea id="form-step1-objectives" rows="2" required placeholder="Tujuan yang diharapkan dicapai peserta didik..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Model / Metode <span class="text-rose-500">*</span></label>
+                            <input type="text" id="form-step1-method" required placeholder="PjBL / Problem Solving" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Media / Alat Bantu</label>
+                            <input type="text" id="form-step1-media" placeholder="LCD, VS Code, Google Classroom" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Fokus Pengamatan Khusus</label>
+                        <input type="text" id="form-step1-focus" placeholder="Contoh: Interaksi dan kolaborasi antar peserta didik" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Catatan Kesiapan Guru (Opsional)</label>
+                        <textarea id="form-step1-readiness" rows="2" placeholder="Catatan tambahan mengenai kondisi kelas atau peserta didik..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300"></textarea>
+                    </div>
+
+                    <div id="form-step1-btn-box" class="pt-2 flex gap-2">
+                        <button type="submit" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            <span>Simpan Catatan Praobservasi</span>
+                        </button>
+                        <button type="button" onclick="switchFormStep(2)" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">
+                            Lanjut →
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- STEP 2: OBSERVASI KELAS (RUBRIK SKOR & FASE)   -->
+        <!-- ============================================== -->
+        <div id="form-step-content-2" class="hidden space-y-3.5">
+            
+            <!-- Sticky Score Bar -->
+            <div class="card-elevated p-3.5 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white flex items-center justify-between shadow-md">
+                <div>
+                    <span class="text-[9px] text-indigo-300 uppercase font-bold tracking-wider">Capaian Nilai Berjalan</span>
+                    <div class="flex items-baseline gap-1.5">
+                        <span id="form-step2-live-percentage" class="text-xl font-black font-mono">0.0%</span>
+                        <span id="form-step2-live-predicate" class="text-[11px] font-bold text-indigo-200">Belum Dinilai</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[9px] text-indigo-300 uppercase font-bold tracking-wider">Total Skor</span>
+                    <p id="form-step2-live-score-fraction" class="text-sm font-mono font-bold text-white">0 / 0</p>
+                    <span id="form-step2-live-count" class="text-[9px] text-indigo-200 font-sans block">0/0 Butir Terisi</span>
+                </div>
+            </div>
+
+            <!-- Notice Self-Assessment Guru -->
+            <div id="form-step2-self-assessment-notice" class="hidden p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5">
+                <span class="text-lg">📝</span>
+                <div>
+                    <span class="font-bold block">Mode Penilaian Mandiri (Self Assessment)</span>
+                    <span class="text-[10px] text-amber-800">Anda dapat menilai butir observasi kelas ini sebagai evaluasi dan refleksi diri.</span>
+                </div>
+            </div>
+
+            <!-- Tanggal & Jam Pelaksanaan Observasi -->
+            <div class="card-elevated p-3 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Tanggal Observasi</label>
+                        <input type="date" id="form-step2-obs-date" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Waktu / Jam</label>
+                        <input type="time" id="form-step2-obs-time" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 bg-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accordion Controls: Buka / Tutup Semua -->
+            <div class="flex items-center justify-between px-1">
+                <span class="text-xs font-black text-slate-800">Fase &amp; Indikator Observasi</span>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="toggleAllRubricPhases(true)" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">Buka Semua</button>
+                    <button type="button" onclick="toggleAllRubricPhases(false)" class="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 transition">Tutup Semua</button>
+                </div>
+            </div>
+
+            <!-- Container Rubrik Fase & Indikator (Accordion Cards) -->
+            <div id="form-step2-rubric-phases" class="space-y-3">
+                <div class="text-center py-6 text-xs text-slate-400">Memuat rubrik penilaian observasi...</div>
+            </div>
+
+            <!-- Tombol Aksi Simpan Observasi -->
+            <div id="form-step2-btn-container" class="pt-2 flex gap-2">
+                <button type="button" onclick="submitFormSupervisionObservation()" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    <span id="form-step2-btn-save-label">Simpan Nilai Observasi Kelas</span>
+                </button>
+                <button type="button" onclick="switchFormStep(3)" class="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">
+                    Lanjut Foto →
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- STEP 3: FOTO KBM DOKUMENTASI KEGIATAN          -->
+        <!-- ============================================== -->
+        <div id="form-step-content-3" class="hidden space-y-3.5">
+            <!-- Upload Box (Kamera & Galeri) -->
+            <div id="form-step3-upload-card" class="card-elevated p-3.5 border-indigo-200 bg-indigo-50/40 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-black text-slate-800">Unggah Dokumentasi Kegiatan KBM</h4>
+                    <span class="text-[10px] text-slate-500 font-medium">Maks. 5 Foto</span>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-tight">Ambil foto suasana kegiatan belajar mengajar langsung dari kamera atau pilih foto dari galeri HP Anda.</p>
+
+                <form id="form-spv-upload-photo" onsubmit="submitFormSupervisionPhoto(event)" class="space-y-2.5">
+                    <div>
+                        <label for="form-step3-photo-input" class="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            <span id="form-step3-photo-label">Buka Kamera / Pilih Foto Galeri</span>
+                        </label>
+                        <!-- Tanpa capture="environment" agar pengguna bisa memilih antara kamera langsung atau galeri foto -->
+                        <input type="file" id="form-step3-photo-input" accept="image/*" onchange="previewFormSelectedPhoto(this)" class="hidden">
+                    </div>
+
+                    <div id="form-step3-preview-box" class="hidden p-2 rounded-xl bg-white border border-indigo-200 space-y-2">
+                        <img id="form-step3-preview-img" src="" alt="Preview" class="w-full h-40 object-cover rounded-lg">
+                        <input type="text" id="form-step3-caption-input" placeholder="Keterangan foto (contoh: Diskusi kelompok peserta didik)" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300">
+                        <div class="flex gap-2">
+                            <button type="submit" class="flex-1 py-2 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 active:scale-95 transition">Unggah Foto Sekarang</button>
+                            <button type="button" onclick="cancelFormPhotoPreview()" class="px-3 py-2 rounded-lg bg-slate-100 text-slate-600 font-bold text-xs">Batal</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Galeri Foto Grid -->
+            <div class="card-elevated p-3.5 space-y-2">
+                <h4 class="text-xs font-black text-slate-800">Galeri Foto Terlampir</h4>
+                <div id="form-step3-photos-grid" class="grid grid-cols-2 gap-2.5">
+                    <div class="col-span-2 text-center py-6 text-xs text-slate-400">Belum ada foto dokumentasi KBM.</div>
+                </div>
+            </div>
+
+            <!-- Navigasi Lanjut -->
+            <div class="pt-2 flex justify-end">
+                <button type="button" onclick="switchFormStep(4)" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm active:scale-95 transition">
+                    Lanjut ke Pascaobservasi &amp; Pengesahan →
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- STEP 4: PASCAOBSERVASI & PENGESAHAN            -->
+        <!-- ============================================== -->
+        <div id="form-step-content-4" class="hidden space-y-3.5">
+            <!-- Form Pascaobservasi & Dialog Evaluasi -->
+            <div class="card-elevated p-3.5 space-y-3">
+                <div class="border-b border-slate-100 pb-2">
+                    <h4 class="text-xs font-black text-slate-800">Catatan &amp; Umpan Balik Pascaobservasi</h4>
+                    <p class="text-[10px] text-slate-500">Refleksi dialog antara supervisor dan guru mengenai hasil pengamatan proses KBM.</p>
+                </div>
+
+                <form id="form-spv-postobs" onsubmit="submitFormSupervisionPostObs(event)" class="space-y-3 text-xs">
+                    <div class="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                        <label class="block text-[11px] font-bold text-emerald-950 mb-1">Aspek Positif / Keberhasilan <span class="text-rose-500">*</span></label>
+                        <textarea id="form-step4-positive" rows="2" required placeholder="Hal baik yang teramati: penguasaan materi kuat, interaksi kelas aktif..." class="w-full px-3 py-1.5 text-xs rounded-lg border border-emerald-300 bg-white focus:border-emerald-600"></textarea>
+                    </div>
+                    <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200">
+                        <label class="block text-[11px] font-bold text-amber-950 mb-1">Aspek yang Perlu Ditingkatkan <span class="text-rose-500">*</span></label>
+                        <textarea id="form-step4-improvement" rows="2" required placeholder="Hal yang perlu ditingkatkan: alokasi waktu pada penutup..." class="w-full px-3 py-1.5 text-xs rounded-lg border border-amber-300 bg-white focus:border-amber-600"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Rekomendasi Supervisor <span class="text-rose-500">*</span></label>
+                        <textarea id="form-step4-recommendation" rows="2" required placeholder="Saran konstruktif untuk guru yang disupervisi..." class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Rencana Tindak Lanjut (RTL) <span class="text-rose-500">*</span></label>
+                        <input type="text" id="form-step4-followup" required placeholder="Contoh: Mengikuti workshop modul ajar interaktif atau MGMP" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300">
+                    </div>
+
+                    <div id="form-step4-save-btn-box">
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-xs active:scale-95 transition">
+                            Simpan Umpan Balik Pascaobservasi
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- KOTAK FINALISASI OLEH SUPERVISOR -->
+            <div id="form-step4-supervisor-finalize-card" class="hidden card-elevated p-3.5 border-indigo-300 bg-indigo-50/50 space-y-2.5">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Finalisasi Penilaian Supervisor</h4>
+                        <p class="text-[10px] text-slate-500">Tanda tangani berkas secara digital &amp; ajukan ke Kepala Sekolah</p>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-600 leading-tight">Setelah difinalisasi, laporan tidak dapat diedit lagi dan akan diteruskan ke Kepala Sekolah untuk disahkan secara resmi.</p>
+                <button type="button" onclick="submitFormFinalizeSupervision()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                    <span>Tanda Tangani &amp; Ajukan ke KS</span>
+                </button>
+            </div>
+
+            <!-- KOTAK APPROVAL KEPALA SEKOLAH -->
+            <div id="form-step4-principal-approval-card" class="hidden card-elevated p-3.5 border-amber-300 bg-amber-50/50 space-y-2.5">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Persetujuan Kepala Sekolah</h4>
+                        <p class="text-[10px] text-amber-800 font-medium">Validasi &amp; Pengesahan Laporan Supervisi</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-700 mb-1">Catatan Kepala Sekolah</label>
+                    <textarea id="form-step4-principal-notes" rows="2" placeholder="Catatan atau masukan dari Kepala Sekolah..." class="w-full px-3 py-1.5 text-xs rounded-xl border border-amber-300 bg-white">Telah diperiksa dan disetujui.</textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button type="button" onclick="submitFormApprovalAction('approve')" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm active:scale-95 transition flex items-center justify-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        <span>Setujui &amp; Sahkan</span>
+                    </button>
+                    <button type="button" onclick="submitFormApprovalAction('reject')" class="py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 font-bold text-xs active:scale-95 transition flex items-center justify-center gap-1">
+                        <span>Minta Revisi</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KOTAK DOKUMEN RESMI DISAHKAN -->
+            <div id="form-step4-approved-card" class="hidden card-elevated p-4 border-emerald-200 bg-emerald-50/50 space-y-2">
+                <div class="flex items-center gap-2 text-emerald-800 font-black text-xs">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">✓</span>
+                    <span>Laporan Supervisi Telah Resmi Disahkan</span>
+                </div>
+                <p id="form-step4-approved-info" class="text-[11px] text-emerald-900 leading-relaxed">-</p>
+                <div id="form-step4-qr-box" class="pt-2 border-t border-emerald-200 text-[10px] text-slate-500 font-mono">
+                    Token Validasi: <span id="form-step4-qr-token" class="font-bold text-slate-800">-</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Sticky Floating Bottom Action Bar -->
+    <div id="spv-form-bottom-bar" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-xl max-w-lg mx-auto">
+        <div class="flex items-center justify-between gap-2">
+            <button type="button" onclick="navigateStep(-1)" id="btn-bottom-prev" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1">
+                <span>←</span><span>Kembali</span>
+            </button>
+            <div class="text-center">
+                <span id="bottom-step-indicator" class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Tahap 1 / 4</span>
+                <span id="bottom-score-preview" class="text-xs font-mono font-black text-slate-800">Skor: -</span>
+            </div>
+            <button type="button" onclick="navigateStep(1)" id="btn-bottom-next" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition flex items-center gap-1">
+                <span>Lanjut</span><span>→</span>
+            </button>
+        </div>
+    </div>
+</div>

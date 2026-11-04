@@ -14,6 +14,7 @@ class PiketStudentPermit extends Model
     protected $fillable = [
         'piket_journal_id',
         'permit_number',
+        'batch_id',
         'permit_date',
         'end_date',
         'student_id',

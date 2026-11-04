@@ -83,6 +83,9 @@ Route::get('/verifikasi/{token}', [VerificationController::class, 'verify'])->na
 Route::get('/piket/perizinan/{permit}/slip-cetak', [PiketPermitController::class, 'printSlip'])
     ->name('piket.permits.signed-slip')
     ->middleware('signed');
+Route::get('/piket/perizinan/batch/{batchId}/slip-cetak', [PiketPermitController::class, 'printBatchSlip'])
+    ->name('piket.permits.batch-signed-slip')
+    ->middleware('signed');
 Route::match(['GET', 'POST'], '/telegram/webhook', [TelegramBotWebhookController::class, 'handle'])->name('telegram.webhook');
 
 // Jalur Komunikasi Mesin Absensi (ADMS / IClock Protocol)
@@ -492,6 +495,7 @@ Route::middleware('auth')->group(function () {
             Route::post('perizinan', [PiketPermitController::class, 'store'])->name('permits.store');
             Route::get('perizinan/{permit}', [PiketPermitController::class, 'show'])->name('permits.show');
             Route::get('perizinan/{permit}/slip', [PiketPermitController::class, 'printSlip'])->name('permits.slip');
+            Route::get('perizinan/batch/{batchId}/slip', [PiketPermitController::class, 'printBatchSlip'])->name('permits.batch-slip');
             Route::delete('perizinan/{permit}', [PiketPermitController::class, 'destroy'])->name('permits.destroy');
         });
 
@@ -531,6 +535,7 @@ Route::middleware('auth')->group(function () {
             Route::get('laporan', [PiketReportController::class, 'index'])->name('reports.index');
             Route::get('laporan/cetak', [PiketReportController::class, 'print'])->name('reports.print');
             Route::get('laporan/ekspor', [PiketReportController::class, 'export'])->name('reports.export');
+            Route::get('laporan/unduh-pdf', [PiketReportController::class, 'exportPdf'])->name('reports.pdf');
         });
 
         // 11. Data Siswa
@@ -664,6 +669,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/laporan/cetak', [AttendanceController::class, 'printReport'])->name('report.print');
         Route::get('/laporan/guru-staf', [AttendanceController::class, 'reportTeachers'])->name('report.teachers');
         Route::get('/laporan/guru-staf/cetak', [AttendanceController::class, 'printReportTeachers'])->name('report.teachers.print');
+        Route::get('/laporan/guru-staf/unduh-pdf', [AttendanceController::class, 'exportReportTeachersPdf'])->name('report.teachers.pdf');
+        Route::get('/laporan/guru-staf/ekspor-excel', [AttendanceController::class, 'exportReportTeachersExcel'])->name('report.teachers.excel');
         Route::get('/laporan/siswa', [AttendanceController::class, 'reportStudents'])->name('report.students');
         Route::get('/laporan/siswa/cetak', [AttendanceController::class, 'printReportStudents'])->name('report.students.print');
 

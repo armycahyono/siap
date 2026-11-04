@@ -1,0 +1,182 @@
+<div class="space-y-3 pb-12">
+    <!-- Sub-page Header -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Rekap Presensi Kelas</h3>
+                <p id="recap-classroom-sub" class="text-[10px] text-slate-400">Perwalian Siswa &amp; Analisis Kehadiran</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button type="button" onclick="openHomeroomExportModal()" class="px-2 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition" title="Ekspor PDF / Excel">
+                <span>📥</span><span>Ekspor</span>
+            </button>
+            <button type="button" onclick="refreshHomeroomRecap()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Card: Kelas & Mode Segmented -->
+    <div class="card-elevated p-3 space-y-2.5">
+        <!-- Pilihan Kelas -->
+        <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-1">Pilih Kelas</label>
+            <select id="recap-classroom-select" onchange="onHomeroomClassroomChange(this.value)" class="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500">
+                <option value="">Memuat daftar kelas...</option>
+            </select>
+        </div>
+
+        <!-- 6 Mode Segmented Grid -->
+        <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" id="btn-mode-daily" onclick="setHomeroomRecapMode('daily')" class="py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs">
+                <span>🕒</span><span>Harian</span>
+            </button>
+            <button type="button" id="btn-mode-weekly" onclick="setHomeroomRecapMode('weekly')" class="py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span>📅</span><span>Mingguan</span>
+            </button>
+            <button type="button" id="btn-mode-monthly" onclick="setHomeroomRecapMode('monthly')" class="py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span>🗓️</span><span>Bulanan</span>
+            </button>
+            <button type="button" id="btn-mode-semester" onclick="setHomeroomRecapMode('semester')" class="py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span>🎓</span><span>Semester</span>
+            </button>
+            <button type="button" id="btn-mode-yearly" onclick="setHomeroomRecapMode('yearly')" class="py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span>📊</span><span>Tahunan</span>
+            </button>
+            <button type="button" id="btn-mode-custom" onclick="setHomeroomRecapMode('custom')" class="py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <span>⏱️</span><span>Rentang</span>
+            </button>
+        </div>
+
+        <!-- Dynamic Context Parameter per Mode -->
+        <div id="recap-context-inputs" class="p-2 rounded-xl bg-slate-50 border border-slate-100">
+            <!-- Mode Harian & Mingguan -->
+            <div id="input-wrap-date" class="flex items-center gap-1.5">
+                <button type="button" onclick="navigateHomeroomDate(-1)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs hover:bg-slate-50 active:scale-95">◀</button>
+                <input type="date" id="recap-input-date" onchange="onHomeroomDateChange(this.value)" class="flex-1 text-xs font-semibold p-1.5 rounded-lg border border-slate-200 bg-white text-center text-slate-800">
+                <button type="button" onclick="navigateHomeroomDate(1)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs hover:bg-slate-50 active:scale-95">▶</button>
+            </div>
+
+            <!-- Mode Semester -->
+            <div id="input-wrap-semester" class="hidden flex items-center gap-2">
+                <span class="text-[10px] font-bold text-slate-500 text-nowrap">Semester:</span>
+                <select id="recap-input-semester" onchange="onHomeroomSemesterChange(this.value)" class="flex-1 text-xs font-bold p-1.5 rounded-lg border border-slate-200 bg-white">
+                    <option value="ganjil">Semester Ganjil (Juli - Des)</option>
+                    <option value="genap">Semester Genap (Jan - Juni)</option>
+                </select>
+            </div>
+
+            <!-- Mode Rentang Tanggal -->
+            <div id="input-wrap-custom" class="hidden flex items-center gap-1.5">
+                <input type="date" id="recap-input-start-date" class="w-1/2 text-[11px] font-semibold p-1.5 rounded-lg border border-slate-200 bg-white">
+                <span class="text-xs text-slate-400">-</span>
+                <input type="date" id="recap-input-end-date" class="w-1/2 text-[11px] font-semibold p-1.5 rounded-lg border border-slate-200 bg-white">
+                <button type="button" onclick="applyCustomDateRange()" class="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs active:scale-95">Set</button>
+            </div>
+
+            <!-- Mode Tahunan -->
+            <div id="input-wrap-yearly" class="hidden text-center text-xs text-slate-600 font-semibold py-1">
+                Tahun Ajaran Penuh: <span id="recap-yearly-label" class="font-bold text-slate-900">-</span>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi Ekspor -->
+        <div class="grid grid-cols-3 gap-1.5 pt-1 border-t border-slate-100">
+            <a id="btn-export-excel" href="#" target="_blank" class="py-1.5 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center justify-center gap-1 transition">
+                <span>📗</span><span>Excel</span>
+            </a>
+            <a id="btn-export-pdf" href="#" target="_blank" class="py-1.5 px-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 text-[10px] font-bold flex items-center justify-center gap-1 transition">
+                <span>📕</span><span>Unduh PDF</span>
+            </a>
+            <a id="btn-export-print" href="#" target="_blank" class="py-1.5 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 text-[10px] font-bold flex items-center justify-center gap-1 transition">
+                <span>🖨️</span><span>Cetak</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Switch Siswa Berisiko Tinggi (Khusus Mode Bulanan, Semester, Tahunan, Rentang) -->
+    <div id="recap-risk-toggle-card" class="card-elevated p-2.5 flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+        <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs shadow-xs">⚠️</div>
+            <div>
+                <span class="text-xs font-black text-amber-950 block">Filter Siswa Berisiko</span>
+                <span class="text-[9px] text-amber-800">Alfa ≥ 3 atau Tingkat Kehadiran &lt; 80%</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="recap-risk-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white font-mono">0 Siswa</span>
+            <input type="checkbox" id="recap-risk-checkbox" onchange="toggleRiskFilter(this.checked)" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+        </div>
+    </div>
+
+    <!-- Ringkasan Statistik -->
+    <div id="recap-stats-card" class="card-elevated p-3">
+        <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Ringkasan Kehadiran Rombel</h4>
+        <div id="recap-stats-grid" class="grid grid-cols-4 gap-1.5 text-center">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+
+    <!-- Container Konten Tabel / Kartu Siswa -->
+    <div id="recap-content-container" class="space-y-2">
+        <div class="text-center py-10 text-xs text-slate-400">Memuat data rekap presensi...</div>
+    </div>
+
+    <!-- Modal Ekspor Laporan Siswa (PDF / Excel) -->
+    <div id="modal-homeroom-export" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="w-full max-w-sm bg-white rounded-t-3xl sm:rounded-2xl p-4 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <span class="w-7 h-7 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">📥</span>
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">Ekspor Laporan Siswa</h4>
+                        <p class="text-[10px] text-slate-400">Unduh dokumen resmi PDF atau file Excel</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeHomeroomExportModal()" class="w-7 h-7 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center text-xs">✕</button>
+            </div>
+
+            <!-- Pilihan Jenis Data -->
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1.5">Jenis Data Laporan</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="export-type-attendance" onclick="setExportReportType('attendance')" class="p-2 rounded-xl border text-left text-xs font-bold transition flex items-center gap-1.5 border-blue-500 bg-blue-50/50 text-blue-800">
+                        <span>📊</span><span>Rekap Presensi</span>
+                    </button>
+                    <button type="button" id="export-type-incidents" onclick="setExportReportType('incidents')" class="p-2 rounded-xl border text-left text-xs font-bold transition flex items-center gap-1.5 border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                        <span>🚨</span><span>Rekap Kejadian</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rentang Periode -->
+            <div class="space-y-1.5">
+                <label class="block text-[10px] font-bold text-slate-500">Rentang Periode Tanggal</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <span class="block text-[9px] text-slate-400 mb-0.5">Dari Tanggal</span>
+                        <input type="date" id="export-start-date" class="w-full text-xs font-semibold p-1.5 rounded-xl border border-slate-200 bg-slate-50">
+                    </div>
+                    <div>
+                        <span class="block text-[9px] text-slate-400 mb-0.5">Sampai Tanggal</span>
+                        <input type="date" id="export-end-date" class="w-full text-xs font-semibold p-1.5 rounded-xl border border-slate-200 bg-slate-50">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tombol Aksi Unduh -->
+            <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                <button type="button" onclick="triggerHomeroomExport('pdf')" class="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition">
+                    <span>📄</span><span>Unduh PDF</span>
+                </button>
+                <button type="button" onclick="triggerHomeroomExport('excel')" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition">
+                    <span>📊</span><span>Unduh Excel</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

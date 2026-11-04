@@ -31,6 +31,23 @@
 
     <!-- Main Content -->
     <div id="kbm-take-content" class="hidden space-y-3.5">
+        <!-- 0. Header Sub-Halaman dengan Tombol Kembali -->
+        <div class="card-elevated p-3 flex items-center justify-between shadow-xs">
+            <div class="flex items-center gap-2.5">
+                <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95 shadow-xs" title="Kembali ke Jadwal KBM">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div>
+                    <h3 class="text-xs font-black text-slate-800">Presensi &amp; Jurnal KBM</h3>
+                    <p class="text-[10px] text-slate-400">Pengisian Presensi Kelas &amp; Jurnal Mengajar</p>
+                </div>
+            </div>
+            <button type="button" onclick="history.back()" class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition flex items-center gap-1 active:scale-95">
+                <span>✕</span>
+                <span>Tutup</span>
+            </button>
+        </div>
+
         <!-- 1. Header Jadwal Pelajaran -->
         <div class="card-elevated p-4 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 border-blue-200/60 shadow-xs">
             <div class="flex items-start justify-between gap-2 mb-2">
@@ -88,15 +105,17 @@
             </div>
         </div>
 
-        <!-- 3. Toolbar: Tandai Semua Hadir & Pencarian Siswa -->
-        <div class="flex items-center gap-2">
-            <button type="button" id="btn-mark-all-present" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs active:scale-95 transition shrink-0">
-                <span>⚡</span>
-                <span>Tandai Semua Hadir</span>
+        <!-- 3. Toolbar: Tandai Semua Hadir, Semua Dispen & Pencarian Siswa -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" id="btn-mark-all-present" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs active:scale-95 transition shrink-0">
+                <span>⚡ Semua Hadir</span>
             </button>
-            <div class="relative flex-1">
-                <input type="text" id="take-search-input" placeholder="Cari nama atau NIS siswa..." class="w-full pl-8 pr-3 py-2 text-xs bg-white rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
-                <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
+            <button type="button" id="btn-mark-all-dispen" class="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-xs active:scale-95 transition shrink-0">
+                <span>🏷️ Semua Dispen</span>
+            </button>
+            <div class="relative flex-1 min-w-[140px]">
+                <input type="text" id="take-search-input" placeholder="Cari nama atau NIS siswa..." class="w-full pl-7 pr-3 py-1.5 text-xs bg-white rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <span class="absolute left-2.5 top-2 text-[10px] text-slate-400">🔍</span>
             </div>
         </div>
 
@@ -129,11 +148,28 @@
                 <span class="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">KBM Hari Ini</span>
             </div>
 
+            <!-- Peran Mengajar / Guru Pengganti / Tukar Jam -->
+            <div class="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/80 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-amber-900 flex items-center gap-1">
+                        <span>🔄</span> Status Penugasan Guru
+                    </span>
+                </div>
+                <select id="take-swap-type" class="w-full px-2.5 py-1.5 text-xs rounded-lg border border-amber-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-amber-500">
+                    <option value="">Reguler (Sesuai Jadwal Tertera)</option>
+                    <option value="guru_pengganti">Guru Pengganti</option>
+                    <option value="tukar_jam">Tukar Jam Pelajaran</option>
+                    <option value="inval">Inval Meja Piket</option>
+                    <option value="mandiri">Jam Tambahan / Mandiri</option>
+                </select>
+                <input type="text" id="take-swap-notes" placeholder="Catatan pergantian guru / alasan tukar jam (opsional)..." class="w-full px-2.5 py-1.5 text-[11px] rounded-lg border border-amber-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500">
+            </div>
+
             <div>
                 <label for="take-topic-input" class="block text-[11px] font-bold text-slate-700 mb-1">
-                    Topik / Materi Pokok Pembelajaran <span class="text-rose-500">*</span>
+                    Topik / Materi Pokok Pembelajaran <span class="text-[10px] font-normal text-slate-400">(Opsional)</span>
                 </label>
-                <textarea id="take-topic-input" rows="2" placeholder="Contoh: Logaritma Basis 10, Praktik Pengelasan Sambungan Tumpul, dsb..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition leading-relaxed"></textarea>
+                <textarea id="take-topic-input" rows="2" placeholder="Contoh: Logaritma Basis 10, Praktik Pengelasan Sambungan Tumpul (Opsional)..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition leading-relaxed"></textarea>
             </div>
 
             <div>

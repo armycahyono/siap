@@ -1,0 +1,103 @@
+<div class="space-y-3 pb-28">
+    <!-- Header Sub-Halaman dengan Navigasi Kembali -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali ke Meja Piket">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Jadwal Live KBM Kelas</h3>
+                <p id="piket-kbm-date-label" class="text-[10px] text-slate-400">Memuat status waktu...</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button type="button" onclick="loadTasksPiketLiveKbm()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang Data">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Banner Info Jam KBM / Istirahat / Di Luar KBM -->
+    <div id="piket-kbm-period-banner" class="card-elevated p-3 border-blue-200 bg-gradient-to-r from-blue-50/70 to-indigo-50/50">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    🕒
+                </div>
+                <div>
+                    <h4 id="piket-kbm-active-period-title" class="text-xs font-black text-slate-800">Memuat Jam KBM...</h4>
+                    <p id="piket-kbm-active-period-desc" class="text-[10px] text-slate-500">Mendeteksi jadwal aktif saat ini...</p>
+                </div>
+            </div>
+            <span id="piket-kbm-current-time-badge" class="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-200">
+                --:--
+            </span>
+        </div>
+        <div id="piket-kbm-break-alert" class="hidden mt-2 p-2 rounded-lg bg-amber-100/80 border border-amber-200 text-amber-900 text-[10px] font-medium flex items-center gap-1.5">
+            <span>☕</span><span id="piket-kbm-break-text">-</span>
+        </div>
+    </div>
+
+    <!-- Pilihan Jam Pelajaran (Horizontally Scrollable Chips) -->
+    <div class="space-y-1">
+        <div class="flex items-center justify-between text-[11px] px-0.5">
+            <span class="font-bold text-slate-600">Pilih Jam Pelajaran:</span>
+            <span id="piket-kbm-selected-period-label" class="text-[10px] font-semibold text-blue-700">Jam 1</span>
+        </div>
+        <div id="piket-kbm-period-selector" class="flex gap-1.5 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar scroll-smooth">
+            <!-- Rendered by JS -->
+            <span class="text-[10px] text-slate-400">Memuat jam pelajaran...</span>
+        </div>
+    </div>
+
+    <!-- Ringkasan Status Presensi Jam Terpilih -->
+    <div class="grid grid-cols-4 gap-1.5 text-center text-xs">
+        <button type="button" onclick="filterPiketKbm('all')" id="btn-filter-kbm-all" class="card-elevated p-2 border-slate-200 bg-white hover:bg-slate-50 transition active:scale-95 shadow-xs">
+            <span class="text-[10px] font-bold text-slate-500 block leading-tight">Total</span>
+            <span id="kbm-stat-total" class="text-sm font-black text-slate-800 mt-0.5 font-mono">0</span>
+        </button>
+        <button type="button" onclick="filterPiketKbm('attended')" id="btn-filter-kbm-attended" class="card-elevated p-2 border-emerald-200 bg-white hover:bg-emerald-50 transition active:scale-95 shadow-xs">
+            <span class="text-[10px] font-bold text-emerald-600 block leading-tight">Diabsen</span>
+            <span id="kbm-stat-attended" class="text-sm font-black text-emerald-600 mt-0.5 font-mono">0</span>
+        </button>
+        <button type="button" onclick="filterPiketKbm('unattended')" id="btn-filter-kbm-unattended" class="card-elevated p-2 border-rose-200 bg-white hover:bg-rose-50 transition active:scale-95 shadow-xs">
+            <span class="text-[10px] font-bold text-rose-600 block leading-tight">Belum Absen</span>
+            <span id="kbm-stat-unattended" class="text-sm font-black text-rose-600 mt-0.5 font-mono">0</span>
+        </button>
+        <button type="button" onclick="filterPiketKbm('inval')" id="btn-filter-kbm-inval" class="card-elevated p-2 border-amber-200 bg-white hover:bg-amber-50 transition active:scale-95 shadow-xs">
+            <span class="text-[10px] font-bold text-amber-600 block leading-tight">Inval / Kosong</span>
+            <span id="kbm-stat-inval" class="text-sm font-black text-amber-600 mt-0.5 font-mono">0</span>
+        </button>
+    </div>
+
+    <!-- Kolom Pencarian Kelas / Guru / Mapel -->
+    <div class="card-elevated p-2">
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </span>
+            <input type="text" id="piket-kbm-search-input" oninput="onPiketKbmSearchChange(this.value)" placeholder="Cari nama kelas, wali kelas, guru, mapel..." class="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-blue-500">
+            <button type="button" id="piket-kbm-search-clear" onclick="clearPiketKbmSearch()" class="hidden absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600">
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <!-- Daftar Jadwal Kelas & Absensi Live -->
+    <div class="space-y-2">
+        <div class="flex items-center justify-between px-0.5 text-xs">
+            <h4 class="font-bold text-slate-700 flex items-center gap-1.5">
+                <span>🏫</span><span>Daftar Kelas &amp; Status Presensi</span>
+            </h4>
+            <span id="piket-kbm-classes-count" class="text-[10px] font-semibold text-slate-400">0 Kelas</span>
+        </div>
+
+        <div id="piket-kbm-classes-list" class="space-y-2">
+            <!-- Rendered by JS -->
+            <div class="card-elevated p-6 text-center text-xs text-slate-400">
+                <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                Memuat jadwal live kelas...
+            </div>
+        </div>
+    </div>
+</div>

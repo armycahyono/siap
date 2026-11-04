@@ -12,6 +12,8 @@ use App\Models\PiketStudentPermit;
 use App\Models\SchoolSetting;
 use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
+use App\Services\SimpleXlsxGenerator;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -121,6 +123,71 @@ class PiketReportController extends Controller
         $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->toDateString());
         $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());
         $classroomId = $request->query('classroom_id');
+
+        $classroom = $classroomId ? Classroom::find($classroomId) : null;
+        $className = $classroom ? str_replace([' ', '/', '\\'], '_', $classroom->name) : '';
+
+        if ($request->query('format') === 'xlsx') {
+            $xlsxFilename = "Rekap_Piket_{$tab}_".($className ? "{$className}_" : '')."{$startDate}_sd_{$endDate}.xlsx";
+
+            if ($tab === 'incidents') {
+                $headers = ['No', 'Tanggal', 'Waktu', 'Nama Siswa', 'Kelas', 'Kategori', 'Uraian Kasus', 'Tindakan Piket', 'Barang Sitaan', 'Sanksi Kedisiplinan', 'Tindak Lanjut', 'Status Kasus', 'Status Verifikasi', 'Petugas Pencatat'];
+                $query = PiketIncident::with(['classroom', 'recordedBy', 'verifiedBy'])
+                    ->whereBetween('incident_date', [$startDate, $endDate]);
+                if ($classroomId) {
+                    $query->where('classroom_id', $classroomId);
+                }
+                $rows = $query->orderBy('incident_date')->get();
+                $xlsxRows = [];
+                foreach ($rows as $idx => $r) {
+                    $xlsxRows[] = [
+                        (string) ($idx + 1),
+                        (string) $r->incident_date?->format('d/m/Y'),
+                        (string) substr((string) $r->incident_time, 0, 5),
+                        (string) $r->student_name,
+                        (string) ($r->classroom?->name ?? '-'),
+                        (string) $r->category_label,
+                        (string) $r->description,
+                        (string) ($r->action_taken ?: '-'),
+                        (string) ($r->confiscated_items ?: '-'),
+                        (string) ($r->discipline_action ?: '-'),
+                        (string) $r->follow_up_label,
+                        (string) ucfirst((string) $r->status),
+                        (string) ($r->is_verified ? 'Terverifikasi' : 'Belum Diverifikasi'),
+                        (string) ($r->recordedBy?->name ?? '-'),
+                    ];
+                }
+
+                return SimpleXlsxGenerator::download($xlsxFilename, 'Rekap Kejadian', $headers, $xlsxRows);
+            }
+
+            if ($tab === 'permits') {
+                $headers = ['No', 'Nomor Izin', 'Tanggal', 'Nama Siswa', 'Kelas', 'Jenis Izin', 'Waktu', 'Alasan', 'Tindakan', 'Petugas'];
+                $query = PiketStudentPermit::with(['classroom', 'givenBy'])
+                    ->whereBetween('permit_date', [$startDate, $endDate]);
+                if ($classroomId) {
+                    $query->where('classroom_id', $classroomId);
+                }
+                $rows = $query->orderBy('permit_date')->get();
+                $xlsxRows = [];
+                foreach ($rows as $idx => $r) {
+                    $xlsxRows[] = [
+                        (string) ($idx + 1),
+                        (string) $r->permit_number,
+                        (string) $r->permit_date?->format('d/m/Y'),
+                        (string) $r->student_name,
+                        (string) ($r->classroom?->name ?? '-'),
+                        (string) $r->permit_type_label,
+                        (string) ($r->entry_time ?: ($r->departure_time ?: '-')),
+                        (string) $r->reason,
+                        (string) ($r->action_taken ?: '-'),
+                        (string) ($r->givenBy?->name ?? '-'),
+                    ];
+                }
+
+                return SimpleXlsxGenerator::download($xlsxFilename, 'Rekap Izin Siswa', $headers, $xlsxRows);
+            }
+        }
 
         $filename = "rekap-piket-{$tab}-{$startDate}-sd-{$endDate}.csv";
 
@@ -274,5 +341,56 @@ class PiketReportController extends Controller
             'setting',
             'academicYear'
         ));
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $academicYearContext = app(AcademicYearContext::class);
+        try {
+            $academicYear = $academicYearContext->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = $academicYearContext->getViewingYear();
+        }
+        $setting = SchoolSetting::getSetting();
+        $tab = $request->query('tab', 'incidents');
+        $startDate = $request->query('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());
+        $classroomId = $request->query('classroom_id');
+
+        $classroom = $classroomId ? Classroom::find($classroomId) : null;
+        $className = $classroom ? str_replace([' ', '/', '\\'], '_', $classroom->name) : '';
+
+        $permits = ($tab === 'permits')
+            ? PiketStudentPermit::with(['classroom', 'givenBy'])->whereBetween('permit_date', [$startDate, $endDate])->when($classroomId, fn ($q) => $q->where('classroom_id', $classroomId))->orderBy('permit_date')->get()
+            : collect();
+
+        $invals = ($tab === 'inval')
+            ? PiketInvalClass::with(['journal', 'classroom', 'absentTeacher', 'invalTeacher', 'subject'])->whereHas('journal', fn ($q) => $q->whereBetween('date', [$startDate, $endDate]))->when($classroomId, fn ($q) => $q->where('classroom_id', $classroomId))->get()
+            : collect();
+
+        $incidents = ($tab === 'incidents')
+            ? PiketIncident::with(['classroom', 'recordedBy', 'verifiedBy'])->whereBetween('incident_date', [$startDate, $endDate])->when($classroomId, fn ($q) => $q->where('classroom_id', $classroomId))->orderBy('incident_date')->get()
+            : collect();
+
+        $guests = ($tab === 'guests')
+            ? PiketGuest::whereBetween('visit_date', [$startDate, $endDate])->orderBy('visit_date')->get()
+            : collect();
+
+        $pdf = Pdf::loadView('piket.reports.print', compact(
+            'tab',
+            'startDate',
+            'endDate',
+            'classroom',
+            'permits',
+            'invals',
+            'incidents',
+            'guests',
+            'setting',
+            'academicYear'
+        ))->setPaper('a4', 'landscape')->setOption('isRemoteEnabled', true);
+
+        $filename = "Laporan_{$tab}_".($className ? "{$className}_" : '')."{$startDate}_sd_{$endDate}.pdf";
+
+        return $pdf->download($filename);
     }
 }

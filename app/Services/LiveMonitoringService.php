@@ -231,6 +231,7 @@ class LiveMonitoringService
 
                 $isStaffTu = $u->isStaff();
                 $isPiket = $u->isPiketOfficerToday($targetDateStr);
+                $isBk = $u->isCounselingBK();
                 $hasSchedule = $teacherSchedules->isNotEmpty();
 
                 // Cari agenda / event kurikulum yang menugaskan personil ini hari ini
@@ -246,6 +247,9 @@ class LiveMonitoringService
                 } elseif ($isStaffTu) {
                     $expectedStartTimeStr = '07:00';
                     $dutyLabel = ($u->position ?: 'Staf TU').' (07:00)';
+                } elseif ($isBk) {
+                    $expectedStartTimeStr = '07:00';
+                    $dutyLabel = 'Guru BK (Full Time 07:00)';
                 } elseif ($assignedEvents->isNotEmpty()) {
                     $ev = $assignedEvents->first();
                     $expectedStartTimeStr = $ev->gtk_checkin_time ?: '07:00';

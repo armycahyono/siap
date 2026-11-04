@@ -21,11 +21,19 @@ class MobileSupervisionController extends Controller
     /**
      * Authorize user access to this supervision record.
      */
-    protected function authorizeAccess(Supervision $supervision, bool $conductOnly = false): void
+    protected function authorizeAccess(Supervision $supervision, bool $conductOnly = false, bool $allowSelfAssessment = false): void
     {
         $user = Auth::user();
 
         if ($conductOnly) {
+            if (in_array($supervision->status, ['disetujui', 'selesai'])) {
+                abort(403, 'Supervisi ini sudah resmi disahkan dan tidak dapat diubah lagi.');
+            }
+
+            if ($allowSelfAssessment && $supervision->teacher_id === $user->id) {
+                return;
+            }
+
             if (! $user->canEditSupervision($supervision)) {
                 abort(403, 'Anda tidak memiliki hak untuk mengubah penilaian supervisi ini atau berkas sudah disahkan.');
             }
@@ -165,9 +173,12 @@ class MobileSupervisionController extends Controller
 
         // Permissions flags
         $isLocked = in_array($supervision->status, ['disetujui', 'selesai']);
+        $isTeacher = $supervision->teacher_id === $user->id;
+        $isSupervisor = $supervision->supervisor_id === $user->id;
         $canEdit = $user->canEditSupervision($supervision);
+        $canSelfAssess = ! $isLocked && ($canEdit || $isTeacher);
         $canApprove = ($user->isPrincipal() || $user->isWakaKurikulum() || $user->isSuperAdmin() || $user->hasPermission('approve_supervision')) && $supervision->status === 'menunggu_persetujuan';
-        $canUploadRpp = ! $isLocked && ($supervision->teacher_id === $user->id || $supervision->supervisor_id === $user->id || $user->hasRole('super_admin') || $user->isWakaKurikulum());
+        $canUploadRpp = ! $isLocked && ($isTeacher || $isSupervisor || $user->hasRole('super_admin') || $user->isWakaKurikulum());
 
         return response()->json([
             'success' => true,
@@ -263,13 +274,14 @@ class MobileSupervisionController extends Controller
                     'can_edit' => $canEdit,
                     'can_upload_rpp' => $canUploadRpp,
                     'can_edit_preobs' => $canUploadRpp,
-                    'can_conduct_obs' => $canEdit,
+                    'can_conduct_obs' => $canSelfAssess,
                     'can_edit_postobs' => $canEdit,
-                    'can_upload_photo' => $canEdit,
+                    'can_upload_photo' => $canSelfAssess,
                     'can_finalize' => $canEdit && in_array($supervision->status, ['observasi', 'pascaobservasi', 'praobservasi']),
                     'can_approve' => $canApprove,
-                    'is_teacher' => $supervision->teacher_id === $user->id,
-                    'is_supervisor' => $supervision->supervisor_id === $user->id,
+                    'is_teacher' => $isTeacher,
+                    'is_supervisor' => $isSupervisor,
+                    'is_self_assessment' => $isTeacher && ! $isSupervisor && ! $user->hasRole('super_admin') && ! $user->isWakaKurikulum(),
                 ],
             ],
         ]);
@@ -401,7 +413,7 @@ class MobileSupervisionController extends Controller
     public function saveObservation(Request $request, int $id): JsonResponse
     {
         $supervision = Supervision::findOrFail($id);
-        $this->authorizeAccess($supervision, true);
+        $this->authorizeAccess($supervision, conductOnly: true, allowSelfAssessment: true);
 
         $scores = $request->input('scores', []);
         $notes = $request->input('notes', []);
@@ -517,7 +529,7 @@ class MobileSupervisionController extends Controller
     public function uploadPhoto(Request $request, int $id): JsonResponse
     {
         $supervision = Supervision::findOrFail($id);
-        $this->authorizeAccess($supervision, true);
+        $this->authorizeAccess($supervision, conductOnly: true, allowSelfAssessment: true);
 
         $request->validate([
             'photo' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:8192'],
@@ -568,7 +580,7 @@ class MobileSupervisionController extends Controller
     {
         $photo = SupervisionPhoto::findOrFail($photoId);
         $supervision = $photo->supervision;
-        $this->authorizeAccess($supervision, true);
+        $this->authorizeAccess($supervision, conductOnly: true, allowSelfAssessment: true);
 
         if ($photo->file_path) {
             if (Storage::disk('local')->exists($photo->file_path)) {

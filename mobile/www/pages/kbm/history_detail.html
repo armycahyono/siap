@@ -1,0 +1,76 @@
+<div class="space-y-3.5 pb-20">
+    <div id="hist-detail-loader" class="card-elevated p-12 text-center text-xs text-slate-400">
+        <svg class="animate-spin h-6 w-6 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+        Memuat detail pertemuan KBM...
+    </div>
+
+    <div id="hist-detail-content" class="hidden space-y-3.5">
+        <!-- Card Informasi Sesi -->
+        <div class="card-elevated p-4 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 border border-blue-200/60 shadow-xs rounded-2xl">
+            <div class="flex items-start justify-between gap-2 mb-2">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span id="dtl-classroom-badge" class="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-600 text-white tracking-wide uppercase shadow-xs">Kelas</span>
+                    <span id="dtl-period-badge" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">Jam -</span>
+                    <span id="dtl-swap-badge" class="hidden px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">Pengganti</span>
+                </div>
+                <span id="dtl-date-badge" class="text-[10px] font-bold text-blue-600 font-mono">--/--/----</span>
+            </div>
+
+            <h3 id="dtl-subject-name" class="text-base font-black text-slate-800 tracking-tight">Mata Pelajaran</h3>
+            <p id="dtl-teacher-info" class="text-[11px] text-slate-500 mt-0.5">Guru Pengajar: -</p>
+
+            <div id="dtl-topic-box" class="mt-2.5 p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs text-slate-800">
+                <span class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider mb-0.5">Topik / Materi:</span>
+                <p id="dtl-topic-text" class="font-medium text-slate-800">-</p>
+                <div id="dtl-notes-row" class="hidden mt-1.5 pt-1.5 border-t border-slate-100 text-[11px] text-slate-600">
+                    <span class="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Catatan:</span>
+                    <p id="dtl-notes-text">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6 Rekap Status Kotak -->
+        <div class="card-elevated p-2.5">
+            <div class="grid grid-cols-6 gap-1 text-center">
+                <div class="py-1 px-0.5 rounded-lg bg-emerald-50 border border-emerald-200/80">
+                    <span class="text-[8px] font-bold text-emerald-700 block">Hadir</span>
+                    <span id="dtl-stat-h" class="text-xs font-black text-emerald-950 font-mono">0</span>
+                </div>
+                <div class="py-1 px-0.5 rounded-lg bg-amber-50 border border-amber-200/80">
+                    <span class="text-[8px] font-bold text-amber-700 block">Sakit</span>
+                    <span id="dtl-stat-s" class="text-xs font-black text-amber-950 font-mono">0</span>
+                </div>
+                <div class="py-1 px-0.5 rounded-lg bg-cyan-50 border border-cyan-200/80">
+                    <span class="text-[8px] font-bold text-cyan-700 block">Izin</span>
+                    <span id="dtl-stat-i" class="text-xs font-black text-cyan-950 font-mono">0</span>
+                </div>
+                <div class="py-1 px-0.5 rounded-lg bg-rose-50 border border-rose-200/80">
+                    <span class="text-[8px] font-bold text-rose-700 block">Alfa</span>
+                    <span id="dtl-stat-a" class="text-xs font-black text-rose-950 font-mono">0</span>
+                </div>
+                <div class="py-1 px-0.5 rounded-lg bg-purple-50 border border-purple-200/80">
+                    <span class="text-[8px] font-bold text-purple-700 block">Dispen</span>
+                    <span id="dtl-stat-d" class="text-xs font-black text-purple-950 font-mono">0</span>
+                </div>
+                <div class="py-1 px-0.5 rounded-lg bg-slate-100 border border-slate-200/80">
+                    <span class="text-[8px] font-bold text-slate-700 block">Telat</span>
+                    <span id="dtl-stat-t" class="text-xs font-black text-slate-900 font-mono">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daftar Kehadiran Siswa -->
+        <div class="space-y-2">
+            <div class="flex items-center justify-between px-1">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span>👥 Daftar Siswa</span>
+                    <span id="dtl-total-students" class="text-[10px] text-slate-400 font-mono font-normal">(0 Siswa)</span>
+                </h4>
+            </div>
+
+            <div id="dtl-students-list" class="space-y-2">
+                <!-- Diisi via JS -->
+            </div>
+        </div>
+    </div>
+</div>

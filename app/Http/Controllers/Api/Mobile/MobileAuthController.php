@@ -258,6 +258,7 @@ class MobileAuthController extends Controller
             'can_manage_discipline' => $user->canManageDiscipline(),
             'can_operate_bk' => $user->canOperateBk(),
             'can_access_visitations' => $user->canAccessVisitations(),
+            'can_access_teacher_report' => $user->canAccessTeacherAttendanceReport(),
         ];
     }
 }

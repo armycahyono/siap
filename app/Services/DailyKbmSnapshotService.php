@@ -314,17 +314,17 @@ class DailyKbmSnapshotService
                 if ($weekendAssignedUserIds->contains($u->id)) {
                     $isExpected = true;
                 } elseif ($mandatoryAllGtkWeekend) {
-                    $isExpected = $u->isStaff() ? ! $isStaffHolidayToday : true;
+                    $isExpected = ($u->isStaff() || $u->isCounselingBK()) ? ! $isStaffHolidayToday : true;
                 } else {
                     $isExpected = false;
                     $exemptionReason = 'Akhir Pekan (Libur)';
                 }
             } else {
                 // Hari kerja reguler (Senin - Jumat)
-                if ($u->isStaff()) {
+                if ($u->isStaff() || $u->isCounselingBK()) {
                     $isExpected = ! $isStaffHolidayToday;
                     if (! $isExpected) {
-                        $exemptionReason = 'Staf Diliburkan';
+                        $exemptionReason = $u->isStaff() ? 'Staf Diliburkan' : 'Guru BK Diliburkan';
                     }
                 } else {
                     // Guru: wajib hadir jika punya jadwal mengajar aktif hari ini atau ditugaskan di event

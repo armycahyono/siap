@@ -1,0 +1,58 @@
+<div class="space-y-3.5">
+    <!-- Header Card -->
+    <div class="card-elevated p-4 bg-gradient-to-br from-[#102d52] via-[#195b9e] to-[#2563eb] text-white shadow-lg relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-2">
+                <span id="piket-sched-ay-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-white/20 text-white tracking-wide uppercase">
+                    Memuat TP...
+                </span>
+                <span id="piket-sched-today-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-400 text-slate-900 font-mono">
+                    Hari Ini
+                </span>
+            </div>
+            <h3 class="text-sm font-black tracking-tight text-white">Jadwal Tim Piket Mingguan</h3>
+            <p class="text-[11px] text-blue-100/80 mt-0.5">Pembagian tugas harian, koordinator lapangan, dan pos operasional sekolah.</p>
+        </div>
+    </div>
+
+    <!-- Day Navigation Pills (Senin - Sabtu) -->
+    <div class="card-elevated p-1.5 flex gap-1 overflow-x-auto no-scrollbar" id="piket-sched-day-tabs">
+        <button type="button" onclick="selectPiketScheduleDay('Senin')" data-day="Senin" class="piket-day-tab flex-1 min-w-[56px] py-1.5 px-2 rounded-xl text-center text-xs font-bold transition active:scale-95 bg-purple-600 text-white shadow-xs">
+            Senin
+        </button>
+        <button type="button" onclick="selectPiketScheduleDay('Selasa')" data-day="Selasa" class="piket-day-tab flex-1 min-w-[56px] py-1.5 px-2 rounded-xl text-center text-xs font-bold transition active:scale-95 bg-slate-100 text-slate-600 hover:bg-slate-200">
+            Selasa
+        </button>
+        <button type="button" onclick="selectPiketScheduleDay('Rabu')" data-day="Rabu" class="piket-day-tab flex-1 min-w-[56px] py-1.5 px-2 rounded-xl text-center text-xs font-bold transition active:scale-95 bg-slate-100 text-slate-600 hover:bg-slate-200">
+            Rabu
+        </button>
+        <button type="button" onclick="selectPiketScheduleDay('Kamis')" data-day="Kamis" class="piket-day-tab flex-1 min-w-[56px] py-1.5 px-2 rounded-xl text-center text-xs font-bold transition active:scale-95 bg-slate-100 text-slate-600 hover:bg-slate-200">
+            Kamis
+        </button>
+        <button type="button" onclick="selectPiketScheduleDay('Jumat')" data-day="Jumat" class="piket-day-tab flex-1 min-w-[56px] py-1.5 px-2 rounded-xl text-center text-xs font-bold transition active:scale-95 bg-slate-100 text-slate-600 hover:bg-slate-200">
+            Jumat
+        </button>
+        <button type="button" onclick="selectPiketScheduleDay('Sabtu')" data-day="Sabtu" class="piket-day-tab flex-1 min-w-[56px] py-1.5 px-2 rounded-xl text-center text-xs font-bold transition active:scale-95 bg-slate-100 text-slate-600 hover:bg-slate-200">
+            Sabtu
+        </button>
+    </div>
+
+    <!-- Active Day Header -->
+    <div class="flex items-center justify-between px-1">
+        <h4 id="piket-sched-active-day-title" class="text-xs font-black text-slate-800 uppercase tracking-wider">
+            Petugas Hari Senin
+        </h4>
+        <span id="piket-sched-active-count-badge" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800 font-mono">
+            0 Petugas
+        </span>
+    </div>
+
+    <!-- Officers List Container -->
+    <div id="piket-sched-list" class="space-y-2">
+        <div class="p-8 text-center text-xs text-slate-400 card-elevated">
+            <svg class="animate-spin h-6 w-6 text-purple-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+            Memuat jadwal piket...
+        </div>
+    </div>
+</div>

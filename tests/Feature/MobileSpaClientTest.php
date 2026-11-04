@@ -54,7 +54,10 @@ class MobileSpaClientTest extends TestCase
         // 4. View Page Templates
         $loginPage = $this->get('/mobile/pages/auth/login.html');
         $loginPage->assertOk()
-            ->assertSee('form-mobile-login');
+            ->assertSee('form-mobile-login')
+            ->assertSee('btn-toggle-password')
+            ->assertSee('icon-eye')
+            ->assertSee('icon-eye-off');
 
         $dashboardPage = $this->get('/mobile/pages/dashboard.html');
         $dashboardPage->assertOk()

@@ -12,6 +12,7 @@ use App\Models\StudentClassroom;
 use App\Models\SubjectAttendanceSession;
 use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
+use App\Services\SimpleXlsxGenerator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -121,7 +122,6 @@ class HomeroomAttendanceRecapController extends Controller
                             ->whereDate('end_date', '>=', $dateStr);
                     });
             })
-            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->where('status', '!=', 'ditolak')
             ->get()
             ->groupBy('student_id');
@@ -364,7 +364,6 @@ class HomeroomAttendanceRecapController extends Controller
                             ->whereDate('end_date', '>=', $startOfWeek->toDateString());
                     });
             })
-            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->where('status', '!=', 'ditolak')
             ->get()
             ->groupBy('student_id');
@@ -505,7 +504,6 @@ class HomeroomAttendanceRecapController extends Controller
                             ->whereDate('end_date', '>=', $startDateStr);
                     });
             })
-            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->where('academic_year', $academicYear)->orWhereNull('academic_year')))
             ->where('status', '!=', 'ditolak')
             ->get()
             ->groupBy('student_id');
@@ -688,9 +686,9 @@ class HomeroomAttendanceRecapController extends Controller
     }
 
     /**
-     * Resolve data kelas dan siswa yang diotorisasi untuk ekspor
+     * Resolve data kelas dan siswa yang diotorisasi untuk ekspor / API
      */
-    protected function resolveRecapData(Request $request): array
+    public function resolveRecapData(Request $request): array
     {
         $user = Auth::user();
         $setting = SchoolSetting::getSetting();
@@ -706,7 +704,13 @@ class HomeroomAttendanceRecapController extends Controller
         $y2 = (int) ($years[1] ?? ($y1 + 1));
         $academicYearClean = "{$y1}_{$y2}";
 
-        $canViewAll = $user && ($user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah'));
+        $canViewAll = $user && (
+            $user->isSuperAdmin()
+            || $user->isWakaKurikulum()
+            || $user->hasRole('kepala_sekolah')
+            || $user->hasRole(['guru_bk', 'bk'])
+            || (method_exists($user, 'isCounselingBK') && $user->isCounselingBK($academicYear))
+        );
 
         $ayRecord = AcademicYear::where('name', $academicYear)->first();
 
@@ -728,8 +732,19 @@ class HomeroomAttendanceRecapController extends Controller
                 $myClassrooms = Classroom::orderBy('name')->get();
             }
         } else {
-            $classroomQuery = Classroom::where('homeroom_teacher_id', $user?->id ?? 0)
-                ->where('is_active', true);
+            $assignedClassroomIds = $user ? $user->activeRoleAssignments()
+                ->whereHas('role', fn ($q) => $q->where('slug', 'wali_kelas'))
+                ->where('context_type', Classroom::class)
+                ->pluck('context_id')
+                ->filter()
+                ->all() : [];
+
+            $classroomQuery = Classroom::where(function ($q) use ($user, $assignedClassroomIds) {
+                $q->where('homeroom_teacher_id', $user?->id ?? 0);
+                if (! empty($assignedClassroomIds)) {
+                    $q->orWhereIn('id', $assignedClassroomIds);
+                }
+            })->where('is_active', true);
 
             if ($ayRecord) {
                 $classroomQuery->where(function ($q) use ($academicYear, $ayRecord) {
@@ -744,6 +759,14 @@ class HomeroomAttendanceRecapController extends Controller
             }
 
             $myClassrooms = $classroomQuery->orderBy('name')->get();
+            if ($myClassrooms->isEmpty()) {
+                $myClassrooms = Classroom::where(function ($q) use ($user, $assignedClassroomIds) {
+                    $q->where('homeroom_teacher_id', $user?->id ?? 0);
+                    if (! empty($assignedClassroomIds)) {
+                        $q->orWhereIn('id', $assignedClassroomIds);
+                    }
+                })->where('is_active', true)->orderBy('name')->get();
+            }
         }
 
         if (! $canViewAll && $request->filled('classroom_id')) {
@@ -754,7 +777,7 @@ class HomeroomAttendanceRecapController extends Controller
         }
 
         $selectedClassroomId = $request->query('classroom_id', $myClassrooms->first()?->id);
-        $selectedClassroom = $myClassrooms->firstWhere('id', $selectedClassroomId)
+        $selectedClassroom = $myClassrooms->first(fn ($c) => (string) $c->id === (string) $selectedClassroomId)
             ?? ($canViewAll ? Classroom::find($selectedClassroomId) : null);
 
         $mode = $request->query('mode', 'daily');
@@ -867,6 +890,105 @@ class HomeroomAttendanceRecapController extends Controller
             'custom' => "Rekap_Presensi_{$className}_Periode_{$data['startDate']->format('Ymd')}_{$data['endDate']->format('Ymd')}.csv",
             default => "Rekap_Presensi_{$className}_Harian_{$currentDate->format('Ymd')}.csv",
         };
+
+        if ($request->query('format') === 'xlsx') {
+            $sheetName = substr($classroom?->name ?? 'Rekap Presensi', 0, 31);
+            $xlsxRows = [];
+            $no = 1;
+
+            if ($mode === 'daily') {
+                $xlsxHeaders = ['No', 'NISN', 'Nama Siswa', 'L/P'];
+                foreach ($data['periods'] as $p) {
+                    $pInfo = $data['sessionsByPeriod'][$p] ?? null;
+                    $subj = $pInfo['subject_name'] ?? "JP {$p}";
+                    $xlsxHeaders[] = "JP {$p} ({$subj})";
+                }
+                $xlsxHeaders[] = 'Status Akhir';
+
+                foreach ($data['studentGrid'] ?? [] as $row) {
+                    $stu = $row['student'];
+                    $line = [
+                        (string) $no++,
+                        (string) ($stu->nisn ?: $stu->nis ?: '-'),
+                        (string) $stu->name,
+                        (string) ($stu->gender ?? '-'),
+                    ];
+                    foreach ($data['periods'] as $p) {
+                        $periodItem = $row['periods'][$p] ?? null;
+                        $line[] = (string) ($periodItem['label'] ?? '-');
+                    }
+                    $line[] = (string) ($row['final_status'] ?? '-');
+                    $xlsxRows[] = $line;
+                }
+            } elseif ($mode === 'weekly') {
+                $xlsxHeaders = ['No', 'NISN', 'Nama Siswa', 'L/P'];
+                foreach ($data['weekDays'] as $d) {
+                    $xlsxHeaders[] = $d['dayName'].' ('.$d['formatted'].')';
+                }
+                $xlsxHeaders = array_merge($xlsxHeaders, [
+                    'Hadir (H)', 'Sakit (S)', 'Izin (I)', 'Dispen (D)',
+                    'Terlambat (T)', 'Pulang (P)', 'Alfa (A)', 'Bolos', '% Kehadiran',
+                ]);
+
+                foreach ($data['studentWeeklyGrid'] ?? [] as $row) {
+                    $stu = $row['student'];
+                    $line = [
+                        (string) $no++,
+                        (string) ($stu->nisn ?: $stu->nis ?: '-'),
+                        (string) $stu->name,
+                        (string) ($stu->gender ?? '-'),
+                    ];
+                    foreach ($data['weekDays'] as $d) {
+                        $line[] = (string) ($row['days'][$d['date']]['label'] ?? '-');
+                    }
+                    $line[] = (string) ($row['total_h'] ?? 0);
+                    $line[] = (string) ($row['total_s'] ?? 0);
+                    $line[] = (string) ($row['total_i'] ?? 0);
+                    $line[] = (string) ($row['total_d'] ?? 0);
+                    $line[] = (string) ($row['total_t'] ?? 0);
+                    $line[] = (string) ($row['total_p'] ?? 0);
+                    $line[] = (string) ($row['total_a'] ?? 0);
+                    $line[] = (string) ($row['total_bolos'] ?? 0);
+                    $line[] = (string) (($row['attendance_rate'] ?? 0).'%');
+                    $xlsxRows[] = $line;
+                }
+            } else {
+                $xlsxHeaders = [
+                    'No', 'NISN', 'Nama Siswa', 'L/P',
+                    'Hadir (Hari)', 'Sakit (S)', 'Izin (I)', 'Dispen (D)',
+                    'Terlambat (T)', 'Pulang Cepat (P)', 'Alfa (A)', 'Bolos Jam',
+                    '% Kehadiran', 'Dapodik H', 'Dapodik S', 'Dapodik I', 'Dapodik A',
+                ];
+
+                $grid = $data['studentRangeGrid'] ?? ($data['studentMonthlyGrid'] ?? []);
+                foreach ($grid as $row) {
+                    $stu = $row['student'];
+                    $xlsxRows[] = [
+                        (string) $no++,
+                        (string) ($stu->nisn ?: $stu->nis ?: '-'),
+                        (string) $stu->name,
+                        (string) ($stu->gender ?? '-'),
+                        (string) ($row['days_present'] ?? 0),
+                        (string) ($row['days_sick'] ?? 0),
+                        (string) ($row['days_permit'] ?? 0),
+                        (string) ($row['days_dispen'] ?? 0),
+                        (string) ($row['days_late'] ?? 0),
+                        (string) ($row['days_early_leave'] ?? 0),
+                        (string) ($row['days_alfa'] ?? 0),
+                        (string) ($row['days_truant'] ?? 0),
+                        (string) (($row['attendance_rate'] ?? 0).'%'),
+                        (string) ($row['dapodik_present'] ?? 0),
+                        (string) ($row['dapodik_sick'] ?? 0),
+                        (string) ($row['dapodik_permit'] ?? 0),
+                        (string) ($row['dapodik_alfa'] ?? 0),
+                    ];
+                }
+            }
+
+            $xlsxFilename = str_replace('.csv', '.xlsx', $filename);
+
+            return SimpleXlsxGenerator::download($xlsxFilename, $sheetName, $xlsxHeaders, $xlsxRows);
+        }
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',

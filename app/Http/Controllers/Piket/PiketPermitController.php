@@ -298,12 +298,41 @@ class PiketPermitController extends Controller
         return view('piket.permits.show', compact('permit'));
     }
 
-    public function printSlip(PiketStudentPermit $permit): View
+    public function printSlip(PiketStudentPermit $permit, Request $request): View
     {
+        if ($permit->batch_id && $request->boolean('batch')) {
+            return $this->printBatchSlip($permit->batch_id, $request);
+        }
+
         $permit->load(['classroom.homeroomTeacher', 'student', 'givenBy']);
         $setting = SchoolSetting::getSetting();
 
         return view('piket.permits.slip', compact('permit', 'setting'));
+    }
+
+    public function printBatchSlip(string $batchId, Request $request): View
+    {
+        $permits = PiketStudentPermit::where('batch_id', $batchId)
+            ->with(['classroom.homeroomTeacher', 'student', 'givenBy'])
+            ->orderBy('classroom_id')
+            ->orderBy('student_name')
+            ->get();
+
+        if ($permits->isEmpty()) {
+            abort(404, 'Data izin rombongan tidak ditemukan.');
+        }
+
+        $groupedPermits = $permits->groupBy('classroom_id');
+        $setting = SchoolSetting::getSetting();
+
+        return view('piket.permits.slip', [
+            'isBatch' => true,
+            'permits' => $permits,
+            'groupedPermits' => $groupedPermits,
+            'setting' => $setting,
+            'permit' => $permits->first(),
+            'batchId' => $batchId,
+        ]);
     }
 
     public function destroy(PiketStudentPermit $permit): RedirectResponse

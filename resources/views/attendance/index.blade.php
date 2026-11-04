@@ -265,6 +265,8 @@
                                                                 <span class="badge bg-teal-lt text-teal small">Guru Piket</span>
                                                             @elseif($t->is_staff_tu)
                                                                 <span class="badge bg-blue-lt text-blue small">Staf TU</span>
+                                                            @elseif($t->is_bk ?? false)
+                                                                <span class="badge bg-cyan-lt text-cyan small">Guru BK</span>
                                                             @elseif($t->has_schedule)
                                                                 <span class="badge bg-indigo-lt text-indigo small">Guru Mapel</span>
                                                             @else

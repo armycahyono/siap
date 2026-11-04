@@ -1,0 +1,104 @@
+<div class="space-y-3 pb-12">
+    <!-- Header Sub-page -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Rekap Presensi GTK</h3>
+                <p class="text-[10px] text-slate-400">Guru &amp; Tenaga Kependidikan</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <a id="btn-export-pdf-gtk" href="#" target="_blank" class="px-2 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition" title="Unduh PDF Resmi">
+                <span>📄</span><span>PDF</span>
+            </a>
+            <a id="btn-export-excel-gtk" href="#" target="_blank" class="px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition" title="Unduh File Excel">
+                <span>📊</span><span>Excel</span>
+            </a>
+            <button type="button" onclick="refreshTeacherAttendanceReport()" class="w-7 h-7 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card-elevated p-3 space-y-2.5">
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Periode</label>
+                <select id="report-period-type" onchange="onReportPeriodTypeChange(this.value)" class="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 bg-white">
+                    <option value="custom">Harian / Tanggal</option>
+                    <option value="monthly">Bulanan</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Kelompok GTK</label>
+                <select id="report-sub-type" onchange="onReportFilterChange()" class="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 bg-white">
+                    <option value="all">Semua GTK</option>
+                    <option value="guru">Guru Saja</option>
+                    <option value="staf">Staf Saja</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Custom Date Range -->
+        <div id="wrap-report-custom-dates" class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Dari Tanggal</label>
+                <input type="date" id="report-start-date" onchange="onReportFilterChange()" class="w-full text-xs font-semibold p-1.5 rounded-xl border border-slate-200 bg-white">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Sampai Tanggal</label>
+                <input type="date" id="report-end-date" onchange="onReportFilterChange()" class="w-full text-xs font-semibold p-1.5 rounded-xl border border-slate-200 bg-white">
+            </div>
+        </div>
+
+        <!-- Monthly Selector -->
+        <div id="wrap-report-monthly-dates" class="hidden grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Bulan</label>
+                <select id="report-month" onchange="onReportFilterChange()" class="w-full text-xs font-bold p-2 rounded-xl border border-slate-200 bg-white">
+                    <option value="1">Januari</option>
+                    <option value="2">Februari</option>
+                    <option value="3">Maret</option>
+                    <option value="4">April</option>
+                    <option value="5">Mei</option>
+                    <option value="6">Juni</option>
+                    <option value="7">Juli</option>
+                    <option value="8">Agustus</option>
+                    <option value="9">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Tahun</label>
+                <input type="number" id="report-year" min="2020" max="2035" onchange="onReportFilterChange()" class="w-full text-xs font-semibold p-1.5 rounded-xl border border-slate-200 bg-white">
+            </div>
+        </div>
+
+        <!-- Pencarian GTK -->
+        <div>
+            <div class="relative">
+                <input type="text" id="report-search" placeholder="Cari nama atau NIP..." oninput="debounceReportSearch()" class="w-full text-xs p-2 pl-8 rounded-xl border border-slate-200 bg-white">
+                <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ringkasan Statistik GTK Card -->
+    <div id="report-summary-card" class="card-elevated p-3">
+        <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Ringkasan Kehadiran GTK</h4>
+        <div id="report-summary-grid" class="grid grid-cols-4 gap-1.5 text-center">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+
+    <!-- List GTK Container -->
+    <div id="report-people-container" class="space-y-2">
+        <div class="text-center py-10 text-xs text-slate-400">Memuat rekap presensi GTK...</div>
+    </div>
+</div>

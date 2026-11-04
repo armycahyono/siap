@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\Classroom;
 use App\Models\CurriculumEvent;
 use App\Models\LessonSchedule;
 use App\Models\PiketStudentPermit;
@@ -13,6 +14,7 @@ use App\Models\StudentClassroom;
 use App\Models\Subject;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
+use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\ActivityLogger;
 use App\Services\DailyKbmSnapshotService;
@@ -201,7 +203,10 @@ class MobileKbmController extends Controller
             ->first();
 
         $tasksController = app(MobileTasksController::class);
-        $liveMonitoring = $this->liveMonitoringService->buildLiveMonitoringData($user, $date, $academicYear, $myHomeroomClassroom);
+        $isManagementKbm = $user->isPrincipal() || $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->isWakaKesiswaan() || $user->canManageDiscipline($academicYear) || $user->canOperateBk($academicYear);
+        $liveMonitoring = $isManagementKbm
+            ? $this->liveMonitoringService->buildLiveMonitoringData($user, $date, $academicYear, null)
+            : null;
         $bkData = $tasksController->buildBkSummaryData($user, $academicYear);
 
         return response()->json([
@@ -390,6 +395,7 @@ class MobileKbmController extends Controller
                 'status' => $status,
                 'notes' => $notes,
                 'permit_notice' => $permitNotice,
+                'parent_phone' => ($st->primary_parent_phone && $st->primary_parent_phone !== '-') ? $st->primary_parent_phone : ($st->phone_parent ?: ($st->father_phone ?: ($st->mother_phone ?: null))),
             ];
         });
 
@@ -416,6 +422,9 @@ class MobileKbmController extends Controller
                     'is_attended' => (bool) $session,
                     'topic' => $session?->topic ?? '',
                     'notes' => $session?->notes ?? '',
+                    'swap_type' => $session?->swap_type ?? null,
+                    'swap_notes' => $session?->swap_notes ?? null,
+                    'is_swap' => (bool) $session?->is_swap,
                 ],
                 'window' => [
                     'can_submit' => $canSubmit,
@@ -463,6 +472,10 @@ class MobileKbmController extends Controller
             'end_period' => ['required', 'integer', 'min:1', 'max:15'],
             'topic' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'is_swap' => ['nullable', 'boolean'],
+            'swap_type' => ['nullable', 'string', 'in:tukar_jam,guru_pengganti,inval,mandiri'],
+            'swap_notes' => ['nullable', 'string', 'max:500'],
+            'scheduled_teacher_id' => ['nullable', 'exists:users,id'],
             'academic_year' => ['nullable', 'string', 'exists:academic_years,name'],
             'semester' => ['nullable', 'string', 'in:ganjil,genap,Ganjil,Genap'],
             'attendance' => ['required', 'array'],
@@ -566,13 +579,19 @@ class MobileKbmController extends Controller
                 $targetSemester = strtolower((string) ($setting->semester ?? 'ganjil'));
             }
 
-            $scheduledTeacherId = $schedule?->teacher_id ?? $existingSession?->scheduled_teacher_id ?? $user->id;
+            $scheduledTeacherId = $validated['scheduled_teacher_id'] ?? $schedule?->teacher_id ?? $existingSession?->scheduled_teacher_id ?? $user->id;
+            $isSwap = ! empty($validated['is_swap']) || ! empty($validated['swap_type']) || ($scheduledTeacherId !== $user->id);
+            $swapType = $validated['swap_type'] ?? ($isSwap ? 'guru_pengganti' : null);
+            $swapNotes = $validated['swap_notes'] ?? null;
 
             if ($existingSession) {
                 $existingSession->update([
                     'lesson_schedule_id' => $lessonScheduleId,
                     'teacher_id' => $user->id,
                     'scheduled_teacher_id' => $scheduledTeacherId,
+                    'is_swap' => $isSwap,
+                    'swap_type' => $swapType,
+                    'swap_notes' => $swapNotes,
                     'end_period' => $validated['end_period'],
                     'academic_year' => $targetAcademicYear,
                     'semester' => $targetSemester,
@@ -590,6 +609,9 @@ class MobileKbmController extends Controller
                     'lesson_schedule_id' => $lessonScheduleId,
                     'teacher_id' => $user->id,
                     'scheduled_teacher_id' => $scheduledTeacherId,
+                    'is_swap' => $isSwap,
+                    'swap_type' => $swapType,
+                    'swap_notes' => $swapNotes,
                     'academic_year' => $targetAcademicYear,
                     'semester' => $targetSemester,
                     'topic' => $validated['topic'] ?? null,
@@ -655,5 +677,268 @@ class MobileKbmController extends Controller
                 'message' => 'Gagal menyimpan presensi: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Get historical attendance sessions for mobile teacher.
+     */
+    public function getHistory(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $classroomId = $request->query('classroom_id');
+        $subjectId = $request->query('subject_id');
+        $startDate = $request->query('start_date', now()->subMonth()->toDateString());
+        $endDate = $request->query('end_date', now()->toDateString());
+
+        $query = SubjectAttendanceSession::with(['classroom', 'subject', 'teacher', 'scheduledTeacher', 'records'])
+            ->where(function ($q) use ($user) {
+                $q->where('teacher_id', $user->id)
+                    ->orWhere('scheduled_teacher_id', $user->id);
+            })
+            ->whereBetween('attendance_date', [$startDate, $endDate]);
+
+        if ($classroomId) {
+            $query->where('classroom_id', $classroomId);
+        }
+
+        if ($subjectId) {
+            $query->where('subject_id', $subjectId);
+        }
+
+        $sessions = $query->latest('attendance_date')
+            ->latest('start_period')
+            ->paginate(15);
+
+        $classrooms = Classroom::orderBy('name')->get(['id', 'name']);
+        $subjects = Subject::orderBy('name')->get(['id', 'name']);
+
+        $formattedSessions = $sessions->map(function ($sess) {
+            $statusCounts = [
+                'h' => $sess->records->where('status', 'h')->count(),
+                't' => $sess->records->where('status', 't')->count(),
+                's' => $sess->records->where('status', 's')->count(),
+                'i' => $sess->records->where('status', 'i')->count(),
+                'a' => $sess->records->where('status', 'a')->count(),
+                'd' => $sess->records->where('status', 'd')->count(),
+            ];
+
+            return [
+                'id' => $sess->id,
+                'date' => $sess->attendance_date ? $sess->attendance_date->format('Y-m-d') : null,
+                'formatted_date' => $sess->attendance_date ? $sess->attendance_date->translatedFormat('d M Y') : null,
+                'start_period' => $sess->start_period,
+                'end_period' => $sess->end_period,
+                'classroom_name' => $sess->classroom?->name,
+                'subject_name' => $sess->subject?->name,
+                'teacher_name' => $sess->teacher?->name,
+                'scheduled_teacher_name' => $sess->scheduledTeacher?->name,
+                'is_swap' => (bool) $sess->is_swap,
+                'swap_type' => $sess->swap_type,
+                'topic' => $sess->topic,
+                'notes' => $sess->notes,
+                'total_students' => $sess->records->count(),
+                'status_counts' => $statusCounts,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'sessions' => $formattedSessions,
+                'pagination' => [
+                    'current_page' => $sessions->currentPage(),
+                    'last_page' => $sessions->lastPage(),
+                    'total' => $sessions->total(),
+                ],
+                'filter_options' => [
+                    'classrooms' => $classrooms,
+                    'subjects' => $subjects,
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Get detail of a specific past attendance session.
+     */
+    public function getHistoryDetail(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $session = SubjectAttendanceSession::with([
+            'classroom',
+            'subject',
+            'teacher',
+            'scheduledTeacher',
+            'records.student',
+        ])->find($id);
+
+        if (! $session) {
+            return response()->json(['success' => false, 'message' => 'Sesi KBM tidak ditemukan.'], 404);
+        }
+
+        $records = $session->records->map(function ($rec) {
+            return [
+                'id' => $rec->id,
+                'student_id' => $rec->student_id,
+                'student_name' => $rec->student?->name,
+                'student_nisn' => $rec->student?->nisn,
+                'student_nis' => $rec->student?->nis,
+                'gender' => $rec->student?->gender,
+                'status' => strtolower((string) $rec->status),
+                'notes' => $rec->notes,
+                'parent_phone' => ($rec->student?->primary_parent_phone && $rec->student?->primary_parent_phone !== '-') ? $rec->student?->primary_parent_phone : ($rec->student?->phone_parent ?: ($rec->student?->father_phone ?: ($rec->student?->mother_phone ?: null))),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'session' => [
+                    'id' => $session->id,
+                    'date' => $session->attendance_date ? $session->attendance_date->format('Y-m-d') : null,
+                    'formatted_date' => $session->attendance_date ? $session->attendance_date->translatedFormat('l, d F Y') : null,
+                    'start_period' => $session->start_period,
+                    'end_period' => $session->end_period,
+                    'start_time' => $session->start_time,
+                    'end_time' => $session->end_time,
+                    'classroom_name' => $session->classroom?->name,
+                    'subject_name' => $session->subject?->name,
+                    'teacher_name' => $session->teacher?->name,
+                    'scheduled_teacher_name' => $session->scheduledTeacher?->name,
+                    'is_swap' => (bool) $session->is_swap,
+                    'swap_type' => $session->swap_type,
+                    'swap_notes' => $session->swap_notes,
+                    'topic' => $session->topic,
+                    'notes' => $session->notes,
+                    'total_students' => $records->count(),
+                ],
+                'records' => $records,
+            ],
+        ]);
+    }
+
+    /**
+     * Get school lesson schedule browser for mobile.
+     */
+    public function getSchoolSchedule(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $setting = SchoolSetting::getSetting();
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
+
+        $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+        $todayDay = match (now()->dayOfWeekIso) {
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            default => 'Senin',
+        };
+
+        $selectedDay = $request->query('day', $todayDay);
+        if (! in_array($selectedDay, $days, true)) {
+            $selectedDay = 'Senin';
+        }
+
+        $classroomId = $request->query('classroom_id');
+        $teacherId = $request->query('teacher_id');
+        $search = trim((string) $request->query('search', ''));
+
+        $query = LessonSchedule::with(['classroom', 'subject', 'teacher'])
+            ->where('academic_year', $academicYear)
+            ->where('day', $selectedDay);
+
+        if ($classroomId) {
+            $query->where('classroom_id', $classroomId);
+        }
+
+        if ($teacherId) {
+            $query->where('teacher_id', $teacherId);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('subject', fn ($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('teacher', fn ($tq) => $tq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('classroom', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $schedules = $query->orderBy('start_period')
+            ->orderBy('classroom_id')
+            ->get();
+
+        $periodTimes = LessonSchedule::periodTimes($selectedDay);
+        $currentTime = now()->format('H:i');
+        $activePeriod = null;
+
+        if ($todayDay === $selectedDay) {
+            foreach ($periodTimes as $p => $times) {
+                if ($currentTime >= $times['start'] && $currentTime <= $times['end']) {
+                    $activePeriod = (int) $p;
+                    break;
+                }
+            }
+        }
+
+        $formattedSchedules = $schedules->map(function ($s) use ($activePeriod) {
+            $isActive = $activePeriod && ($activePeriod >= $s->start_period && $activePeriod <= $s->end_period);
+
+            return [
+                'id' => $s->id,
+                'classroom_id' => $s->classroom_id,
+                'classroom_name' => $s->classroom?->name,
+                'subject_id' => $s->subject_id,
+                'subject_name' => $s->subject?->name,
+                'teacher_id' => $s->teacher_id,
+                'teacher_name' => $s->teacher?->formatted_short_name ?? $s->teacher?->name,
+                'start_period' => $s->start_period,
+                'end_period' => $s->end_period,
+                'start_time' => $s->start_time ? substr((string) $s->start_time, 0, 5) : null,
+                'end_time' => $s->end_time ? substr((string) $s->end_time, 0, 5) : null,
+                'is_active_now' => (bool) $isActive,
+            ];
+        });
+
+        $classrooms = Classroom::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $teachers = User::whereHas('lessonSchedules', fn ($q) => $q->where('academic_year', $academicYear))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'academic_year' => $academicYear,
+                'days' => $days,
+                'selected_day' => $selectedDay,
+                'today_day' => $todayDay,
+                'active_period' => $activePeriod,
+                'schedules' => $formattedSchedules,
+                'filter_options' => [
+                    'classrooms' => $classrooms,
+                    'teachers' => $teachers,
+                ],
+            ],
+        ]);
     }
 }

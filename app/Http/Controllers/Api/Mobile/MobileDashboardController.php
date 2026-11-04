@@ -152,13 +152,10 @@ class MobileDashboardController extends Controller
         });
 
         // 4. Status Piket
-        $canAccessPiket = $user->isSuperAdmin()
-            || $user->isPrincipal()
-            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum())
-            || $user->canAccessPiket($operationalAcademicYear);
+        $canAccessPiket = $user->canAccessMejaPiket($operationalAcademicYear);
         $isManagement = $user->isSuperAdmin()
             || $user->isPrincipal()
-            || (method_exists($user, 'isWakaKurikulum') && $user->isWakaKurikulum());
+            || $user->isVicePrincipal();
 
         $isPiketToday = $user->isPiketOfficerToday();
         $todayPiketSchedule = PiketSchedule::where('teacher_id', $user->id)

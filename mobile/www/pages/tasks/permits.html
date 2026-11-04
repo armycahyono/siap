@@ -1,7 +1,7 @@
 <div class="space-y-3 pb-8">
     <!-- Header Sub-Halaman dengan Navigasi Kembali -->
     <div class="card-elevated p-3 flex items-center justify-between">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2.5">
             <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali ke Tugas">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
             </button>
@@ -15,21 +15,42 @@
         </button>
     </div>
 
-    <!-- Segmented Tab Bar (Cupertino Segmented Control) -->
-    <div class="flex rounded-xl bg-slate-100 p-1 text-center font-bold text-xs gap-1">
-        <button type="button" id="tab-permits-form-btn" onclick="switchPermitsTab('form')" class="flex-1 py-1.5 rounded-lg bg-white shadow-xs text-blue-600 transition">
-            ➕ Ajukan Baru
-        </button>
-        <button type="button" id="tab-permits-history-btn" onclick="switchPermitsTab('history')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
-            📋 Riwayat Saya
-        </button>
-        <button type="button" id="tab-permits-approval-btn" onclick="switchPermitsTab('approval')" class="hidden flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1">
-            <span>Persetujuan</span>
-            <span id="permits-pending-badge" class="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-500 text-white font-mono">0</span>
+    <!-- Info Banner Untuk Wali Kelas Yang Ingin Mencatat Izin Siswa -->
+    <div id="banner-homeroom-student-permits" class="card-elevated p-2.5 bg-amber-50 border-amber-200 text-amber-900 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+            <span class="text-base">👨‍🏫</span>
+            <div>
+                <strong class="font-bold block text-[11px]">Wali Kelas? Catat Izin Murid Perwalian</strong>
+                <span class="text-[10px] text-amber-700">Untuk izin siswa (sakit/dispen), gunakan formulir perwalian.</span>
+            </div>
+        </div>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/permits')" class="px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition whitespace-nowrap">
+            Izin Siswa &raquo;
         </button>
     </div>
 
-    <!-- Panel 1: Formulir Ajukan Izin Baru -->
+    <!-- Segmented Tab Bar (Cupertino Segmented Control: Persetujuan, Ajukan Baru, Riwayat Saya) -->
+    <div class="flex rounded-xl bg-slate-100 p-1 text-center font-bold text-xs gap-1">
+        <button type="button" id="tab-permits-approval-btn" onclick="switchPermitsTab('approval')" class="hidden flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1">
+            <span>✓ Persetujuan</span>
+            <span id="permits-pending-badge" class="px-1.5 py-0.2 rounded-full text-[9px] bg-rose-500 text-white font-mono">0</span>
+        </button>
+        <button type="button" id="tab-permits-form-btn" onclick="switchPermitsTab('form')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1">
+            ➕ Ajukan Baru
+        </button>
+        <button type="button" id="tab-permits-history-btn" onclick="switchPermitsTab('history')" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1">
+            📋 Riwayat Saya
+        </button>
+    </div>
+
+    <!-- Panel 1: Persetujuan Izin GTK (Khusus Kepala Sekolah, Waka Kurikulum & Super Admin) -->
+    <div id="panel-permits-approval" class="hidden space-y-2">
+        <div id="list-pending-approvals-container" class="space-y-2">
+            <div class="text-center py-8 text-xs text-slate-400">Memuat pengajuan menunggu persetujuan...</div>
+        </div>
+    </div>
+
+    <!-- Panel 2: Formulir Ajukan Izin Baru -->
     <div id="panel-permits-form" class="card-elevated p-4">
         <form id="form-submit-permit" onsubmit="handlePermitSubmit(event)" class="space-y-3">
             <div>
@@ -76,17 +97,10 @@
         </form>
     </div>
 
-    <!-- Panel 2: Riwayat Pengajuan Izin Saya -->
+    <!-- Panel 3: Riwayat Pengajuan Izin Saya -->
     <div id="panel-permits-history" class="hidden space-y-2">
         <div id="list-my-permits-container" class="space-y-2">
             <div class="text-center py-8 text-xs text-slate-400">Memuat riwayat izin...</div>
-        </div>
-    </div>
-
-    <!-- Panel 3: Persetujuan Izin KS (Hanya Kepala Sekolah / Admin) -->
-    <div id="panel-permits-approval" class="hidden space-y-2">
-        <div id="list-pending-approvals-container" class="space-y-2">
-            <div class="text-center py-8 text-xs text-slate-400">Memuat pengajuan menunggu persetujuan...</div>
         </div>
     </div>
 </div>

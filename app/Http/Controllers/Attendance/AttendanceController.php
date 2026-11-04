@@ -25,6 +25,8 @@ use App\Services\AcademicYearContext;
 use App\Services\AttendanceDeviceService;
 use App\Services\DailyKbmSnapshotService;
 use App\Services\DeviceDetector;
+use App\Services\SimpleXlsxGenerator;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -136,6 +138,12 @@ class AttendanceController extends Controller
                     ->orWhere('position', 'like', '%pesuruh%')
                     ->orWhere('position', 'like', '%kebun%');
             })->pluck('id')->toArray();
+        $bkTeacherIds = $isHoliday ? [] : User::operationalPersonnel()
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn ($u) => $u->isCounselingBK())
+            ->pluck('id')
+            ->toArray();
         $scannedTeacherIds = $teacherLogsToday->keys()->toArray();
 
         $activeTeacherIds = array_unique(array_merge(
@@ -143,6 +151,7 @@ class AttendanceController extends Controller
             $piketTeacherIds,
             $permitTeacherIds,
             $staffTuIds,
+            $bkTeacherIds,
             $scannedTeacherIds
         ));
 
@@ -165,6 +174,7 @@ class AttendanceController extends Controller
 
             $hasSchedule = ! $isHoliday && $schedules->isNotEmpty();
             $isStaffTu = ! $isHoliday && in_array($teacher->id, $staffTuIds);
+            $isBk = ! $isHoliday && in_array($teacher->id, $bkTeacherIds);
 
             // Determine role type and duty label
             $roleLabel = 'Guru Mapel';
@@ -176,6 +186,8 @@ class AttendanceController extends Controller
                 $roleLabel = 'Guru Piket';
             } elseif ($isStaffTu) {
                 $roleLabel = $teacher->position ?: 'Staf TU';
+            } elseif ($isBk) {
+                $roleLabel = 'Guru BK (Full Time)';
             } elseif (! $hasSchedule) {
                 $roleLabel = 'Guru (Bebas Jam)';
             }
@@ -189,13 +201,16 @@ class AttendanceController extends Controller
 
             if ($isHoliday) {
                 $lessonsSummary[] = $holidayReason ?: 'Hari Libur (Tidak Ada Jam Wajib)';
-            } elseif ($isPiket || $isStaffTu) {
-                // Guru piket dan Staf TU mengikuti jam operasional sekolah penuh
+            } elseif ($isPiket || $isStaffTu || $isBk) {
+                // Guru piket, Staf TU, dan Guru BK mengikuti jam operasional sekolah penuh (full time)
                 $expectedStartTimeStr = $schoolStartTimeStr;
                 $expectedEndTimeStr = $schoolEndTimeStr;
                 $expectedStart = $schoolStart;
                 $expectedEnd = $schoolEnd;
 
+                if ($isBk) {
+                    $lessonsSummary[] = 'Layanan BK & Bimbingan Konseling Siswa (Full Time)';
+                }
                 if ($hasSchedule) {
                     foreach ($schedules as $s) {
                         $crName = $s->classroom ? $s->classroom->name : '-';
@@ -338,9 +353,10 @@ class AttendanceController extends Controller
                 'has_schedule' => $hasSchedule,
                 'is_piket' => $isPiket,
                 'is_staff_tu' => $isStaffTu,
+                'is_bk' => $isBk,
                 'earliest_start_time' => $expectedStartTimeStr,
                 'expected_end_time' => $expectedEndTimeStr,
-                'lessons_summary' => implode('; ', $lessonsSummary) ?: ($isStaffTu ? 'Tugas Administrasi' : 'Tanpa Jam Pelajaran'),
+                'lessons_summary' => implode('; ', $lessonsSummary) ?: ($isStaffTu ? 'Tugas Administrasi' : ($isBk ? 'Layanan Bimbingan Konseling' : 'Tanpa Jam Pelajaran')),
                 'first_scan_at' => $firstScan?->scanned_at,
                 'first_scan_channel' => $firstScan?->channel_badge,
                 'last_scan_at' => $lastScan?->scanned_at,
@@ -688,7 +704,7 @@ class AttendanceController extends Controller
     /**
      * Resolve date ranges, period type, and period labels for reports
      */
-    protected function resolveReportDates(Request $request): array
+    public function resolveReportDates(Request $request): array
     {
         $now = Carbon::now();
         $periodType = $request->query('period_type');
@@ -935,7 +951,7 @@ class AttendanceController extends Controller
     /**
      * Build individual recap collection for Teachers and Staff
      */
-    protected function buildTeacherStaffIndividualRecap(
+    public function buildTeacherStaffIndividualRecap(
         string $startDate,
         string $endDate,
         string $subType = 'all',
@@ -1279,7 +1295,7 @@ class AttendanceController extends Controller
                 }
 
                 $isObligated = false;
-                if ($t->isStaff()) {
+                if ($t->isStaff() || $t->isCounselingBK()) {
                     $isObligated = true;
                 } else {
                     $dayName = match ($effDate->dayOfWeekIso) {
@@ -1319,9 +1335,10 @@ class AttendanceController extends Controller
                 'id' => $t->id,
                 'name' => $t->name,
                 'pin' => $t->nigs ?: (string) $t->id,
-                'position' => $t->position ?: ($t->isStaff() ? 'Staf Administrasi' : 'Guru'),
+                'position' => $t->position ?: ($t->isStaff() ? 'Staf Administrasi' : ($t->isCounselingBK() ? 'Guru BK' : 'Guru')),
                 'category' => $t->isStaff() ? 'Staf' : 'Guru',
                 'is_staff' => $t->isStaff(),
+                'is_bk' => $t->isCounselingBK(),
                 'records' => $records,
                 'total_days' => $records->count(),
                 'hadir' => $hadirCount,
@@ -1737,6 +1754,118 @@ class AttendanceController extends Controller
             'setting',
             'academicYear'
         ));
+    }
+
+    /**
+     * Export Official Attendance Report for Teachers and Staff as PDF.
+     */
+    public function exportReportTeachersPdf(Request $request)
+    {
+        if (! $request->user()->canAccessTeacherAttendanceReport()) {
+            abort(403, 'Akses laporan presensi Guru & Staf hanya diperuntukkan bagi Kepala Sekolah, Kurikulum, dan Manajemen.');
+        }
+
+        $setting = SchoolSetting::getSetting();
+        try {
+            $academicYear = app(AcademicYearContext::class)->getViewingYear($request->query('academic_year'));
+        } catch (\Throwable) {
+            $academicYear = SchoolSetting::getMasterYear();
+        }
+
+        $dateInfo = $this->resolveReportDates($request);
+        $startDate = $dateInfo['startDate'];
+        $endDate = $dateInfo['endDate'];
+        $periodLabel = $dateInfo['periodLabel'];
+        $subType = $request->query('sub_type', 'all');
+        $userId = $request->filled('user_id') ? (int) $request->query('user_id') : null;
+        $search = $request->query('search');
+        $printType = $request->query('print_type');
+
+        $recap = $this->buildTeacherStaffIndividualRecap($startDate, $endDate, $subType, $userId, $search);
+        $people = $recap['people'];
+        $summary = $recap['summary'];
+
+        $pdf = Pdf::loadView('attendance.print_teachers', compact(
+            'people',
+            'summary',
+            'startDate',
+            'endDate',
+            'periodLabel',
+            'subType',
+            'userId',
+            'printType',
+            'setting',
+            'academicYear'
+        ))->setPaper('a4', 'landscape')->setOption('isRemoteEnabled', true);
+
+        $filename = "Laporan_Presensi_GTK_{$startDate}_sd_{$endDate}.pdf";
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Export Official Attendance Report for Teachers and Staff as Excel (.xlsx).
+     */
+    public function exportReportTeachersExcel(Request $request)
+    {
+        if (! $request->user()->canAccessTeacherAttendanceReport()) {
+            abort(403, 'Akses laporan presensi Guru & Staf hanya diperuntukkan bagi Kepala Sekolah, Kurikulum, dan Manajemen.');
+        }
+
+        $dateInfo = $this->resolveReportDates($request);
+        $startDate = $dateInfo['startDate'];
+        $endDate = $dateInfo['endDate'];
+        $subType = $request->query('sub_type', 'all');
+        $userId = $request->filled('user_id') ? (int) $request->query('user_id') : null;
+        $search = $request->query('search');
+
+        $recap = $this->buildTeacherStaffIndividualRecap($startDate, $endDate, $subType, $userId, $search);
+        $people = $recap['people'];
+
+        $headers = [
+            'No',
+            'NIP / PIN',
+            'Nama Pegawai (GTK)',
+            'Jabatan / Unit',
+            'Kategori',
+            'Hari Efektif',
+            'Hadir',
+            'Terlambat',
+            'Izin',
+            'Sakit',
+            'Cuti',
+            'Dinas Luar',
+            'Alfa',
+            '% Kehadiran',
+        ];
+
+        $rows = [];
+        $no = 1;
+        foreach ($people as $p) {
+            $effectiveDays = $p->total_days ?: 1;
+            $rate = round(($p->hadir / $effectiveDays) * 100, 1).'%';
+
+            $rows[] = [
+                (string) $no++,
+                (string) ($p->pin ?: '-'),
+                (string) $p->name,
+                (string) ($p->position ?: '-'),
+                (string) ($p->category ?: 'Guru'),
+                (string) $p->total_days,
+                (string) $p->hadir,
+                (string) $p->terlambat,
+                (string) $p->izin,
+                (string) $p->sakit,
+                (string) $p->cuti,
+                (string) $p->dinas_luar,
+                (string) $p->alfa,
+                (string) $rate,
+            ];
+        }
+
+        $filename = "Rekap_Presensi_GTK_{$startDate}_sd_{$endDate}.xlsx";
+
+        return SimpleXlsxGenerator::download($filename, 'Presensi GTK', $headers, $rows);
     }
 
     /**

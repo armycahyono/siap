@@ -1,0 +1,78 @@
+<div class="space-y-3.5 pb-20">
+    <!-- Header Hero Riwayat KBM -->
+    <div class="card-elevated p-3.5 bg-gradient-to-r from-[#0f2744] via-[#103a6b] to-[#1d4ed8] text-white shadow-md rounded-2xl">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-black tracking-tight text-white uppercase">Riwayat Presensi KBM</h3>
+                    <p class="text-[10px] text-blue-200 mt-0.5">Daftar sesi pembelajaran yang telah diajarkan</p>
+                </div>
+            </div>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/kbm')" class="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-[10px] font-bold text-white transition">
+                KBM Hari Ini
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Riwayat: Tanggal, Kelas, Mapel -->
+    <div class="card-elevated p-3 rounded-2xl bg-white border border-slate-100 shadow-xs space-y-2.5">
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Dari Tanggal</label>
+                <input type="date" id="hist-start-date" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-800 bg-slate-50/60 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 mb-1">Sampai Tanggal</label>
+                <input type="date" id="hist-end-date" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-800 bg-slate-50/60 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <select id="hist-classroom-select" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-800 bg-slate-50/60 focus:outline-none focus:border-blue-500">
+                    <option value="">Semua Kelas</option>
+                </select>
+            </div>
+            <div>
+                <select id="hist-subject-select" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 text-slate-800 bg-slate-50/60 focus:outline-none focus:border-blue-500">
+                    <option value="">Semua Mapel</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="button" onclick="loadKbmHistory(1)" class="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+            Terapkan Filter
+        </button>
+    </div>
+
+    <!-- Container List Sesi KBM Lampau -->
+    <div class="space-y-2">
+        <div class="flex items-center justify-between px-1">
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Daftar Pertemuan KBM</h4>
+            <span id="hist-total-count" class="text-[10px] text-slate-500 font-mono">0 sesi</span>
+        </div>
+
+        <div id="hist-sessions-list" class="space-y-2">
+            <!-- Diisi secara dinamis oleh JavaScript -->
+            <div class="card-elevated p-8 text-center text-xs text-slate-400">
+                <svg class="animate-spin h-6 w-6 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                Memuat riwayat KBM...
+            </div>
+        </div>
+
+        <!-- Tombol Pagination -->
+        <div id="hist-pagination" class="hidden flex items-center justify-center gap-2 pt-2">
+            <button type="button" id="hist-prev-page" onclick="changeHistoryPage(-1)" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40">
+                &larr; Sebelumnya
+            </button>
+            <span id="hist-page-info" class="text-xs text-slate-500 font-mono">Hal 1 dari 1</span>
+            <button type="button" id="hist-next-page" onclick="changeHistoryPage(1)" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40">
+                Selanjutnya &rarr;
+            </button>
+        </div>
+    </div>
+</div>

@@ -818,6 +818,15 @@ class User extends Authenticatable
 
     public function isCounselingBK(?string $academicYear = null): bool
     {
+        if ($this->role?->slug && in_array($this->role->slug, ['guru_bk', 'bk'], true)) {
+            return true;
+        }
+
+        $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'guru bk') || str_contains($pos, 'bimbingan konseling') || str_contains($pos, 'bimbingan dan konseling') || $pos === 'bk') {
+            return true;
+        }
+
         if ($academicYear === null) {
             try {
                 $academicYear = app(AcademicYearContext::class)->getViewingYear();
@@ -1248,6 +1257,18 @@ class User extends Authenticatable
 
     public function isPiketOfficerToday(?string $academicYear = null): bool
     {
+        $todayDate = now()->toDateString();
+
+        // 1. Cek apakah user menjadi guru pengganti piket hari ini (tukar jadwal piket yang disetujui)
+        $isReplacementToday = PiketDutySwap::where('replacement_teacher_id', $this->id)
+            ->whereDate('duty_date', $todayDate)
+            ->where('status', 'disetujui')
+            ->exists();
+
+        if ($isReplacementToday) {
+            return true;
+        }
+
         $today = match (now()->dayOfWeekIso) {
             1 => 'Senin',
             2 => 'Selasa',
@@ -1259,6 +1280,16 @@ class User extends Authenticatable
         };
 
         if (! $today) {
+            return false;
+        }
+
+        // 2. Jika jadwal reguler hari ini telah ditukar dan digantikan guru lain
+        $isSwappedOut = PiketDutySwap::where('requester_id', $this->id)
+            ->whereDate('duty_date', $todayDate)
+            ->where('status', 'disetujui')
+            ->exists();
+
+        if ($isSwappedOut) {
             return false;
         }
 
@@ -1277,13 +1308,45 @@ class User extends Authenticatable
             ->exists();
     }
 
+    /**
+     * Cek apakah user berhak mengakses Meja Piket:
+     * Khusus hanya untuk Guru Piket, Kepala Sekolah, Semua Waka, dan Tim Kedisiplinan.
+     */
+    public function canAccessMejaPiket(?string $academicYear = null): bool
+    {
+        // 1. Super Admin
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        // 2. Kepala Sekolah
+        if ($this->isPrincipal($academicYear)) {
+            return true;
+        }
+
+        // 3. Semua Waka (Kurikulum, Kesiswaan, Sarpras, Humas, dll.)
+        if ($this->isVicePrincipal() || $this->hasRole(['waka_kurikulum', 'waka_kesiswaan', 'waka_sarpras', 'waka_humas'], $academicYear)) {
+            return true;
+        }
+
+        // 4. Tim Kedisiplinan / Tatib
+        if ($this->isDisciplineTeam($academicYear) || $this->hasRole(['tim_kedisiplinan', 'koordinator_kedisiplinan', 'tatib'], $academicYear)) {
+            return true;
+        }
+
+        // 5. Guru Piket (bertugas hari ini, memiliki jadwal piket aktif, atau berstatus/role guru piket)
+        if ($this->isPiketOfficerToday($academicYear)
+            || $this->hasRole('guru_piket', $academicYear)
+            || $this->piketSchedules()->where('is_active', true)->exists()) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function canAccessPiket(?string $academicYear = null): bool
     {
-        return $this->isSuperAdmin()
-            || $this->hasPermission('access_piket', $academicYear)
-            || $this->canManagePiketCases($academicYear)
-            || $this->canOperatePiket($academicYear)
-            || $this->isDisciplineTeam($academicYear);
+        return $this->canAccessMejaPiket($academicYear);
     }
 
     public function canOperatePiket(?string $academicYear = null): bool
@@ -1402,7 +1465,9 @@ class User extends Authenticatable
             || $this->isPiketOfficerToday()
             || $this->canOperatePiket()
             || $this->isPiketCoordinator()
-            || $this->piketSchedules()->where('is_active', true)->exists();
+            || $this->piketSchedules()->where('is_active', true)->exists()
+            || (method_exists($this, 'isCounselingBK') && $this->isCounselingBK())
+            || (method_exists($this, 'isHomeroomTeacher') && $this->isHomeroomTeacher());
     }
 
     public function canManagePiketSettings(): bool
@@ -1481,6 +1546,15 @@ class User extends Authenticatable
         }
 
         return $this->canConductSupervision($supervision);
+    }
+
+    public function canSelfAssessSupervision(Supervision $supervision): bool
+    {
+        if ($supervision->status === 'disetujui' || $supervision->status === 'selesai') {
+            return false;
+        }
+
+        return $supervision->teacher_id === $this->id || $this->canEditSupervision($supervision);
     }
 
     public function subjectAssignments(): HasMany

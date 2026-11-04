@@ -262,4 +262,88 @@ class MobileSupervisionTest extends TestCase
         $this->assertNotEmpty($fresh->principal_approved_at);
         $this->assertNotEmpty($fresh->snapshot_data);
     }
+
+    public function test_teacher_being_supervised_can_self_assess_observation_and_upload_photos(): void
+    {
+        // 1. Check permissions on detail
+        $detailRes = $this->actingAs($this->teacher)
+            ->getJson("/api/v1/mobile/tasks/supervisions/{$this->supervision->id}");
+
+        $detailRes->assertOk()
+            ->assertJsonPath('data.permissions.can_conduct_obs', true)
+            ->assertJsonPath('data.permissions.can_upload_photo', true)
+            ->assertJsonPath('data.permissions.is_teacher', true)
+            ->assertJsonPath('data.permissions.is_self_assessment', true);
+
+        // 2. Teacher can save observation scores (self-assessment)
+        $scoreRes = $this->actingAs($this->teacher)
+            ->postJson("/api/v1/mobile/tasks/supervisions/{$this->supervision->id}/observasi", [
+                'obs_date' => now()->toDateString(),
+                'obs_time' => '09:00',
+                'scores' => [
+                    $this->indicator->id => 4,
+                ],
+                'notes' => [
+                    $this->indicator->id => 'Refleksi mandiri: seluruh peserta didik aktif berdiskusi.',
+                ],
+            ]);
+
+        $scoreRes->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status', 'observasi');
+
+        $this->assertEquals(4, $this->supervision->fresh()->total_score);
+
+        // 3. Teacher can upload KBM photo documentation
+        $photoFile = UploadedFile::fake()->image('kbm_guru_mandiri.jpg');
+        $uploadRes = $this->actingAs($this->teacher)
+            ->postJson("/api/v1/mobile/tasks/supervisions/{$this->supervision->id}/photos", [
+                'photo' => $photoFile,
+                'caption' => 'Dokumentasi mandiri proses KBM di kelas',
+                'category' => 'Kegiatan Pembelajaran',
+            ]);
+
+        $uploadRes->assertOk()
+            ->assertJsonPath('success', true);
+
+        $photoId = $uploadRes->json('data.id');
+        $this->assertDatabaseHas('supervision_photos', [
+            'id' => $photoId,
+            'supervision_id' => $this->supervision->id,
+        ]);
+
+        // 4. Teacher can delete own uploaded photo
+        $delRes = $this->actingAs($this->teacher)
+            ->deleteJson("/api/v1/mobile/tasks/supervisions/photos/{$photoId}");
+
+        $delRes->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseMissing('supervision_photos', ['id' => $photoId]);
+    }
+
+    public function test_tasks_endpoint_supervision_agenda_flag(): void
+    {
+        // When active supervision exists for teacher
+        $resActive = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks');
+        $resActive->assertOk()
+            ->assertJsonPath('data.supervisions.has_agenda', true)
+            ->assertJsonPath('data.supervisions.has_any_supervision', true);
+
+        // When all supervisions are completed / approved
+        $this->supervision->update(['status' => 'disetujui']);
+
+        $resInactive = $this->actingAs($this->teacher)->getJson('/api/v1/mobile/tasks');
+        $resInactive->assertOk()
+            ->assertJsonPath('data.supervisions.has_agenda', false)
+            ->assertJsonPath('data.supervisions.has_any_supervision', false);
+    }
+
+    public function test_supervision_form_template_has_back_navigation_and_responsive_upload(): void
+    {
+        $response = $this->get('/mobile/pages/tasks/supervisions_form.html');
+        $response->assertOk()
+            ->assertSee('/tasks/supervisions')
+            ->assertSee('Kembali ke Supervisi')
+            ->assertSee('form-step1-rpp-upload-box')
+            ->assertSee('Unggah Modul Ajar / RPP');
+    }
 }

@@ -1,0 +1,76 @@
+<div class="space-y-3.5">
+    <!-- Header Card -->
+    <div class="card-elevated p-4 bg-gradient-to-br from-[#102d52] via-[#047857] to-[#059669] text-white shadow-lg relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="relative z-10">
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-white/20 text-white tracking-wide uppercase">
+                Statistik &amp; Analisis
+            </span>
+            <h3 class="text-sm font-black tracking-tight text-white mt-1.5">Laporan &amp; Tren Piket</h3>
+            <p id="piket-report-period-text" class="text-[11px] text-emerald-100/90 mt-0.5">Periode bulan berjalan</p>
+
+            <!-- Date Range Filter Form -->
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-[9px] font-bold text-emerald-200 uppercase mb-0.5">Dari Tanggal</label>
+                    <input type="date" id="piket-report-start-date" class="w-full text-xs font-bold rounded-xl border border-white/30 px-2.5 py-1.5 bg-white/10 text-white placeholder-white/60 focus:outline-hidden focus:ring-2 focus:ring-white">
+                </div>
+                <div>
+                    <label class="block text-[9px] font-bold text-emerald-200 uppercase mb-0.5">Sampai Tanggal</label>
+                    <input type="date" id="piket-report-end-date" class="w-full text-xs font-bold rounded-xl border border-white/30 px-2.5 py-1.5 bg-white/10 text-white placeholder-white/60 focus:outline-hidden focus:ring-2 focus:ring-white">
+                </div>
+            </div>
+            <button type="button" onclick="applyPiketReportFilter()" class="mt-2.5 w-full py-2 bg-white hover:bg-emerald-50 text-emerald-900 rounded-xl text-xs font-bold shadow-xs active:scale-95 transition flex items-center justify-center gap-1.5">
+                <span>🔍</span><span>Terapkan Filter Laporan</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 5 Summary Metrics Cards -->
+    <div class="grid grid-cols-2 gap-2 text-center" id="piket-report-metrics">
+        <div class="card-elevated p-3 border-amber-200/80 bg-amber-50/50">
+            <span class="text-[10px] font-bold text-amber-800 block">Siswa Terlambat</span>
+            <span id="report-stat-late" class="text-xl font-black text-amber-950 font-mono mt-0.5 block">0</span>
+            <span class="text-[9px] text-amber-600 font-medium">Masuk Meja Piket</span>
+        </div>
+        <div class="card-elevated p-3 border-blue-200/80 bg-blue-50/50">
+            <span class="text-[10px] font-bold text-blue-800 block">Izin Keluar / Pulang</span>
+            <span id="report-stat-leave" class="text-xl font-black text-blue-950 font-mono mt-0.5 block">0</span>
+            <span class="text-[9px] text-blue-600 font-medium">Slip Terbit</span>
+        </div>
+        <div class="card-elevated p-3 border-indigo-200/80 bg-indigo-50/50">
+            <span class="text-[10px] font-bold text-indigo-800 block">Kelas Diinval</span>
+            <span id="report-stat-inval" class="text-xl font-black text-indigo-950 font-mono mt-0.5 block">0</span>
+            <span class="text-[9px] text-indigo-600 font-medium">Guru Pengganti</span>
+        </div>
+        <div class="card-elevated p-3 border-rose-200/80 bg-rose-50/50">
+            <span class="text-[10px] font-bold text-rose-800 block">Kasus Siswa</span>
+            <span id="report-stat-incident" class="text-xl font-black text-rose-950 font-mono mt-0.5 block">0</span>
+            <span class="text-[9px] text-rose-600 font-medium">Pelanggaran</span>
+        </div>
+        <div class="card-elevated p-3 border-emerald-200/80 bg-emerald-50/50 col-span-2">
+            <div class="flex items-center justify-between px-2">
+                <span class="text-[10px] font-bold text-emerald-800">Total Tamu Sekolah</span>
+                <span id="report-stat-guest" class="text-xl font-black text-emerald-950 font-mono">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Tabs Navigation (Izin vs Kasus) -->
+    <div class="card-elevated p-1 flex gap-1 bg-slate-100 rounded-2xl" id="piket-report-tabs">
+        <button type="button" onclick="switchPiketReportTab('permits')" id="tab-btn-permits" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition bg-white text-slate-800 shadow-xs">
+            Daftar Izin &amp; Terlambat
+        </button>
+        <button type="button" onclick="switchPiketReportTab('incidents')" id="tab-btn-incidents" class="flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition text-slate-500 hover:text-slate-800">
+            Daftar Kejadian &amp; Kasus
+        </button>
+    </div>
+
+    <!-- Tab Feed Container -->
+    <div id="piket-report-feed" class="space-y-2">
+        <div class="p-8 text-center text-xs text-slate-400 card-elevated">
+            <svg class="animate-spin h-6 w-6 text-emerald-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+            Memuat data laporan...
+        </div>
+    </div>
+</div>
