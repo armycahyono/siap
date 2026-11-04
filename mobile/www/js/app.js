@@ -889,9 +889,14 @@
 
         if (schedules.length === 0) {
             scheduleContainer.innerHTML = `
-                <div class="p-6 text-center text-slate-400 text-xs card-elevated">
-                    <svg class="w-8 h-8 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                    Tidak ada jadwal mengajar tatap muka yang terdaftar untuk Anda pada hari ini.
+                <div class="p-6 text-center text-slate-500 text-xs card-elevated space-y-2.5">
+                    <svg class="w-8 h-8 mx-auto text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    <p class="font-medium">Tidak ada jadwal mengajar tatap muka yang terdaftar untuk Anda pada hari ini.</p>
+                    <div class="pt-1">
+                        <button type="button" onclick="SIAP_ROUTER.navigate('/school-schedule')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition active:scale-95 shadow-xs">
+                            <span>🔍 Cari Kelas Kosong / Inval di Jadwal Sekolah</span>
+                        </button>
+                    </div>
                 </div>
             `;
             if (emptyResultEl) emptyResultEl.classList.add('hidden');
@@ -7338,9 +7343,14 @@
                                 ${activeBadge}
                             </div>
                             <h5 class="text-xs font-bold text-slate-900 leading-tight">${escapeHtml(s.subject_name || 'Mapel')}</h5>
-                            <div class="flex items-center gap-1.5 text-[11px] text-slate-600 mt-1">
-                                <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                <span class="font-medium text-slate-700">${escapeHtml(s.teacher_name || 'Guru')}</span>
+                            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                                <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    <span class="font-medium text-slate-700">${escapeHtml(s.teacher_name || 'Guru')}</span>
+                                </div>
+                                <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=' + (new Date().toISOString().split('T')[0]))" class="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold transition active:scale-95 flex items-center gap-1 shadow-2xs">
+                                    <span>⚡ Inval / Masuk</span>
+                                </button>
                             </div>
                         </div>
                     `;

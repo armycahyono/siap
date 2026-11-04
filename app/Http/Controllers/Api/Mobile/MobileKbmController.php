@@ -279,11 +279,12 @@ class MobileKbmController extends Controller
         $dateStr = $date->toDateString();
 
         // Cek wewenang
-        $isTeacher = ($schedule->teacher_id === $user->id);
+        $isOwnerTeacher = ($schedule->teacher_id === $user->id);
+        $isSubstituteTeacher = $user->hasRole('guru') || $user->hasTeachingDuty() || $user->isTeacher();
         $isManagement = $user->isSuperAdmin() || $user->hasRole('admin') || $user->isPrincipal() || $user->isWakaKurikulum();
         $isPiket = $user->canOperatePiket();
 
-        if (! $isTeacher && ! $isManagement && ! $isPiket) {
+        if (! $isOwnerTeacher && ! $isSubstituteTeacher && ! $isManagement && ! $isPiket) {
             return response()->json([
                 'success' => false,
                 'message' => 'Anda tidak memiliki hak akses untuk mengabsen jadwal ini.',
@@ -422,9 +423,9 @@ class MobileKbmController extends Controller
                     'is_attended' => (bool) $session,
                     'topic' => $session?->topic ?? '',
                     'notes' => $session?->notes ?? '',
-                    'swap_type' => $session?->swap_type ?? null,
+                    'swap_type' => $session?->swap_type ?? (! $isOwnerTeacher ? 'inval' : null),
                     'swap_notes' => $session?->swap_notes ?? null,
-                    'is_swap' => (bool) $session?->is_swap,
+                    'is_swap' => (bool) ($session?->is_swap || (! $isOwnerTeacher)),
                 ],
                 'window' => [
                     'can_submit' => $canSubmit,
