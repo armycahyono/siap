@@ -5,7 +5,8 @@
 @section('content')
 <!-- Header (Model 2: Hero Context Banner) -->
 @php
-    $piketRepActions = '<a href="' . route('piket.reports.export', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor CSV / Excel</a> ' .
+    $piketRepActions = '<a href="' . route('piket.reports.export', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-spreadsheet me-1 text-success"></i> Ekspor CSV</a> ' .
+        '<a href="' . route('piket.reports.pdf', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-file-type-pdf me-1 text-danger"></i> Unduh PDF</a> ' .
         '<a href="' . route('piket.reports.print', ['tab' => $tab, 'start_date' => $startDate, 'end_date' => $endDate, 'classroom_id' => $classroomId]) . '" target="_blank" class="btn btn-sm btn-warning text-dark fw-bold shadow-xs"><i class="ti ti-printer me-1"></i> Cetak Format Dinas</a>';
 @endphp
 @include('layouts._hero_header', [

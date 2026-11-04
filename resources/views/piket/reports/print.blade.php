@@ -61,11 +61,11 @@
 
     @php
         $reportTitle = match($tab) {
-            'incidents' => 'Laporan Kejadian Siswa',
-            'permits' => 'Laporan Perizinan Siswa',
-            'inval' => 'Laporan Guru Inval',
-            'guests' => 'Laporan Buku Tamu',
-            default => 'Laporan ' . ucwords(str_replace('_', ' ', $tab)),
+            'incidents' => 'LAPORAN REKAPITULASI KEJADIAN SISWA',
+            'permits' => 'LAPORAN REKAPITULASI PERIZINAN SISWA',
+            'inval' => 'LAPORAN REKAPITULASI GURU INVAL',
+            'guests' => 'LAPORAN REKAPITULASI BUKU TAMU SEKOLAH',
+            default => 'LAPORAN REKAPITULASI ' . strtoupper(str_replace('_', ' ', $tab)),
         };
     @endphp
 
@@ -74,7 +74,7 @@
             {{ $reportTitle }}
         </h4>
         <div style="font-size: 10pt; margin-top: 3px;">
-            Periode: <strong>{{ \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y') }}</strong> s.d. <strong>{{ \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y') }}</strong>
+            Periode: <strong>{{ \Carbon\Carbon::parse($startDate)->locale('id')->translatedFormat('d F Y') }}</strong> s.d. <strong>{{ \Carbon\Carbon::parse($endDate)->locale('id')->translatedFormat('d F Y') }}</strong>
             @if($classroom)
                 &bull; Kelas: <strong>{{ $classroom->name }}</strong>
             @endif
@@ -231,7 +231,7 @@
                 <strong><u>{{ $setting->principal_name ?? 'Endang Patmowati, S.Pd.' }}</u></strong>
             </td>
             <td>
-                Kras, {{ \Carbon\Carbon::parse($endDate ?? now())->translatedFormat('d F Y') }}<br>
+                Kras, {{ \Carbon\Carbon::parse($endDate ?? now())->locale('id')->translatedFormat('d F Y') }}<br>
                 Wali Kelas{{ $classroom ? ' ' . $classroom->name : '' }}
                 <div style="height: 60px;"></div>
                 <strong><u>{{ $classroom?->homeroomTeacher?->formatted_short_name ?? $classroom?->homeroomTeacher?->name ?? '................................................' }}</u></strong>

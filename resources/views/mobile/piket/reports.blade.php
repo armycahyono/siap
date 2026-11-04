@@ -21,10 +21,16 @@
                 Filter
             </button>
         </form>
-        <a href="{{ route('piket.reports.print', ['start_date' => $startDate, 'end_date' => $endDate, 'tab' => $tab]) }}" target="_blank" class="btn btn-sm btn-outline-light rounded-pill w-100 py-1 text-white fw-bold d-flex align-items-center justify-content-center gap-1.5" style="font-size: 0.75rem;">
-            <i class="ti ti-printer fs-3"></i>
-            <span>Cetak Rekapitulasi Format Dinas</span>
-        </a>
+        <div class="d-flex gap-1.5">
+            <a href="{{ route('piket.reports.pdf', ['start_date' => $startDate, 'end_date' => $endDate, 'tab' => $tab]) }}" class="btn btn-sm btn-outline-light rounded-pill flex-fill py-1 text-white fw-bold d-flex align-items-center justify-content-center gap-1.5" style="font-size: 0.75rem;">
+                <i class="ti ti-file-type-pdf fs-3"></i>
+                <span>Unduh PDF</span>
+            </a>
+            <a href="{{ route('piket.reports.print', ['start_date' => $startDate, 'end_date' => $endDate, 'tab' => $tab]) }}" target="_blank" class="btn btn-sm btn-outline-light rounded-pill flex-fill py-1 text-white fw-bold d-flex align-items-center justify-content-center gap-1.5" style="font-size: 0.75rem;">
+                <i class="ti ti-printer fs-3"></i>
+                <span>Cetak Dinas</span>
+            </a>
+        </div>
     </div>
 </div>
 
