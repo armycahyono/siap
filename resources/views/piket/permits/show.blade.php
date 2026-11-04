@@ -19,8 +19,13 @@
                 </div>
             </div>
             <div class="col-auto ms-auto d-flex gap-2">
+                @if($permit->batch_id)
+                    <a href="{{ route('piket.permits.slip', ['permit' => $permit->id, 'batch' => 1]) }}" target="_blank" class="btn btn-sm btn-indigo shadow-sm">
+                        <i class="ti ti-printer me-1"></i> Cetak Slip Rombongan (Per Rombel)
+                    </a>
+                @endif
                 <a href="{{ route('piket.permits.slip', $permit) }}" target="_blank" class="btn btn-sm btn-primary shadow-sm">
-                    <i class="ti ti-printer me-1"></i> Cetak Slip Izin (Termal / Kertas)
+                    <i class="ti ti-printer me-1"></i> Cetak Slip Izin (Individu)
                 </a>
                 <a href="{{ route('piket.permits.create') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="ti ti-plus me-1"></i> Buat Izin Baru
@@ -104,6 +109,62 @@
                     </div>
                 </div>
             </div>
+
+            @if($permit->batch_id)
+                @php
+                    $batchPermits = \App\Models\PiketStudentPermit::where('batch_id', $permit->batch_id)->with(['classroom', 'student'])->get();
+                @endphp
+                @if($batchPermits->count() > 1)
+                    <div class="card shadow-sm border-indigo mt-3">
+                        <div class="card-header bg-indigo-lt d-flex justify-content-between align-items-center py-2 px-3">
+                            <div>
+                                <h4 class="card-title text-indigo mb-0 fw-bold">
+                                    <i class="ti ti-users me-1"></i> Anggota Izin Rombongan ({{ $batchPermits->count() }} Siswa)
+                                </h4>
+                                <span class="text-secondary small">Kode Rombongan: <strong>{{ $permit->batch_id }}</strong></span>
+                            </div>
+                            <a href="{{ route('piket.permits.slip', ['permit' => $permit->id, 'batch' => 1]) }}" target="_blank" class="btn btn-sm btn-indigo">
+                                <i class="ti ti-printer me-1"></i> Cetak Slip Rombongan (Per Rombel)
+                            </a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-vcenter table-hover card-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>No. Izin</th>
+                                        <th>Nama Siswa</th>
+                                        <th>Kelas / Rombel</th>
+                                        <th>Waktu</th>
+                                        <th class="text-end">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($batchPermits as $bp)
+                                        <tr class="{{ $bp->id === $permit->id ? 'table-primary' : '' }}">
+                                            <td>
+                                                <span class="fw-bold">{{ $bp->permit_number }}</span>
+                                                @if($bp->id === $permit->id)
+                                                    <span class="badge bg-primary text-white ms-1">Sedang Dibuka</span>
+                                                @endif
+                                            </td>
+                                            <td class="fw-bold text-dark">{{ $bp->student_name }}</td>
+                                            <td><span class="badge bg-blue-lt">{{ $bp->classroom?->name ?? '-' }}</span></td>
+                                            <td class="small text-muted">{{ substr($bp->entry_time ?: $bp->departure_time ?: '', 0, 5) }} WIB</td>
+                                            <td class="text-end">
+                                                @if($bp->id !== $permit->id)
+                                                    <a href="{{ route('piket.permits.show', $bp) }}" class="btn btn-xs btn-outline-secondary">
+                                                        <i class="ti ti-eye me-1"></i> Buka
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+            @endif
         </div>
     </div>
 </div>

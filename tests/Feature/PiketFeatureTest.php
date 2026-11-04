@@ -275,6 +275,105 @@ class PiketFeatureTest extends TestCase
         $slipResponse->assertSee('SLIP Terlambat Masuk');
     }
 
+    public function test_multi_student_batch_permit_creation_and_grouped_slip_view(): void
+    {
+        $classroom2 = Classroom::create([
+            'name' => 'XII TKRO 2',
+            'academic_year' => '2026/2027',
+            'grade_level_id' => $this->classroom->grade_level_id,
+            'department_id' => $this->classroom->department_id,
+            'is_active' => true,
+        ]);
+
+        $student1 = Student::create([
+            'name' => 'Siswa Kelas Satu A',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+        $student2 = Student::create([
+            'name' => 'Siswa Kelas Satu B',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+        $student3 = Student::create([
+            'name' => 'Siswa Kelas Dua A',
+            'classroom_id' => $classroom2->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->user)->post(route('piket.permits.store'), [
+            'permit_type' => 'terlambat',
+            'permit_date' => date('Y-m-d'),
+            'student_ids' => [$student1->id, $student2->id, $student3->id],
+            'reason' => 'Rantai motor putus rombongan',
+            'entry_time' => '07:35',
+            'period_assigned' => '1',
+            'action_taken' => 'Pembersihan taman',
+        ]);
+
+        $response->assertRedirect();
+
+        $permits = PiketStudentPermit::whereIn('student_id', [$student1->id, $student2->id, $student3->id])->get();
+        $this->assertCount(3, $permits);
+
+        $batchId = $permits->first()->batch_id;
+        $this->assertNotNull($batchId);
+        $this->assertStringStartsWith('GRP-', $batchId);
+
+        foreach ($permits as $p) {
+            $this->assertEquals($batchId, $p->batch_id);
+            $this->assertEquals('terlambat', $p->permit_type);
+        }
+
+        // Test print slip rombongan / batch
+        $slipResponse = $this->actingAs($this->user)->get(route('piket.permits.slip', [
+            'permit' => $permits->first()->id,
+            'batch' => 1,
+        ]));
+        $slipResponse->assertStatus(200);
+        $slipResponse->assertSee('SISWA KELAS SATU A');
+        $slipResponse->assertSee('SISWA KELAS SATU B');
+        $slipResponse->assertSee('SISWA KELAS DUA A');
+        $slipResponse->assertSee($this->classroom->name);
+        $slipResponse->assertSee($classroom2->name);
+
+        // Test dedicated batch-slip route
+        $batchSlipResponse = $this->actingAs($this->user)->get(route('piket.permits.batch-slip', ['batchId' => $batchId]));
+        $batchSlipResponse->assertStatus(200);
+        $batchSlipResponse->assertSee('SISWA KELAS SATU A');
+    }
+
+    public function test_mobile_api_batch_student_permit_creation(): void
+    {
+        $studentA = Student::create([
+            'name' => 'Mobile Siswa A',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+        $studentB = Student::create([
+            'name' => 'Mobile Siswa B',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson('/api/v1/mobile/tasks/piket/permits/store', [
+            'permit_type' => 'terlambat',
+            'student_ids' => [$studentA->id, $studentB->id],
+            'reason' => 'Ban bocor bersama',
+            'entry_time' => '07:20',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $permits = PiketStudentPermit::whereIn('student_id', [$studentA->id, $studentB->id])->get();
+        $this->assertCount(2, $permits);
+        $this->assertNotNull($permits->first()->batch_id);
+        $this->assertEquals($permits->first()->batch_id, $permits->last()->batch_id);
+    }
+
     public function test_student_permit_create_page_renders_successfully(): void
     {
         $response = $this->actingAs($this->user)->get(route('piket.permits.create'));

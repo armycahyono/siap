@@ -17,7 +17,9 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -167,9 +169,11 @@ class PiketPermitController extends Controller
             'permit_date' => 'required|date',
             'end_date' => 'nullable|date',
             'permit_category' => 'nullable|in:sakit,izin,dispen,terlambat',
+            'student_ids' => 'nullable|array',
+            'student_ids.*' => 'exists:students,id',
             'student_id' => 'nullable|exists:students,id',
-            'student_name' => 'required|string|max:255',
-            'classroom_id' => 'required|exists:classrooms,id',
+            'student_name' => 'nullable|string|max:255',
+            'classroom_id' => 'nullable|exists:classrooms,id',
             'reason' => 'required|string|max:500',
             'entry_time' => 'nullable|string',
             'departure_time' => 'nullable|string',
@@ -182,19 +186,6 @@ class PiketPermitController extends Controller
         ]);
 
         $todayStr = Carbon::parse($validated['permit_date'])->toDateString();
-
-        // Pencegahan Dobel Input / Double Click untuk siswa yang sama pada hari yang sama dengan tipe izin sama
-        if (! empty($validated['student_id'])) {
-            $existingPermit = PiketStudentPermit::where('student_id', $validated['student_id'])
-                ->where('permit_type', $validated['permit_type'])
-                ->whereDate('permit_date', $todayStr)
-                ->first();
-
-            if ($existingPermit) {
-                return redirect()->route('piket.permits.show', $existingPermit)
-                    ->with('warning', "Surat izin untuk siswa {$validated['student_name']} dengan jenis ini sudah pernah dibuat hari ini ({$existingPermit->permit_number}).");
-            }
-        }
 
         // Simpan file bukti / lampiran surat jika diupload
         $attachmentPath = null;
@@ -215,10 +206,6 @@ class PiketPermitController extends Controller
             ]
         );
 
-        // Generate nomor izin unik: IZN-YYYYMMDD-001
-        $countToday = PiketStudentPermit::whereDate('permit_date', $todayStr)->count() + 1;
-        $permitNumber = sprintf('IZN-%s-%03d', Carbon::parse($todayStr)->format('Ymd'), $countToday);
-
         // Tentukan jam keluar / pulang berdasarkan jenis izin
         $finalDepartureTime = null;
         if ($validated['permit_type'] === 'izin_pulang_cepat') {
@@ -227,18 +214,143 @@ class PiketPermitController extends Controller
             $finalDepartureTime = $validated['departure_time'] ?: Carbon::now()->format('H:i');
         }
 
+        $finalEntryTime = ($validated['permit_type'] === 'terlambat')
+            ? (($validated['entry_time'] ?? null) ?: Carbon::now()->format('H:i'))
+            : null;
+
+        $studentIds = collect($validated['student_ids'] ?? [])->filter()->unique()->values();
+        if ($studentIds->isEmpty() && ! empty($validated['student_id'])) {
+            $studentIds = collect([(int) $validated['student_id']]);
+        }
+
+        // MODE 1: Siswa Terpilih (Single atau Multi / Rombongan)
+        if ($studentIds->isNotEmpty()) {
+            $students = Student::with(['classroom.homeroomTeacher'])->whereIn('id', $studentIds)->get();
+            if ($students->isEmpty()) {
+                return back()->withInput()->with('error', 'Data siswa yang dipilih tidak ditemukan.');
+            }
+
+            $batchId = $students->count() > 1
+                ? 'GRP-'.Carbon::parse($todayStr)->format('Ymd').'-'.Str::upper(Str::random(5))
+                : null;
+
+            $createdPermits = collect();
+            $countToday = PiketStudentPermit::whereDate('permit_date', $todayStr)->count();
+
+            DB::transaction(function () use (
+                $students, $journal, $todayStr, $validated, $finalEntryTime,
+                $finalDepartureTime, $attachmentPath, $batchId, &$countToday, &$createdPermits
+            ) {
+                foreach ($students as $st) {
+                    $existing = PiketStudentPermit::where('student_id', $st->id)
+                        ->where('permit_type', $validated['permit_type'])
+                        ->whereDate('permit_date', $todayStr)
+                        ->first();
+
+                    if ($existing) {
+                        continue;
+                    }
+
+                    $countToday++;
+                    $permitNumber = sprintf('IZN-%s-%03d', Carbon::parse($todayStr)->format('Ymd'), $countToday);
+
+                    $permit = PiketStudentPermit::create([
+                        'piket_journal_id' => $journal->id,
+                        'permit_number' => $permitNumber,
+                        'batch_id' => $batchId,
+                        'permit_date' => $validated['permit_date'],
+                        'end_date' => ! empty($validated['end_date']) ? Carbon::parse($validated['end_date'])->toDateString() : null,
+                        'student_id' => $st->id,
+                        'student_name' => $st->name,
+                        'classroom_id' => $st->classroom_id,
+                        'permit_type' => $validated['permit_type'],
+                        'permit_category' => $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin'),
+                        'reason' => $validated['reason'],
+                        'entry_time' => $finalEntryTime,
+                        'departure_time' => $finalDepartureTime,
+                        'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? null) : null,
+                        'period_assigned' => ($validated['permit_type'] === 'terlambat') ? ($validated['period_assigned'] ?? null) : null,
+                        'action_taken' => $validated['action_taken'] ?? null,
+                        'attachment_path' => $attachmentPath,
+                        'given_by' => Auth::id(),
+                        'status' => 'diberikan',
+                    ]);
+
+                    $createdPermits->push($permit);
+                }
+            });
+
+            if ($createdPermits->isEmpty()) {
+                return back()->withInput()->with('warning', 'Seluruh siswa yang dipilih sudah memiliki surat izin jenis ini untuk hari ini.');
+            }
+
+            // Notifikasi Telegram per Rombel/Kelas
+            $dayNames = [
+                1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
+            ];
+            $dayName = $dayNames[Carbon::parse($validated['permit_date'])->dayOfWeekIso] ?? 'Senin';
+
+            $groupedByClass = $createdPermits->groupBy('classroom_id');
+            foreach ($groupedByClass as $clsId => $classPermits) {
+                $classroom = Classroom::with('homeroomTeacher')->find($clsId);
+                $homeroomTeacher = $classroom?->homeroomTeacher;
+
+                $scheduleQuery = LessonSchedule::where('classroom_id', $clsId)
+                    ->where('day', $dayName)
+                    ->with('teacher');
+
+                if (! empty($validated['period_assigned']) && is_numeric($validated['period_assigned'])) {
+                    $p = (int) $validated['period_assigned'];
+                    $scheduleQuery->where('start_period', '<=', $p)
+                        ->where('end_period', '>=', $p);
+                }
+
+                $subjectTeacher = $scheduleQuery->first()?->teacher;
+
+                foreach ($classPermits as $permitItem) {
+                    try {
+                        if ($validated['permit_type'] === 'terlambat') {
+                            $this->telegramService->notifyStudentLate($permitItem, $subjectTeacher, $homeroomTeacher);
+                        } else {
+                            $this->telegramService->notifyStudentPermit($permitItem, $homeroomTeacher, $subjectTeacher);
+                        }
+                    } catch (\Throwable) {
+                    }
+                }
+            }
+
+            $firstPermit = $createdPermits->first();
+            $count = $createdPermits->count();
+
+            if ($count > 1) {
+                return redirect()->route('piket.permits.show', $firstPermit)
+                    ->with('success', "Surat izin rombongan untuk {$count} siswa berhasil diterbitkan (Kode Batch: {$batchId}). Anda dapat mencetak slip terkelompok per rombel.");
+            }
+
+            return redirect()->route('piket.permits.show', $firstPermit)
+                ->with('success', "Surat izin {$firstPermit->permit_number} berhasil diterbitkan.");
+        }
+
+        // MODE 2: Input Manual (Siswa Tanpa Data Master)
+        if (empty($validated['student_name']) || empty($validated['classroom_id'])) {
+            return back()->withInput()->with('error', 'Nama siswa dan kelas harus diisi.');
+        }
+
+        $countToday = PiketStudentPermit::whereDate('permit_date', $todayStr)->count() + 1;
+        $permitNumber = sprintf('IZN-%s-%03d', Carbon::parse($todayStr)->format('Ymd'), $countToday);
+
         $permit = PiketStudentPermit::create([
             'piket_journal_id' => $journal->id,
             'permit_number' => $permitNumber,
             'permit_date' => $validated['permit_date'],
-            'end_date' => $validated['end_date'] ?? null,
-            'student_id' => $validated['student_id'] ?? null,
+            'end_date' => ! empty($validated['end_date']) ? Carbon::parse($validated['end_date'])->toDateString() : null,
+            'student_id' => null,
             'student_name' => $validated['student_name'],
             'classroom_id' => $validated['classroom_id'],
             'permit_type' => $validated['permit_type'],
             'permit_category' => $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin'),
             'reason' => $validated['reason'],
-            'entry_time' => ($validated['permit_type'] === 'terlambat') ? (($validated['entry_time'] ?? null) ?: Carbon::now()->format('H:i')) : null,
+            'entry_time' => $finalEntryTime,
             'departure_time' => $finalDepartureTime,
             'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? null) : null,
             'period_assigned' => ($validated['permit_type'] === 'terlambat') ? ($validated['period_assigned'] ?? null) : null,
@@ -248,19 +360,11 @@ class PiketPermitController extends Controller
             'status' => 'diberikan',
         ]);
 
-        // Cek pengiriman notifikasi Telegram
         $classroom = Classroom::with('homeroomTeacher')->find($validated['classroom_id']);
         $homeroomTeacher = $classroom?->homeroomTeacher;
 
-        // Cari guru mapel yang sedang mengajar saat ini
         $dayNames = [
-            1 => 'Senin',
-            2 => 'Selasa',
-            3 => 'Rabu',
-            4 => 'Kamis',
-            5 => 'Jumat',
-            6 => 'Sabtu',
-            7 => 'Minggu',
+            1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
         ];
         $dayName = $dayNames[Carbon::parse($validated['permit_date'])->dayOfWeekIso] ?? 'Senin';
 
@@ -274,17 +378,19 @@ class PiketPermitController extends Controller
                 ->where('end_period', '>=', $p);
         }
 
-        $currentSchedule = $scheduleQuery->first();
-        $subjectTeacher = $currentSchedule?->teacher;
+        $subjectTeacher = $scheduleQuery->first()?->teacher;
 
-        if ($validated['permit_type'] === 'terlambat') {
-            $this->telegramService->notifyStudentLate($permit, $subjectTeacher, $homeroomTeacher);
-        } else {
-            $this->telegramService->notifyStudentPermit($permit, $homeroomTeacher, $subjectTeacher);
+        try {
+            if ($validated['permit_type'] === 'terlambat') {
+                $this->telegramService->notifyStudentLate($permit, $subjectTeacher, $homeroomTeacher);
+            } else {
+                $this->telegramService->notifyStudentPermit($permit, $homeroomTeacher, $subjectTeacher);
+            }
+        } catch (\Throwable) {
         }
 
         return redirect()->route('piket.permits.show', $permit)
-            ->with('success', "Surat izin {$permit->permit_number} berhasil diterbitkan dan notifikasi telah diproses.");
+            ->with('success', "Surat izin {$permit->permit_number} berhasil diterbitkan.");
     }
 
     public function show(PiketStudentPermit $permit): View

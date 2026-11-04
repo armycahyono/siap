@@ -78,17 +78,39 @@
                             </div>
                         </div>
 
-                        <!-- 2. Pencarian & Pemilihan Siswa (Solid Background Autocomplete) -->
+                        <!-- 2. Pencarian & Pemilihan Siswa (Mendukung Multi-Siswa / Rombongan) -->
                         <div class="mb-4 p-3 bg-light rounded border position-relative">
-                            <label class="form-label required fw-bold text-dark">
-                                <i class="ti ti-user-search text-primary me-1"></i> Data Siswa
-                            </label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label required fw-bold text-dark mb-0">
+                                    <i class="ti ti-user-search text-primary me-1"></i> Data Siswa (Bisa Pilih Banyak Siswa / Rombongan)
+                                </label>
+                                <span class="badge bg-purple-lt text-purple fw-bold small">
+                                    <i class="ti ti-users me-1"></i> Mendukung Multi-Rombel
+                                </span>
+                            </div>
+                            <p class="text-muted small mb-2">Ketik nama atau NIS untuk menambah siswa. Jika ada beberapa siswa bersamaan (meski berbeda kelas), cukup cari dan klik untuk memasukkan mereka ke daftar rombongan.</p>
+
+                            <!-- Container Chip Siswa Terpilih (Batch) -->
+                            <div id="selected_students_chips" class="d-flex flex-wrap gap-2 mb-2 p-2 bg-white rounded border" style="display: none !important;"></div>
+                            <div id="hidden_student_inputs"></div>
+
+                            <!-- Banner Informasi Mode Rombongan -->
+                            <div id="batch_notice" class="alert alert-indigo py-2 px-3 mb-2 small d-none">
+                                <div class="d-flex align-items-center justify-between">
+                                    <span>
+                                        <i class="ti ti-users me-1 fs-3"></i>
+                                        <strong>Mode Rombongan Aktif:</strong> <span id="batch_count_label" class="fw-bold">0 siswa</span> terpilih dari <span id="batch_classes_label" class="fw-bold">0 kelas</span>.
+                                    </span>
+                                    <span class="badge bg-indigo text-white">Slip Terpisah Otomatis Per Rombel</span>
+                                </div>
+                            </div>
+
                             <div class="position-relative">
                                 <div class="input-group">
                                     <span class="input-group-text bg-white text-muted border-end-0">
                                         <i class="ti ti-search"></i>
                                     </span>
-                                    <input type="text" id="student_search_input" class="form-control border-start-0" placeholder="Ketik nama atau NIS siswa untuk mencari otomatis..." autocomplete="off">
+                                    <input type="text" id="student_search_input" class="form-control border-start-0" placeholder="Ketik nama atau NIS siswa untuk mencari & menambah siswa..." autocomplete="off">
                                     <button type="button" class="btn btn-outline-secondary" id="btn_clear_search" style="display: none;" title="Hapus pencarian">
                                         <i class="ti ti-x"></i>
                                     </button>
@@ -99,7 +121,8 @@
 
                             <input type="hidden" name="student_id" id="student_id" value="">
 
-                            <div class="row g-2 mt-2">
+                            <!-- Baris Siswa Tunggal / Manual (Otomatis Terisi atau untuk Ketik Manual) -->
+                            <div id="single_student_fields" class="row g-2 mt-2">
                                 <div class="col-md-7">
                                     <label class="form-label small text-muted">Nama Siswa Terpilih / Ketik Manual:</label>
                                     <input type="text" name="student_name" id="student_name" class="form-control fw-bold" placeholder="Nama Lengkap Siswa" required>
@@ -289,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 2. Smart Autocomplete Search for Students (Solid Background & Clear Button)
+    // 2. Smart Autocomplete Search for Students (Solid Background & Clear Button & Multi-Student Batch)
     const searchInput = document.getElementById('student_search_input');
     const autoList = document.getElementById('student_autocomplete_list');
     const btnClearSearch = document.getElementById('btn_clear_search');
@@ -298,14 +321,84 @@ document.addEventListener('DOMContentLoaded', function () {
     const classroomSelect = document.getElementById('classroom_id');
     const homeroomBadge = document.getElementById('homeroom_badge');
     const homeroomNameSpan = document.getElementById('homeroom_name');
+    const chipsContainer = document.getElementById('selected_students_chips');
+    const hiddenInputsContainer = document.getElementById('hidden_student_inputs');
+    const batchNotice = document.getElementById('batch_notice');
+    const batchCountLabel = document.getElementById('batch_count_label');
+    const batchClassesLabel = document.getElementById('batch_classes_label');
+    const singleFields = document.getElementById('single_student_fields');
 
+    let selectedStudents = [];
     let debounceTimer;
+
+    function renderSelectedStudents() {
+        chipsContainer.innerHTML = '';
+        hiddenInputsContainer.innerHTML = '';
+
+        if (selectedStudents.length === 0) {
+            chipsContainer.style.setProperty('display', 'none', 'important');
+            batchNotice.classList.add('d-none');
+            singleFields.style.display = 'flex';
+            studentNameField.required = true;
+            classroomSelect.required = true;
+            studentIdField.value = '';
+            studentNameField.value = '';
+            homeroomBadge.style.display = 'none';
+            return;
+        }
+
+        chipsContainer.style.setProperty('display', 'flex', 'important');
+
+        const classes = [...new Set(selectedStudents.map(s => s.classroom_name))];
+
+        if (selectedStudents.length > 1) {
+            batchNotice.classList.remove('d-none');
+            batchCountLabel.textContent = `${selectedStudents.length} siswa`;
+            batchClassesLabel.textContent = `${classes.length} kelas (${classes.join(', ')})`;
+            singleFields.style.display = 'none';
+            studentNameField.required = false;
+            classroomSelect.required = false;
+        } else {
+            batchNotice.classList.add('d-none');
+            singleFields.style.display = 'flex';
+            studentNameField.required = true;
+            classroomSelect.required = true;
+            const first = selectedStudents[0];
+            studentIdField.value = first.id;
+            studentNameField.value = first.name;
+            classroomSelect.value = first.classroom_id;
+            if (first.homeroom) {
+                homeroomNameSpan.textContent = first.homeroom;
+                homeroomBadge.style.display = 'block';
+            }
+        }
+
+        selectedStudents.forEach((st, idx) => {
+            const chip = document.createElement('span');
+            chip.className = 'badge bg-white text-dark border border-indigo p-2 d-inline-flex align-items-center gap-2 shadow-xs';
+            chip.innerHTML = `
+                <span class="badge bg-indigo text-white">${st.classroom_name}</span>
+                <span class="fw-bold">${st.name}</span>
+                <span class="text-muted small">${st.nis ? '(' + st.nis + ')' : ''}</span>
+                <button type="button" class="btn-close btn-close-sm ms-1" aria-label="Hapus" style="font-size: 0.65rem;"></button>
+            `;
+            chip.querySelector('.btn-close').addEventListener('click', () => {
+                selectedStudents.splice(idx, 1);
+                renderSelectedStudents();
+            });
+            chipsContainer.appendChild(chip);
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'student_ids[]';
+            input.value = st.id;
+            hiddenInputsContainer.appendChild(input);
+        });
+    }
 
     if (btnClearSearch) {
         btnClearSearch.addEventListener('click', function () {
             searchInput.value = '';
-            studentIdField.value = '';
-            studentNameField.value = '';
             autoList.style.display = 'none';
             btnClearSearch.style.display = 'none';
             searchInput.focus();
@@ -352,16 +445,21 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                         `;
                         div.addEventListener('click', function () {
-                            studentIdField.value = item.id;
-                            studentNameField.value = item.name;
-                            if (item.classroom_id) {
-                                classroomSelect.value = item.classroom_id;
-                                homeroomNameSpan.textContent = item.homeroom_teacher;
-                                homeroomBadge.style.display = 'block';
+                            if (!selectedStudents.some(s => s.id === item.id)) {
+                                selectedStudents.push({
+                                    id: item.id,
+                                    name: item.name,
+                                    nis: item.nis,
+                                    classroom_id: item.classroom_id,
+                                    classroom_name: item.classroom_name,
+                                    homeroom: item.homeroom_teacher
+                                });
                             }
+                            renderSelectedStudents();
                             autoList.style.display = 'none';
-                            searchInput.value = item.name;
-                            if (btnClearSearch) btnClearSearch.style.display = 'block';
+                            searchInput.value = '';
+                            if (btnClearSearch) btnClearSearch.style.display = 'none';
+                            searchInput.focus();
                         });
                         autoList.appendChild(div);
                     });

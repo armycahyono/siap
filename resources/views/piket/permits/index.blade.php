@@ -69,7 +69,12 @@
                     @forelse($permits as $p)
                         <tr>
                             <td>
-                                <div class="fw-bold text-dark">{{ $p->permit_number }}</div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="fw-bold text-dark">{{ $p->permit_number }}</span>
+                                    @if($p->batch_id)
+                                        <span class="badge bg-indigo-lt text-indigo" style="font-size: 0.65rem;" title="Izin Rombongan: {{ $p->batch_id }}">Rombongan</span>
+                                    @endif
+                                </div>
                                 <div class="text-muted small">
                                     <i class="ti ti-calendar me-1"></i>{{ $p->permit_date?->format('d/m/Y') }} &bull;
                                     <i class="ti ti-clock me-1"></i>{{ substr($p->entry_time ?: $p->departure_time ?: '', 0, 5) }} WIB
@@ -112,9 +117,15 @@
                             </td>
                             <td class="text-end">
                                 <div class="btn-group">
-                                    <a href="{{ route('piket.permits.slip', $p) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Cetak Slip Termal / Kertas">
-                                        <i class="ti ti-printer me-1"></i> Slip
-                                    </a>
+                                    @if($p->batch_id)
+                                        <a href="{{ route('piket.permits.slip', ['permit' => $p->id, 'batch' => 1]) }}" target="_blank" class="btn btn-sm btn-outline-indigo" title="Cetak Slip Rombongan (Otomatis Per Rombel)">
+                                            <i class="ti ti-printer me-1"></i> Slip Rombel
+                                        </a>
+                                    @else
+                                        <a href="{{ route('piket.permits.slip', $p) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Cetak Slip Termal / Kertas">
+                                            <i class="ti ti-printer me-1"></i> Slip
+                                        </a>
+                                    @endif
                                     <a href="{{ route('piket.permits.show', $p) }}" class="btn btn-sm btn-ghost-secondary" title="Detail">
                                         <i class="ti ti-eye"></i>
                                     </a>
