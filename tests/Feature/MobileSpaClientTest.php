@@ -73,7 +73,12 @@ class MobileSpaClientTest extends TestCase
 
         $tasksPage = $this->get('/mobile/pages/tasks.html');
         $tasksPage->assertOk()
-            ->assertSee('tasks-target-date-label');
+            ->assertSee('tasks-target-date-label')
+            ->assertSee('card-homeroom-section')
+            ->assertSee('homeroom-drawer-detail')
+            ->assertSee('data-homeroom-chip="hadir"', false);
+
+        $appJs->assertDontSee('isAdminOrManagement');
 
         $profilePage = $this->get('/mobile/pages/profile.html');
         $profilePage->assertOk()

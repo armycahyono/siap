@@ -1791,7 +1791,7 @@
         const badgePiketToday = container.querySelector('#badge-piket-today');
         const isPiketToday = data.piket?.is_piket_today;
         const weeklyDays = data.piket?.weekly_days || [];
-        const isManagement = data.piket?.is_management;
+        const isManagement = Boolean(data.piket?.is_management);
         const canAccessPiket = Boolean(data.piket?.can_access);
 
         if (canAccessPiket) {
@@ -1804,7 +1804,7 @@
                 if (piketLocationSub) {
                     piketLocationSub.textContent = 'Bertugas Hari Ini di Meja Piket & Gerbang';
                 }
-            } else if (isAdminOrManagement) {
+            } else if (isManagement) {
                 if (badgePiketToday) {
                     badgePiketToday.textContent = 'Petugas Piket Hari Ini';
                     badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white';
