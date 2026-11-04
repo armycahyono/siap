@@ -53,22 +53,25 @@
     </style>
 </head>
 <body>
-    <div class="no-print" style="margin-bottom: 15px; text-align: right;">
-        <button onclick="window.print()" style="padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            Cetak Dokumen
-        </button>
-    </div>
-
     <!-- Kop Surat -->
     <div class="header">
         <h2>{{ $setting->school_name ?? 'SMK PGRI KRAS' }}</h2>
-        <h3>LAPORAN REKAPITULASI OPERASIONAL PIKET</h3>
         <p>{{ $setting->school_address ?? 'Jl. Raya Kras, Kediri, Jawa Timur' }} &bull; Telp: {{ $setting->school_phone ?? '-' }} &bull; Email: {{ $setting->school_email ?? '-' }}</p>
     </div>
 
+    @php
+        $reportTitle = match($tab) {
+            'incidents' => 'Laporan Kejadian Siswa',
+            'permits' => 'Laporan Perizinan Siswa',
+            'inval' => 'Laporan Guru Inval',
+            'guests' => 'Laporan Buku Tamu',
+            default => 'Laporan ' . ucwords(str_replace('_', ' ', $tab)),
+        };
+    @endphp
+
     <div class="title-box">
         <h4>
-            REKAPITULASI {{ strtoupper(str_replace('_', ' ', $tab)) }} PIKET
+            {{ $reportTitle }}
         </h4>
         <div style="font-size: 10pt; margin-top: 3px;">
             Periode: <strong>{{ \Carbon\Carbon::parse($startDate)->translatedFormat('d F Y') }}</strong> s.d. <strong>{{ \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y') }}</strong>
@@ -225,15 +228,13 @@
                 Mengetahui,<br>
                 Kepala Sekolah
                 <div style="height: 60px;"></div>
-                <strong><u>{{ $setting->principal_name ?? 'Endang Patmowati, S.Pd.' }}</u></strong><br>
-                NIP. {{ $setting->principal_nip ?? '-' }}
+                <strong><u>{{ $setting->principal_name ?? 'Endang Patmowati, S.Pd.' }}</u></strong>
             </td>
             <td>
-                Kras, {{ date('d F Y') }}<br>
-                Waka Kurikulum / Kesiswaan
+                Kras, {{ \Carbon\Carbon::parse($endDate ?? now())->translatedFormat('d F Y') }}<br>
+                Wali Kelas{{ $classroom ? ' ' . $classroom->name : '' }}
                 <div style="height: 60px;"></div>
-                <strong><u>{{ $setting->curriculum_head_name ?? '................................................' }}</u></strong><br>
-                NIP. {{ $setting->curriculum_head_nip ?? '-' }}
+                <strong><u>{{ $classroom?->homeroomTeacher?->formatted_short_name ?? $classroom?->homeroomTeacher?->name ?? '................................................' }}</u></strong>
             </td>
         </tr>
     </table>

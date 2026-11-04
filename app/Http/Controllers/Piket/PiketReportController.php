@@ -124,7 +124,7 @@ class PiketReportController extends Controller
         $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());
         $classroomId = $request->query('classroom_id');
 
-        $classroom = $classroomId ? Classroom::find($classroomId) : null;
+        $classroom = $classroomId ? Classroom::with('homeroomTeacher')->find($classroomId) : null;
         $className = $classroom ? str_replace([' ', '/', '\\'], '_', $classroom->name) : '';
 
         if ($request->query('format') === 'xlsx') {
@@ -306,7 +306,7 @@ class PiketReportController extends Controller
         $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());
         $classroomId = $request->query('classroom_id');
 
-        $classroom = $classroomId ? Classroom::find($classroomId) : null;
+        $classroom = $classroomId ? Classroom::with('homeroomTeacher')->find($classroomId) : null;
 
         $permits = PiketStudentPermit::with(['classroom', 'givenBy'])
             ->whereBetween('permit_date', [$startDate, $endDate])
@@ -357,7 +357,7 @@ class PiketReportController extends Controller
         $endDate = $request->query('end_date', Carbon::now()->endOfMonth()->toDateString());
         $classroomId = $request->query('classroom_id');
 
-        $classroom = $classroomId ? Classroom::find($classroomId) : null;
+        $classroom = $classroomId ? Classroom::with('homeroomTeacher')->find($classroomId) : null;
         $className = $classroom ? str_replace([' ', '/', '\\'], '_', $classroom->name) : '';
 
         $permits = ($tab === 'permits')
