@@ -6798,20 +6798,27 @@
         const evtEl = root.querySelector('#cal-stat-events');
         if (evtEl) evtEl.textContent = data.stats?.event_days ?? 0;
 
-        // Create button for authorized users (KS, Waka, Operator)
-        const fabEl = root.querySelector('#cal-fab-container');
-        const inlineBtn = root.querySelector('#cal-btn-add-inline');
-        const bannerBtn = root.querySelector('#cal-banner-add');
+        // Stat button create for authorized users (KS, Waka, Operator)
+        const statsGrid = root.querySelector('#cal-stats-grid');
+        const addStatBtn = root.querySelector('#cal-btn-add-stat');
 
         if (data.can_create) {
-            if (fabEl) fabEl.classList.remove('hidden');
-            if (inlineBtn) inlineBtn.classList.remove('hidden');
-            if (bannerBtn) bannerBtn.classList.remove('hidden');
+            if (statsGrid) {
+                statsGrid.classList.remove('grid-cols-3');
+                statsGrid.classList.add('grid-cols-4');
+            }
+            if (addStatBtn) {
+                addStatBtn.classList.remove('hidden');
+            }
             populateCalendarModalOptions(data);
         } else {
-            if (fabEl) fabEl.classList.add('hidden');
-            if (inlineBtn) inlineBtn.classList.add('hidden');
-            if (bannerBtn) bannerBtn.classList.add('hidden');
+            if (statsGrid) {
+                statsGrid.classList.remove('grid-cols-4');
+                statsGrid.classList.add('grid-cols-3');
+            }
+            if (addStatBtn) {
+                addStatBtn.classList.add('hidden');
+            }
         }
 
         // Days Grid
