@@ -8881,6 +8881,182 @@
         }
     }
 
+    window.contactHomeroomDailyWhatsApp = function(studentId) {
+        const data = homeroomRecapState.data;
+        if (!data) return;
+
+        const list = data.daily?.student_grid || [];
+        const st = list.find(s => Number(s.student_id) === Number(studentId));
+        if (!st) return;
+
+        const phone = st.parent_phone;
+        if (!phone) {
+            showToast('Nomor WhatsApp orang tua tidak tersedia.', 'warning');
+            return;
+        }
+
+        const className = data.selected_classroom?.name || 'Kelas';
+        const homeroomTeacher = data.selected_classroom?.homeroom_teacher || '-';
+        const dateText = data.date || data.current_date || 'Hari ini';
+
+        const statusLabels = {
+            h: 'Hadir',
+            s: 'Sakit',
+            i: 'Izin',
+            a: 'Alfa (Tanpa Keterangan)',
+            d: 'Dispensasi',
+            t: 'Terlambat',
+            b: 'Bolos',
+        };
+        const finalStatus = statusLabels[st.final_status] || st.final_status || 'Hadir';
+
+        const periods = st.periods || {};
+        const sessionsByPeriod = data.daily?.sessions_by_period || {};
+        const periodLines = [];
+        Object.keys(periods).forEach(p => {
+            const info = periods[p] || {};
+            const sess = sessionsByPeriod[p] || {};
+            const label = info.label || '-';
+            const notes = info.notes ? ` (${info.notes})` : '';
+            const subj = (sess.subject_name && sess.subject_name !== '-') ? ` • ${sess.subject_name}` : '';
+            periodLines.push(`• JP ${p}: *${label}*${subj}${notes}`);
+        });
+
+        let msg = `*PEMBERITAHUAN REKAP PRESENSI HARIAN*\n` +
+            `Yth. Bapak/Ibu Orang Tua / Wali dari *${st.student_name}*` + (st.nis && st.nis !== '-' ? ` (NIS: ${st.nis})` : '') + `,\n\n` +
+            `Kami menginformasikan rekapitulasi presensi ananda pada hari ini:\n` +
+            `📅 Tanggal: ${dateText}\n` +
+            `🏫 Kelas: ${className}\n` +
+            (homeroomTeacher && homeroomTeacher !== '-' ? `👨‍🏫 Wali Kelas: ${homeroomTeacher}\n` : '') +
+            `\n` +
+            `📌 *Status Kehadiran Hari Ini: ${finalStatus}*\n`;
+
+        if (periodLines.length > 0) {
+            msg += `\n📋 *Rincian per Jam Pelajaran (JP):*\n` + periodLines.join('\n') + `\n`;
+        }
+
+        if (st.notes && String(st.notes).trim()) {
+            msg += `\n📝 *Catatan Khusus:* ${String(st.notes).trim()}\n`;
+        }
+
+        msg += `\nDemikian informasi ini kami sampaikan agar menjadi perhatian Bapak/Ibu. Terima kasih atas perhatian dan kerja samanya.`;
+
+        const waUrl = getWhatsappUrl(phone, msg);
+        if (waUrl) {
+            window.open(waUrl, '_blank');
+        }
+    };
+
+    window.contactHomeroomWeeklyWhatsApp = function(studentId) {
+        const data = homeroomRecapState.data;
+        if (!data) return;
+
+        const list = data.weekly?.student_grid || [];
+        const st = list.find(s => Number(s.student_id) === Number(studentId));
+        if (!st) return;
+
+        const phone = st.parent_phone;
+        if (!phone) {
+            showToast('Nomor WhatsApp orang tua tidak tersedia.', 'warning');
+            return;
+        }
+
+        const className = data.selected_classroom?.name || 'Kelas';
+        const homeroomTeacher = data.selected_classroom?.homeroom_teacher || '-';
+
+        const days = st.days || {};
+        const dayLines = [];
+        Object.keys(days).forEach(dStr => {
+            const info = days[dStr] || {};
+            dayLines.push(`• ${dStr}: *${info.label || '-'}*`);
+        });
+
+        let msg = `*LAPORAN REKAP PRESENSI MINGGUAN*\n` +
+            `Yth. Bapak/Ibu Orang Tua / Wali dari *${st.student_name}*` + (st.nis && st.nis !== '-' ? ` (NIS: ${st.nis})` : '') + `,\n\n` +
+            `Berikut kami sampaikan rekapitulasi kehadiran ananda di kelas *${className}* selama sepekan:\n` +
+            `🏫 Kelas: ${className}\n` +
+            (homeroomTeacher && homeroomTeacher !== '-' ? `👨‍🏫 Wali Kelas: ${homeroomTeacher}\n` : '') +
+            `\n` +
+            `📊 *Ringkasan Kehadiran Pekan Ini:*\n` +
+            `• Hadir: ${st.total_h || 0} hari\n` +
+            `• Terlambat: ${st.total_t || 0} kali\n` +
+            `• Sakit: ${st.total_s || 0} hari\n` +
+            `• Izin: ${st.total_i || 0} hari\n` +
+            `• Dispensasi: ${st.total_d || 0} hari\n` +
+            `• Alfa (Tanpa Keterangan): ${st.total_a || 0} hari\n` +
+            (st.total_truancy > 0 ? `• Bolos KBM: ${st.total_truancy} kali\n` : '');
+
+        if (dayLines.length > 0) {
+            msg += `\n📅 *Rincian Kehadiran Harian:*\n` + dayLines.join('\n') + `\n`;
+        }
+
+        msg += `\nDemikian informasi ini kami sampaikan untuk menjadi perhatian dan evaluasi bersama demi kedisiplinan belajar ananda. Terima kasih atas kerja samanya.`;
+
+        const waUrl = getWhatsappUrl(phone, msg);
+        if (waUrl) {
+            window.open(waUrl, '_blank');
+        }
+    };
+
+    window.contactHomeroomPeriodicWhatsApp = function(studentId) {
+        const data = homeroomRecapState.data;
+        if (!data) return;
+
+        const list = data.periodic?.recap || [];
+        const st = list.find(s => Number(s.student_id) === Number(studentId));
+        if (!st) return;
+
+        const phone = st.parent_phone;
+        if (!phone) {
+            showToast('Nomor WhatsApp orang tua tidak tersedia.', 'warning');
+            return;
+        }
+
+        const className = data.selected_classroom?.name || 'Kelas';
+        const homeroomTeacher = data.selected_classroom?.homeroom_teacher || '-';
+
+        let periodLabel = 'Periode Pembelajaran';
+        if (data.mode === 'monthly') {
+            periodLabel = `Bulan ${data.date ? new Date(data.date).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : ''}`;
+        } else if (data.mode === 'semester') {
+            periodLabel = `Semester ${data.active_semester || ''} TA ${data.academic_year || ''}`;
+        } else if (data.mode === 'yearly') {
+            periodLabel = `Tahun Ajaran ${data.academic_year || ''}`;
+        } else if (data.mode === 'custom') {
+            periodLabel = `Rentang ${data.start_date || ''} s.d. ${data.end_date || ''}`;
+        }
+
+        const rate = parseFloat(st.attendance_rate) || 0;
+        const warningBadge = st.is_high_risk ? ' ⚠️ *(Perhatian Khusus)*' : '';
+
+        let msg = `*LAPORAN REKAPITULASI PRESENSI SISWA*\n` +
+            `Yth. Bapak/Ibu Orang Tua / Wali dari *${st.student_name}*` + (st.nis && st.nis !== '-' ? ` (NIS: ${st.nis})` : '') + `,\n\n` +
+            `Kami menyampaikan laporan rekapitulasi kehadiran ananda di kelas *${className}* untuk ${periodLabel}:\n` +
+            `🏫 Kelas: ${className}\n` +
+            (homeroomTeacher && homeroomTeacher !== '-' ? `👨‍🏫 Wali Kelas: ${homeroomTeacher}\n` : '') +
+            `\n` +
+            `📈 *Tingkat Kehadiran: ${rate}%*${warningBadge}\n\n` +
+            `📋 *Rincian Akumulasi:*\n` +
+            `• Hadir: ${st.days_present || 0} hari\n` +
+            `• Terlambat: ${st.days_late || 0} kali\n` +
+            `• Sakit: ${st.days_sick || 0} hari\n` +
+            `• Izin: ${st.days_permit || 0} hari\n` +
+            `• Dispensasi: ${st.days_dispen || 0} hari\n` +
+            `• Alfa (Tanpa Keterangan): ${st.days_alfa || 0} hari\n` +
+            (st.days_truant > 0 ? `• Bolos Jam Pelajaran: ${st.days_truant} kali\n` : '');
+
+        if (st.is_high_risk) {
+            msg += `\n⚠️ *Catatan Wali Kelas:* Tingkat kehadiran ananda memerlukan perhatian khusus dari orang tua. Mohon dapat memotivasi ananda untuk hadir tertib di sekolah.\n`;
+        }
+
+        msg += `\nDemikian laporan rekapitulasi ini kami sampaikan agar dapat menjadi evaluasi bersama demi kelancaran pendidikan ananda. Terima kasih atas kerja samanya.`;
+
+        const waUrl = getWhatsappUrl(phone, msg);
+        if (waUrl) {
+            window.open(waUrl, '_blank');
+        }
+    };
+
     function renderHomeroomRecapContent(data) {
         const container = homeroomRecapContainer?.querySelector('#recap-content-container');
         if (!container) return;
@@ -8905,7 +9081,7 @@
                 }).join(' ');
 
                 const waBtn = st.parent_phone ? `
-                    <button type="button" onclick="contactParentWhatsApp('${st.parent_phone}', '${escapeHtml(st.student_name)}', '${st.final_status || 'KBM'}')" class="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] flex items-center gap-1 active:scale-95 transition">
+                    <button type="button" onclick="contactHomeroomDailyWhatsApp(${st.student_id})" class="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] flex items-center gap-1 active:scale-95 transition">
                         <span>📱</span><span>WA Ortu</span>
                     </button>
                 ` : '';
@@ -8943,15 +9119,27 @@
                     return `<span class="px-2 py-0.5 rounded text-[9px] font-bold ${info.badge || 'bg-slate-100 text-slate-600'}">${escapeHtml(info.label || '-')}</span>`;
                 }).join(' ');
 
+                const waBtn = st.parent_phone ? `
+                    <button type="button" onclick="contactHomeroomWeeklyWhatsApp(${st.student_id})" class="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] flex items-center gap-1 active:scale-95 transition">
+                        <span>📱</span><span>WA Ortu</span>
+                    </button>
+                ` : '';
+
                 return `
                     <div class="card-elevated p-2.5 border-slate-200">
                         <div class="flex items-center justify-between mb-1.5">
-                            <h4 class="text-xs font-black text-slate-900">${escapeHtml(st.student_name)}</h4>
-                            <div class="text-[10px] font-mono text-slate-600 font-bold">
-                                H:${st.total_h} S:${st.total_s} I:${st.total_i} A:${st.total_a}
+                            <div>
+                                <h4 class="text-xs font-black text-slate-900">${escapeHtml(st.student_name)}</h4>
+                                <span class="text-[9px] text-slate-400 font-mono">NIS: ${st.nis}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="text-[10px] font-mono text-slate-600 font-bold">
+                                    H:${st.total_h} S:${st.total_s} I:${st.total_i} A:${st.total_a}
+                                </div>
+                                ${waBtn}
                             </div>
                         </div>
-                        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-100">
+                        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 overflow-x-auto">
                             ${dayPills}
                         </div>
                     </div>
@@ -8974,7 +9162,7 @@
                 const rateColor = rate >= 90 ? 'bg-emerald-100 text-emerald-800' : (rate >= 80 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800');
 
                 const waBtn = st.parent_phone ? `
-                    <button type="button" onclick="contactParentWhatsApp('${st.parent_phone}', '${escapeHtml(st.student_name)}', 'Persentase Kehadiran: ${rate}%')" class="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] flex items-center gap-1 active:scale-95 transition">
+                    <button type="button" onclick="contactHomeroomPeriodicWhatsApp(${st.student_id})" class="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] flex items-center gap-1 active:scale-95 transition">
                         <span>📱</span><span>WA Ortu</span>
                     </button>
                 ` : '';

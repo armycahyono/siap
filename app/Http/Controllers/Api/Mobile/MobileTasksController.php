@@ -2870,6 +2870,7 @@ class MobileTasksController extends Controller
                     'student_name' => $stu?->name,
                     'nis' => $stu?->nis ?? '-',
                     'gender' => $stu?->gender ?? 'L',
+                    'parent_phone' => ($stu?->primary_parent_phone && $stu?->primary_parent_phone !== '-') ? $stu?->primary_parent_phone : ($stu?->phone_parent ?: ($stu?->phone_student ?: null)),
                     'days' => $row['days'] ?? [],
                     'total_h' => $row['total_h'] ?? 0,
                     'total_s' => $row['total_s'] ?? 0,
