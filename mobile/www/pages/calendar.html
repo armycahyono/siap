@@ -29,6 +29,14 @@
                 <p id="cal-stat-events" class="text-sm font-black text-amber-300 font-mono mt-0.5">0</p>
             </div>
         </div>
+
+        <!-- Tombol Aksi Cepat Tambah Agenda (Bagi KS, Waka, Operator) -->
+        <div id="cal-banner-add" class="hidden pt-2.5 mt-2.5 border-t border-white/10">
+            <button type="button" onclick="openAddEventModal()" class="w-full py-2 px-3 rounded-xl bg-white/20 hover:bg-white/30 active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-xs">
+                <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                <span>+ Tambah Agenda Kegiatan</span>
+            </button>
+        </div>
     </div>
 
     <!-- 2. Grid Kalender Interaktif -->
@@ -84,9 +92,15 @@
                 <h4 id="cal-events-header-title" class="text-xs font-black text-slate-800 uppercase tracking-wider">Agenda Kegiatan</h4>
                 <p id="cal-events-header-sub" class="text-[10px] text-slate-500">Menampilkan agenda bulan ini</p>
             </div>
-            <button type="button" id="cal-btn-reset-date" onclick="resetCalendarSelectedDate()" class="hidden text-[10px] font-bold text-blue-600 hover:underline">
-                Lihat Semua Bulan Ini
-            </button>
+            <div class="flex items-center gap-1.5">
+                <button type="button" id="cal-btn-add-inline" onclick="openAddEventModal()" class="hidden px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-sm active:scale-95 transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    <span>Tambah Agenda</span>
+                </button>
+                <button type="button" id="cal-btn-reset-date" onclick="resetCalendarSelectedDate()" class="hidden text-[10px] font-bold text-blue-600 hover:underline">
+                    Lihat Semua
+                </button>
+            </div>
         </div>
 
         <div id="cal-events-container" class="space-y-2">
@@ -94,10 +108,11 @@
         </div>
     </div>
 
-    <!-- 5. FAB Tambah Kegiatan (Bagi Guru Kurikulum / Admin) -->
-    <div id="cal-fab-container" class="hidden fixed bottom-20 right-4 z-40">
-        <button type="button" onclick="openAddEventModal()" class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition" title="Tambah Agenda">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+    <!-- 5. FAB Tambah Kegiatan (Bagi KS, Waka, Operator) -->
+    <div id="cal-fab-container" class="hidden fixed bottom-20 right-4 sm:right-[max(1rem,calc(50%-13.5rem))] z-40">
+        <button type="button" onclick="openAddEventModal()" class="h-11 px-3.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xl flex items-center gap-1.5 hover:scale-105 active:scale-95 transition font-bold text-xs" title="Tambah Agenda">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            <span>Tambah Agenda</span>
         </button>
     </div>
 

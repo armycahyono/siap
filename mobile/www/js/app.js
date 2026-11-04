@@ -6798,15 +6798,20 @@
         const evtEl = root.querySelector('#cal-stat-events');
         if (evtEl) evtEl.textContent = data.stats?.event_days ?? 0;
 
-        // FAB create for authorized users
+        // Create button for authorized users (KS, Waka, Operator)
         const fabEl = root.querySelector('#cal-fab-container');
-        if (fabEl) {
-            if (data.can_create) {
-                fabEl.classList.remove('hidden');
-                populateCalendarModalOptions(data);
-            } else {
-                fabEl.classList.add('hidden');
-            }
+        const inlineBtn = root.querySelector('#cal-btn-add-inline');
+        const bannerBtn = root.querySelector('#cal-banner-add');
+
+        if (data.can_create) {
+            if (fabEl) fabEl.classList.remove('hidden');
+            if (inlineBtn) inlineBtn.classList.remove('hidden');
+            if (bannerBtn) bannerBtn.classList.remove('hidden');
+            populateCalendarModalOptions(data);
+        } else {
+            if (fabEl) fabEl.classList.add('hidden');
+            if (inlineBtn) inlineBtn.classList.add('hidden');
+            if (bannerBtn) bannerBtn.classList.add('hidden');
         }
 
         // Days Grid

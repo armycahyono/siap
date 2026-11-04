@@ -273,7 +273,7 @@ class MobileCalendarController extends Controller
      */
     public function canManageCalendar(User $user): bool
     {
-        return $user->isSuperAdmin()
+        if ($user->isSuperAdmin()
             || $user->isPrincipal()
             || $user->isVicePrincipal()
             || $user->isOperator()
@@ -285,7 +285,29 @@ class MobileCalendarController extends Controller
             || $user->isOperatorKesiswaan()
             || $user->isOperatorSarpras()
             || $user->isOperatorHumas()
-            || $user->canViewAllSchedules();
+            || $user->canViewAllSchedules()
+        ) {
+            return true;
+        }
+
+        $roleSlug = $user->role?->slug ?? '';
+        if (in_array($roleSlug, ['super_admin', 'adm2', 'kepala_sekolah', 'waka_kurikulum', 'waka_kesiswaan', 'waka_sarpras', 'waka_humas', 'operator_kurikulum', 'operator_kesiswaan', 'operator_sarpras', 'operator_humas', 'operator'], true)) {
+            return true;
+        }
+
+        $structCodes = $user->structuralPositions->pluck('code')->map(fn ($c) => strtoupper((string) $c))->all();
+        foreach (['KS', 'WAKA_KUR', 'WAKA_SARPRAS', 'WAKA_KESISWAAN', 'WAKA_HUMAS', 'OPERATOR'] as $reqCode) {
+            if (in_array($reqCode, $structCodes, true)) {
+                return true;
+            }
+        }
+
+        $pos = strtolower($user->position ?? '');
+        if (str_contains($pos, 'waka') || str_contains($pos, 'kepala') || str_contains($pos, 'operator') || str_contains($pos, 'admin')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
