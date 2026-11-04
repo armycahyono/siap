@@ -39,6 +39,11 @@
                         {{ $subtitle }}
                     </p>
                 @endif
+                @if(!empty($underTitle))
+                    <div class="mt-2">
+                        {!! $underTitle !!}
+                    </div>
+                @endif
             </div>
         </div>
 

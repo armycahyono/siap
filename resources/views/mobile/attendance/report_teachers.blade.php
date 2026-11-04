@@ -2,7 +2,7 @@
 
 @section('title', 'Rekap Presensi GTK — APK SIAP')
 @section('page_title', 'Rekap Presensi GTK')
-@section('page_subtitle', 'Guru & Tenaga Kependidikan')
+@section('page_subtitle', 'Rekap Presensi GTK')
 @section('back_url', route('attendance.subject.index'))
 
 @php
@@ -128,7 +128,7 @@
                 {{ $summary['total_people'] }} GTK
             </span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center;">
             <div class="p-1.5 rounded-2 bg-success-lt border border-success" style="border-opacity: 0.3;">
                 <div class="fw-bold text-success fs-3 lh-1">{{ $summary['total_hadir'] }}</div>
                 <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Hadir</div>
@@ -137,20 +137,12 @@
                 <div class="fw-bold text-warning fs-3 lh-1">{{ $summary['total_late'] }}</div>
                 <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Telat</div>
             </div>
-            <div class="p-1.5 rounded-2 bg-warning-lt border border-warning" style="border-opacity: 0.3;">
-                <div class="fw-bold text-warning fs-3 lh-1">{{ $summary['total_sakit'] }}</div>
-                <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Sakit</div>
-            </div>
-            <div class="p-1.5 rounded-2 bg-blue-lt border border-info" style="border-opacity: 0.3;">
-                <div class="fw-bold text-info fs-3 lh-1">{{ $summary['total_izin'] }}</div>
-                <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Izin</div>
+            <div class="p-1.5 rounded-2 bg-info-lt border border-info" style="border-opacity: 0.3;">
+                <div class="fw-bold text-info fs-3 lh-1">{{ $summary['total_sakit'] + $summary['total_izin'] + $summary['total_cuti'] }}</div>
+                <div class="text-muted mt-0.5" style="font-size: 0.62rem;">SIC</div>
             </div>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center; margin-top: 4px;">
-            <div class="p-1.5 rounded-2 bg-purple-lt border border-purple" style="border-opacity: 0.3;">
-                <div class="fw-bold text-purple fs-3 lh-1">{{ $summary['total_cuti'] }}</div>
-                <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Cuti</div>
-            </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; text-align: center; margin-top: 4px;">
             <div class="p-1.5 rounded-2 bg-blue-lt border border-primary" style="border-opacity: 0.3;">
                 <div class="fw-bold text-primary fs-3 lh-1">{{ $summary['total_dinas_luar'] }}</div>
                 <div class="text-muted mt-0.5" style="font-size: 0.62rem;">Dinas Luar</div>

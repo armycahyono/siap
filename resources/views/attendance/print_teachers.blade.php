@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Rekapitulasi Presensi Guru & Staf - {{ $setting->school_name ?? 'SMK PGRI KRAS' }}</title>
+    <title>Laporan Rekapitulasi Presensi GTK - {{ $setting->school_name ?? 'SMK PGRI KRAS' }}</title>
     <style>
         @page {
             size: A4 portrait;
@@ -20,6 +20,22 @@
             padding: 0;
         }
 
+    @if($isPdf ?? false)
+        body {
+            background-color: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .a4-sheet {
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+        }
+    @else
         /* Tampilan Layar (Screen / Desktop Preview - Format Lembar Kertas A4) */
         @media screen {
             body {
@@ -44,16 +60,24 @@
                 }
             }
         }
+    @endif
 
         /* Tampilan Saat Dicetak (Physical Paper / Print Dialog) */
         @media print {
-            .no-print-bar {
+            .no-print-bar,
+            .no-print-bar * {
                 display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;
             }
             body {
                 background: #fff !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                color: #000 !important;
             }
             .a4-sheet {
                 width: 100% !important;
@@ -228,6 +252,7 @@
 </head>
 <body>
 
+    @if(!($isPdf ?? false))
     <div class="no-print-bar">
         <div class="preview-info">
             <span>📄 Pratinjau Dokumen Cetak</span>
@@ -238,6 +263,7 @@
             <button type="button" class="btn-close" onclick="window.close()">✕ Tutup</button>
         </div>
     </div>
+    @endif
 
     <div class="a4-sheet">
 
@@ -267,7 +293,7 @@
         @if(($printType ?? '') === 'detail' && count($people) === 1)
             <h4>{{ strtoupper($people->first()->name) }} ({{ strtoupper($people->first()->category) }})</h4>
         @else
-            <h4>{{ $subType === 'guru' ? 'KELOMPOK GURU' : ($subType === 'staf' ? 'KELOMPOK STAF' : 'GURU DAN TENAGA KEPENDIDIKAN') }}</h4>
+            <h4>{{ $subType === 'guru' ? 'KELOMPOK GURU' : ($subType === 'staf' ? 'KELOMPOK STAF' : 'GTK') }}</h4>
         @endif
         <p>Periode : {{ $periodLabel }}</p>
     </div>
@@ -277,7 +303,7 @@
         <div style="margin-bottom: 18px; page-break-inside: auto;">
             @if(empty($printType) || $printType === 'all')
                 <div style="font-weight: bold; font-size: 10pt; margin-bottom: 6px; text-transform: uppercase;">
-                    I. REKAPITULASI STATUS KEHADIRAN {{ $subType === 'guru' ? 'GURU' : ($subType === 'staf' ? 'STAF' : 'GURU DAN TENAGA KEPENDIDIKAN') }}
+                    I. REKAPITULASI STATUS KEHADIRAN {{ $subType === 'guru' ? 'GURU' : ($subType === 'staf' ? 'STAF' : 'GTK') }}
                 </div>
             @endif
             <table class="data-table" style="margin-bottom: 6px;">
@@ -334,7 +360,7 @@
             <!-- Informasi Singkatan -->
             <div style="font-size: 8.5pt; color: #222; margin-top: 4px; margin-bottom: 14px;">
                 <strong>Informasi :</strong><br>
-                H = Hadir, S = Sakit, I = Izin, C = Cuti, DL = Dinas Luar, A = Alfa, T = Terlambat
+                H = Hadir, S = Sakit, I = Izin, C = Cuti (SIC = Sakit, Izin, Cuti), DL = Dinas Luar, A = Alfa, T = Terlambat
             </div>
         </div>
     @endif
@@ -369,7 +395,7 @@
                         </tr>
                         <tr>
                             <td colspan="2" style="font-size: 8pt; color: #333; padding-top: 2px;">
-                                Rekap Status: Hadir: <strong>{{ $person->hadir }}</strong> &bull; Sakit: <strong>{{ $person->sakit }}</strong> &bull; Izin: <strong>{{ $person->izin }}</strong> &bull; Cuti: <strong>{{ $person->cuti }}</strong> &bull; Dinas Luar: <strong>{{ $person->dinas_luar }}</strong> &bull; Alfa: <strong>{{ $person->alfa }}</strong> &bull; Terlambat: <strong>{{ $person->terlambat }}</strong>
+                                Rekap Status: Hadir: <strong>{{ $person->hadir }}</strong> &bull; SIC (S/I/C): <strong>{{ $person->sakit + $person->izin + $person->cuti }}</strong> &bull; Dinas Luar: <strong>{{ $person->dinas_luar }}</strong> &bull; Alfa: <strong>{{ $person->alfa }}</strong> &bull; Terlambat: <strong>{{ $person->terlambat }}</strong>
                             </td>
                         </tr>
                     </table>
@@ -401,7 +427,7 @@
                         @empty
                             <tr>
                                 <td colspan="7" class="text-center" style="padding: 10px;">
-                                    <em>Tidak ada catatan presensi pada periode ini.</em>
+                                     <em>Tidak ada catatan presensi pada periode ini.</em>
                                 </td>
                             </tr>
                         @endforelse
@@ -416,24 +442,15 @@
     @endif
 
     <!-- TANDA TANGAN RESMI -->
-    <div class="signature-section">
-        <table class="signature-table">
+    <div class="signature-section" style="width: 100%; margin-top: 25px; page-break-inside: avoid;">
+        <table style="width: 100%; border: none;">
             <tr>
-                <td style="text-align: center;">
-                    Mengetahui,<br>
-                    Kepala Sekolah<br><br><br><br><br>
-                    <strong><u>{{ $setting->principal_name ?? 'ENDANG PATMOWATI, S.Pd' }}</u></strong><br>
-                    @if(!empty($setting->principal_nip))
-                        NIP. {{ $setting->principal_nip }}
-                    @endif
-                </td>
-                <td style="text-align: center;">
-                    Kediri, {{ \Carbon\Carbon::parse($endDate)->translatedFormat('d F Y') }}<br>
-                    Waka Kurikulum<br><br><br><br><br>
-                    <strong><u>{{ $setting->curriculum_head_name ?? 'ROKHIM, S.Pd.' }}</u></strong><br>
-                    @if(!empty($setting->curriculum_head_nip))
-                        NIP. {{ $setting->curriculum_head_nip }}
-                    @endif
+                <td style="width: 55%; border: none;"></td>
+                <td style="width: 45%; text-align: center; border: none; font-size: 10pt;">
+                    Kras, {{ \Carbon\Carbon::parse($endDate)->locale('id')->translatedFormat('d F Y') }}<br>
+                    Kepala Sekolah
+                    <div style="height: 60px;"></div>
+                    <strong><u>{{ $setting->principal_name ?? 'ENDANG PATMOWATI, S.Pd.' }}</u></strong>
                 </td>
             </tr>
         </table>

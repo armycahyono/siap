@@ -1737,6 +1737,9 @@ class AttendanceController extends Controller
         $userId = $request->filled('user_id') ? (int) $request->query('user_id') : null;
         $search = $request->query('search');
         $printType = $request->query('print_type');
+        if (empty($printType)) {
+            $printType = $userId ? 'detail' : 'status';
+        }
 
         $recap = $this->buildTeacherStaffIndividualRecap($startDate, $endDate, $subType, $userId, $search);
         $people = $recap['people'];
@@ -1780,10 +1783,15 @@ class AttendanceController extends Controller
         $userId = $request->filled('user_id') ? (int) $request->query('user_id') : null;
         $search = $request->query('search');
         $printType = $request->query('print_type');
+        if (empty($printType)) {
+            $printType = $userId ? 'detail' : 'status';
+        }
 
         $recap = $this->buildTeacherStaffIndividualRecap($startDate, $endDate, $subType, $userId, $search);
         $people = $recap['people'];
         $summary = $recap['summary'];
+
+        $isPdf = true;
 
         $pdf = Pdf::loadView('attendance.print_teachers', compact(
             'people',
@@ -1795,8 +1803,9 @@ class AttendanceController extends Controller
             'userId',
             'printType',
             'setting',
-            'academicYear'
-        ))->setPaper('a4', 'landscape')->setOption('isRemoteEnabled', true);
+            'academicYear',
+            'isPdf'
+        ))->setPaper('a4', 'portrait')->setOption('isRemoteEnabled', true);
 
         $filename = "Laporan_Presensi_GTK_{$startDate}_sd_{$endDate}.pdf";
 

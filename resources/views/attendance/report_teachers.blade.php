@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Laporan Presensi Guru & Staf')
+@section('title', 'Rekap Presensi GTK')
 
 @section('content')
 <!-- Page Header (Model 2: Hero Context Banner) -->
@@ -11,11 +11,23 @@
     }
     $repTeacherActions .= '<a href="' . route('attendance.gtk-permits.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-calendar-event me-1 text-info"></i> Izin & Cuti GTK</a> ' .
         '<a href="' . route('attendance.index') . '" class="btn btn-sm btn-outline-light shadow-xs"><i class="ti ti-broadcast me-1"></i> Live Presensi</a>';
+
+    $underTitleButtons = '
+        <div class="d-flex align-items-center gap-2 mt-2 pt-1 flex-wrap">
+            <a href="' . route('attendance.report.teachers.print', array_merge(request()->query(), ['print_type' => 'status'])) . '" target="_blank" id="btnExportPdf" class="btn btn-sm btn-danger text-white fw-bold shadow-xs">
+                <i class="ti ti-file-type-pdf me-1"></i> Export PDF
+            </a>
+            <a href="' . route('attendance.report.teachers.excel', request()->query()) . '" id="btnExportExcel" class="btn btn-sm btn-success text-white fw-bold shadow-xs">
+                <i class="ti ti-file-spreadsheet me-1"></i> Export Excel
+            </a>
+        </div>
+    ';
 @endphp
 <div class="container-xl px-0 mb-3">
     @include('layouts._hero_header', [
-        'title' => 'Presensi Guru & Tenaga Kependidikan',
-        'subtitle' => 'Rekapitulasi presensi individu GTK, persentase kehadiran, keterlambatan, dan rekap izin/cuti resmi.',
+        'title' => 'Rekap Presensi GTK',
+        'subtitle' => 'Rekapitulasi presensi individu GTK, persentase kehadiran, keterlambatan, dan rekap SIC resmi.',
+        'underTitle' => $underTitleButtons,
         'icon' => 'ti ti-user-check',
         'category' => 'REKAPITULASI PRESENSI GTK',
         'actions' => $repTeacherActions
@@ -147,7 +159,7 @@
 
         <!-- Kartu Statistik Rekapitulasi -->
         <div class="row row-cards mb-3">
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg">
                 <div class="card card-sm shadow-sm border-0 border-start border-3 border-teal">
                     <div class="card-body">
                         <div class="row align-items-center">
@@ -156,13 +168,13 @@
                             </div>
                             <div class="col">
                                 <div class="fs-2 fw-bold text-dark">{{ $summary['total_people'] }} Orang</div>
-                                <div class="text-secondary small">{{ $subType === 'guru' ? 'Guru Ditampilkan' : ($subType === 'staf' ? 'Staf Ditampilkan' : 'GTK Ditampilkan') }}</div>
+                                <div class="text-secondary small">{{ $subType === 'guru' ? 'Guru' : ($subType === 'staf' ? 'Staf' : 'GTK') }} Ditampilkan</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg">
                 <div class="card card-sm shadow-sm border-0 border-start border-3 border-success">
                     <div class="card-body">
                         <div class="row align-items-center">
@@ -170,29 +182,29 @@
                                 <span class="bg-success text-white avatar"><i class="ti ti-user-check fs-2"></i></span>
                             </div>
                             <div class="col">
-                                <div class="fs-2 fw-bold text-dark">{{ $summary['active_attendees'] }} Orang</div>
-                                <div class="text-secondary small">Memiliki Rekaman Hadir</div>
+                                <div class="fs-2 fw-bold text-dark">{{ $summary['total_hadir'] }} Hari</div>
+                                <div class="text-secondary small">Total Kehadiran GTK</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card card-sm shadow-sm border-0 border-start border-3 border-primary">
+            <div class="col-sm-6 col-lg">
+                <div class="card card-sm shadow-sm border-0 border-start border-3 border-info">
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-auto">
-                                <span class="bg-primary text-white avatar"><i class="ti ti-calendar-check fs-2"></i></span>
+                                <span class="bg-info text-white avatar"><i class="ti ti-calendar-event fs-2"></i></span>
                             </div>
                             <div class="col">
-                                <div class="fs-2 fw-bold text-dark">{{ $summary['total_days_attended'] }} Hari</div>
-                                <div class="text-secondary small">Total Kehadiran Seluruh GTK</div>
+                                <div class="fs-2 fw-bold text-dark">{{ $summary['total_sakit'] + $summary['total_izin'] + $summary['total_cuti'] }} Hari</div>
+                                <div class="text-secondary small">SIC (Sakit/Izin/Cuti)</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-lg">
                 <div class="card card-sm shadow-sm border-0 border-start border-3 border-warning">
                     <div class="card-body">
                         <div class="row align-items-center">
@@ -201,7 +213,22 @@
                             </div>
                             <div class="col">
                                 <div class="fs-2 fw-bold text-dark">{{ $summary['total_late'] }} Hari</div>
-                                <div class="text-secondary small">Total Keterlambatan Tercatat</div>
+                                <div class="text-secondary small">Total Terlambat</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg">
+                <div class="card card-sm shadow-sm border-0 border-start border-3 border-danger">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <span class="bg-danger text-white avatar"><i class="ti ti-alert-triangle fs-2"></i></span>
+                            </div>
+                            <div class="col">
+                                <div class="fs-2 fw-bold text-dark">{{ $summary['total_alfa'] }} Hari</div>
+                                <div class="text-secondary small">Tanpa Keterangan (Alfa)</div>
                             </div>
                         </div>
                     </div>
@@ -213,7 +240,7 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-teal text-white d-flex justify-content-between align-items-center py-2">
                 <h3 class="card-title text-white mb-0">
-                    <i class="ti ti-table me-1"></i> Rekap Status Kehadiran {{ $subType === 'guru' ? 'Guru' : ($subType === 'staf' ? 'Staf' : 'Guru & Tenaga Kependidikan') }}
+                    <i class="ti ti-table me-1"></i> Rekap Status Kehadiran {{ $subType === 'guru' ? 'Guru' : ($subType === 'staf' ? 'Staf' : 'GTK') }}
                 </h3>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-white text-teal">
@@ -490,6 +517,20 @@
         }
 
         const printBaseUrl = "{{ route('attendance.report.teachers.print') }}";
+        const excelBaseUrl = "{{ route('attendance.report.teachers.excel') }}";
+
+        // Update Tombol Export PDF & Excel di bawah judul
+        const btnExportPdf = document.getElementById('btnExportPdf');
+        if (btnExportPdf) {
+            const pdfParams = new URLSearchParams(params);
+            pdfParams.set('print_type', 'status');
+            btnExportPdf.href = printBaseUrl + '?' + pdfParams.toString();
+        }
+
+        const btnExportExcel = document.getElementById('btnExportExcel');
+        if (btnExportExcel) {
+            btnExportExcel.href = excelBaseUrl + '?' + params.toString();
+        }
 
         // Cetak Status Kehadiran Saja
         const statusParams = new URLSearchParams(params);
