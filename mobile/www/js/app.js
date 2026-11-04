@@ -838,7 +838,7 @@
         // 4. Render Schedules with Filter
         applyKbmFilters(container, data);
 
-        // 5. Swap Sessions (Tukar Jam)
+        // 5. Swap Sessions (Tukar Jam / Inval Mandiri)
         const swapSectionEl = container.querySelector('#kbm-swap-section');
         const swapListEl = container.querySelector('#kbm-swap-list');
         const swapSessions = data.swap_sessions || [];
@@ -846,17 +846,41 @@
         if (swapSectionEl && swapListEl) {
             if (swapSessions.length > 0) {
                 swapSectionEl.classList.remove('hidden');
-                swapListEl.innerHTML = swapSessions.map(sw => `
-                    <div class="p-3 card-elevated border-indigo-200/70 bg-indigo-50/40">
-                        <div class="flex items-start justify-between">
-                            <div>
-                                <span class="px-2 py-0.5 rounded-md text-[9px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wider">${sw.classroom_name} • ${sw.period_text}</span>
-                                <h5 class="text-xs font-bold text-slate-800 mt-1">${sw.subject_name}</h5>
-                                <p class="text-[10px] text-slate-500 mt-0.5">Menggantikan: <span class="font-medium text-slate-700">${sw.original_teacher_name}</span></p>
+                swapListEl.innerHTML = swapSessions.map(sw => {
+                    const summary = sw.attendance_summary;
+                    const totalStudents = summary ? summary.total : 0;
+                    const present = summary ? summary.present : 0;
+                    const scheduleParam = sw.lesson_schedule_id
+                        ? `schedule_id=${sw.lesson_schedule_id}`
+                        : `classroom_id=${sw.classroom_id}&subject_id=${sw.subject_id}`;
+                    const targetDate = currentKbmDate || '';
+                    const takeUrl = `/kbm/take?${scheduleParam}${targetDate ? '&date=' + targetDate : ''}`;
+
+                    return `
+                        <div class="p-3.5 card-elevated border-amber-300 bg-amber-50/50 shadow-xs">
+                            <div class="flex items-start justify-between gap-2 mb-1.5">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="px-2 py-0.5 rounded-lg text-[9px] font-extrabold bg-amber-600 text-white uppercase tracking-wider">⚡ Inval / Pengganti</span>
+                                    <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700">${escapeHtml(sw.classroom_name)}</span>
+                                    <span class="text-[10px] font-semibold text-slate-500">${escapeHtml(sw.period_text)}</span>
+                                </div>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen
+                                </span>
+                            </div>
+                            <h5 class="text-xs font-bold text-slate-900 mt-1">${escapeHtml(sw.subject_name)}</h5>
+                            <p class="text-[11px] text-slate-600 mt-0.5">Guru Asli: <span class="font-bold text-slate-800">${escapeHtml(sw.original_teacher_name)}</span></p>
+                            ${sw.topic ? `<p class="text-[10px] text-slate-600 mt-1 italic bg-white/80 p-1.5 rounded-lg border border-amber-200">Materi: "${escapeHtml(sw.topic)}"</p>` : ''}
+
+                            <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-amber-200/60">
+                                <span class="text-[10px] font-bold text-slate-600">${present}/${totalStudents} Siswa Hadir</span>
+                                <button type="button" onclick="SIAP_ROUTER.navigate('${takeUrl}')" class="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition active:scale-95 shadow-2xs">
+                                    <span>Ubah Presensi &amp; Jurnal</span>
+                                </button>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } else {
                 swapSectionEl.classList.add('hidden');
             }
@@ -7226,11 +7250,43 @@
     // ==========================================
     let schoolScheduleCurrentDay = 'Senin';
     let schoolScheduleDataCache = null;
+    let schoolScheduleFilterActiveOnly = false;
 
     window.initSchoolSchedule = async function(container, params) {
         const todayDay = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
         schoolScheduleCurrentDay = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'].includes(todayDay) ? todayDay : 'Senin';
+        schoolScheduleFilterActiveOnly = false;
+
+        const isInvalMode = (params?.inval === '1') || window.location.hash.includes('inval=1');
+        const invalBanner = container?.querySelector('#sch-inval-mode-banner');
+        if (invalBanner) {
+            if (isInvalMode) {
+                invalBanner.classList.remove('hidden');
+            } else {
+                invalBanner.classList.add('hidden');
+            }
+        }
+
         await loadSchoolScheduleData();
+    };
+
+    window.toggleSchoolScheduleActiveFilter = function(activeOnly) {
+        schoolScheduleFilterActiveOnly = Boolean(activeOnly);
+        const container = document.getElementById('app-view-container');
+        if (container) {
+            const btnAll = container.querySelector('#btn-sch-filter-all');
+            const btnActive = container.querySelector('#btn-sch-filter-active');
+            if (btnAll && btnActive) {
+                if (schoolScheduleFilterActiveOnly) {
+                    btnAll.className = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition';
+                    btnActive.className = 'px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1';
+                } else {
+                    btnAll.className = 'px-2.5 py-1 rounded-xl bg-blue-600 text-white font-bold transition shadow-xs';
+                    btnActive.className = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition flex items-center gap-1';
+                }
+            }
+        }
+        renderSchoolSchedulesList();
     };
 
     async function loadSchoolScheduleData() {
@@ -7311,55 +7367,80 @@
                 }
             });
 
-            // Render Schedules
-            if (schedules.length === 0) {
-                if (listEl) {
-                    listEl.innerHTML = `
-                        <div class="card-elevated p-8 text-center text-xs text-slate-400 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
-                            <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Tidak ada jadwal KBM yang sesuai filter.
-                        </div>
-                    `;
-                }
-                return;
-            }
-
-            if (listEl) {
-                listEl.innerHTML = schedules.map(s => {
-                    const activeBadge = s.is_active_now ? `
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-amber-950 animate-pulse shadow-xs">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-900"></span>SEDANG BERLANGSUNG
-                        </span>
-                    ` : '';
-
-                    return `
-                        <div class="card-elevated p-3.5 rounded-2xl bg-white border ${s.is_active_now ? 'border-amber-400 ring-2 ring-amber-100 shadow-md' : 'border-slate-100 shadow-xs'} transition">
-                            <div class="flex items-start justify-between gap-2 mb-1.5">
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-blue-600 text-white uppercase">${escapeHtml(s.classroom_name || 'Kelas')}</span>
-                                    <span class="text-[10px] font-bold text-slate-600 font-mono">Jam ke-${s.start_period}-${s.end_period}</span>
-                                    ${s.start_time && s.end_time ? `<span class="text-[10px] text-slate-400 font-mono">(${s.start_time}-${s.end_time})</span>` : ''}
-                                </div>
-                                ${activeBadge}
-                            </div>
-                            <h5 class="text-xs font-bold text-slate-900 leading-tight">${escapeHtml(s.subject_name || 'Mapel')}</h5>
-                            <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                                <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
-                                    <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    <span class="font-medium text-slate-700">${escapeHtml(s.teacher_name || 'Guru')}</span>
-                                </div>
-                                <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=' + (new Date().toISOString().split('T')[0]))" class="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold transition active:scale-95 flex items-center gap-1 shadow-2xs">
-                                    <span>⚡ Inval / Masuk</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
+            renderSchoolSchedulesList();
         } catch (err) {
             console.error('Error loading school schedule:', err);
             showToast('Gagal memuat jadwal sekolah.', 'error');
         }
+    }
+
+    function renderSchoolSchedulesList() {
+        const container = document.getElementById('app-view-container');
+        if (!container || !schoolScheduleDataCache) return;
+
+        const listEl = container.querySelector('#sch-schedules-container');
+        const countEl = container.querySelector('#sch-schedules-count');
+        if (!listEl) return;
+
+        let schedules = schoolScheduleDataCache.schedules || [];
+        if (schoolScheduleFilterActiveOnly) {
+            schedules = schedules.filter(s => s.is_active_now);
+        }
+
+        if (countEl) countEl.textContent = `${schedules.length} jadwal`;
+
+        if (schedules.length === 0) {
+            listEl.innerHTML = `
+                <div class="card-elevated p-8 text-center text-xs text-slate-400 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                    <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    ${schoolScheduleFilterActiveOnly ? 'Tidak ada kelas yang sedang aktif/berlangsung pada jam ini.' : 'Tidak ada jadwal KBM yang sesuai filter.'}
+                </div>
+            `;
+            return;
+        }
+
+        const currentUser = SIAP_ROUTER.getCurrentUser() || {};
+        const todayIso = new Date().toISOString().split('T')[0];
+
+        listEl.innerHTML = schedules.map(s => {
+            const isMySchedule = Boolean(s.teacher_id && currentUser.id && Number(s.teacher_id) === Number(currentUser.id));
+            const activeBadge = s.is_active_now ? `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-amber-950 animate-pulse shadow-xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-900"></span>SEDANG BERLANGSUNG
+                </span>
+            ` : '';
+
+            const actionButton = isMySchedule ? `
+                <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-2.5 py-1 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition active:scale-95 flex items-center gap-1 shadow-2xs">
+                    <span>Buka Jadwal Anda</span>
+                </button>
+            ` : `
+                <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/take?schedule_id=${s.id}&date=${todayIso}')" class="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black transition active:scale-95 flex items-center gap-1 shadow-xs">
+                    <span>⚡ Inval Kelas Ini</span>
+                </button>
+            `;
+
+            return `
+                <div class="card-elevated p-3.5 rounded-2xl bg-white border ${s.is_active_now ? 'border-amber-400 ring-2 ring-amber-100 shadow-md' : 'border-slate-100 shadow-xs'} transition">
+                    <div class="flex items-start justify-between gap-2 mb-1.5">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-blue-600 text-white uppercase">${escapeHtml(s.classroom_name || 'Kelas')}</span>
+                            <span class="text-[10px] font-bold text-slate-600 font-mono">Jam ke-${s.start_period}-${s.end_period}</span>
+                            ${s.start_time && s.end_time ? `<span class="text-[10px] text-slate-400 font-mono">(${s.start_time}-${s.end_time})</span>` : ''}
+                        </div>
+                        ${activeBadge}
+                    </div>
+                    <h5 class="text-xs font-bold text-slate-900 leading-tight">${escapeHtml(s.subject_name || 'Mapel')}</h5>
+                    <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                        <div class="flex items-center gap-1.5 text-[11px] text-slate-600">
+                            <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="font-medium text-slate-700">${escapeHtml(s.teacher_name || 'Guru')}</span>
+                        </div>
+                        ${actionButton}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     window.selectSchoolScheduleDay = function(day) {

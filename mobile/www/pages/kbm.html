@@ -1,17 +1,20 @@
 <div class="space-y-3.5">
-    <!-- 1. Tombol Navigasi Pintas: Jadwal Pelajaran, Kalender, Riwayat KBM -->
-    <div class="flex items-center gap-1.5">
-        <button type="button" onclick="SIAP_ROUTER.navigate('/school-schedule')" class="flex-1 py-1.5 px-2 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-blue-100 transition active:scale-95">
+    <!-- 1. Tombol Navigasi Pintas: Inval Mandiri, Jadwal Pelajaran, Riwayat KBM, Kalender -->
+    <div class="grid grid-cols-4 gap-1.5">
+        <button type="button" onclick="SIAP_ROUTER.navigate('/school-schedule?inval=1')" class="py-1.5 px-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] flex items-center justify-center gap-1 shadow-xs transition active:scale-95">
+            <span>⚡ Inval</span>
+        </button>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/school-schedule')" class="py-1.5 px-1 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center gap-1 shadow-xs border border-blue-100 transition active:scale-95">
             <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span>Jadwal</span>
         </button>
-        <button type="button" onclick="SIAP_ROUTER.navigate('/calendar')" class="flex-1 py-1.5 px-2 rounded-xl bg-purple-50/80 hover:bg-purple-100 text-purple-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-purple-100 transition active:scale-95">
-            <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-            <span>Kalender</span>
-        </button>
-        <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/history')" class="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-emerald-100 transition active:scale-95">
+        <button type="button" onclick="SIAP_ROUTER.navigate('/kbm/history')" class="py-1.5 px-1 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center gap-1 shadow-xs border border-emerald-100 transition active:scale-95">
             <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             <span>Riwayat</span>
+        </button>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/calendar')" class="py-1.5 px-1 rounded-xl bg-purple-50/80 hover:bg-purple-100 text-purple-700 font-bold text-[10px] flex items-center justify-center gap-1 shadow-xs border border-purple-100 transition active:scale-95">
+            <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span>Kalender</span>
         </button>
     </div>
 
@@ -59,6 +62,25 @@
             <span class="text-[10px] font-semibold text-slate-400 block leading-tight">Tukar Jam</span>
             <span id="kbm-stat-swap" class="text-base font-black text-indigo-600 tracking-tight leading-tight">0</span>
         </div>
+    </div>
+
+    <!-- KARTU AKSI CEPAT: INVAL MANDIRI (TERSEDIA UNTUK SEMUA GURU BAIK YANG ADA KBM MAUPUN TIDAK) -->
+    <div class="card-elevated p-2.5 bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50/70 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-2 shadow-xs">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                ⚡
+            </div>
+            <div>
+                <h5 class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <span>Inval Mandiri / Gantikan Jam</span>
+                    <span class="px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-amber-200 text-amber-900 uppercase">Tersedia</span>
+                </h5>
+                <p class="text-[10px] text-amber-800 leading-tight">Gantikan guru lain yang berhalangan hadir atau isi kelas kosong hari ini.</p>
+            </div>
+        </div>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/school-schedule?inval=1')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition active:scale-95 shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1">
+            <span>Cari Kelas &rarr;</span>
+        </button>
     </div>
 
     <!-- Alert / Banner Jika Libur / Akhir Pekan -->

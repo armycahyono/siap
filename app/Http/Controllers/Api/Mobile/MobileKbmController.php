@@ -172,21 +172,41 @@ class MobileKbmController extends Controller
             ];
         });
 
-        // 5. Sesi Tukar Jam / Guru Pengganti
+        // 5. Sesi Tukar Jam / Guru Pengganti / Inval
         $swapSessions = SubjectAttendanceSession::with(['classroom', 'subject', 'records', 'scheduledTeacher', 'teacher'])
             ->where('teacher_id', $user->id)
             ->whereDate('attendance_date', $dateStr)
             ->where('is_swap', true)
             ->get()
-            ->map(function ($session) {
+            ->map(function ($session) use ($dateStr) {
+                $recordsCount = $session->records->count();
+                $presentCount = $session->records->where('status', 'h')->count();
+
                 return [
                     'session_id' => $session->id,
+                    'lesson_schedule_id' => $session->lesson_schedule_id,
+                    'classroom_id' => $session->classroom_id,
+                    'subject_id' => $session->subject_id,
                     'subject_name' => $session->subject?->name ?? 'Mapel Pengganti',
                     'classroom_name' => $session->classroom?->name ?? 'Kelas',
                     'original_teacher_name' => $session->scheduledTeacher?->name ?? 'Guru Asli',
                     'start_period' => $session->start_period,
                     'end_period' => $session->end_period,
                     'period_text' => "Jam ke-{$session->start_period} s/d {$session->end_period}",
+                    'swap_type' => $session->swap_type ?? 'inval',
+                    'topic' => $session->topic,
+                    'notes' => $session->notes,
+                    'is_attended' => true,
+                    'attendance_summary' => [
+                        'total' => $recordsCount,
+                        'present' => $presentCount,
+                        'sakit' => $session->records->where('status', 's')->count(),
+                        'izin' => $session->records->where('status', 'i')->count(),
+                        'alfa' => $session->records->where('status', 'a')->count(),
+                    ],
+                    'fill_url' => $session->lesson_schedule_id
+                        ? route('attendance.subject.take', ['schedule_id' => $session->lesson_schedule_id, 'date' => $dateStr])
+                        : null,
                 ];
             });
 

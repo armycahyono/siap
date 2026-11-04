@@ -1,4 +1,17 @@
 <div class="space-y-3.5 pb-20">
+    <!-- Banner Mode Inval Mandiri (Tampil jika dibuka dengan ?inval=1 atau via tombol Inval) -->
+    <div id="sch-inval-mode-banner" class="hidden card-elevated p-3 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-500 text-white rounded-2xl shadow-sm">
+        <div class="flex items-start gap-2.5">
+            <span class="text-xl">⚡</span>
+            <div>
+                <h4 class="text-xs font-black uppercase tracking-tight">Mode Inval Mandiri Aktif</h4>
+                <p class="text-[11px] text-amber-100 leading-snug mt-0.5">
+                    Silakan cari kelas yang sedang kosong atau ingin Anda gantikan presensinya, lalu ketuk tombol <strong>⚡ Inval Kelas Ini</strong> pada kartu jadwal.
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Header Hero Jadwal Sekolah -->
     <div class="card-elevated p-3.5 bg-gradient-to-r from-[#0f2744] via-[#103a6b] to-[#1d4ed8] text-white shadow-md rounded-2xl">
         <div class="flex items-center justify-between">
@@ -48,6 +61,14 @@
         <div class="relative">
             <input type="text" id="sch-search-input" oninput="onSchoolScheduleSearch(this.value)" placeholder="Cari mata pelajaran, kelas, atau nama guru..." class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50/60 rounded-xl border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition">
             <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
+        </div>
+
+        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 text-[10px]">
+            <button type="button" id="btn-sch-filter-all" onclick="toggleSchoolScheduleActiveFilter(false)" class="px-2.5 py-1 rounded-xl bg-blue-600 text-white font-bold transition shadow-xs">Semua Jam</button>
+            <button type="button" id="btn-sch-filter-active" onclick="toggleSchoolScheduleActiveFilter(true)" class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition flex items-center gap-1">
+                <span>⚡</span>
+                <span>Jam Sedang Berlangsung</span>
+            </button>
         </div>
     </div>
 
