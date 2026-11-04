@@ -7250,12 +7250,12 @@
     // ==========================================
     let schoolScheduleCurrentDay = 'Senin';
     let schoolScheduleDataCache = null;
-    let schoolScheduleFilterActiveOnly = false;
+    let schoolScheduleFilterActiveOnly = true;
 
     window.initSchoolSchedule = async function(container, params) {
         const todayDay = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][new Date().getDay()];
         schoolScheduleCurrentDay = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'].includes(todayDay) ? todayDay : 'Senin';
-        schoolScheduleFilterActiveOnly = false;
+        schoolScheduleFilterActiveOnly = true;
 
         const isInvalMode = (params?.inval === '1') || window.location.hash.includes('inval=1');
         const invalBanner = container?.querySelector('#sch-inval-mode-banner');
@@ -7265,6 +7265,13 @@
             } else {
                 invalBanner.classList.add('hidden');
             }
+        }
+
+        const btnAll = container?.querySelector('#btn-sch-filter-all');
+        const btnActive = container?.querySelector('#btn-sch-filter-active');
+        if (btnAll && btnActive) {
+            btnAll.className = 'px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition';
+            btnActive.className = 'px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1';
         }
 
         await loadSchoolScheduleData();
@@ -7327,14 +7334,18 @@
             const schedules = res.data.schedules || [];
             const filterOptions = res.data.filter_options || {};
 
-            if (titleEl) titleEl.textContent = `Jadwal Hari ${schoolScheduleCurrentDay}`;
+            if (titleEl) {
+                titleEl.textContent = schoolScheduleFilterActiveOnly
+                    ? `Jadwal Hari ${schoolScheduleCurrentDay} (Sedang Berlangsung)`
+                    : `Jadwal Hari ${schoolScheduleCurrentDay}`;
+            }
             if (countEl) countEl.textContent = `${schedules.length} jadwal`;
             if (ayEl) ayEl.textContent = `TP ${res.data.academic_year || '2026/2027'} • Seluruh Kelas & Guru`;
 
             if (activePeriodBadge) {
                 if (res.data.active_period) {
                     activePeriodBadge.classList.remove('hidden');
-                    activePeriodBadge.textContent = `Jam Aktif: JP ${res.data.active_period}`;
+                    activePeriodBadge.textContent = `JP ${res.data.active_period}`;
                 } else {
                     activePeriodBadge.classList.add('hidden');
                 }
@@ -7380,6 +7391,7 @@
 
         const listEl = container.querySelector('#sch-schedules-container');
         const countEl = container.querySelector('#sch-schedules-count');
+        const titleEl = container.querySelector('#sch-list-title');
         if (!listEl) return;
 
         let schedules = schoolScheduleDataCache.schedules || [];
@@ -7387,13 +7399,25 @@
             schedules = schedules.filter(s => s.is_active_now);
         }
 
+        if (titleEl) {
+            titleEl.textContent = schoolScheduleFilterActiveOnly
+                ? `Jadwal Hari ${schoolScheduleCurrentDay} (Sedang Berlangsung)`
+                : `Jadwal Hari ${schoolScheduleCurrentDay}`;
+        }
         if (countEl) countEl.textContent = `${schedules.length} jadwal`;
 
         if (schedules.length === 0) {
             listEl.innerHTML = `
-                <div class="card-elevated p-8 text-center text-xs text-slate-400 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
-                    <svg class="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    ${schoolScheduleFilterActiveOnly ? 'Tidak ada kelas yang sedang aktif/berlangsung pada jam ini.' : 'Tidak ada jadwal KBM yang sesuai filter.'}
+                <div class="card-elevated p-8 text-center text-xs text-slate-400 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 space-y-2.5">
+                    <svg class="w-8 h-8 text-slate-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="font-medium">${schoolScheduleFilterActiveOnly ? 'Tidak ada kelas yang sedang aktif/berlangsung pada jam ini.' : 'Tidak ada jadwal KBM yang sesuai filter.'}</p>
+                    ${schoolScheduleFilterActiveOnly ? `
+                        <div class="pt-1">
+                            <button type="button" onclick="toggleSchoolScheduleActiveFilter(false)" class="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[11px] font-bold transition active:scale-95 shadow-xs">
+                                <span>Lihat Semua Jam Hari ${schoolScheduleCurrentDay} &rarr;</span>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             `;
             return;

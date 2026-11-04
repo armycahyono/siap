@@ -20,13 +20,13 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div>
-                    <h3 class="text-xs font-black tracking-tight text-white uppercase">Jadwal Pelajaran Sekolah</h3>
+                    <h3 class="text-xs font-black tracking-tight text-white uppercase">Jadwal Pelajaran</h3>
                     <p id="sch-academic-year" class="text-[10px] text-blue-200 mt-0.5">TP 2026/2027 &bull; Seluruh Kelas &amp; Guru</p>
                 </div>
             </div>
             <div class="text-right">
                 <span id="sch-current-period-badge" class="hidden px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-400 text-amber-950 font-mono">
-                    Jam Aktif: JP -
+                    JP -
                 </span>
             </div>
         </div>
@@ -64,8 +64,8 @@
         </div>
 
         <div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 text-[10px]">
-            <button type="button" id="btn-sch-filter-all" onclick="toggleSchoolScheduleActiveFilter(false)" class="px-2.5 py-1 rounded-xl bg-blue-600 text-white font-bold transition shadow-xs">Semua Jam</button>
-            <button type="button" id="btn-sch-filter-active" onclick="toggleSchoolScheduleActiveFilter(true)" class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition flex items-center gap-1">
+            <button type="button" id="btn-sch-filter-all" onclick="toggleSchoolScheduleActiveFilter(false)" class="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold transition">Semua Jam</button>
+            <button type="button" id="btn-sch-filter-active" onclick="toggleSchoolScheduleActiveFilter(true)" class="px-2.5 py-1 rounded-xl bg-amber-500 text-white font-bold transition shadow-xs flex items-center gap-1">
                 <span>⚡</span>
                 <span>Jam Sedang Berlangsung</span>
             </button>
