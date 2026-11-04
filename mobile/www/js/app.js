@@ -65,6 +65,61 @@
     }
     window.getWhatsappUrl = getWhatsappUrl;
 
+    function buildStudentAttendanceWaMessage(data = {}) {
+        const statusLabels = {
+            h: 'Hadir',
+            s: 'Sakit',
+            i: 'Izin',
+            a: 'Alfa (Tanpa Keterangan)',
+            d: 'Dispensasi',
+            t: 'Terlambat',
+        };
+        const statusText = statusLabels[data.status] || data.status || 'Hadir';
+
+        let msg = `*PEMBERITAHUAN PRESENSI SISWA*\n` +
+            `Yth. Bapak/Ibu Orang Tua / Wali dari *${data.studentName || 'Siswa'}*` + (data.studentNis && data.studentNis !== '-' ? ` (NIS: ${data.studentNis})` : '') + `,\n\n` +
+            `Kami menginformasikan rincian presensi ananda pada kegiatan Belajar Mengajar (KBM):\n` +
+            `📅 Tanggal: ${data.dateText || 'Hari ini'}\n` +
+            (data.classroomName ? `🏫 Kelas: ${data.classroomName}\n` : '') +
+            (data.subjectName ? `📚 Mata Pelajaran: ${data.subjectName}\n` : '') +
+            (data.periodText ? `⏰ Waktu / Jam: ${data.periodText}\n` : '') +
+            (data.teacherName && data.teacherName !== '-' ? `👨‍🏫 Guru Pengajar: ${data.teacherName}\n` : '') +
+            `\n` +
+            `📌 *Status Presensi: ${statusText}*\n`;
+
+        if (data.notes && String(data.notes).trim()) {
+            msg += `📝 *Catatan Pembelajaran:* ${String(data.notes).trim()}\n`;
+        }
+
+        if (data.permitNotice && String(data.permitNotice).trim()) {
+            msg += `ℹ️ *Keterangan Meja Piket:* ${String(data.permitNotice).trim()}\n`;
+        }
+
+        msg += `\nDemikian informasi ini kami sampaikan agar menjadi perhatian Bapak/Ibu. Terima kasih atas perhatian dan kerja samanya.`;
+
+        return msg;
+    }
+    window.buildStudentAttendanceWaMessage = buildStudentAttendanceWaMessage;
+
+    function contactParentWhatsApp(phone, studentName, detailInfo = '') {
+        if (!phone || phone === 'undefined' || phone === 'null') {
+            showToast('Nomor WhatsApp orang tua tidak tersedia.', 'warning');
+            return;
+        }
+
+        let msg = `*PEMBERITAHUAN PRESENSI SISWA*\n` +
+            `Yth. Bapak/Ibu Wali dari *${studentName}*,\n\n` +
+            `Kami menginformasikan mengenai catatan presensi ananda di sekolah:\n` +
+            `📌 *Informasi Presensi:* ${detailInfo}\n\n` +
+            `Demikian informasi ini kami sampaikan. Terima kasih atas perhatian dan kerja samanya.`;
+
+        const waUrl = getWhatsappUrl(phone, msg);
+        if (waUrl) {
+            window.open(waUrl, '_blank');
+        }
+    }
+    window.contactParentWhatsApp = contactParentWhatsApp;
+
     // Global Logout Handler
     async function handleLogout() {
         if (!confirm('Apakah Anda yakin ingin keluar dari SIAP Mobile?')) return;
@@ -1198,9 +1253,9 @@
                                 </div>
                                 <div class="flex items-center gap-1 shrink-0">
                                     ${(st.parent_phone || st.phone) ? `
-                                        <a href="${getWhatsappUrl(st.parent_phone || st.phone, 'Halo Bapak/Ibu wali dari ' + st.name + ', kami menginformasikan mengenai presensi ananda hari ini di sekolah.')}" target="_blank" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition" title="Hubungi Ortu WhatsApp">
+                                        <button type="button" onclick="contactTakeStudentWhatsApp(${st.id})" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 active:scale-95 transition" title="Hubungi Ortu via WhatsApp">
                                             <span class="text-xs">💬</span>
-                                        </a>
+                                        </button>
                                     ` : ''}
                                     <button type="button" onclick="toggleStudentNoteInput(${st.id})" class="p-1.5 rounded-lg ${hasNote ? 'bg-indigo-100 text-indigo-700' : 'text-slate-400 hover:text-slate-600'} transition shrink-0" title="Catatan Siswa">
                                         <span class="text-xs">📝</span>
@@ -1264,6 +1319,41 @@
                 const target = students.find(s => s.id === studentId);
                 if (target) {
                     target.notes = noteVal.trim() || null;
+                }
+            };
+
+            window.contactTakeStudentWhatsApp = function(studentId) {
+                const target = students.find(s => s.id === studentId);
+                if (!target) return;
+
+                const phone = target.parent_phone || target.phone;
+                if (!phone) {
+                    showToast('Nomor WhatsApp orang tua/wali siswa tidak tersedia.', 'warning');
+                    return;
+                }
+
+                // Ambil catatan terkini dari elemen input jika sedang diedit
+                const noteInput = container.querySelector(`#note-box-${target.id} input`);
+                if (noteInput && noteInput.value !== undefined) {
+                    target.notes = noteInput.value.trim() || null;
+                }
+
+                const msg = buildStudentAttendanceWaMessage({
+                    studentName: target.name,
+                    studentNis: target.nis,
+                    dateText: data.formatted_date || data.date,
+                    classroomName: schedule.classroom_name,
+                    subjectName: schedule.subject_name,
+                    periodText: [schedule.period_text, schedule.time_range].filter(Boolean).join(' • '),
+                    teacherName: schedule.teacher_name,
+                    status: target.status,
+                    notes: target.notes,
+                    permitNotice: target.permit_notice,
+                });
+
+                const waUrl = getWhatsappUrl(phone, msg);
+                if (waUrl) {
+                    window.open(waUrl, '_blank');
                 }
             };
 
@@ -7210,8 +7300,19 @@
 
                 listEl.innerHTML = records.map(r => {
                     const stStyle = statusStyles[r.status] || { bg: 'bg-slate-100 text-slate-700', label: r.status };
+                    const waMsg = buildStudentAttendanceWaMessage({
+                        studentName: r.student_name,
+                        studentNis: r.student_nis || r.student_nisn,
+                        dateText: session.formatted_date,
+                        classroomName: session.classroom_name,
+                        subjectName: session.subject_name,
+                        periodText: session.period_text,
+                        teacherName: session.teacher_name,
+                        status: r.status,
+                        notes: r.notes,
+                    });
                     const waBtn = r.parent_phone ? `
-                        <a href="${getWhatsappUrl(r.parent_phone, 'Halo Bapak/Ibu wali dari ' + r.student_name + ', mengenai presensi ananda pada ' + session.formatted_date)}" target="_blank" class="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 transition" title="Hubungi Ortu WhatsApp">
+                        <a href="${getWhatsappUrl(r.parent_phone, waMsg)}" target="_blank" class="p-1 rounded-lg text-emerald-600 hover:bg-emerald-50 transition" title="Hubungi Ortu WhatsApp">
                             <span class="text-xs">💬</span>
                         </a>
                     ` : '';
