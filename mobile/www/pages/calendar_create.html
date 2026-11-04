@@ -16,27 +16,24 @@
         </button>
     </div>
 
-    <!-- Stepper / Tab Navigasi 4 Tahap -->
+    <!-- Stepper / Tab Navigasi 3 Tahap -->
     <div class="sticky top-0 z-30 bg-slate-100/90 backdrop-blur-md pt-1 pb-1">
         <div class="flex bg-white rounded-2xl p-1 shadow-xs border border-slate-200 text-[11px] font-bold overflow-x-auto no-scrollbar gap-1">
-            <button type="button" onclick="switchCalCreateTab(1)" id="cal-create-tab-btn-1" class="flex-1 min-w-[95px] py-2 px-2 rounded-xl bg-blue-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs">
-                <span>1. Info &amp; Waktu</span>
+            <button type="button" onclick="switchCalCreateTab(1)" id="cal-create-tab-btn-1" class="flex-1 py-2 px-2.5 rounded-xl bg-blue-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs font-black">
+                <span>1. Info</span>
             </button>
-            <button type="button" onclick="switchCalCreateTab(2)" id="cal-create-tab-btn-2" class="flex-1 min-w-[95px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
-                <span>2. GTK Terlibat</span>
+            <button type="button" onclick="switchCalCreateTab(2)" id="cal-create-tab-btn-2" class="flex-1 py-2 px-2.5 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 font-bold">
+                <span>2. GTK &amp; Siswa Terlibat</span>
             </button>
-            <button type="button" onclick="switchCalCreateTab(3)" id="cal-create-tab-btn-3" class="flex-1 min-w-[95px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
-                <span>3. Siswa Terlibat</span>
-            </button>
-            <button type="button" onclick="switchCalCreateTab(4)" id="cal-create-tab-btn-4" class="flex-1 min-w-[105px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95">
-                <span>4. Tidak Terlibat</span>
+            <button type="button" onclick="switchCalCreateTab(3)" id="cal-create-tab-btn-3" class="flex-1 py-2 px-2.5 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 font-bold">
+                <span>3. Tidak Terlibat</span>
             </button>
         </div>
     </div>
 
     <form id="form-create-calendar-event" onsubmit="submitCreateCalendarEvent(event)">
         <!-- ============================================== -->
-        <!-- TAB 1: INFORMASI KEGIATAN & WAKTU PELAKSANAAN  -->
+        <!-- TAB 1: INFO & WAKTU PELAKSANAAN                -->
         <!-- ============================================== -->
         <div id="cal-create-pane-1" class="space-y-3">
             <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
@@ -107,15 +104,16 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- TAB 2: GTK YANG DITUGASKAN / TERLIBAT          -->
+        <!-- TAB 2: GTK & SISWA TERLIBAT                    -->
         <!-- ============================================== -->
         <div id="cal-create-pane-2" class="hidden space-y-3">
+            <!-- Sub-Card A: GTK yang Terlibat -->
             <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
                 <div class="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div class="flex items-center gap-2">
-                        <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">2</div>
+                        <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">A</div>
                         <div>
-                            <h4 class="text-xs font-black text-slate-800">GTK yang Terlibat Langsung</h4>
+                            <h4 class="text-xs font-black text-slate-800">GTK yang Ditugaskan / Terlibat</h4>
                             <p class="text-[10px] text-slate-500">Guru &amp; staf yang bertugas (panitia/pengawas/pembimbing)</p>
                         </div>
                     </div>
@@ -157,22 +155,18 @@
                 <!-- Search & Checklist GTK -->
                 <div class="space-y-1.5">
                     <input type="text" id="cal-create-gtk-search" oninput="filterGtkListCreate(this.value)" placeholder="🔍 Cari nama guru atau staf..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <div id="cal-create-gtk-checks" class="max-h-60 overflow-y-auto space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
+                    <div id="cal-create-gtk-checks" class="max-h-56 overflow-y-auto space-y-1 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
                         <p class="text-slate-400 text-center py-4 text-xs">Memuat daftar GTK...</p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ============================================== -->
-        <!-- TAB 3: SISWA YANG TERLIBAT LANGSUNG            -->
-        <!-- ============================================== -->
-        <div id="cal-create-pane-3" class="hidden space-y-3">
+            <!-- Sub-Card B: Siswa yang Terlibat -->
             <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
                 <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">3</div>
+                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">B</div>
                     <div>
-                        <h4 class="text-xs font-black text-slate-800">Sasaran Siswa yang Terlibat</h4>
+                        <h4 class="text-xs font-black text-slate-800">Siswa yang Terlibat Langsung</h4>
                         <p class="text-[10px] text-slate-500">Tentukan kelompok siswa dan pengaruh kegiatan terhadap KBM</p>
                     </div>
                 </div>
@@ -237,12 +231,12 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- TAB 4: PIHAK TIDAK TERLIBAT & CATATAN          -->
+        <!-- TAB 3: TIDAK TERLIBAT & CATATAN                -->
         <!-- ============================================== -->
-        <div id="cal-create-pane-4" class="hidden space-y-3">
+        <div id="cal-create-pane-3" class="hidden space-y-3">
             <div class="card-elevated p-3.5 space-y-3 bg-white rounded-2xl shadow-xs border border-slate-100">
                 <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
-                    <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">4</div>
+                    <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">3</div>
                     <div>
                         <h4 class="text-xs font-black text-slate-800">Guru, Staf &amp; Siswa yang TIDAK Terlibat</h4>
                         <p class="text-[10px] text-slate-500">Penetapan status bagi warga sekolah yang tidak terlibat dalam agenda</p>
@@ -316,7 +310,7 @@
                     <span>Kembali</span>
                 </button>
                 <button type="button" id="cal-create-btn-next" onclick="stepCalCreateTab(1)" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-                    <span>Lanjut ke GTK Terlibat</span>
+                    <span>Lanjut ke GTK &amp; Siswa Terlibat</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                 </button>
                 <button type="submit" id="cal-create-btn-submit" class="hidden flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white text-xs font-bold transition shadow-md flex items-center justify-center gap-1.5">

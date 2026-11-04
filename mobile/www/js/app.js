@@ -7317,11 +7317,8 @@
             gtkContainer.innerHTML = data.all_gtk.map(g => `
                 <label class="flex items-center gap-2 p-2 hover:bg-white rounded-xl cursor-pointer text-xs transition border border-transparent hover:border-slate-200 gtk-create-item" data-name="${escapeHtml(g.name).toLowerCase()}" data-type="${g.is_staff ? 'staff' : 'teacher'}">
                     <input type="checkbox" name="create_user_ids[]" value="${g.id}" onchange="updateGtkSelectedCountCreate()" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 gtk-create-cb ${g.is_staff ? 'gtk-create-cb-staff' : 'gtk-create-cb-teacher'}">
-                    <div class="flex-1 truncate">
-                        <span class="font-bold text-slate-800 block truncate">${escapeHtml(g.name)}</span>
-                        <span class="text-[10px] text-slate-500 block truncate">${escapeHtml(g.position || '')}</span>
-                    </div>
-                    <span class="text-[9px] px-2 py-0.5 rounded-full font-bold ${g.is_staff ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}">${escapeHtml(g.type)}</span>
+                    <span class="font-bold text-slate-800 truncate flex-1">${escapeHtml(g.name)}</span>
+                    <span class="text-[9px] px-2 py-0.5 rounded-full font-bold shrink-0 ${g.is_staff ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'}">${escapeHtml(g.type)}</span>
                 </label>
             `).join('');
             updateGtkSelectedCountCreate();
@@ -7348,7 +7345,7 @@
 
     window.switchCalCreateTab = function(step) {
         calCreateCurrentStep = step;
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= 3; i++) {
             const pane = document.getElementById(`cal-create-pane-${i}`);
             const btn = document.getElementById(`cal-create-tab-btn-${i}`);
             if (pane) {
@@ -7357,9 +7354,9 @@
             }
             if (btn) {
                 if (i === step) {
-                    btn.className = 'flex-1 min-w-[95px] py-2 px-2 rounded-xl bg-blue-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs font-black';
+                    btn.className = 'flex-1 py-2 px-2.5 rounded-xl bg-blue-600 text-white whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 shadow-xs font-black';
                 } else {
-                    btn.className = 'flex-1 min-w-[95px] py-2 px-2 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 font-bold';
+                    btn.className = 'flex-1 py-2 px-2.5 rounded-xl text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center justify-center gap-1 transition active:scale-95 font-bold';
                 }
             }
         }
@@ -7375,13 +7372,12 @@
         }
 
         const nextLabels = {
-            1: 'Lanjut ke GTK Terlibat',
-            2: 'Lanjut ke Siswa Terlibat',
-            3: 'Lanjut ke Warga Tidak Terlibat',
+            1: 'Lanjut ke GTK & Siswa Terlibat',
+            2: 'Lanjut ke Tidak Terlibat',
         };
 
         if (nextBtn) {
-            if (step < 4) {
+            if (step < 3) {
                 nextBtn.classList.remove('hidden');
                 const span = nextBtn.querySelector('span');
                 if (span) span.textContent = nextLabels[step] || 'Lanjut';
@@ -7391,7 +7387,7 @@
         }
 
         if (submitBtn) {
-            if (step === 4) submitBtn.classList.remove('hidden');
+            if (step === 3) submitBtn.classList.remove('hidden');
             else submitBtn.classList.add('hidden');
         }
 
@@ -7410,7 +7406,7 @@
             }
         }
 
-        if (nextStep >= 1 && nextStep <= 4) {
+        if (nextStep >= 1 && nextStep <= 3) {
             switchCalCreateTab(nextStep);
         }
     };
@@ -7562,7 +7558,7 @@
             });
             if (target_grade_levels.length === 0) {
                 showToast('Pilih minimal satu tingkat kelas sasaran.', 'warning');
-                switchCalCreateTab(3);
+                switchCalCreateTab(2);
                 return;
             }
         }
@@ -7574,7 +7570,7 @@
             });
             if (target_classroom_ids.length === 0) {
                 showToast('Pilih minimal satu rombel kelas sasaran.', 'warning');
-                switchCalCreateTab(3);
+                switchCalCreateTab(2);
                 return;
             }
         }
