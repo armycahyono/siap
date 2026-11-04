@@ -517,10 +517,10 @@
             if (canAccessPiketDash) {
                 piketCard.classList.remove('hidden');
                 if (piketInfo?.is_piket_today) {
-                    if (piketTitle) piketTitle.textContent = 'Petugas Piket Hari Ini';
+                    if (piketTitle) piketTitle.textContent = 'Piket Hari Ini';
                     if (piketDesc) piketDesc.textContent = 'Anda bertugas di Meja Piket & Gerbang hari ini.';
                 } else {
-                    if (piketTitle) piketTitle.textContent = 'Meja Piket Sekolah';
+                    if (piketTitle) piketTitle.textContent = 'Piket Hari Ini';
                     if (piketDesc) piketDesc.textContent = 'Monitoring operasional presensi, izin siswa & kejadian hari ini.';
                 }
             } else {
@@ -1925,7 +1925,7 @@
                 }
             } else if (isManagement) {
                 if (badgePiketToday) {
-                    badgePiketToday.textContent = 'Petugas Piket Hari Ini';
+                    badgePiketToday.textContent = 'Piket Hari Ini';
                     badgePiketToday.className = 'px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white';
                 }
                 if (piketLocationSub) {
@@ -4392,7 +4392,7 @@
         const detailShift = currentPiketContainer.querySelector('#piket-shift-detail');
         if (badgeShift && detailShift) {
             if (data.is_on_duty_today || data.is_management) {
-                badgeShift.textContent = 'Petugas Piket Hari Ini';
+                badgeShift.textContent = 'Piket Hari Ini';
                 badgeShift.className = 'text-xs font-bold text-slate-800';
                 detailShift.textContent = '';
                 detailShift.classList.add('hidden');

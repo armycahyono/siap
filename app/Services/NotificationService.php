@@ -526,12 +526,35 @@ class NotificationService
 
             // =================================================================
             // G. PENGINGAT TUTUP JURNAL PIKET (JELANG / SETELAH JAM BERAKHIR)
-            // Sasaran: Koordinator Piket Hari Ini
+            // Sasaran: Koordinator Piket Hari Ini (Hanya Koordinator Piket Hari Itu Saja)
             // =================================================================
             $todayJournalForClosing = PiketJournal::whereDate('date', $todayStr)->first();
-            $isCoordinatorForClosing = $isCoordinatorPiketToday
-                || ($todayJournalForClosing && $todayJournalForClosing->coordinator_id === $user->id)
-                || $user->isSuperAdmin();
+
+            $todayCoordSchedule = PiketSchedule::where('day', $todayDay)
+                ->where('role', 'koordinator')
+                ->where('is_active', true)
+                ->when($academicYear, fn ($q) => $q->where('academic_year', $academicYear))
+                ->first();
+
+            $todayCoordinatorId = $todayCoordSchedule?->teacher_id;
+            if ($todayCoordSchedule) {
+                $swap = PiketDutySwap::where('status', 'disetujui')
+                    ->whereDate('duty_date', $todayStr)
+                    ->where(function ($q) use ($todayCoordSchedule) {
+                        $q->where('original_schedule_id', $todayCoordSchedule->id)
+                            ->orWhere('requester_id', $todayCoordSchedule->teacher_id);
+                    })
+                    ->first();
+                if ($swap && $swap->replacement_teacher_id) {
+                    $todayCoordinatorId = $swap->replacement_teacher_id;
+                }
+            }
+
+            if (! $todayCoordinatorId && $todayJournalForClosing?->coordinator_id) {
+                $todayCoordinatorId = $todayJournalForClosing->coordinator_id;
+            }
+
+            $isCoordinatorForClosing = ($todayCoordinatorId !== null && (int) $user->id === (int) $todayCoordinatorId);
 
             if ($isCoordinatorForClosing && (! $todayJournalForClosing || $todayJournalForClosing->status !== 'selesai')) {
                 $periodTimes = LessonSchedule::periodTimes($todayDay);

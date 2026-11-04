@@ -1717,8 +1717,21 @@ class MobileTasksController extends Controller
         $now = Carbon::now();
         $endCarbon = Carbon::createFromTimeString($schoolEndTime);
         $isNearOrPastClosing = $now->greaterThanOrEqualTo($endCarbon->copy()->subMinutes(45));
-        $isCoordinatorUser = $isCoordinator || $journal->coordinator_id === $user->id || $isManagement;
-        $shouldRemindCloseJournal = $isCoordinatorUser && $journal->status !== 'selesai' && $isNearOrPastClosing;
+        $coordSchedule = $schedulesToday->firstWhere('role', 'koordinator');
+        $effectiveCoordinatorId = $coordSchedule?->teacher_id;
+        if ($coordSchedule) {
+            $swap = $approvedSwapsToday->firstWhere('original_schedule_id', $coordSchedule->id)
+                ?? $approvedSwapsToday->firstWhere('requester_id', $coordSchedule->teacher_id);
+            if ($swap && $swap->replacement_teacher_id) {
+                $effectiveCoordinatorId = $swap->replacement_teacher_id;
+            }
+        }
+        if (! $effectiveCoordinatorId && $journal->coordinator_id) {
+            $effectiveCoordinatorId = $journal->coordinator_id;
+        }
+
+        $isCoordinatorToday = $effectiveCoordinatorId && ((int) $user->id === (int) $effectiveCoordinatorId);
+        $shouldRemindCloseJournal = $isCoordinatorToday && $journal->status !== 'selesai' && $isNearOrPastClosing;
 
         $gtkPermitsToday = GtkPermit::with('user:id,name,position')
             ->whereDate('start_date', '<=', $today)
@@ -2763,13 +2776,55 @@ class MobileTasksController extends Controller
     {
         $journal = PiketJournal::whereDate('date', $date)->first();
         if (! $journal) {
+            $dayNames = [
+                1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
+            ];
+            $dayOfWeek = Carbon::parse($date)->dayOfWeekIso;
+            $dayName = $dayNames[$dayOfWeek] ?? 'Senin';
+
+            $coordSchedule = PiketSchedule::where('day', $dayName)
+                ->where('role', 'koordinator')
+                ->where('is_active', true)
+                ->when($academicYear, fn ($q) => $q->where('academic_year', $academicYear))
+                ->first();
+
+            $coordinatorId = $coordSchedule?->teacher_id;
+            if ($coordSchedule) {
+                $swap = PiketDutySwap::where('status', 'disetujui')
+                    ->whereDate('duty_date', $date)
+                    ->where(function ($q) use ($coordSchedule) {
+                        $q->where('original_schedule_id', $coordSchedule->id)
+                            ->orWhere('requester_id', $coordSchedule->teacher_id);
+                    })
+                    ->first();
+                if ($swap && $swap->replacement_teacher_id) {
+                    $coordinatorId = $swap->replacement_teacher_id;
+                }
+            }
+
             $journal = PiketJournal::create([
                 'date' => $date,
                 'academic_year' => $academicYear,
                 'semester' => $semester ?? 'Ganjil',
                 'status' => 'berlangsung',
-                'coordinator_id' => $user->id,
+                'coordinator_id' => $coordinatorId ?? $user->id,
             ]);
+        } elseif (! $journal->coordinator_id) {
+            $dayNames = [
+                1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
+            ];
+            $dayOfWeek = Carbon::parse($date)->dayOfWeekIso;
+            $dayName = $dayNames[$dayOfWeek] ?? 'Senin';
+
+            $coordSchedule = PiketSchedule::where('day', $dayName)
+                ->where('role', 'koordinator')
+                ->where('is_active', true)
+                ->when($academicYear, fn ($q) => $q->where('academic_year', $academicYear))
+                ->first();
+
+            if ($coordSchedule?->teacher_id) {
+                $journal->update(['coordinator_id' => $coordSchedule->teacher_id]);
+            }
         }
 
         return $journal;

@@ -50,7 +50,7 @@
 
     <!-- 3. Kartu Piket Sekolah (Bila Bertugas Hari Ini / Jadwal Piket) -->
     <div id="card-piket-section" class="hidden card-elevated p-3.5 border-purple-200 bg-purple-50/40">
-        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-purple-100">
+        <div onclick="SIAP_ROUTER.navigate('/tasks/piket')" class="flex items-center justify-between pb-2 mb-2.5 border-b border-purple-100 cursor-pointer hover:opacity-85 transition" role="button" tabindex="0">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
@@ -60,7 +60,7 @@
                     <p id="piket-location-sub" class="text-[10px] text-purple-800 font-medium">Meja Piket Utama &amp; Operasional</p>
                 </div>
             </div>
-            <span id="badge-piket-today" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs">Aktif Hari Ini</span>
+            <span id="badge-piket-today" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-600 text-white shadow-xs">Piket Hari Ini</span>
         </div>
 
         <!-- 6 Menu Meja Piket Grid -->

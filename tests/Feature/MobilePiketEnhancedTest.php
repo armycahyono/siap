@@ -257,6 +257,28 @@ class MobilePiketEnhancedTest extends TestCase
         Carbon::setTestNow(); // Reset mock time
     }
 
+    public function test_non_coordinator_does_not_receive_close_journal_notification(): void
+    {
+        // Set time to past school end time on Monday (e.g., 15:30)
+        Carbon::setTestNow(Carbon::parse('next monday 15:30:00'));
+
+        $otherTeacher = User::create([
+            'name' => 'Guru Lain Non Koordinator',
+            'username' => 'gurulainnonkoordinator',
+            'email' => 'gurulain@test.sch.id',
+            'password' => bcrypt('password'),
+            'role_id' => $this->piketOfficer->role_id,
+            'is_active' => true,
+        ]);
+
+        $notifications = NotificationService::getUserNotifications($otherTeacher);
+        $notifIds = $notifications->pluck('id')->all();
+
+        $this->assertNotContains('piket_close_journal_reminder', $notifIds);
+
+        Carbon::setTestNow(); // Reset mock time
+    }
+
     public function test_piket_page_has_plain_text_officer_title_and_closing_alert_banner(): void
     {
         $response = $this->get('/mobile/pages/tasks/piket.html');
@@ -265,7 +287,7 @@ class MobilePiketEnhancedTest extends TestCase
             ->assertSee('id="piket-close-journal-alert"', false)
             ->assertSee('Pengingat Tutup Jurnal', false)
             ->assertSee('id="piket-shift-status-badge"', false)
-            ->assertSee('Petugas Piket Hari Ini', false)
+            ->assertSee('Piket Hari Ini', false)
             ->assertSee('/tasks/piket/kbm', false)
             ->assertSee('Jadwal KBM', false);
     }
