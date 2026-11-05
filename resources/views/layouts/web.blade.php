@@ -815,7 +815,6 @@
                         @php
                             $canAccessAttendanceRecap = auth()->user()->canAccessTeacherAttendanceReport() 
                                 || auth()->user()->canAccessStudentAttendanceReport() 
-                                || auth()->user()->canManageAttendanceDevices() 
                                 || auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah']);
                             $todayGtkPermitBadgeCount = \App\Models\GtkPermit::whereDate('start_date', '<=', now()->toDateString())
                                 ->whereDate('end_date', '>=', now()->toDateString())
@@ -825,8 +824,8 @@
                                 : 0;
                         @endphp
                         @if($canAccessAttendanceRecap)
-                        <li class="nav-item dropdown {{ (request()->routeIs('attendance.report.*', 'attendance.devices*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'active' : '' }}">
-                            <a class="nav-link dropdown-toggle" href="#navbar-rekap-presensi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ (request()->routeIs('attendance.report.*', 'attendance.devices*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'true' : 'false' }}">
+                        <li class="nav-item dropdown {{ (request()->routeIs('attendance.report.*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'active' : '' }}">
+                            <a class="nav-link dropdown-toggle" href="#navbar-rekap-presensi" data-bs-toggle="dropdown" data-bs-auto-close="false" role="button" aria-expanded="{{ (request()->routeIs('attendance.report.*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'true' : 'false' }}">
                                 <span class="nav-link-icon d-inline-block">
                                     <i class="ti ti-report-analytics fs-2 text-teal"></i>
                                 </span>
@@ -837,7 +836,7 @@
                                     <span class="badge bg-warning text-dark fw-bold ms-auto">{{ $todayGtkPermitBadgeCount }}</span>
                                 @endif
                             </a>
-                            <div class="dropdown-menu {{ (request()->routeIs('attendance.report.*', 'attendance.devices*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'show' : '' }}">
+                            <div class="dropdown-menu {{ (request()->routeIs('attendance.report.*') || (request()->routeIs('attendance.gtk-permits*') && request('scope') !== 'personal')) ? 'show' : '' }}">
                                 @if(auth()->user()->canAccessTeacherAttendanceReport())
                                 <a class="dropdown-item {{ request()->routeIs('attendance.report.teachers*') ? 'active' : '' }}" href="{{ route('attendance.report.teachers') }}">
                                     <i class="ti ti-user-check me-2 text-teal"></i> Presensi Guru &amp; Staf
@@ -855,13 +854,6 @@
                                 @if(auth()->user()->canAccessStudentAttendanceReport())
                                 <a class="dropdown-item {{ request()->routeIs('attendance.report.students*') ? 'active' : '' }}" href="{{ route('attendance.report.students') }}">
                                     <i class="ti ti-users-group me-2 text-indigo"></i> Presensi Siswa
-                                </a>
-                                @endif
-
-                                @if(auth()->user()->canManageAttendanceDevices())
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item {{ request()->routeIs('attendance.devices*') ? 'active' : '' }}" href="{{ route('attendance.devices.index') }}">
-                                    <i class="ti ti-devices me-2 text-primary"></i> Mesin Absensi
                                 </a>
                                 @endif
                             </div>
@@ -1022,6 +1014,17 @@
                                 <i class="ti ti-settings me-1"></i> Pengaturan &amp; Sistem
                             </span>
                         </li>
+
+                        @if(auth()->user()->canManageAttendanceDevices())
+                        <li class="nav-item {{ request()->routeIs('attendance.devices*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('attendance.devices.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-devices fs-2 text-primary"></i>
+                                </span>
+                                <span class="nav-link-title">Mesin Absensi</span>
+                            </a>
+                        </li>
+                        @endif
 
                         @if(auth()->user()->hasPermission('manage_settings') || auth()->user()->canManagePiketSettings() || auth()->user()->hasRole('waka_kurikulum') || auth()->user()->hasRole('super_admin'))
                         <li class="nav-item {{ request()->routeIs('telegram.*', 'piket.telegram.*') ? 'active' : '' }}">
