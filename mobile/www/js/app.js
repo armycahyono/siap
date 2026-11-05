@@ -910,18 +910,25 @@
                         : `classroom_id=${sw.classroom_id}&subject_id=${sw.subject_id}`;
                     const targetDate = currentKbmDate || '';
                     const takeUrl = `/kbm/take?${scheduleParam}${targetDate ? '&date=' + targetDate : ''}`;
+                    const isSwapOngoing = Boolean(sw.is_ongoing);
+                    const swapBorder = isSwapOngoing
+                        ? '!border-orange-500 bg-orange-50/30 ring-1 ring-orange-400/30'
+                        : 'border-amber-300 bg-amber-50/50';
 
                     return `
-                        <div class="p-3.5 card-elevated border-amber-300 bg-amber-50/50 shadow-xs">
+                        <div class="p-3.5 card-elevated ${swapBorder} shadow-xs">
                             <div class="flex items-start justify-between gap-2 mb-1.5">
                                 <div class="flex items-center gap-1.5 flex-wrap">
                                     <span class="px-2 py-0.5 rounded-lg text-[9px] font-extrabold bg-amber-600 text-white uppercase tracking-wider">⚡ Inval / Pengganti</span>
                                     <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700">${escapeHtml(sw.classroom_name)}</span>
                                     <span class="text-[10px] font-semibold text-slate-500">${escapeHtml(sw.period_text)}</span>
                                 </div>
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen
-                                </span>
+                                <div class="flex items-center gap-1.5">
+                                    ${isSwapOngoing ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-orange-100 text-orange-800 border border-orange-300 animate-pulse"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Saat Ini</span>' : ''}
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen
+                                    </span>
+                                </div>
                             </div>
                             <h5 class="text-xs font-bold text-slate-900 mt-1">${escapeHtml(sw.subject_name)}</h5>
                             <p class="text-[11px] text-slate-600 mt-0.5">Guru Asli: <span class="font-bold text-slate-800">${escapeHtml(sw.original_teacher_name)}</span></p>
@@ -997,16 +1004,82 @@
             const leave = summary ? summary.izin : 0;
             const alpha = summary ? summary.alfa : 0;
             const presentPct = totalStudents > 0 ? Math.round((present / totalStudents) * 100) : 0;
+            const isOngoing = Boolean(s.is_ongoing);
+            const cardBorder = isOngoing
+                ? '!border-orange-500 bg-orange-50/15 ring-1 ring-orange-400/30 shadow-xs'
+                : 'border-slate-200/80';
+
+            // Jurnal Topik / Materi dan Catatan Tambahan Terakhir dari Kelas
+            let journalInfoHtml = '';
+            if (s.is_attended) {
+                const topicVal = s.today_topic || s.last_topic;
+                const notesVal = s.today_notes || s.last_notes;
+                journalInfoHtml = `
+                    <div class="mt-2.5 p-2.5 bg-emerald-50/50 rounded-xl border border-emerald-200/70 text-[10px] space-y-1.5">
+                        <div class="flex items-center justify-between text-emerald-900">
+                            <span class="font-bold flex items-center gap-1.5">
+                                <span>📖</span> Topik / Materi:
+                            </span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Hari Ini</span>
+                        </div>
+                        <p class="font-medium text-slate-800 pl-4 leading-relaxed">${escapeHtml(topicVal || 'Materi KBM tersimpan')}</p>
+                        ${notesVal ? `
+                            <div class="pt-1.5 border-t border-emerald-200/60">
+                                <div class="font-bold text-emerald-900 flex items-center gap-1 mb-0.5">
+                                    <span>📝</span> Catatan Tambahan:
+                                </div>
+                                <p class="text-slate-700 italic pl-4 leading-relaxed">${escapeHtml(notesVal)}</p>
+                            </div>
+                        ` : ''}
+                        ${s.today_topic && s.last_topic && s.last_session_date && s.last_session_date_iso !== data.date_info?.current ? `
+                            <div class="pt-1 border-t border-emerald-200/40 text-[9px] text-slate-400 pl-4">
+                                <span>📌 Pertemuan sebelumnya (${escapeHtml(s.last_session_date)}): ${escapeHtml(s.last_topic)}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                const hasLastTopic = Boolean(s.last_topic);
+                const hasLastNotes = Boolean(s.last_notes);
+                if (hasLastTopic || hasLastNotes) {
+                    journalInfoHtml = `
+                        <div class="mt-2.5 p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80 text-[10px] space-y-1.5">
+                            <div class="flex items-center justify-between text-slate-600">
+                                <span class="font-bold flex items-center gap-1.5 text-slate-800">
+                                    <span>📖</span> Topik / Materi Terakhir:
+                                </span>
+                                ${s.last_session_date ? `<span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-600 font-semibold">${escapeHtml(s.last_session_date)}</span>` : ''}
+                            </div>
+                            <p class="font-medium text-slate-800 pl-4 leading-relaxed">${escapeHtml(s.last_topic || 'Belum ada materi sebelumnya')}</p>
+                            ${s.last_notes ? `
+                                <div class="pt-1.5 border-t border-slate-200/60">
+                                    <div class="font-bold text-slate-800 flex items-center gap-1 mb-0.5">
+                                        <span>📝</span> Catatan Tambahan Terakhir:
+                                    </div>
+                                    <p class="text-slate-600 italic pl-4 leading-relaxed">${escapeHtml(s.last_notes)}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    journalInfoHtml = `
+                        <div class="mt-2 p-2 bg-slate-50/60 rounded-xl border border-slate-200/60 text-[10px] text-slate-400 italic flex items-center gap-1.5">
+                            <span>📖</span> Belum ada riwayat materi &amp; catatan sebelumnya untuk kelas ini.
+                        </div>
+                    `;
+                }
+            }
 
             return `
-                <div class="p-3.5 card-elevated transition hover:scale-[1.005]">
+                <div class="p-3.5 card-elevated ${cardBorder} transition hover:scale-[1.005]">
                     <!-- Header Kartu -->
                     <div class="flex items-start justify-between gap-2 mb-1.5">
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold bg-blue-600 text-white tracking-wide uppercase shadow-xs">${s.classroom_name}</span>
                             <span class="text-[11px] font-semibold text-slate-500">${s.period_text}</span>
                         </div>
-                        <div>
+                        <div class="flex items-center gap-1.5">
+                            ${isOngoing ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-orange-100 text-orange-800 border border-orange-300 animate-pulse"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Saat Ini</span>' : ''}
                             ${s.is_attended 
                                 ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen</span>'
                                 : '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>Belum Diabsen</span>'
@@ -1044,12 +1117,8 @@
                         </div>
                     ` : ''}
 
-                    <!-- Jurnal Materi Pelajaran -->
-                    ${s.material_taught ? `
-                        <div class="mt-2 text-[10px] text-slate-600 italic bg-white/70 p-2 rounded-lg border border-slate-200/60 line-clamp-2">
-                            <span class="font-bold text-slate-700 not-italic">Materi:</span> ${s.material_taught}
-                        </div>
-                    ` : ''}
+                    <!-- Jurnal Topik / Materi & Catatan Tambahan Terakhir -->
+                    ${journalInfoHtml}
 
                     <!-- Tombol Aksi Masuk Kelas & Absen -->
                     <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">

@@ -117,6 +117,8 @@ class MobileKbmController extends Controller
 
         // 3. Sesi Presensi KBM yang Sudah Tersimpan pada Tanggal Ini
         $myScheduleIds = $mySchedules->pluck('id')->filter()->all();
+        $classroomIds = $mySchedules->pluck('classroom_id')->filter()->unique()->all();
+        $subjectIds = $mySchedules->pluck('subject_id')->filter()->unique()->all();
 
         $savedSessionsCollection = SubjectAttendanceSession::with(['classroom', 'subject', 'records', 'scheduledTeacher', 'teacher'])
             ->whereDate('attendance_date', $dateStr)
@@ -137,14 +139,73 @@ class MobileKbmController extends Controller
             return "{$session->classroom_id}_{$session->start_period}";
         });
 
+        // Riwayat topik/materi dan catatan terakhir dari kelas & mapel tersebut
+        $historicalSessions = collect();
+        if (! empty($classroomIds) && ! empty($subjectIds)) {
+            $historicalSessions = SubjectAttendanceSession::whereIn('classroom_id', $classroomIds)
+                ->whereIn('subject_id', $subjectIds)
+                ->whereDate('attendance_date', '<=', $dateStr)
+                ->where(function ($q) {
+                    $q->where(fn ($sub) => $sub->whereNotNull('topic')->where('topic', '!=', ''))
+                        ->orWhere(fn ($sub) => $sub->whereNotNull('notes')->where('notes', '!=', ''));
+                })
+                ->orderByDesc('attendance_date')
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy(fn ($item) => "{$item->classroom_id}_{$item->subject_id}");
+        }
+
+        $now = Carbon::now();
+        $currentTime = $now->format('H:i');
+        $isToday = $date->isToday();
+        $periodTimes = LessonSchedule::periodTimes($dayName);
+
         // 4. Format Jadwal Mengajar Guru
-        $formattedMySchedules = $mySchedules->map(function ($schedule) use ($savedSessions, $savedSessionsBySlot, $dateStr) {
+        $formattedMySchedules = $mySchedules->map(function ($schedule) use (
+            $savedSessions,
+            $savedSessionsBySlot,
+            $historicalSessions,
+            $periodTimes,
+            $dateStr,
+            $isToday,
+            $isKbmDay,
+            $currentTime
+        ) {
             $session = $savedSessions->get($schedule->id)
                 ?? $savedSessionsBySlot->get("{$schedule->classroom_id}_{$schedule->start_period}");
 
             $isAttended = (bool) $session;
             $recordsCount = $session ? $session->records->count() : 0;
             $presentCount = $session ? $session->records->where('status', 'h')->count() : 0;
+
+            // Waktu KBM & status jam sedang berlangsung (saat ini)
+            $startTime = $schedule->start_time
+                ? substr($schedule->start_time, 0, 5)
+                : ($periodTimes[$schedule->start_period]['start'] ?? null);
+            $endTime = $schedule->end_time
+                ? substr($schedule->end_time, 0, 5)
+                : ($periodTimes[$schedule->end_period]['end'] ?? null);
+
+            $timeRange = ($startTime && $endTime)
+                ? "{$startTime} - {$endTime} WIB"
+                : (($schedule->start_time && $schedule->end_time)
+                    ? substr($schedule->start_time, 0, 5).' - '.substr($schedule->end_time, 0, 5)
+                    : null);
+
+            $isOngoing = false;
+            if ($isToday && $isKbmDay && $startTime && $endTime) {
+                $isOngoing = ($currentTime >= $startTime && $currentTime <= $endTime);
+            }
+
+            // Topik/materi dan catatan terakhir dari kelas tersebut
+            $classSessions = $historicalSessions->get("{$schedule->classroom_id}_{$schedule->subject_id}", collect());
+            $previousSession = $classSessions->first(fn ($s) => $s->attendance_date->toDateString() < $dateStr);
+            $latestRecorded = $previousSession ?: $classSessions->first();
+
+            $lastTopic = $latestRecorded?->topic;
+            $lastNotes = $latestRecorded?->notes;
+            $lastDateFormatted = $latestRecorded?->attendance_date?->translatedFormat('d M Y');
+            $lastDateIso = $latestRecorded?->attendance_date?->toDateString();
 
             return [
                 'id' => $schedule->id,
@@ -155,12 +216,21 @@ class MobileKbmController extends Controller
                 'start_period' => $schedule->start_period,
                 'end_period' => $schedule->end_period,
                 'period_text' => "Jam ke-{$schedule->start_period} s/d {$schedule->end_period}",
-                'time_range' => ($schedule->start_time && $schedule->end_time)
-                    ? substr($schedule->start_time, 0, 5).' - '.substr($schedule->end_time, 0, 5)
-                    : null,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'time_range' => $timeRange,
                 'is_attended' => $isAttended,
+                'is_ongoing' => $isOngoing,
                 'session_id' => $session?->id,
-                'material_taught' => $session?->notes ?? $session?->material_taught ?? null,
+                'topic' => $session?->topic ?? $lastTopic,
+                'notes' => $session?->notes ?? $lastNotes,
+                'today_topic' => $session?->topic,
+                'today_notes' => $session?->notes,
+                'last_topic' => $lastTopic,
+                'last_notes' => $lastNotes,
+                'last_session_date' => $lastDateFormatted,
+                'last_session_date_iso' => $lastDateIso,
+                'material_taught' => $session?->topic ?? $session?->notes ?? $lastTopic ?? null,
                 'attendance_summary' => $isAttended ? [
                     'total' => $recordsCount,
                     'present' => $presentCount,
@@ -178,9 +248,16 @@ class MobileKbmController extends Controller
             ->whereDate('attendance_date', $dateStr)
             ->where('is_swap', true)
             ->get()
-            ->map(function ($session) use ($dateStr) {
+            ->map(function ($session) use ($dateStr, $periodTimes, $isToday, $isKbmDay, $currentTime) {
                 $recordsCount = $session->records->count();
                 $presentCount = $session->records->where('status', 'h')->count();
+
+                $startTime = ($periodTimes[$session->start_period]['start'] ?? null);
+                $endTime = ($periodTimes[$session->end_period]['end'] ?? null);
+                $isOngoing = false;
+                if ($isToday && $isKbmDay && $startTime && $endTime) {
+                    $isOngoing = ($currentTime >= $startTime && $currentTime <= $endTime);
+                }
 
                 return [
                     'session_id' => $session->id,
@@ -197,6 +274,7 @@ class MobileKbmController extends Controller
                     'topic' => $session->topic,
                     'notes' => $session->notes,
                     'is_attended' => true,
+                    'is_ongoing' => $isOngoing,
                     'attendance_summary' => [
                         'total' => $recordsCount,
                         'present' => $presentCount,

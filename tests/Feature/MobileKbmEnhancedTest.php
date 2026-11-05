@@ -13,6 +13,7 @@ use App\Models\Subject;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -66,7 +67,7 @@ class MobileKbmEnhancedTest extends TestCase
 
         $this->schedule = LessonSchedule::create([
             'academic_year' => '2026/2027',
-            'semester' => 'ganjil',
+            'semester' => 'Ganjil',
             'classroom_id' => $this->classroom->id,
             'subject_id' => $this->subject->id,
             'teacher_id' => $this->teacher->id,
@@ -290,5 +291,65 @@ class MobileKbmEnhancedTest extends TestCase
         $this->assertTrue($liveMonitoring['can_view_student_all']);
         $this->assertArrayHasKey('gtk', $liveMonitoring);
         $this->assertArrayHasKey('siswa', $liveMonitoring);
+    }
+
+    public function test_my_schedules_contains_last_topic_notes_and_ongoing_status(): void
+    {
+        // 1. Buat riwayat sesi sebelumnya untuk kelas dan mapel ini
+        SubjectAttendanceSession::create([
+            'lesson_schedule_id' => $this->schedule->id,
+            'classroom_id' => $this->classroom->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->teacher->id,
+            'attendance_date' => '2026-10-26', // Pertemuan sebelumnya
+            'start_period' => 1,
+            'end_period' => 2,
+            'start_time' => '07:00:00',
+            'end_time' => '08:30:00',
+            'academic_year' => '2026/2027',
+            'semester' => 'ganjil',
+            'topic' => 'Konfigurasi Firewall MikroTik',
+            'notes' => 'Latihan praktikum bab 3 selesai, tugas mandiri.',
+        ]);
+
+        // 2. Fetch KBM untuk hari Senin berikutnya
+        $response = $this->actingAs($this->teacher)
+            ->getJson('/api/v1/mobile/kbm?date=2026-11-02');
+
+        $response->assertStatus(200);
+        $schedules = $response->json('data.my_schedules');
+
+        $this->assertNotEmpty($schedules);
+        $schedule = $schedules[0];
+
+        $this->assertEquals('Konfigurasi Firewall MikroTik', $schedule['last_topic']);
+        $this->assertEquals('Latihan praktikum bab 3 selesai, tugas mandiri.', $schedule['last_notes']);
+        $this->assertArrayHasKey('last_session_date', $schedule);
+        $this->assertArrayHasKey('is_ongoing', $schedule);
+        $this->assertFalse($schedule['is_ongoing']); // Karena tanggal masa lalu
+    }
+
+    public function test_schedule_ongoing_status_is_true_during_class_hours(): void
+    {
+        // 2026-11-02 adalah hari Senin, pukul 07:30 (di dalam jam ke-1 s/d 2: 07:00 - 08:30)
+        Carbon::setTestNow('2026-11-02 07:30:00');
+
+        $response = $this->actingAs($this->teacher)
+            ->getJson('/api/v1/mobile/kbm?date=2026-11-02');
+
+        $response->assertStatus(200);
+        $schedules = $response->json('data.my_schedules');
+        $this->assertNotEmpty($schedules);
+        $this->assertTrue($schedules[0]['is_ongoing']);
+
+        // Setelah jam pelajaran selesai (pukul 09:00)
+        Carbon::setTestNow('2026-11-02 09:00:00');
+
+        $response2 = $this->actingAs($this->teacher)
+            ->getJson('/api/v1/mobile/kbm?date=2026-11-02');
+
+        $this->assertFalse($response2->json('data.my_schedules.0.is_ongoing'));
+
+        Carbon::setTestNow(); // Reset
     }
 }
