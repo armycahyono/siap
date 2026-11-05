@@ -72,14 +72,7 @@ class AttendanceLog extends Model
             return 'Manual Susulan';
         }
 
-        $type = match ($this->verify_type) {
-            'face' => 'Wajah',
-            'card' => 'Kartu RFID',
-            'password' => 'PIN / Password',
-            default => 'Sidik Jari',
-        };
-
-        return 'Mesin ('.$type.')';
+        return 'Mesin Absen';
     }
 
     public function getVerifyIconAttribute(): string
