@@ -195,14 +195,27 @@ class MobileTasksController extends Controller
                 if (($hasPresentSession && $hasAlfaSession) || ($hasFingerprint && $hasAlfaSession)) {
                     $firstRecord = $records->first();
                     $studentModel = $firstRecord->student;
-                    $alfaSubjects = $records->where('status', 'a')->map(fn ($r) => $r->session?->subject?->name)->filter()->unique()->implode(', ');
+                    $alfaSubjects = $records->where('status', 'a')->map(function ($r) {
+                        $name = $r->session?->subject?->name ?? 'Mapel';
+                        if ($r->session && $r->session->start_period && $r->session->end_period) {
+                            $jpStr = $r->session->start_period === $r->session->end_period
+                                ? "Jam {$r->session->start_period}"
+                                : "Jam {$r->session->start_period}-{$r->session->end_period}";
+
+                            return "{$name} ({$jpStr})";
+                        }
+
+                        return $name;
+                    })->filter()->unique()->implode(', ');
                     $presentSubjects = $records->where('status', 'h')->map(fn ($r) => $r->session?->subject?->name)->filter()->unique()->implode(', ');
+
+                    $alfaCountJp = $records->where('status', 'a')->sum(fn ($r) => $r->session?->total_periods ?? 1);
 
                     $truancyStudents->push([
                         'student_id' => $sId,
                         'student_name' => $studentModel?->name ?? 'Siswa',
                         'classroom_name' => $myHomeroomClassroom->name,
-                        'alfa_count_jp' => $records->where('status', 'a')->count(),
+                        'alfa_count_jp' => $alfaCountJp,
                         'alfa_subjects' => $alfaSubjects ?: 'Mapel Tertentu',
                         'present_subjects' => $presentSubjects ?: ($hasFingerprint ? 'Scan Masuk Gerbang' : '-'),
                         'has_fingerprint' => $hasFingerprint,

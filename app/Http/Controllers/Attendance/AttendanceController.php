@@ -408,7 +408,8 @@ class AttendanceController extends Controller
 
         // Rekap KBM mapel siswa hari ini untuk mendeteksi bolos jam pelajaran
         $todaySubjectSessions = SubjectAttendanceSession::whereDate('attendance_date', $targetDateStr)->pluck('id');
-        $todaySubjectRecords = SubjectAttendanceRecord::whereIn('subject_attendance_session_id', $todaySubjectSessions)
+        $todaySubjectRecords = SubjectAttendanceRecord::with('session')
+            ->whereIn('subject_attendance_session_id', $todaySubjectSessions)
             ->get()
             ->groupBy('student_id');
 
@@ -444,7 +445,7 @@ class AttendanceController extends Controller
 
                     // Deteksi Bolos KBM: Siswa scan fingerprint masuk tapi alfa di mapel tanpa izin pulang
                     if ($subRecords->contains('status', 'a') && (! $permit || $permit->permit_type !== 'izin_pulang_cepat')) {
-                        $alfaCount = $subRecords->where('status', 'a')->count();
+                        $alfaCount = $subRecords->where('status', 'a')->sum(fn ($r) => $r->session?->total_periods ?? 1);
                         $truancyStudents->push((object) [
                             'id' => $student->id,
                             'name' => $student->name,

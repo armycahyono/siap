@@ -72,6 +72,15 @@ class SubjectAttendanceSession extends Model
         return $this->hasMany(SubjectAttendanceRecord::class);
     }
 
+    public function getTotalPeriodsAttribute(): int
+    {
+        if ($this->start_period && $this->end_period) {
+            return max(1, (int) $this->end_period - (int) $this->start_period + 1);
+        }
+
+        return 1;
+    }
+
     public function getHadirCountAttribute(): int
     {
         return $this->records->where('status', 'h')->count();

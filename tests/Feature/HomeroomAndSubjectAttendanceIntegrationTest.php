@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\Mobile\MobileTasksController;
+use App\Models\AcademicYear;
 use App\Models\AttendanceLog;
 use App\Models\Classroom;
 use App\Models\CurriculumEvent;
@@ -12,9 +14,12 @@ use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\SubjectAttendanceRecord;
+use App\Models\SubjectAttendanceSession;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 class HomeroomAndSubjectAttendanceIntegrationTest extends TestCase
@@ -39,9 +44,8 @@ class HomeroomAndSubjectAttendanceIntegrationTest extends TestCase
             'semester' => 'Ganjil',
         ]);
 
-        $roleTeacher = Role::create([
+        $roleTeacher = Role::firstOrCreate(['slug' => 'guru'], [
             'name' => 'Guru',
-            'slug' => 'guru',
         ]);
 
         $this->teacher = User::factory()->create([
@@ -175,5 +179,72 @@ class HomeroomAndSubjectAttendanceIntegrationTest extends TestCase
         $response->assertSee('Praktik Kerja Lapangan (PKL) Industri');
         $response->assertSee('Bebas KBM');
         $response->assertSee('Tandai Semua Dispen');
+    }
+
+    public function test_truancy_calculation_sums_periods_accurately_for_multi_period_session(): void
+    {
+        $this->actingAs($this->teacher);
+
+        $ay = AcademicYear::create([
+            'name' => '2026/2027',
+            'semester' => 'Ganjil',
+            'is_active' => true,
+        ]);
+
+        // Map teacher as homeroom teacher for classroom
+        $this->classroom->update([
+            'homeroom_teacher_id' => $this->teacher->id,
+            'academic_year_id' => $ay->id,
+        ]);
+
+        $today = now()->toDateString();
+
+        // Sesi 1: JP 1 (Hadir)
+        $session1 = SubjectAttendanceSession::create([
+            'classroom_id' => $this->classroom->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->teacher->id,
+            'attendance_date' => $today,
+            'start_period' => 1,
+            'end_period' => 1,
+            'academic_year' => '2026/2027',
+            'semester' => 'ganjil',
+        ]);
+        SubjectAttendanceRecord::create([
+            'subject_attendance_session_id' => $session1->id,
+            'student_id' => $this->student->id,
+            'status' => 'h',
+        ]);
+
+        // Sesi 2: JP 2-3 (2 JP) (Alfa)
+        $session2 = SubjectAttendanceSession::create([
+            'classroom_id' => $this->classroom->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->teacher->id,
+            'attendance_date' => $today,
+            'start_period' => 2,
+            'end_period' => 3,
+            'academic_year' => '2026/2027',
+            'semester' => 'ganjil',
+        ]);
+        SubjectAttendanceRecord::create([
+            'subject_attendance_session_id' => $session2->id,
+            'student_id' => $this->student->id,
+            'status' => 'a',
+        ]);
+
+        $this->assertEquals(2, $session2->total_periods);
+
+        $request = new Request(['date' => $today]);
+        $controller = app(MobileTasksController::class);
+        $res = $controller->index($request);
+        $data = json_decode($res->getContent(), true);
+
+        $events = $data['data']['homeroom']['student_events'] ?? [];
+        $truancyEvent = collect($events)->firstWhere('type', 'truancy');
+
+        $this->assertNotNull($truancyEvent);
+        $this->assertEquals('2 JP Alfa', $truancyEvent['badge']);
+        $this->assertStringContainsString('Jam 2-3', $truancyEvent['description']);
     }
 }

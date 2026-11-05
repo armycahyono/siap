@@ -27,6 +27,11 @@ class SubjectAttendanceRecord extends Model
         return $this->belongsTo(Student::class);
     }
 
+    public function getJpCountAttribute(): int
+    {
+        return $this->session?->total_periods ?? 1;
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
