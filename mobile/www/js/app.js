@@ -5110,8 +5110,8 @@
     let currentInvalTeacherActivePermit = null;
     let isUsingPresetPermitAttachment = false;
 
-    window.openPiketInvalModal = function(preselectedTeacherId = null) {
-        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+    window.openPiketInvalModal = function(preselectedTeacherId = null, preselectedScheduleId = null) {
+        const modal = (piketKbmContainer || currentPiketContainer)?.querySelector('#modal-piket-inval') || document.querySelector('#modal-piket-inval');
         const bottomNav = document.getElementById('mobile-bottom-nav');
         if (bottomNav) bottomNav.classList.add('hidden');
         if (modal) {
@@ -5122,6 +5122,20 @@
             currentInvalTeacherSchedules = [];
             currentInvalTeacherActivePermit = null;
             isUsingPresetPermitAttachment = false;
+
+            const absentSelect = modal.querySelector('#inval-absent-teacher-select');
+            const invalTeacherSelect = modal.querySelector('#inval-teacher-select');
+
+            // Populate teacher options if empty
+            const teachersList = (window.piketHelpers && window.piketHelpers.teachers) || (piketLiveKbmData && piketLiveKbmData.teachers);
+            if (teachersList && teachersList.length > 0) {
+                if (absentSelect && (!absentSelect.options || absentSelect.options.length <= 1)) {
+                    populateSelect(absentSelect, teachersList, 'id', 'name', '-- Pilih Guru Berhalangan --');
+                }
+                if (invalTeacherSelect && (!invalTeacherSelect.options || invalTeacherSelect.options.length <= 1)) {
+                    populateSelect(invalTeacherSelect, teachersList, 'id', 'name', '-- Belum Ditugaskan / Cari Nanti --');
+                }
+            }
 
             const schedSelect = modal.querySelector('#inval-schedule-select');
             const schedBadge = modal.querySelector('#inval-schedule-count-badge');
@@ -5144,24 +5158,23 @@
             if (hiddenPreset) hiddenPreset.value = '0';
 
             if (preselectedTeacherId) {
-                const absentSelect = modal.querySelector('#inval-absent-teacher-select');
                 if (absentSelect) {
                     absentSelect.value = preselectedTeacherId;
-                    handleAbsentTeacherChange(preselectedTeacherId);
+                    handleAbsentTeacherChange(preselectedTeacherId, preselectedScheduleId);
                 }
             }
         }
     };
 
     window.closePiketInvalModal = function() {
-        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        const modal = (piketKbmContainer || currentPiketContainer)?.querySelector('#modal-piket-inval') || document.querySelector('#modal-piket-inval');
         const bottomNav = document.getElementById('mobile-bottom-nav');
         if (modal) modal.classList.add('hidden');
         if (bottomNav) bottomNav.classList.remove('hidden');
     };
 
-    window.handleAbsentTeacherChange = async function(teacherId) {
-        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+    window.handleAbsentTeacherChange = async function(teacherId, preselectedScheduleId = null) {
+        const modal = (piketKbmContainer || currentPiketContainer)?.querySelector('#modal-piket-inval') || document.querySelector('#modal-piket-inval');
         if (!modal) return;
 
         const schedSelect = modal.querySelector('#inval-schedule-select');
@@ -5219,7 +5232,13 @@
                         </option>
                     `).join('');
 
-                    if (schedSelect) schedSelect.innerHTML = optionsHtml;
+                    if (schedSelect) {
+                        schedSelect.innerHTML = optionsHtml;
+                        if (preselectedScheduleId) {
+                            schedSelect.value = preselectedScheduleId;
+                            handleInvalScheduleChange(preselectedScheduleId);
+                        }
+                    }
                 }
 
                 // 2. Cek apakah ada pengajuan izin GTK aktif
@@ -5247,7 +5266,7 @@
     };
 
     window.handleInvalScheduleChange = function(val) {
-        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        const modal = (piketKbmContainer || currentPiketContainer)?.querySelector('#modal-piket-inval') || document.querySelector('#modal-piket-inval');
         if (!modal) return;
 
         const schedHint = modal.querySelector('#inval-schedule-hint');
@@ -5285,7 +5304,7 @@
     };
 
     window.toggleUsePresetFile = function(forceValue = null) {
-        const modal = currentPiketContainer?.querySelector('#modal-piket-inval');
+        const modal = (piketKbmContainer || currentPiketContainer)?.querySelector('#modal-piket-inval') || document.querySelector('#modal-piket-inval');
         if (!modal) return;
 
         if (forceValue !== null) {
@@ -5336,8 +5355,13 @@
             if (res.success) {
                 showToast(res.message || 'Tugas guru inval berhasil disimpan!', 'success');
                 closePiketInvalModal();
-                loadTasksPiket();
-                switchPiketTab('invals');
+                if (typeof loadTasksPiket === 'function' && currentPiketContainer) {
+                    loadTasksPiket();
+                    switchPiketTab('invals');
+                }
+                if (typeof loadTasksPiketLiveKbm === 'function' && piketKbmContainer) {
+                    loadTasksPiketLiveKbm();
+                }
             } else {
                 showToast(res.message || 'Gagal menyimpan tugas inval.', 'error');
             }
@@ -8539,6 +8563,13 @@
                 renderPiketKbmPeriodSelector(res.data);
                 renderPiketKbmSummary(res.data.summary);
                 renderPiketKbmClassrooms();
+
+                // Pre-populate teachers in modal if modal exists in this container
+                const modal = piketKbmContainer.querySelector('#modal-piket-inval');
+                if (modal && res.data.teachers) {
+                    populateSelect(modal.querySelector('#inval-absent-teacher-select'), res.data.teachers, 'id', 'name', '-- Pilih Guru Berhalangan --');
+                    populateSelect(modal.querySelector('#inval-teacher-select'), res.data.teachers, 'id', 'name', '-- Belum Ditugaskan / Cari Nanti --');
+                }
             } else {
                 throw new Error(res.message || 'Gagal memuat jadwal KBM');
             }
@@ -8799,10 +8830,31 @@
                     </div>
 
                     ${sessionNote}
+
+                    <!-- Aksi Kelas Piket: Inval dan Absenkan -->
+                    <div class="mt-2.5 pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                        <button type="button" onclick="openPiketInvalModal(${c.teacher_id ? c.teacher_id : 'null'}, ${c.schedule_id ? c.schedule_id : 'null'})" class="py-1.5 px-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Inval</span>
+                        </button>
+                        <button type="button" onclick="takePiketKbmAttendance(${c.schedule_id ? c.schedule_id : 'null'})" class="py-1.5 px-2.5 rounded-xl ${c.is_attended ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'} text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <span>Absenkan</span>
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
     }
+
+    window.takePiketKbmAttendance = function(scheduleId) {
+        if (!scheduleId) {
+            showToast('Jadwal pelajaran belum ditentukan untuk kelas ini.', 'warning');
+            return;
+        }
+        const targetDate = piketLiveKbmData?.today || '';
+        SIAP_ROUTER.navigate('/kbm/take?schedule_id=' + scheduleId + (targetDate ? '&date=' + targetDate : ''));
+    };
 
     window.selectPiketKbmPeriod = function(period) {
         currentPiketKbmPeriod = period;

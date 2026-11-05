@@ -100,4 +100,100 @@
             </div>
         </div>
     </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL BOTTOM SHEET: TUGASKAN GURU INVAL                                   -->
+    <!-- ========================================================================= -->
+    <div id="modal-piket-inval" onclick="if(event.target === this) closePiketInvalModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
+            <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="text-base">🔄</span>
+                    <h4 class="text-xs font-black text-slate-800">Tugaskan Guru Inval (Jam Kosong)</h4>
+                </div>
+                <button type="button" onclick="closePiketInvalModal()" class="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-base">&times;</button>
+            </div>
+
+            <div class="p-4 pb-8 sm:pb-5 overflow-y-auto space-y-3">
+                <form id="form-piket-inval" onsubmit="handlePiketInvalSubmit(event)" class="space-y-3">
+                    <!-- 1. Pilih Guru Yang Berhalangan / Izin -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Guru Yang Berhalangan / Izin *</label>
+                        <select id="inval-absent-teacher-select" name="absent_teacher_id" onchange="handleAbsentTeacherChange(this.value)" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="">-- Pilih Guru Berhalangan --</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Pilih Mata Pelajaran & Jam Pelajaran Hari Ini -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">Mata Pelajaran &amp; Jam KBM Hari Ini *</label>
+                            <span id="inval-schedule-count-badge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 hidden">0 Jadwal</span>
+                        </div>
+                        <select id="inval-schedule-select" name="schedule_id" onchange="handleInvalScheduleChange(this.value)" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="">-- Pilih Guru Di Atas Terlebih Dahulu --</option>
+                        </select>
+                        <div id="inval-schedule-hint" class="text-[9.5px] text-slate-500 mt-1 italic hidden"></div>
+                    </div>
+
+                    <!-- Hidden data jadwal yang terpilih -->
+                    <input type="hidden" id="inval-classroom-id" name="classroom_id">
+                    <input type="hidden" id="inval-subject-id" name="subject_id">
+                    <input type="hidden" id="inval-period-start" name="period_start" value="1">
+                    <input type="hidden" id="inval-period-end" name="period_end" value="2">
+                    <input type="hidden" id="inval-use-permit-attachment" name="use_permit_attachment" value="0">
+
+                    <!-- 3. Tentukan Guru Inval / Pengganti -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Guru Inval / Pengganti</label>
+                        <select id="inval-teacher-select" name="inval_teacher_id" class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="">-- Belum Ditugaskan / Cari Nanti --</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. Alasan Tidak Hadir -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Alasan Tidak Hadir *</label>
+                        <input type="text" id="inval-reason" name="reason" placeholder="Contoh: Izin Dinas Luar, Sakit, atau Cuti" required class="w-full text-xs rounded-xl border border-slate-300 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <!-- 5. Materi / Tugas Dari Guru Mapel -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Instruksi / Catatan Tugas</label>
+                        <textarea id="inval-assignment" name="assignment_material" rows="2" placeholder="Contoh: Kerjakan LKS Hal. 42 no. 1-10 dikumpulkan di meja piket..." class="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+
+                    <!-- 6. Upload File Tugas -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Upload File Tugas (PDF, Word, Excel, Gambar)</label>
+                        <input type="file" id="inval-assignment-file" name="assignment_file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" class="w-full text-xs p-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/50 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-600 file:text-white">
+                        <span class="text-[9px] text-slate-400 mt-1 block">File materi atau lembar kerja untuk dikerjakan siswa di kelas kosong.</span>
+
+                        <!-- Preset File Tugas Dari Izin GTK (Jika Ada) -->
+                        <div id="inval-preset-permit-wrap" class="hidden mt-2 p-2 rounded-xl bg-purple-50 border border-purple-200">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <span class="text-base">📎</span>
+                                    <div class="min-w-0">
+                                        <div id="inval-preset-file-name" class="text-[11px] font-bold text-purple-900 truncate">Nama File Tugas</div>
+                                        <div class="text-[9px] text-purple-700">Lampiran dari pengajuan izin guru</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <a id="inval-preset-file-link" href="#" target="_blank" class="px-2 py-0.5 rounded-lg bg-purple-600 text-white font-bold text-[10px] active:scale-95 transition">Lihat</a>
+                                    <button type="button" id="btn-use-preset-file" onclick="toggleUsePresetFile()" class="px-2 py-0.5 rounded-lg bg-white border border-purple-300 text-purple-800 font-bold text-[10px] active:scale-95 transition">✓ Pakai Ini</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" id="btn-submit-piket-inval" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md active:scale-95 transition flex items-center justify-center gap-2">
+                            <span>Simpan Tugas Inval</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>

@@ -301,7 +301,7 @@ class MobileKbmController extends Controller
         // Cek wewenang
         $isOwnerTeacher = ($schedule->teacher_id === $user->id);
         $isSubstituteTeacher = $user->hasRole('guru') || $user->hasTeachingDuty() || $user->isTeacher();
-        $isManagement = $user->isSuperAdmin() || $user->hasRole('admin') || $user->isPrincipal() || $user->isWakaKurikulum();
+        $isManagement = $user->isSuperAdmin() || $user->hasRole('admin') || $user->isPrincipal() || $user->isWakaKurikulum() || $user->isVicePrincipal();
         $isPiket = $user->canOperatePiket();
 
         if (! $isOwnerTeacher && ! $isSubstituteTeacher && ! $isManagement && ! $isPiket) {
@@ -313,7 +313,7 @@ class MobileKbmController extends Controller
 
         // Cek jendela waktu
         $windowStatus = $schedule->getAttendanceWindowStatus($date, 15);
-        $canSubmit = $windowStatus['is_open'] || $isManagement;
+        $canSubmit = $windowStatus['is_open'] || $isManagement || $isPiket;
 
         // Tentukan tahun ajaran target
         if (! empty($schedule->academic_year)) {
@@ -539,7 +539,7 @@ class MobileKbmController extends Controller
             ->first();
 
         // Validasi Jendela Waktu
-        $isManagement = $user->isSuperAdmin() || $user->hasRole('admin') || $user->isPrincipal() || $user->isWakaKurikulum();
+        $isManagement = $user->isSuperAdmin() || $user->hasRole('admin') || $user->isPrincipal() || $user->isWakaKurikulum() || $user->isVicePrincipal() || $user->canOperatePiket();
         if (! $existingSession && ! $isManagement) {
             $windowStatus = $schedule
                 ? $schedule->getAttendanceWindowStatus($date, 15)

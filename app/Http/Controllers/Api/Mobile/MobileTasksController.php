@@ -3235,6 +3235,10 @@ class MobileTasksController extends Controller
                 'status' => $status,
                 'status_label' => $statusLabel,
                 'is_attended' => $isAttended,
+                'schedule_id' => $sched?->id,
+                'teacher_id' => $sched?->teacher_id ?? $inval?->absent_teacher_id,
+                'subject_id' => $sched?->subject_id ?? $inval?->subject_id,
+                'period' => $selectedPeriod,
                 'subject_name' => $sched?->subject?->name ?? ($inval?->subject?->name ?? '-'),
                 'teacher_name' => $sched?->teacher?->name ?? ($inval?->absentTeacher?->name ?? '-'),
                 'inval_teacher_name' => $inval?->invalTeacher?->name,
@@ -3270,6 +3274,11 @@ class MobileTasksController extends Controller
             ];
         }
 
+        $teachers = User::operationalPersonnel()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -3287,6 +3296,7 @@ class MobileTasksController extends Controller
                 'is_outside_kbm' => $isOutsideKbm,
                 'is_kbm_finished' => $isKbmFinished,
                 'break_message' => $breakMessage,
+                'teachers' => $teachers,
                 'summary' => [
                     'total_classrooms' => count($allClassrooms),
                     'teaching_count' => $countTeaching,
