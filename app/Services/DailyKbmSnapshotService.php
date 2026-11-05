@@ -311,7 +311,8 @@ class DailyKbmSnapshotService
                 $isExpected = false;
                 $exemptionReason = 'Libur Sekolah';
             } elseif ($isWeekend) {
-                if ($weekendAssignedUserIds->contains($u->id)) {
+                $isPiketToday = $u->isPiketOfficerOnDate($dateStr, $academicYear);
+                if ($weekendAssignedUserIds->contains($u->id) || $isPiketToday) {
                     $isExpected = true;
                 } elseif ($mandatoryAllGtkWeekend) {
                     $isExpected = ($u->isStaff() || $u->isCounselingBK()) ? ! $isStaffHolidayToday : true;
@@ -327,11 +328,12 @@ class DailyKbmSnapshotService
                         $exemptionReason = $u->isStaff() ? 'Staf Diliburkan' : 'Guru BK Diliburkan';
                     }
                 } else {
-                    // Guru: wajib hadir jika punya jadwal mengajar aktif hari ini atau ditugaskan di event (selain bebas mengajar target rombel)
+                    // Guru: wajib hadir jika punya jadwal mengajar aktif hari ini, ditugaskan di event (selain bebas mengajar target rombel), atau bertugas sebagai guru piket
                     $activeCount = $activeScheduleTeacherCounts[$u->id] ?? 0;
                     $isAssignedEvent = $todayEvents->contains(fn ($ev) => ! $ev->is_holiday && ! in_array($ev->teacher_impact, ['diliburkan_penuh', 'bebas_mengajar_target_rombel']) && $ev->users->contains('id', $u->id));
+                    $isPiketToday = $u->isPiketOfficerOnDate($dateStr, $academicYear);
 
-                    $isExpected = ($activeCount > 0) || $isAssignedEvent;
+                    $isExpected = ($activeCount > 0) || $isAssignedEvent || $isPiketToday;
                     if (! $isExpected) {
                         $targetRombelEv = $todayEvents->first(fn ($ev) => $ev->teacher_impact === 'bebas_mengajar_target_rombel' && $ev->users->contains('id', $u->id));
                         if ($targetRombelEv) {

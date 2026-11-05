@@ -239,7 +239,7 @@ class LiveMonitoringService
                     ->sortBy('start_period');
 
                 $isStaffTu = $u->isStaff();
-                $isPiket = $u->isPiketOfficerToday($targetDateStr);
+                $isPiket = $u->isPiketOfficerOnDate($targetDateStr, $operationalAcademicYear);
                 $isBk = $u->isCounselingBK();
                 $hasSchedule = $teacherSchedules->isNotEmpty();
 
@@ -329,7 +329,11 @@ class LiveMonitoringService
                     $evaluatedUserIds[] = $scan->user_id;
                     $obligatedGtkList->push($scan->user);
                     $scanTimeStr = $scan->scanned_at ? $scan->scanned_at->format('H:i') : null;
-                    $dutyInfo = ($scan->user->position ?: 'Tugas Sekolah').' • '.$scan->method_label;
+                    if ($scan->user->isPiketOfficerOnDate($targetDateStr, $operationalAcademicYear)) {
+                        $dutyInfo = 'Guru Piket Sekolah (07:00)';
+                    } else {
+                        $dutyInfo = ($scan->user->position ?: 'Tugas Sekolah').' • '.$scan->method_label;
+                    }
 
                     $gtkPresentList->push([
                         'user_name' => $scan->user->name,

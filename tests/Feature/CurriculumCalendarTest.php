@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Models\AcademicCalendarUpload;
 use App\Models\AcademicYear;
 use App\Models\CurriculumEvent;
+use App\Models\PiketSchedule;
 use App\Models\Role;
 use App\Models\SchoolSetting;
 use App\Models\Supervision;
 use App\Models\User;
+use App\Services\DailyKbmSnapshotService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -388,5 +391,28 @@ class CurriculumCalendarTest extends TestCase
         $response->assertSee('openCreateActivitySheet()', false);
         $response->assertSee('sheet-add-activity');
         $response->assertSee('Tambah Kegiatan Sekolah');
+    }
+
+    public function test_teacher_on_piket_duty_without_teaching_hours_is_expected_to_check_in_roster(): void
+    {
+        PiketSchedule::create([
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+            'day' => 'Senin',
+            'teacher_id' => $this->teacher->id,
+            'role' => 'koordinator',
+            'duty_location' => 'Meja Piket',
+            'is_active' => true,
+        ]);
+
+        $service = app(DailyKbmSnapshotService::class);
+        $date = Carbon::parse('2026-08-24'); // Senin
+        $snapshot = $service->getOrGenerateSnapshot($date, true);
+
+        $roster = collect($snapshot['rosters'])->firstWhere('user_id', $this->teacher->id);
+
+        $this->assertNotNull($roster);
+        $this->assertTrue((bool) $roster->is_expected_checkin);
+        $this->assertNull($roster->exemption_reason);
     }
 }

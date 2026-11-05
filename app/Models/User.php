@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Support\PhoneNumberHelper;
 use App\Traits\LogsActivity;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -1261,11 +1263,26 @@ class User extends Authenticatable
 
     public function isPiketOfficerToday(?string $academicYear = null): bool
     {
-        $todayDate = now()->toDateString();
+        if ($academicYear && preg_match('/^\d{4}-\d{2}-\d{2}$/', $academicYear)) {
+            return $this->isPiketOfficerOnDate($academicYear);
+        }
 
-        // 1. Cek apakah user menjadi guru pengganti piket hari ini (tukar jadwal piket yang disetujui)
+        return $this->isPiketOfficerOnDate(now(), $academicYear);
+    }
+
+    public function isPiketOfficerOnDate(CarbonInterface|string|null $date = null, ?string $academicYear = null): bool
+    {
+        if (is_string($date) && str_contains($date, '/') && ! str_contains($date, '-')) {
+            $academicYear = $date;
+            $date = now();
+        }
+
+        $targetDate = $date ? Carbon::parse($date) : now();
+        $dateStr = $targetDate->toDateString();
+
+        // 1. Cek apakah user menjadi guru pengganti piket pada tanggal ini (tukar jadwal piket yang disetujui)
         $isReplacementToday = PiketDutySwap::where('replacement_teacher_id', $this->id)
-            ->whereDate('duty_date', $todayDate)
+            ->whereDate('duty_date', $dateStr)
             ->where('status', 'disetujui')
             ->exists();
 
@@ -1273,7 +1290,7 @@ class User extends Authenticatable
             return true;
         }
 
-        $today = match (now()->dayOfWeekIso) {
+        $dayName = match ($targetDate->dayOfWeekIso) {
             1 => 'Senin',
             2 => 'Selasa',
             3 => 'Rabu',
@@ -1283,13 +1300,13 @@ class User extends Authenticatable
             default => null,
         };
 
-        if (! $today) {
+        if (! $dayName) {
             return false;
         }
 
         // 2. Jika jadwal reguler hari ini telah ditukar dan digantikan guru lain
         $isSwappedOut = PiketDutySwap::where('requester_id', $this->id)
-            ->whereDate('duty_date', $todayDate)
+            ->whereDate('duty_date', $dateStr)
             ->where('status', 'disetujui')
             ->exists();
 
@@ -1306,7 +1323,7 @@ class User extends Authenticatable
         }
 
         return PiketSchedule::where('teacher_id', $this->id)
-            ->where('day', $today)
+            ->where('day', $dayName)
             ->where('is_active', true)
             ->when($academicYear, fn ($q) => $q->where('academic_year', $academicYear))
             ->exists();

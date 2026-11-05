@@ -12,6 +12,7 @@ use App\Models\CurriculumEvent;
 use App\Models\GtkPermit;
 use App\Models\LessonSchedule;
 use App\Models\PiketAttendance;
+use App\Models\PiketDutySwap;
 use App\Models\PiketInvalClass;
 use App\Models\PiketSchedule;
 use App\Models\PiketStudentPermit;
@@ -125,8 +126,14 @@ class AttendanceController extends Controller
             ->get()
             ->keyBy('user_id');
 
+        $dutySwapsToday = $isHoliday ? collect() : PiketDutySwap::where('status', 'disetujui')
+            ->whereDate('duty_date', $targetDateStr)
+            ->get();
+        $swappedOutTeacherIds = $dutySwapsToday->pluck('requester_id')->all();
+        $swappedInTeacherIds = $dutySwapsToday->pluck('replacement_teacher_id')->all();
+
         $scheduledTeacherIds = $isHoliday ? [] : $schedulesToday->keys()->toArray();
-        $piketTeacherIds = $isHoliday ? [] : $piketSchedulesToday->keys()->toArray();
+        $piketTeacherIds = $isHoliday ? [] : array_values(array_unique(array_diff(array_merge($piketSchedulesToday->keys()->toArray(), $swappedInTeacherIds), $swappedOutTeacherIds)));
         $permitTeacherIds = $gtkPermitsToday->keys()->toArray();
         $staffTuIds = $isHoliday ? [] : User::operationalPersonnel()
             ->where('is_active', true)
@@ -166,8 +173,8 @@ class AttendanceController extends Controller
         foreach ($teachers as $teacher) {
             $schedules = $schedulesToday->get($teacher->id, collect());
             $logs = $teacherLogsToday->get($teacher->id, collect());
-            $isPiket = $piketSchedulesToday->has($teacher->id);
-            $piketInfo = $isPiket ? $piketSchedulesToday->get($teacher->id) : null;
+            $isPiket = $teacher->isPiketOfficerOnDate($targetDateStr, $targetAcademicYear);
+            $piketInfo = $piketSchedulesToday->get($teacher->id);
 
             $firstScan = $logs->first();
             $lastScan = $logs->count() > 1 ? $logs->last() : null;
@@ -218,9 +225,10 @@ class AttendanceController extends Controller
                         $lessonsSummary[] = "{$crName} ({$subName}, Jam {$s->start_period}-{$s->end_period})";
                     }
                 }
-                if ($isPiket && $piketInfo) {
-                    $dutyLoc = $piketInfo->duty_location ? " ({$piketInfo->duty_location})" : '';
-                    $lessonsSummary[] = 'Tugas Piket: '.ucfirst($piketInfo->role).$dutyLoc;
+                if ($isPiket) {
+                    $dutyLoc = $piketInfo?->duty_location ? " ({$piketInfo->duty_location})" : '';
+                    $roleName = $piketInfo?->role ? ucfirst($piketInfo->role) : 'Petugas';
+                    $lessonsSummary[] = 'Tugas Piket: '.$roleName.$dutyLoc;
                 }
             } elseif ($hasSchedule) {
                 // Guru Mapel mengikuti jam mengajar kelasnya sendiri
