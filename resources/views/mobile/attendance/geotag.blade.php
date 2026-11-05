@@ -223,7 +223,7 @@
                         {{ $checkInLog->scanned_at->format('H:i') }} <span style="font-size: 0.65rem;">WIB</span>
                     </div>
                     <div class="text-muted small mt-1 text-truncate" style="font-size: 0.68rem;">
-                        {{ $checkInLog->verify_type_label }}
+                        {{ $checkInLog->method_label }}
                     </div>
                 @else
                     <div class="fw-bold text-danger fs-3 lh-1">Belum Absen</div>
@@ -251,7 +251,7 @@
                         {{ $checkOutLog->scanned_at->format('H:i') }} <span style="font-size: 0.65rem;">WIB</span>
                     </div>
                     <div class="text-muted small mt-1 text-truncate" style="font-size: 0.68rem;">
-                        {{ $checkOutLog->verify_type_label }}
+                        {{ $checkOutLog->method_label }}
                     </div>
                 @else
                     <div class="fw-bold text-secondary fs-3 lh-1">Belum Pulang</div>
@@ -419,7 +419,7 @@
                             </div>
                             <div class="text-muted small text-truncate" style="font-size: 0.68rem;">
                                 {{ $log->scanned_at->format('d/m/Y') }}
-                                &bull; {{ $log->verify_type_label }}
+                                &bull; {{ $log->method_label }}
                                 @if($dist !== null)
                                     &bull; Jarak: <strong>{{ $dist }}m</strong>
                                 @endif

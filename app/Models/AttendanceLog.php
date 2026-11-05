@@ -58,6 +58,30 @@ class AttendanceLog extends Model
         };
     }
 
+    public function getMethodLabelAttribute(): string
+    {
+        if ($this->verify_type === 'geotag' || $this->device_sn === 'MOBILE-PWA') {
+            return 'GPS Geotag';
+        }
+
+        if ($this->verify_type === 'telegram' || $this->device_sn === 'TELEGRAM') {
+            return 'Bot Telegram';
+        }
+
+        if ($this->device_sn === 'MANUAL_SUSULAN') {
+            return 'Manual Susulan';
+        }
+
+        $type = match ($this->verify_type) {
+            'face' => 'Wajah',
+            'card' => 'Kartu RFID',
+            'password' => 'PIN / Password',
+            default => 'Sidik Jari',
+        };
+
+        return 'Mesin ('.$type.')';
+    }
+
     public function getVerifyIconAttribute(): string
     {
         return match ($this->verify_type) {

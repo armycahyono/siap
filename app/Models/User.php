@@ -1702,6 +1702,11 @@ class User extends Authenticatable
             return $query;
         }
 
+        if ($academicYear instanceof AcademicYear) {
+            $academicYear = $academicYear->name;
+        }
+
+        $academicYear = (string) $academicYear;
         $ayModel = AcademicYear::where('name', $academicYear)->first();
         $targetStartDate = $ayModel?->start_date
             ? ($ayModel->start_date instanceof \DateTimeInterface ? $ayModel->start_date->format('Y-m-d') : substr((string) $ayModel->start_date, 0, 10))
@@ -1709,7 +1714,7 @@ class User extends Authenticatable
 
         $targetEndDate = $ayModel?->end_date
             ? ($ayModel->end_date instanceof \DateTimeInterface ? $ayModel->end_date->format('Y-m-d') : substr((string) $ayModel->end_date, 0, 10))
-            : (str_contains($academicYear, '/') ? (explode('/', $academicYear)[0] + 1).'-06-30' : null);
+            : (str_contains($academicYear, '/') ? (((int) explode('/', $academicYear)[0]) + 1).'-06-30' : null);
 
         return $query->where(function ($sq) use ($academicYear, $targetStartDate, $targetEndDate) {
             $sq->where(function ($sameYear) use ($academicYear, $targetStartDate) {

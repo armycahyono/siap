@@ -317,6 +317,23 @@ class LiveMonitoringService
                 }
             }
 
+            // Tambahkan juga GTK yang hadir (memiliki scan presensi mesin/geotag) namun tidak memiliki jadwal mengajar aktif (misal Kepala Sekolah, staf, atau guru yang hadir)
+            $evaluatedUserIds = $obligatedGtkList->pluck('id')->all();
+            foreach ($gtkScans as $scan) {
+                if ($scan->user && ! in_array($scan->user_id, $evaluatedUserIds, true)) {
+                    $evaluatedUserIds[] = $scan->user_id;
+                    $obligatedGtkList->push($scan->user);
+                    $scanTimeStr = $scan->scanned_at ? $scan->scanned_at->format('H:i') : null;
+                    $dutyInfo = ($scan->user->position ?: 'Tugas Sekolah').' • '.$scan->method_label;
+
+                    $gtkPresentList->push([
+                        'user_name' => $scan->user->name,
+                        'time' => $scanTimeStr ?? '-',
+                        'duty_info' => $dutyInfo,
+                    ]);
+                }
+            }
+
             // Inval Mengajar Hari Ini
             $todayInvals = PiketInvalClass::with(['classroom', 'absentTeacher', 'subject', 'invalTeacher'])
                 ->whereHas('journal', fn ($j) => $j->whereDate('date', $targetDateStr))

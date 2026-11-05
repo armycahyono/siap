@@ -53,8 +53,11 @@ class MobileAttendanceController extends Controller
                     'time' => $log->scanned_at->format('H:i'),
                     'date' => $log->scanned_at->format('d M Y'),
                     'type' => $log->status,
-                    'status_label' => $log->status === 'check_in' ? 'Masuk' : 'Pulang',
-                    'method' => $log->method ?? 'geotag',
+                    'status_label' => $log->status_label,
+                    'method' => $log->method_label,
+                    'verify_type' => $log->verify_type,
+                    'verify_type_label' => $log->verify_type_label,
+                    'device_sn' => $log->device_sn,
                     'verified' => (bool) $log->verified,
                 ];
             });
