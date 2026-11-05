@@ -402,20 +402,22 @@ class AdmsController extends Controller
      */
     protected function verifyDeviceCommKey(Request $request, AttendanceDevice $device): bool
     {
-        // Enforce strict CommKey validation: device must have a non-null, non-empty, non-'0' key, and the request must provide a matching key.
         $storedKey = $device->comm_key;
-        // Reject if stored CommKey is missing, empty, whitespace-only, or the literal string "0".
+        // Jika perangkat tidak mengonfigurasi CommKey khusus (null, kosong, atau default '0'), lewati verifikasi.
         if (is_null($storedKey) || trim((string) $storedKey) === '' || $storedKey === '0') {
-            return false;
+            return true;
         }
+
         // Retrieve provided CommKey from request (body or query) respecting existing priority order.
         $providedKey = (string) $request->input('PushCommKey', $request->query('PushCommKey',
             $request->input('commkey', $request->query('commkey',
                 $request->input('comm_key', $request->query('comm_key', ''))))));
+
         // Reject if client did not supply a key or supplied an empty/placeholder value.
         if (trim($providedKey) === '' || $providedKey === '0') {
             return false;
         }
+
         // Finally, compare keys.
         if ($providedKey !== (string) $storedKey) {
             return false;
