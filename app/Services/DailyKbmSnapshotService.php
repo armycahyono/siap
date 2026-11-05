@@ -327,13 +327,19 @@ class DailyKbmSnapshotService
                         $exemptionReason = $u->isStaff() ? 'Staf Diliburkan' : 'Guru BK Diliburkan';
                     }
                 } else {
-                    // Guru: wajib hadir jika punya jadwal mengajar aktif hari ini atau ditugaskan di event
+                    // Guru: wajib hadir jika punya jadwal mengajar aktif hari ini atau ditugaskan di event (selain bebas mengajar target rombel)
                     $activeCount = $activeScheduleTeacherCounts[$u->id] ?? 0;
-                    $isAssignedEvent = $todayEvents->contains(fn ($ev) => ! $ev->is_holiday && $ev->teacher_impact !== 'diliburkan_penuh' && $ev->users->contains('id', $u->id));
+                    $isAssignedEvent = $todayEvents->contains(fn ($ev) => ! $ev->is_holiday && ! in_array($ev->teacher_impact, ['diliburkan_penuh', 'bebas_mengajar_target_rombel']) && $ev->users->contains('id', $u->id));
 
                     $isExpected = ($activeCount > 0) || $isAssignedEvent;
                     if (! $isExpected) {
-                        $exemptionReason = 'Tidak Ada Jam Mengajar Aktif';
+                        $targetRombelEv = $todayEvents->first(fn ($ev) => $ev->teacher_impact === 'bebas_mengajar_target_rombel' && $ev->users->contains('id', $u->id));
+                        if ($targetRombelEv) {
+                            $exemptionReason = $targetRombelEv->title.' (Bebas KBM Target)';
+                            $exemptionEventId = $targetRombelEv->id;
+                        } else {
+                            $exemptionReason = 'Tidak Ada Jam Mengajar Aktif';
+                        }
                     }
                 }
             }

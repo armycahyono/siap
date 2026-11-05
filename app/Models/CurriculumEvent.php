@@ -269,6 +269,11 @@ class CurriculumEvent extends Model
                 'badge' => 'bg-success text-white',
                 'description' => 'Guru yang ditugaskan bebas dari mengajar kelas reguler; jam kerja dan kehadiran mengikuti jadwal kegiatan/ujian.',
             ],
+            'bebas_mengajar_target_rombel' => [
+                'label' => 'Bebas KBM Khusus Kelas Target (Kelas Lain Tetap Mengajar)',
+                'badge' => 'bg-info text-white',
+                'description' => 'Guru pembimbing bebas mengajar di kelas target kegiatan (misal Kelas XII PKL); jadwal mengajar di kelas lain (X/XI) tetap berjalan normal.',
+            ],
             'diliburkan_penuh' => [
                 'label' => 'Bebas Masuk / Diliburkan Penuh',
                 'badge' => 'bg-danger text-white',

@@ -421,7 +421,8 @@
                         <div class="mb-2">
                             <label class="form-label small text-muted mb-0.5" style="font-size: 0.72rem;">Kewajiban Mengajar Guru Terlibat:</label>
                             <select name="teacher_impact" id="mob_input_teacher_impact" class="form-select form-select-sm">
-                                <option value="bebas_mengajar_tugas">Gugur Kewajiban Mengajar (Bebas Inval/Tugas Khusus)</option>
+                                <option value="bebas_mengajar_tugas">Gugur Seluruh Kewajiban Mengajar (Panitia/Ujian)</option>
+                                <option value="bebas_mengajar_target_rombel">Bebas KBM Khusus Kelas Target (Kelas Lain Tetap Normal)</option>
                                 <option value="normal">Tetap Mengajar Reguler Sesuai Jadwal</option>
                             </select>
                         </div>

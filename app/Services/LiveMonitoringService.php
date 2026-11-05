@@ -246,6 +246,9 @@ class LiveMonitoringService
                 // Cari agenda / event kurikulum yang menugaskan personil ini hari ini
                 $assignedEvents = $todayEvents->filter(fn ($ev) => ! $ev->is_holiday && $ev->teacher_impact !== 'diliburkan_penuh' && $ev->users->contains('id', $u->id));
 
+                $targetRombelEvent = $assignedEvents->first(fn ($ev) => $ev->teacher_impact === 'bebas_mengajar_target_rombel');
+                $standardDutyEvent = $assignedEvents->first(fn ($ev) => $ev->teacher_impact !== 'bebas_mengajar_target_rombel');
+
                 // Tentukan jam kewajiban masuk (Datang)
                 $expectedStartTimeStr = null;
                 $dutyLabel = 'Tugas';
@@ -259,15 +262,17 @@ class LiveMonitoringService
                 } elseif ($isBk) {
                     $expectedStartTimeStr = '07:00';
                     $dutyLabel = 'Guru BK (Full Time 07:00)';
-                } elseif ($assignedEvents->isNotEmpty()) {
-                    $ev = $assignedEvents->first();
-                    $expectedStartTimeStr = $ev->gtk_checkin_time ?: '07:00';
-                    $dutyLabel = $ev->title." ({$expectedStartTimeStr})";
+                } elseif ($standardDutyEvent) {
+                    $expectedStartTimeStr = $standardDutyEvent->gtk_checkin_time ?: '07:00';
+                    $dutyLabel = $standardDutyEvent->title." ({$expectedStartTimeStr})";
                 } elseif ($hasSchedule) {
                     $earliestSched = $teacherSchedules->first();
                     $periodNum = (int) $earliestSched->start_period;
                     $expectedStartTimeStr = $earliestSched->start_time ?: ($periodTimes[$periodNum]['start'] ?? '07:00');
                     $dutyLabel = "Jam ke-{$periodNum} ({$expectedStartTimeStr} WIB)";
+                } elseif ($targetRombelEvent) {
+                    $expectedStartTimeStr = $targetRombelEvent->gtk_checkin_time ?: '07:00';
+                    $dutyLabel = $targetRombelEvent->title;
                 } else {
                     $expectedStartTimeStr = '07:00';
                     $dutyLabel = 'Tugas Sekolah (07:00)';

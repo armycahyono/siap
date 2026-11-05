@@ -566,17 +566,24 @@
                                 <div class="row g-2 mb-2">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold text-muted mb-1">Status Mengajar GTK Terlibat:</label>
-                                        <select name="teacher_impact" id="input_teacher_impact" class="form-select form-select-sm">
-                                            <option value="bebas_mengajar_tugas">Gugur Kewajiban Mengajar (Tugas Khusus / Panitia / Pengawas)</option>
+                                        <select name="teacher_impact" id="input_teacher_impact" class="form-select form-select-sm" onchange="onTeacherImpactChange(this.value)">
+                                            <option value="bebas_mengajar_tugas">Gugur Seluruh Kewajiban Mengajar (Panitia / Pengawas / Ujian)</option>
+                                            <option value="bebas_mengajar_target_rombel">Bebas KBM Khusus Kelas Target (Kelas Lain Tetap Mengajar Normal)</option>
                                             <option value="normal">Tetap Mengajar Reguler Sesuai Jadwal</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-md-6" id="box_gtk_time_wrapper">
                                         <label class="form-label small fw-bold text-muted mb-1">Jam Pelaksanaan Tugas GTK (WIB):</label>
                                         <div class="input-group input-group-sm">
                                             <input type="time" name="gtk_checkin_time" id="input_gtk_checkin_time" class="form-control form-control-sm" value="07:00">
                                             <span class="input-group-text">s/d</span>
                                             <input type="time" name="gtk_checkout_time" id="input_gtk_checkout_time" class="form-control form-control-sm" value="13:30">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6" id="hint_gtk_target_rombel" style="display: none;">
+                                        <label class="form-label small fw-bold text-muted mb-1">Ketentuan Kehadiran Fisik:</label>
+                                        <div class="alert alert-info py-1.5 px-2 mb-0 small" style="font-size: 0.72rem; line-height: 1.3;">
+                                            <i class="ti ti-info-circle me-1"></i> Jam hadir otomatis mengikuti jadwal kelas X/XI masing-masing guru, atau bebas hadir jika hari itu hanya ada jadwal di kelas target.
                                         </div>
                                     </div>
                                 </div>
@@ -1356,6 +1363,18 @@
         evaluateStaffAndDisengagedVisibility();
     }
 
+    function onTeacherImpactChange(impact) {
+        const timeBox = document.getElementById('box_gtk_time_wrapper');
+        const hintBox = document.getElementById('hint_gtk_target_rombel');
+        if (impact === 'bebas_mengajar_target_rombel') {
+            if (timeBox) timeBox.style.display = 'none';
+            if (hintBox) hintBox.style.display = 'block';
+        } else {
+            if (timeBox) timeBox.style.display = 'block';
+            if (hintBox) hintBox.style.display = 'none';
+        }
+    }
+
     function onDisengagedTeacherImpactChange(impact) {
         const box = document.getElementById('box_disengaged_teacher_period');
         if (box) {
@@ -1411,6 +1430,7 @@
         const teacherImpactEl = document.getElementById('input_teacher_impact');
         if (teacherImpactEl) {
             teacherImpactEl.value = 'bebas_mengajar_tugas';
+            onTeacherImpactChange('bebas_mengajar_tugas');
         }
         document.getElementById('input_gtk_checkin_time').value = '07:00';
         document.getElementById('input_gtk_checkout_time').value = '13:30';
@@ -1638,6 +1658,7 @@
         const teacherImpactEl = document.getElementById('input_teacher_impact');
         if (teacherImpactEl) {
             teacherImpactEl.value = teacherImpact;
+            onTeacherImpactChange(teacherImpact);
         }
         document.getElementById('input_gtk_checkin_time').value = props.gtk_checkin_time || '07:00';
         document.getElementById('input_gtk_checkout_time').value = props.gtk_checkout_time || '13:30';

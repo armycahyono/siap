@@ -354,7 +354,7 @@ class MobileCalendarController extends Controller
             // GTK Terlibat
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'exists:users,id',
-            'teacher_impact' => 'nullable|string|in:normal,bebas_mengajar_tugas,diliburkan_penuh',
+            'teacher_impact' => 'nullable|string|in:normal,bebas_mengajar_tugas,bebas_mengajar_target_rombel,diliburkan_penuh',
             'gtk_checkin_time' => 'nullable|string|max:10',
             'gtk_checkout_time' => 'nullable|string|max:10',
 
