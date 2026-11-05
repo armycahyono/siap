@@ -3009,10 +3009,10 @@ class MobileTasksController extends Controller
             $academicYear = SchoolSetting::getMasterYear();
         }
 
-        if (! $user->canAccessMejaPiket($academicYear)) {
+        if (! $user->canAccessMejaPiket($academicYear) && ! $user->isTeacher() && ! $user->hasRole('guru') && ! $user->isStaff()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Akses ditolak. Meja piket hanya diperuntukkan guru piket, kepala sekolah, semua waka, dan tim kedisiplinan.',
+                'message' => 'Akses ditolak. Jadwal Live KBM hanya diperuntukkan bagi GTK, guru piket, dan pimpinan sekolah.',
             ], 403);
         }
 

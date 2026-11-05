@@ -62,7 +62,7 @@
     </div>
 
     <!-- KARTU AKSI CEPAT: INVAL JAMKOS (UNTUK SEMUA GURU BAIK YANG ADA KBM MAUPUN TIDAK) -->
-    <div class="card-elevated p-2.5 bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50/70 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-2 shadow-xs">
+    <div class="card-elevated p-2.5 bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50/70 border border-amber-300/80 rounded-2xl flex items-center justify-between gap-2 shadow-xs cursor-pointer" onclick="SIAP_ROUTER.navigate('/tasks/piket/kbm')">
         <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                 ⚡
@@ -74,7 +74,7 @@
                 <p class="text-[10px] text-amber-800 leading-tight">Gantikan guru lain, isi jam kosong.</p>
             </div>
         </div>
-        <button type="button" onclick="SIAP_ROUTER.navigate('/school-schedule?inval=1')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition active:scale-95 shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1">
+        <button type="button" onclick="event.stopPropagation(); SIAP_ROUTER.navigate('/tasks/piket/kbm')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold transition active:scale-95 shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1">
             <span>Cari Kelas &rarr;</span>
         </button>
     </div>
