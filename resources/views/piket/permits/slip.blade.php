@@ -105,11 +105,8 @@
                     SLIP {{ $firstPermit->permit_type_label }}
                 </div>
 
-                <div class="text-center" style="font-size: 8.5pt; margin-bottom: 4px;">
-                    Kelas: <strong>{{ $classroom?->name ?? 'ROMBEL' }}</strong>
-                    @if(!empty($batchId))
-                        <br><span style="font-size: 7pt; color: #555; font-family: monospace;">Rombongan: {{ $batchId }}</span>
-                    @endif
+                <div class="text-center" style="font-size: 8pt; margin-bottom: 4px;">
+                    No: <strong>{{ $batchId ?: ($firstPermit->batch_id ?: $firstPermit->permit_number) }}</strong>
                 </div>
 
                 <div class="divider"></div>
@@ -133,7 +130,7 @@
                     <tr>
                         <td>Wali Kelas</td>
                         <td>:</td>
-                        <td>{{ $classroom?->homeroomTeacher?->formatted_short_name ?? '-' }}</td>
+                        <td>{{ $classroom?->homeroomTeacher?->name ?? '-' }}</td>
                     </tr>
                     @if($firstPermit->period_assigned)
                     <tr>
@@ -257,7 +254,7 @@
             <tr>
                 <td>Wali Kelas</td>
                 <td>:</td>
-                <td>{{ $permit->classroom?->homeroomTeacher?->formatted_short_name ?? '-' }}</td>
+                <td>{{ $permit->classroom?->homeroomTeacher?->name ?? '-' }}</td>
             </tr>
             @if($permit->period_assigned)
             <tr>

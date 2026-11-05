@@ -46,7 +46,9 @@ class PiketFeatureTest extends TestCase
                 'is_active' => true,
             ]);
 
-        $this->teacher = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))->first()
+        $this->teacher = User::whereHas('role', fn ($q) => $q->where('slug', 'guru'))
+            ->whereDoesntHave('roleAssignments.role', fn ($q) => $q->where('name', 'like', '%waka%'))
+            ->first()
             ?? User::factory()->create([
                 'role_id' => Role::where('slug', 'guru')->first()?->id,
                 'is_active' => true,
@@ -488,7 +490,7 @@ class PiketFeatureTest extends TestCase
 
     public function test_telegram_settings_can_be_updated(): void
     {
-        $response = $this->actingAs($this->user)->post(route('piket.telegram.settings'), [
+        $response = $this->actingAs($this->user)->post(route('telegram.settings'), [
             'telegram_bot_token' => '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
             'telegram_bot_username' => '@TestPiketBot',
             'telegram_discipline_chat_id' => '-100987654321',
@@ -614,39 +616,44 @@ class PiketFeatureTest extends TestCase
 
     public function test_regular_teacher_can_view_dashboard_but_cannot_access_operational_menu(): void
     {
-        // Guru biasa tanpa tugas piket hari ini
-        $responseDashboard = $this->actingAs($this->teacher)->get(route('piket.dashboard'));
+        // Guru biasa tanpa tugas piket dan bukan wali kelas
+        $regularTeacher = User::factory()->create([
+            'role_id' => Role::where('slug', 'guru')->first()?->id,
+            'is_active' => true,
+        ]);
+
+        $responseDashboard = $this->actingAs($regularTeacher)->get(route('piket.dashboard'));
         $responseDashboard->assertStatus(200);
         $responseDashboard->assertDontSee('Tukar Jadwal Piket');
         $responseDashboard->assertDontSee('Kalender Piket');
 
-        $responseSchedules = $this->actingAs($this->teacher)->get(route('piket.schedules.index'));
+        $responseSchedules = $this->actingAs($regularTeacher)->get(route('piket.schedules.index'));
         $responseSchedules->assertStatus(200);
         $responseSchedules->assertDontSee('Tukar Jadwal Piket');
 
         // Akses menu tukar jadwal dan kalender dilarang untuk guru biasa (403)
-        $responseSwaps = $this->actingAs($this->teacher)->get(route('piket.swaps.index'));
+        $responseSwaps = $this->actingAs($regularTeacher)->get(route('piket.swaps.index'));
         $responseSwaps->assertStatus(403);
 
-        $responseCalendar = $this->actingAs($this->teacher)->get(route('piket.calendar.index'));
+        $responseCalendar = $this->actingAs($regularTeacher)->get(route('piket.calendar.index'));
         $responseCalendar->assertStatus(403);
 
         // Akses menu operasional piket dilarang (403)
-        $responseJournal = $this->actingAs($this->teacher)->get(route('piket.journals.index'));
+        $responseJournal = $this->actingAs($regularTeacher)->get(route('piket.journals.index'));
         $responseJournal->assertStatus(403);
 
-        $responsePermits = $this->actingAs($this->teacher)->get(route('piket.permits.index'));
+        $responsePermits = $this->actingAs($regularTeacher)->get(route('piket.permits.index'));
         $responsePermits->assertStatus(403);
 
-        $responseReports = $this->actingAs($this->teacher)->get(route('piket.reports.index'));
+        $responseReports = $this->actingAs($regularTeacher)->get(route('piket.reports.index'));
         $responseReports->assertStatus(403);
 
         // Mengubah master jadwal piket dilarang (403)
-        $responseStoreSchedule = $this->actingAs($this->teacher)->post(route('piket.schedules.store'), [
+        $responseStoreSchedule = $this->actingAs($regularTeacher)->post(route('piket.schedules.store'), [
             'academic_year' => '2026/2027',
             'semester' => 'Ganjil',
             'day' => 'Senin',
-            'teacher_id' => $this->teacher->id,
+            'teacher_id' => $regularTeacher->id,
             'role' => 'anggota',
         ]);
         $responseStoreSchedule->assertStatus(403);
