@@ -1356,6 +1356,8 @@ class User extends Authenticatable
     public function canOperatePiket(?string $academicYear = null): bool
     {
         return $this->isSuperAdmin()
+            || $this->isPrincipal($academicYear)
+            || $this->isVicePrincipal()
             || $this->hasPermission('operate_piket', $academicYear)
             || $this->isPiketOfficerToday($academicYear);
     }

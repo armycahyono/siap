@@ -489,13 +489,13 @@ Route::middleware('auth')->group(function () {
 
         // 6. Perizinan Siswa
         Route::get('perizinan/{permit}/lampiran', [PiketPermitController::class, 'downloadAttachment'])->name('permits.attachment');
+        Route::get('perizinan/{permit}/slip', [PiketPermitController::class, 'printSlip'])->name('permits.slip');
+        Route::get('perizinan/batch/{batchId}/slip', [PiketPermitController::class, 'printBatchSlip'])->name('permits.batch-slip');
         Route::middleware('permission:operate_piket')->group(function () {
             Route::get('perizinan', [PiketPermitController::class, 'index'])->name('permits.index');
             Route::get('perizinan/buat', [PiketPermitController::class, 'create'])->name('permits.create');
             Route::post('perizinan', [PiketPermitController::class, 'store'])->name('permits.store');
             Route::get('perizinan/{permit}', [PiketPermitController::class, 'show'])->name('permits.show');
-            Route::get('perizinan/{permit}/slip', [PiketPermitController::class, 'printSlip'])->name('permits.slip');
-            Route::get('perizinan/batch/{batchId}/slip', [PiketPermitController::class, 'printBatchSlip'])->name('permits.batch-slip');
             Route::delete('perizinan/{permit}', [PiketPermitController::class, 'destroy'])->name('permits.destroy');
         });
 

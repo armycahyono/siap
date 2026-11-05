@@ -472,4 +472,40 @@ class MobilePiketEnhancedTest extends TestCase
             ->assertSee($s4->name)
             ->assertSee('Ban bocor bersama di dekat lampu merah');
     }
+
+    public function test_waka_can_print_permit_slip_and_batch_slip(): void
+    {
+        $wakaRole = Role::firstOrCreate(['slug' => 'waka_sarpras'], ['name' => 'Waka Sarpras']);
+        $wakaUser = User::create([
+            'name' => 'Waka Sarpras Test',
+            'username' => 'wakasarprastest',
+            'email' => 'waka_sarpras@test.sch.id',
+            'password' => bcrypt('password'),
+            'role_id' => $wakaRole->id,
+            'is_active' => true,
+        ]);
+
+        $permit = PiketStudentPermit::create([
+            'permit_number' => 'IZN-20261105-099',
+            'permit_date' => Carbon::today()->toDateString(),
+            'student_id' => $this->student->id,
+            'student_name' => $this->student->name,
+            'classroom_id' => $this->classroom->id,
+            'permit_type' => 'terlambat',
+            'permit_category' => 'terlambat',
+            'reason' => 'Rantai motor putus',
+            'entry_time' => '07:35',
+            'period_assigned' => '2',
+            'given_by' => $this->piketOfficer->id,
+            'status' => 'diberikan',
+        ]);
+
+        // Waka should be able to view and print the permit slip without 403 Access Denied
+        $this->actingAs($wakaUser)
+            ->get(route('piket.permits.slip', $permit))
+            ->assertStatus(200)
+            ->assertSee('SLIP')
+            ->assertSee($this->student->name)
+            ->assertSee('Rantai motor putus');
+    }
 }

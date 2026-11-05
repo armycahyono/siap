@@ -224,6 +224,9 @@ class RoleAndPermissionSeeder extends Seeder
                 'permissions' => [
                     'manage_master_data',
                     'operate_sarpras',
+                    'access_piket',
+                    'operate_piket',
+                    'view_piket_reports',
                     'export_reports',
                 ],
             ],
@@ -233,6 +236,9 @@ class RoleAndPermissionSeeder extends Seeder
                 'description' => 'Pengelola hubungan masyarakat, kemitraan dunia usaha/industri, dan bursa kerja',
                 'permissions' => [
                     'operate_humas',
+                    'access_piket',
+                    'operate_piket',
+                    'view_piket_reports',
                     'export_reports',
                 ],
             ],
