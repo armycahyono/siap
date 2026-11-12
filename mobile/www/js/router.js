@@ -129,6 +129,14 @@ const SIAP_ROUTER = (function() {
             tabKey: 'tasks',
             hasBack: true,
         },
+        '/tasks/teachers': {
+            page: 'pages/tasks/teachers_directory.html',
+            requiresAuth: true,
+            title: 'Direktori Kontak Guru & GTK',
+            init: 'initTasksTeachersDirectory',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
         '/tasks/permits': {
             page: 'pages/tasks/permits.html',
             requiresAuth: true,

@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Cbt\CbtUser;
 use App\Models\PiketIncident;
+use App\Models\User;
+use App\Observers\CbtUserObserver;
+use App\Observers\UserObserver;
 use App\Policies\PiketIncidentPolicy;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
@@ -27,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PiketIncident::class, PiketIncidentPolicy::class);
 
         Paginator::defaultView('vendor.pagination.tabler');
+
+        // Register model observers for SIAP <-> CBT real-time sync
+        User::observe(UserObserver::class);
+        CbtUser::observe(CbtUserObserver::class);
 
         if (request()->header('x-forwarded-proto') === 'https' || request()->isSecure() || str_ends_with(request()->getHost(), 'sudahonline.my.id')) {
             URL::forceScheme('https');

@@ -139,6 +139,16 @@ class MobileKbmController extends Controller
             return "{$session->classroom_id}_{$session->start_period}";
         });
 
+        // Sesi yang sudah diabsen pada hari ini di rombel terkait (oleh guru siapa pun)
+        $allClassroomSessionsToday = collect();
+        if (! empty($classroomIds)) {
+            $allClassroomSessionsToday = SubjectAttendanceSession::whereIn('classroom_id', $classroomIds)
+                ->whereDate('attendance_date', $dateStr)
+                ->whereHas('records')
+                ->get()
+                ->groupBy('classroom_id');
+        }
+
         // Riwayat topik/materi dan catatan terakhir dari kelas & mapel tersebut
         $historicalSessions = collect();
         if (! empty($classroomIds) && ! empty($subjectIds)) {
@@ -165,6 +175,7 @@ class MobileKbmController extends Controller
             $savedSessions,
             $savedSessionsBySlot,
             $historicalSessions,
+            $allClassroomSessionsToday,
             $periodTimes,
             $dateStr,
             $isToday,
@@ -177,6 +188,16 @@ class MobileKbmController extends Controller
             $isAttended = (bool) $session;
             $recordsCount = $session ? $session->records->count() : 0;
             $presentCount = $session ? $session->records->where('status', 'h')->count() : 0;
+
+            // Cek apakah jam sebelumnya pada kelas ini sudah pernah diabsen hari ini
+            $earlier = (! $isAttended && ! empty($schedule->classroom_id))
+                ? $allClassroomSessionsToday->get($schedule->classroom_id, collect())
+                    ->where('start_period', '<', $schedule->start_period)
+                    ->sortByDesc('start_period')
+                    ->first()
+                : null;
+            $hasEarlierSession = (bool) $earlier;
+            $earlierPeriodText = $earlier ? "Jam ke-{$earlier->start_period}" : null;
 
             // Waktu KBM & status jam sedang berlangsung (saat ini)
             $startTime = $schedule->start_time
@@ -238,6 +259,8 @@ class MobileKbmController extends Controller
                     'izin' => $session->records->where('status', 'i')->count(),
                     'alfa' => $session->records->where('status', 'a')->count(),
                 ] : null,
+                'has_earlier_session' => $hasEarlierSession,
+                'earlier_period_text' => $earlierPeriodText,
                 'fill_url' => route('attendance.subject.take', ['schedule_id' => $schedule->id, 'date' => $dateStr]),
             ];
         });
@@ -440,7 +463,34 @@ class MobileKbmController extends Controller
             ->where('start_period', $schedule->start_period)
             ->first();
 
+        if (! $session) {
+            $session = SubjectAttendanceSession::with('records')
+                ->where('classroom_id', $classroom->id)
+                ->whereDate('attendance_date', $dateStr)
+                ->where('start_period', $schedule->start_period)
+                ->first();
+        }
+
         $recordsMap = $session ? $session->records->keyBy('student_id') : collect();
+
+        // Cari sesi presensi kelas terdahulu pada hari yang sama (misal jam ke-1 sebelum jam berikutnya)
+        // untuk mewarisi hasil presensi (H, S, I, A, D, T) agar guru berikutnya tidak mendata dari nol
+        $earlierSession = null;
+        $previousRecordsMap = collect();
+
+        if ($recordsMap->isEmpty()) {
+            $earlierSession = SubjectAttendanceSession::with(['records', 'subject', 'teacher', 'scheduledTeacher'])
+                ->where('classroom_id', $classroom->id)
+                ->whereDate('attendance_date', $dateStr)
+                ->where('start_period', '<', $schedule->start_period)
+                ->whereHas('records')
+                ->orderByDesc('start_period')
+                ->first();
+
+            if ($earlierSession) {
+                $previousRecordsMap = $earlierSession->records->keyBy('student_id');
+            }
+        }
 
         // Ambil perizinan piket hari ini
         $permits = PiketStudentPermit::where('classroom_id', $classroom->id)
@@ -455,35 +505,98 @@ class MobileKbmController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        $studentsData = $students->map(function ($st) use ($recordsMap, $permits) {
+        $studentsData = $students->map(function ($st) use ($recordsMap, $previousRecordsMap, $permits, $earlierSession, $schedule) {
             $rec = $recordsMap->get($st->id);
+            $prevRec = $previousRecordsMap->get($st->id);
             $permit = $permits->get($st->id);
 
             $status = 'h';
             $notes = null;
             $permitNotice = null;
+            $inheritedNotice = null;
+            $isInherited = false;
 
             if ($rec) {
                 $status = $rec->status;
                 $notes = $rec->notes;
-            } elseif ($permit) {
-                $pType = strtolower($permit->permit_type ?? '');
-                if (str_contains($pType, 'sakit')) {
-                    $status = 's';
-                    $permitNotice = 'Piket: Sakit';
-                } elseif (str_contains($pType, 'izin')) {
-                    $status = 'i';
-                    $permitNotice = 'Piket: Izin';
-                } elseif (str_contains($pType, 'dispen')) {
-                    $status = 'd';
-                    $permitNotice = 'Piket: Dispen';
-                } elseif (str_contains($pType, 'terlambat')) {
-                    $status = 't';
-                    $permitNotice = 'Piket: Telat';
-                } else {
-                    $permitNotice = 'Piket: '.($permit->reason ?? 'Izin');
+            } else {
+                // 1. Warisi hasil absensi dari jam sebelumnya jika ada
+                if ($prevRec) {
+                    $isInherited = true;
+                    $earlierPeriodText = "JP {$earlierSession->start_period}";
+                    if ($prevRec->status === 't') {
+                        // Jika jam sebelumnya telat masuk sekolah/kelas, di jam berikutnya siswa sudah berada di kelas (Hadir)
+                        $status = 'h';
+                        $notes = $prevRec->notes ?: "Terlambat pada {$earlierPeriodText}";
+                        $inheritedNotice = "{$earlierPeriodText}: Telat (kini Hadir)";
+                    } else {
+                        $status = $prevRec->status;
+                        $notes = $prevRec->notes;
+                        if ($prevRec->status !== 'h') {
+                            $inheritedNotice = "{$earlierPeriodText}: {$prevRec->status_label}";
+                        }
+                    }
                 }
-                $notes = $permit->reason ?? null;
+
+                // 2. Evaluasi izin piket resmi hari ini jika ada
+                if ($permit) {
+                    $affectedPeriod = $permit->getAffectedPeriod();
+                    $pType = strtolower($permit->permit_type ?? '');
+
+                    if ($pType === 'izin_tidak_masuk' || str_contains($pType, 'tidak_masuk')) {
+                        $pCat = strtolower($permit->permit_category ?? '');
+                        if ($pCat === 'sakit' || str_contains($pType, 'sakit')) {
+                            $status = 's';
+                            $permitNotice = 'Piket: Sakit';
+                        } elseif ($pCat === 'dispen' || str_contains($pType, 'dispen')) {
+                            $status = 'd';
+                            $permitNotice = 'Piket: Dispen';
+                        } else {
+                            $status = 'i';
+                            $permitNotice = 'Piket: Izin';
+                        }
+                        $notes = $permit->reason ?? $notes;
+                    } elseif ($pType === 'izin_pulang_cepat' || str_contains($pType, 'pulang')) {
+                        if (! $affectedPeriod || $schedule->start_period >= $affectedPeriod) {
+                            $status = 'i';
+                            $permitNotice = 'Piket: Pulang Cepat';
+                            $notes = 'Izin Pulang Cepat (JP '.($affectedPeriod ?? '-').'): '.($permit->reason ?? '');
+                        }
+                    } elseif ($pType === 'izin_keluar_meninggalkan_sekolah' || str_contains($pType, 'keluar')) {
+                        if ($affectedPeriod && $schedule->start_period <= $affectedPeriod && $schedule->end_period >= $affectedPeriod) {
+                            $status = 'd';
+                            $permitNotice = 'Piket: Dispen Keluar';
+                            $notes = 'Izin Keluar: '.($permit->reason ?? '');
+                        }
+                    } elseif ($pType === 'izin_terlambat' || str_contains($pType, 'terlambat')) {
+                        if ($affectedPeriod && $schedule->end_period < $affectedPeriod) {
+                            $status = 'i';
+                            $permitNotice = 'Piket: Telat';
+                            $notes = 'Terlambat (masuk JP '.$affectedPeriod.'): '.($permit->reason ?? '');
+                        } else {
+                            $status = 'h';
+                            $permitNotice = 'Piket: Telat (Masuk)';
+                            $notes = 'Hadir Terlambat: '.($permit->reason ?? '');
+                        }
+                    } elseif (! $prevRec) {
+                        if (str_contains($pType, 'sakit')) {
+                            $status = 's';
+                            $permitNotice = 'Piket: Sakit';
+                        } elseif (str_contains($pType, 'izin')) {
+                            $status = 'i';
+                            $permitNotice = 'Piket: Izin';
+                        } elseif (str_contains($pType, 'dispen')) {
+                            $status = 'd';
+                            $permitNotice = 'Piket: Dispen';
+                        } elseif (str_contains($pType, 'terlambat')) {
+                            $status = 't';
+                            $permitNotice = 'Piket: Telat';
+                        } else {
+                            $permitNotice = 'Piket: '.($permit->reason ?? 'Izin');
+                        }
+                        $notes = $permit->reason ?? null;
+                    }
+                }
             }
 
             return [
@@ -494,6 +607,8 @@ class MobileKbmController extends Controller
                 'status' => $status,
                 'notes' => $notes,
                 'permit_notice' => $permitNotice,
+                'inherited_notice' => $inheritedNotice,
+                'is_inherited' => $isInherited,
                 'parent_phone' => ($st->primary_parent_phone && $st->primary_parent_phone !== '-') ? $st->primary_parent_phone : ($st->phone_parent ?: ($st->father_phone ?: ($st->mother_phone ?: null))),
             ];
         });
@@ -525,6 +640,23 @@ class MobileKbmController extends Controller
                     'swap_notes' => $session?->swap_notes ?? null,
                     'is_swap' => (bool) ($session?->is_swap || (! $isOwnerTeacher)),
                 ],
+                'earlier_session' => $earlierSession ? [
+                    'id' => $earlierSession->id,
+                    'subject_name' => $earlierSession->subject?->name ?? 'Mata Pelajaran',
+                    'teacher_name' => $earlierSession->teacher?->name ?? $earlierSession->scheduledTeacher?->name ?? 'Guru Mapel',
+                    'start_period' => $earlierSession->start_period,
+                    'end_period' => $earlierSession->end_period,
+                    'period_text' => "Jam ke-{$earlierSession->start_period} s/d {$earlierSession->end_period}",
+                    'attendance_summary' => [
+                        'total' => $earlierSession->records->count(),
+                        'hadir' => $earlierSession->records->where('status', 'h')->count(),
+                        'sakit' => $earlierSession->records->where('status', 's')->count(),
+                        'izin' => $earlierSession->records->where('status', 'i')->count(),
+                        'alfa' => $earlierSession->records->where('status', 'a')->count(),
+                        'dispen' => $earlierSession->records->where('status', 'd')->count(),
+                        'telat' => $earlierSession->records->where('status', 't')->count(),
+                    ],
+                ] : null,
                 'window' => [
                     'can_submit' => $canSubmit,
                     'is_open' => $windowStatus['is_open'],

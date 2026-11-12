@@ -1078,8 +1078,9 @@
                             <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold bg-blue-600 text-white tracking-wide uppercase shadow-xs">${s.classroom_name}</span>
                             <span class="text-[11px] font-semibold text-slate-500">${s.period_text}</span>
                         </div>
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5 flex-wrap justify-end">
                             ${isOngoing ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-orange-100 text-orange-800 border border-orange-300 animate-pulse"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Saat Ini</span>' : ''}
+                            ${(!s.is_attended && s.has_earlier_session) ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200"><span>⚡</span>Dari ${escapeHtml(s.earlier_period_text || 'jam lalu')}</span>` : ''}
                             ${s.is_attended 
                                 ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Sudah Diabsen</span>'
                                 : '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>Belum Diabsen</span>'
@@ -1129,8 +1130,8 @@
                                 <span class="text-xs">✏️</span>
                             </button>
                         ` : `
-                            <button type="button" onclick="openKbmTake(${s.id})" class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 active:scale-95" title="Masuk Kelas & Isi Presensi">
-                                <span>Masuk Kelas &amp; Absen</span>
+                            <button type="button" onclick="openKbmTake(${s.id})" class="px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 active:scale-95" title="${s.has_earlier_session ? 'Presensi disalin dari jam sebelumnya' : 'Masuk Kelas & Isi Presensi'}">
+                                <span>${s.has_earlier_session ? 'Verifikasi &amp; Simpan' : 'Masuk Kelas &amp; Absen'}</span>
                                 <span class="text-xs font-mono">→</span>
                             </button>
                         `}
@@ -1238,6 +1239,30 @@
                 }
             }
 
+            // Earlier Session Inheritance Banner
+            const earlierBannerEl = container.querySelector('#take-earlier-session-banner');
+            const earlierBadgeEl = container.querySelector('#take-earlier-period-badge');
+            const earlierDescEl = container.querySelector('#take-earlier-session-desc');
+            if (earlierBannerEl) {
+                if (!session.is_attended && data.earlier_session) {
+                    const es = data.earlier_session;
+                    earlierBannerEl.classList.remove('hidden');
+                    if (earlierBadgeEl) earlierBadgeEl.textContent = es.period_text || `Jam ke-${es.start_period}`;
+                    if (earlierDescEl) {
+                        const sum = es.attendance_summary || {};
+                        const nonHadirParts = [];
+                        if (sum.sakit) nonHadirParts.push(`${sum.sakit} Sakit`);
+                        if (sum.izin) nonHadirParts.push(`${sum.izin} Izin`);
+                        if (sum.alfa) nonHadirParts.push(`${sum.alfa} Alpa`);
+                        if (sum.dispen) nonHadirParts.push(`${sum.dispen} Dispen`);
+                        const nonHadirText = nonHadirParts.length > 0 ? ` (${nonHadirParts.join(', ')})` : ' (Seluruh Siswa Hadir)';
+                        earlierDescEl.innerHTML = `Presensi diteruskan dari <strong>${escapeHtml(es.subject_name)}</strong> (Guru: ${escapeHtml(es.teacher_name)})${nonHadirText}. Anda dapat langsung memverifikasi atau mengubah status siswa jika ada perubahan.`;
+                    }
+                } else {
+                    earlierBannerEl.classList.add('hidden');
+                }
+            }
+
             // Populate Journal Inputs
             if (topicInput) topicInput.value = session.topic || '';
             if (notesInput) notesInput.value = session.notes || '';
@@ -1316,7 +1341,8 @@
                                         </div>
                                         <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 font-mono">
                                             <span>NIS: ${st.nis || '-'}</span>
-                                            ${st.permit_notice ? `<span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-800 uppercase font-sans">⚠️ ${st.permit_notice}</span>` : ''}
+                                            ${st.permit_notice ? `<span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-800 uppercase font-sans">⚠️ ${escapeHtml(st.permit_notice)}</span>` : ''}
+                                            ${(!st.permit_notice && st.inherited_notice) ? `<span class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-blue-100 text-blue-800 font-sans">🔄 ${escapeHtml(st.inherited_notice)}</span>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -1417,7 +1443,7 @@
                     teacherName: schedule.teacher_name,
                     status: target.status,
                     notes: target.notes,
-                    permitNotice: target.permit_notice,
+                    permitNotice: target.permit_notice || target.inherited_notice,
                 });
 
                 const waUrl = getWhatsappUrl(phone, msg);
@@ -1430,15 +1456,17 @@
             const btnMarkAll = container.querySelector('#btn-mark-all-present');
             if (btnMarkAll) {
                 btnMarkAll.onclick = function() {
+                    let changedCount = 0;
                     students.forEach(st => {
-                        // Jangan ubah siswa yang sudah memiliki izin piket khusus (sakit/izin/dispen)
-                        if (!st.permit_notice) {
+                        // Jangan ubah siswa yang berhalangan resmi (izin piket) atau sakit/izin/dispen dari jam sebelumnya
+                        if (!st.permit_notice && st.status !== 's' && st.status !== 'i' && st.status !== 'd') {
                             st.status = 'h';
+                            changedCount++;
                         }
                     });
                     renderStudentsList();
                     updateLiveCounters();
-                    showToast(`Seluruh siswa ditandai Hadir (${students.length} Siswa).`, 'success');
+                    showToast(`Siswa ditandai Hadir (${changedCount} Siswa).`, 'success');
                 };
             }
 
@@ -2195,13 +2223,19 @@
         const todayApproved = data.gtk_permits?.today_approved || [];
 
         const currentUser = SIAP_ROUTER.getCurrentUser() || {};
+        const canAccessTeachersDirectory = data.roles_operational?.can_access_teachers_directory 
+            || currentUser?.can_access_teachers_directory 
+            || currentUser?.is_admin 
+            || currentUser?.is_principal 
+            || currentUser?.is_vice_principal;
+
         const canAccessTeacherReport = data.roles_operational?.can_access_teacher_report 
             || currentUser?.is_waka_kurikulum 
             || currentUser?.is_principal 
             || currentUser?.is_admin 
             || currentUser?.can_access_teacher_report;
 
-        if (canAccessTeacherReport || pendingPermits.length > 0 || todayApproved.length > 0) {
+        if (canAccessTeachersDirectory || canAccessTeacherReport || pendingPermits.length > 0 || todayApproved.length > 0) {
             if (cardAdminPermits) cardAdminPermits.classList.remove('hidden');
             if (badgePendingPermits) badgePendingPermits.textContent = `${pendingPermits.length} Pengajuan`;
             if (countApprovedToday) countApprovedToday.textContent = `${todayApproved.length} Orang`;
@@ -3625,7 +3659,11 @@
                 }
                 if (searchInput) {
                     searchInput.value = '';
-                    searchInput.focus();
+                    try {
+                        searchInput.focus({ preventScroll: true });
+                    } catch {
+                        searchInput.focus();
+                    }
                 }
                 if (btnClearInput) btnClearInput.classList.add('hidden');
                 hideSuggestions();
@@ -3700,6 +3738,13 @@
         }
 
         if (searchInput) {
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
             searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.trim();
                 lastQuery = query;
@@ -4691,37 +4736,55 @@
         }
 
         container.innerHTML = permits.map(p => {
+            const isTidakMasuk = p.permit_type === 'izin_tidak_masuk';
+            const isBatch = Boolean(p.batch_id);
+            const serverUrl = (typeof SIAP_API !== 'undefined' && SIAP_API.getServerUrl) ? SIAP_API.getServerUrl() : '';
+            const printUrl = isBatch
+                ? `${serverUrl}/piket/perizinan/batch/${p.batch_id}/slip?autoprint=1`
+                : `${serverUrl}/piket/perizinan/${p.id}/slip?autoprint=1`;
+
+            const catLabel = p.permit_category === 'sakit' ? 'Sakit' : (p.permit_category === 'dispen' ? 'Dispensasi' : 'Izin');
             const typeLabels = {
                 terlambat: 'Masuk Terlambat',
                 izin_keluar_sementara: 'Keluar Sementara',
                 izin_pulang_cepat: 'Pulang Lebih Cepat',
-                izin_tidak_masuk: 'Tidak Masuk / Dispen',
+                izin_tidak_masuk: catLabel,
             };
             const typeBadgeColors = {
                 terlambat: 'bg-amber-100 text-amber-800',
                 izin_keluar_sementara: 'bg-blue-100 text-blue-800',
                 izin_pulang_cepat: 'bg-purple-100 text-purple-800',
-                izin_tidak_masuk: 'bg-indigo-100 text-indigo-800',
+                izin_tidak_masuk: p.permit_category === 'sakit' ? 'bg-amber-100 text-amber-900 border border-amber-300' : (p.permit_category === 'dispen' ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-cyan-100 text-cyan-900 border border-cyan-300'),
             };
             const badgeColor = typeBadgeColors[p.permit_type] || 'bg-slate-100 text-slate-700';
 
             return `
                 <div class="card-elevated p-3 border-purple-100">
                     <div class="flex items-center justify-between mb-1">
-                        <h4 class="text-xs font-black text-slate-900">${escapeHtml(p.student_name)} <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(p.classroom_name)})</span></h4>
-                        <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase ${badgeColor}">${typeLabels[p.permit_type] || p.permit_type}</span>
+                        <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <h4 class="text-xs font-black text-slate-900">${escapeHtml(p.student_name)} <span class="text-[10px] text-slate-400 font-normal">(${escapeHtml(p.classroom_name)})</span></h4>
+                            ${isBatch ? '<span class="px-1.5 py-0.2 rounded text-[8.5px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">Rombongan</span>' : ''}
+                            ${p.reporter_type === 'wali_kelas' ? '<span class="px-1.5 py-0.2 rounded text-[8.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Wali Kelas</span>' : ''}
+                        </div>
+                        <span class="px-2 py-0.2 rounded text-[9px] font-bold uppercase shrink-0 ${badgeColor}">${typeLabels[p.permit_type] || p.permit_type}</span>
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 mb-1.5 font-mono">
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 mb-1.5 font-mono flex-wrap">
                         <span>#${escapeHtml(p.permit_number)}</span>
                         ${p.entry_time ? `<span>• Masuk: ${p.entry_time}</span>` : ''}
                         ${p.departure_time ? `<span>• Keluar: ${p.departure_time}</span>` : ''}
                         ${p.period_assigned ? `<span>• Jam ke-${p.period_assigned}</span>` : ''}
+                        ${p.end_date ? `<span>• s/d ${p.end_date}</span>` : ''}
                     </div>
                     <p class="text-xs text-slate-700 mb-1 leading-snug"><span class="font-bold text-slate-800">Alasan:</span> ${escapeHtml(p.reason || '-')}</p>
-                    ${p.action_taken ? `<p class="text-[10px] text-purple-900 font-medium italic mb-2">Pembinaan: "${escapeHtml(p.action_taken)}"</p>` : ''}
+                    ${p.action_taken ? `<p class="text-[10px] text-purple-900 font-medium italic mb-2">Catatan: "${escapeHtml(p.action_taken)}"</p>` : ''}
                     <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 flex-wrap gap-1.5">
                         <span class="text-[9px] text-slate-400">Petugas: ${escapeHtml(p.given_by_name || 'Piket')}</span>
                         <div class="flex items-center gap-1.5">
+                            ${p.attachment_url ? `
+                                <a href="${p.attachment_url}" target="_blank" class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[9px] font-bold flex items-center gap-1 active:scale-95 transition">
+                                    <span>📷</span><span>Foto Surat</span>
+                                </a>
+                            ` : ''}
                             ${p.permit_type === 'izin_keluar_sementara' ? (
                                 p.return_time ? 
                                 `<span class="px-2 py-0.5 rounded-lg text-[9px] font-bold bg-emerald-100 text-emerald-800">✓ Kembali ${p.return_time}</span>` :
@@ -4729,8 +4792,8 @@
                                     <span>⏱️</span><span>Konfirmasi Kembali</span>
                                 </button>`
                             ) : ''}
-                            <button type="button" onclick="printPermitSlip(${p.id})" class="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[10px] active:scale-95 transition flex items-center gap-1 border border-purple-200 cursor-pointer">
-                                <span>🖨️</span><span>Cetak Slip</span>
+                            <button type="button" onclick="printPermitSlip(${p.id}, '${printUrl}')" class="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-[10px] active:scale-95 transition flex items-center gap-1 border border-purple-200 cursor-pointer">
+                                <span>🖨️</span><span>Cetak Slip${isBatch ? ' (Rombongan)' : ''}</span>
                             </button>
                         </div>
                     </div>
@@ -4957,7 +5020,11 @@
 
     // Modal Sheet Handlers
     window.printPermitSlip = function(permitId, printUrl = null) {
-        const url = printUrl || `/piket/perizinan/${permitId}/slip?autoprint=1`;
+        const serverUrl = (typeof SIAP_API !== 'undefined' && SIAP_API.getServerUrl) ? SIAP_API.getServerUrl() : '';
+        let url = printUrl || `${serverUrl}/piket/perizinan/${permitId}/slip?autoprint=1`;
+        if (url.startsWith('/')) {
+            url = serverUrl + url;
+        }
         try {
             const win = window.open(url, '_blank');
             if (!win || win.closed || typeof win.closed === 'undefined') {
@@ -4980,6 +5047,126 @@
         }
     };
 
+    // Multi-Select Reason Handlers for Piket Permits
+    let selectedPermitReasons = [];
+    const PIKET_PRESET_REASONS = {
+        terlambat: [
+            'Bangun kesiangan',
+            'Kendaraan mogok / ban bocor',
+            'Macet di perjalanan',
+            'Hujan lebat / banjir',
+            'Mengantar orang tua / adik',
+            'Keperluan mendesak keluarga',
+            'Buku / seragam / tugas tertinggal',
+            'Membantu orang tua',
+        ],
+        izin_keluar_sementara: [
+            'Mengambil barang / seragam tertinggal',
+            'Beli obat di apotek / berobat',
+            'Keperluan dinas / lomba sekolah',
+            'Fotokopi berkas / cetak tugas',
+            'Perbaikan kendaraan bermotor',
+            'Dipanggil orang tua ke kantor',
+        ],
+        izin_pulang_cepat: [
+            'Sakit / pusing / demam',
+            'Cedera saat olahraga / KBM',
+            'Keluarga ada musibah / kabar duka',
+            'Keperluan mendesak keluarga',
+            'Dijemput orang tua',
+        ],
+        izin_tidak_masuk: [
+            'Sakit (ada surat dokter)',
+            'Sakit (kabar dari orang tua)',
+            'Acara keluarga di luar kota',
+            'Dispensasi kegiatan / lomba sekolah',
+            'Kepentingan keluarga mendesak',
+        ],
+    };
+
+    window.renderPiketQuickReasons = function(type = 'terlambat') {
+        const modal = (currentPiketContainer || document).querySelector('#modal-piket-permit');
+        const container = modal?.querySelector('#permit-quick-reasons-container');
+        if (!container) return;
+
+        const presets = PIKET_PRESET_REASONS[type] || PIKET_PRESET_REASONS.terlambat;
+        container.innerHTML = presets.map(r => {
+            const isSelected = selectedPermitReasons.includes(r);
+            const activeClass = isSelected
+                ? 'bg-purple-600 text-white border-purple-600 shadow-2xs font-bold'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 font-medium';
+
+            const safeR = escapeHtml(r).replace(/'/g, "\\'");
+            return `
+                <button type="button" onclick="togglePiketReason('${safeR}')" class="px-2.5 py-1 rounded-lg border text-[10px] transition active:scale-95 cursor-pointer flex items-center gap-1 ${activeClass}">
+                    <span>${isSelected ? '✓' : '+'}</span>
+                    <span>${escapeHtml(r)}</span>
+                </button>
+            `;
+        }).join('');
+    };
+
+    window.togglePiketReason = function(reason) {
+        if (!reason) return;
+        const idx = selectedPermitReasons.indexOf(reason);
+        if (idx >= 0) {
+            selectedPermitReasons.splice(idx, 1);
+        } else {
+            selectedPermitReasons.push(reason);
+        }
+        updatePiketReasonsUI();
+    };
+
+    window.addCustomPiketReason = function() {
+        const modal = (currentPiketContainer || document).querySelector('#modal-piket-permit');
+        const input = modal?.querySelector('#permit-custom-reason-input');
+        if (!input) return;
+        const val = input.value.trim();
+        if (val) {
+            if (!selectedPermitReasons.includes(val)) {
+                selectedPermitReasons.push(val);
+            }
+            input.value = '';
+            updatePiketReasonsUI();
+        }
+    };
+
+    window.clearPiketPermitReasons = function() {
+        selectedPermitReasons = [];
+        const modal = (currentPiketContainer || document).querySelector('#modal-piket-permit');
+        const textarea = modal?.querySelector('#permit-reason');
+        if (textarea) textarea.value = '';
+        updatePiketReasonsUI();
+    };
+
+    window.updatePiketReasonsUI = function() {
+        const modal = (currentPiketContainer || document).querySelector('#modal-piket-permit');
+        if (!modal) return;
+
+        const typeSelect = modal.querySelector('#permit-type-select');
+        const currentType = typeSelect ? typeSelect.value : 'terlambat';
+
+        // Re-render quick buttons dengan status kelas aktif
+        renderPiketQuickReasons(currentType);
+
+        // Update badge jumlah alasan
+        const badge = modal.querySelector('#permit-reasons-count-badge');
+        if (badge) {
+            if (selectedPermitReasons.length > 0) {
+                badge.textContent = `${selectedPermitReasons.length} alasan dipilih`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // Sinkronisasi teks alasan ke dalam textarea
+        const textarea = modal.querySelector('#permit-reason');
+        if (textarea && selectedPermitReasons.length > 0) {
+            textarea.value = selectedPermitReasons.join(', ');
+        }
+    };
+
     window.openPiketPermitModal = function() {
         const modal = currentPiketContainer?.querySelector('#modal-piket-permit');
         const bottomNav = document.getElementById('mobile-bottom-nav');
@@ -4990,6 +5177,22 @@
             if (form) form.reset();
             if (piketPermitPicker) piketPermitPicker.reset();
 
+            // Reset dan inisialisasi daftar alasan multi-select
+            selectedPermitReasons = [];
+            const customReasonInput = modal.querySelector('#permit-custom-reason-input');
+            if (customReasonInput) {
+                customReasonInput.value = '';
+                if (!customReasonInput.dataset.boundEnter) {
+                    customReasonInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addCustomPiketReason();
+                        }
+                    });
+                    customReasonInput.dataset.boundEnter = 'true';
+                }
+            }
+
             // Default waktu masuk ke jam sekarang
             const now = new Date();
             const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -4997,6 +5200,7 @@
             if (entryTime) entryTime.value = currentTimeStr;
 
             togglePermitFields('terlambat');
+            updatePiketReasonsUI();
         }
     };
 
@@ -5011,19 +5215,45 @@
         if (!currentPiketContainer) return;
         const grpLate = currentPiketContainer.querySelector('#field-group-terlambat');
         const grpExit = currentPiketContainer.querySelector('#field-group-keluar');
+        const grpAbsent = currentPiketContainer.querySelector('#field-group-tidak-masuk');
+
         if (grpLate) grpLate.classList.toggle('hidden', type !== 'terlambat');
         if (grpExit) grpExit.classList.toggle('hidden', type !== 'izin_keluar_sementara');
+        if (grpAbsent) grpAbsent.classList.toggle('hidden', type !== 'izin_tidak_masuk');
+
+        if (type === 'izin_tidak_masuk') {
+            const startDateInput = currentPiketContainer.querySelector('#permit-start-date');
+            if (startDateInput && !startDateInput.value) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                startDateInput.value = `${year}-${month}-${day}`;
+            }
+        }
+
+        if (typeof window.renderPiketQuickReasons === 'function') {
+            window.renderPiketQuickReasons(type);
+        }
     };
 
     window.handlePiketPermitSubmit = async function(e) {
         e.preventDefault();
         const form = e.target;
         const btn = form.querySelector('#btn-submit-piket-permit');
-        const studentName = form.querySelector('#permit-student-name')?.value || form.querySelector('#permit-student-picker input[type="text"]')?.value;
-        const studentId = form.querySelector('#permit-student-id')?.value;
-        const classroomId = form.querySelector('#permit-classroom-id')?.value;
 
-        const studentIds = studentId ? studentId.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)) : [];
+        // Dapatkan data siswa terpilih langsung dari picker instance agar konsisten dan tidak tertinggal
+        const selectedStudents = piketPermitPicker ? piketPermitPicker.getSelectedStudents() : [];
+        const studentIdsFromPicker = selectedStudents.map(s => s.id);
+        const studentIdVal = form.querySelector('#permit-student-id')?.value;
+        const studentIdsFromInput = studentIdVal ? studentIdVal.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)) : [];
+        const studentIds = studentIdsFromPicker.length > 0 ? studentIdsFromPicker : studentIdsFromInput;
+
+        const studentName = selectedStudents.length > 0
+            ? selectedStudents.map(s => s.name).join(', ')
+            : (form.querySelector('#permit-student-name')?.value || form.querySelector('#permit-student-picker input[type="text"]')?.value);
+
+        const classroomId = selectedStudents[0]?.classroom_id || form.querySelector('#permit-classroom-id')?.value;
 
         if (studentIds.length === 0 && !studentName) {
             showToast('Silakan pilih minimal 1 siswa terlebih dahulu.', 'error');
@@ -5031,26 +5261,72 @@
         }
 
         btn.disabled = true;
-        btn.textContent = 'Menerbitkan...';
+        const origBtnText = btn.innerHTML;
+        btn.innerHTML = '<span>Menerbitkan...</span>';
 
         try {
-            const payload = {
-                permit_type: form.querySelector('#permit-type-select').value,
-                student_id: studentIds.length === 1 ? studentIds[0] : (studentId || null),
-                student_ids: studentIds.length > 0 ? studentIds : null,
-                student_name: studentName || null,
-                classroom_id: classroomId || null,
-                entry_time: form.querySelector('#permit-entry-time')?.value || null,
-                departure_time: form.querySelector('#permit-departure-time')?.value || null,
-                return_time: form.querySelector('#permit-return-time')?.value || null,
-                reason: form.querySelector('#permit-reason').value,
-                action_taken: form.querySelector('#permit-action-taken')?.value || null,
-            };
+            const permitType = form.querySelector('#permit-type-select').value;
+            const formData = new FormData();
 
-            const res = await SIAP_API.submitPiketStudentPermit(payload);
+            formData.append('permit_type', permitType);
+            if (studentIds.length === 1) {
+                formData.append('student_id', studentIds[0]);
+            } else if (studentIds.length > 1) {
+                studentIds.forEach(id => formData.append('student_ids[]', id));
+            }
+            if (studentName) formData.append('student_name', studentName);
+            if (classroomId) formData.append('classroom_id', classroomId);
+
+            const reasonVal = form.querySelector('#permit-reason')?.value || '';
+            formData.append('reason', reasonVal);
+            if (Array.isArray(selectedPermitReasons) && selectedPermitReasons.length > 0) {
+                selectedPermitReasons.forEach(r => formData.append('reasons[]', r));
+            }
+
+            const actionVal = form.querySelector('#permit-action-taken')?.value;
+            if (actionVal) formData.append('action_taken', actionVal);
+
+            if (permitType === 'terlambat') {
+                const entryVal = form.querySelector('#permit-entry-time')?.value;
+                if (entryVal) formData.append('entry_time', entryVal);
+            } else if (permitType === 'izin_keluar_sementara') {
+                const depVal = form.querySelector('#permit-departure-time')?.value;
+                const retVal = form.querySelector('#permit-return-time')?.value;
+                if (depVal) formData.append('departure_time', depVal);
+                if (retVal) formData.append('return_time', retVal);
+            } else if (permitType === 'izin_tidak_masuk') {
+                const catVal = form.querySelector('input[name="permit_category"]:checked')?.value || 'izin';
+                formData.append('permit_category', catVal);
+
+                const srcVal = form.querySelector('#permit-delivery-source')?.value;
+                if (srcVal) formData.append('delivery_source', srcVal);
+
+                const startVal = form.querySelector('#permit-start-date')?.value;
+                if (startVal) formData.append('permit_date', startVal);
+
+                const endVal = form.querySelector('#permit-end-date')?.value;
+                if (endVal) formData.append('end_date', endVal);
+
+                const fileInput = form.querySelector('#permit-attachment');
+                if (fileInput?.files?.[0]) {
+                    formData.append('attachment', fileInput.files[0]);
+                }
+            }
+
+            const res = await SIAP_API.submitPiketStudentPermit(formData);
             if (res.success) {
                 showToast(res.message || 'Surat izin berhasil diterbitkan!', 'success');
                 closePiketPermitModal();
+                form.reset();
+
+                // Clear smart student picker
+                if (piketPermitPicker) {
+                    piketPermitPicker.clearSelection();
+                }
+                if (typeof window.clearPiketPermitReasons === 'function') {
+                    window.clearPiketPermitReasons();
+                }
+
                 loadTasksPiket();
 
                 // Otomatis cetak slip izin masuk (terkelompok per rombel jika rombongan)
@@ -5066,7 +5342,7 @@
             showToast('Gagal terbitkan izin: ' + err.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Terbitkan Surat Izin';
+            btn.innerHTML = origBtnText;
         }
     };
 
@@ -10422,6 +10698,261 @@
             showToast('Gagal menghapus: ' + err.message, 'error');
         }
     };
+
+    // ==========================================
+    // DIREKTORI KONTAK GURU & GTK (MANAJEMEN)
+    // ==========================================
+    let teacherDirContainer = null;
+    const teacherDirState = {
+        search: '',
+        sub_type: 'all', // 'all', 'guru', 'staf', 'wa'
+        teachers: [],
+        total: 0,
+        with_wa_count: 0,
+    };
+
+    window.initTasksTeachersDirectory = function(container) {
+        teacherDirContainer = container;
+        teacherDirState.search = '';
+        teacherDirState.sub_type = 'all';
+
+        const searchInput = container.querySelector('#teacher-dir-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+
+        updateTeacherDirPillsUI('all');
+        loadTeachersDirectory();
+    };
+
+    window.setTeacherDirSubType = function(subType) {
+        teacherDirState.sub_type = subType;
+        updateTeacherDirPillsUI(subType);
+        loadTeachersDirectory();
+    };
+
+    function updateTeacherDirPillsUI(activeSubType) {
+        if (!teacherDirContainer) return;
+        const pills = teacherDirContainer.querySelectorAll('.dir-tab-pill');
+        pills.forEach(pill => {
+            const tabKey = pill.getAttribute('data-dir-tab');
+            if (tabKey === activeSubType) {
+                pill.className = 'dir-tab-pill px-3 py-1 rounded-xl bg-emerald-600 text-white shadow-2xs whitespace-nowrap active:scale-95 transition';
+            } else {
+                pill.className = 'dir-tab-pill px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap active:scale-95 transition';
+            }
+        });
+    }
+
+    let teacherDirDebounceTimer = null;
+    window.debounceTeacherDirSearch = function() {
+        clearTimeout(teacherDirDebounceTimer);
+        const searchInput = teacherDirContainer?.querySelector('#teacher-dir-search');
+        const clearBtn = teacherDirContainer?.querySelector('#btn-clear-teacher-dir-search');
+        const val = searchInput?.value || '';
+
+        if (clearBtn) {
+            if (val.trim()) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        teacherDirDebounceTimer = setTimeout(() => {
+            teacherDirState.search = val.trim();
+            loadTeachersDirectory();
+        }, 300);
+    };
+
+    window.clearTeacherDirSearch = function() {
+        const searchInput = teacherDirContainer?.querySelector('#teacher-dir-search');
+        const clearBtn = teacherDirContainer?.querySelector('#btn-clear-teacher-dir-search');
+        if (searchInput) searchInput.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        teacherDirState.search = '';
+        loadTeachersDirectory();
+    };
+
+    window.loadTeachersDirectory = async function() {
+        if (!teacherDirContainer) return;
+        const listContainer = teacherDirContainer.querySelector('#teacher-dir-list-container');
+        const summaryText = teacherDirContainer.querySelector('#teacher-dir-summary-text');
+        const waBadge = teacherDirContainer.querySelector('#teacher-dir-wa-badge');
+
+        if (listContainer) {
+            listContainer.innerHTML = `
+                <div class="card-elevated p-3.5 space-y-2.5 animate-pulse">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-slate-200"></div>
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-3 bg-slate-200 rounded w-2/3"></div>
+                            <div class="h-2.5 bg-slate-100 rounded w-1/3"></div>
+                            <div class="h-2 bg-slate-100 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        try {
+            const queryParams = new URLSearchParams();
+            if (teacherDirState.search) queryParams.set('search', teacherDirState.search);
+            if (teacherDirState.sub_type) queryParams.set('sub_type', teacherDirState.sub_type);
+
+            const res = await SIAP_API.request('tasks/teachers-directory?' + queryParams.toString());
+            if (!res.success) {
+                if (listContainer) {
+                    listContainer.innerHTML = `
+                        <div class="card-elevated p-6 text-center text-xs text-rose-600">
+                            <div class="text-2xl mb-1.5">⚠️</div>
+                            <p class="font-bold">${res.message || 'Gagal memuat direktori guru.'}</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            const teachers = res.data?.teachers || [];
+            teacherDirState.teachers = teachers;
+            teacherDirState.total = res.data?.total || teachers.length;
+            teacherDirState.with_wa_count = res.data?.with_wa_count || 0;
+
+            if (summaryText) {
+                summaryText.textContent = `Menampilkan ${teachers.length} Guru & Staf`;
+            }
+            if (waBadge) {
+                waBadge.textContent = `${teacherDirState.with_wa_count} Terhubung WA`;
+            }
+
+            if (teachers.length === 0) {
+                if (listContainer) {
+                    listContainer.innerHTML = `
+                        <div class="card-elevated p-8 text-center text-xs text-slate-400">
+                            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2 text-xl">
+                                🔍
+                            </div>
+                            <p class="font-bold text-slate-600 mb-0.5">Tidak ada guru/staf ditemukan</p>
+                            <p class="text-[11px] text-slate-400">Coba ubah kata kunci pencarian atau ganti filter kategori.</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            if (listContainer) {
+                listContainer.innerHTML = teachers.map(t => {
+                    const fallbackAvatar = window.getUserAvatar ? window.getUserAvatar() : 'assets/default-avatar.svg';
+                    const avatarSrc = t.avatar_url || fallbackAvatar;
+                    const escapedName = (t.name || '').replace(/'/g, "\\'");
+                    const escapedUsername = (t.username || '').replace(/'/g, "\\'");
+                    const escapedNigs = (t.nigs || '').replace(/'/g, "\\'");
+
+                    return `
+                        <div class="card-elevated p-3.5 space-y-2.5">
+                            <div class="flex items-start gap-3">
+                                <img src="${avatarSrc}" onerror="this.onerror=null;this.src='${fallbackAvatar}';" alt="${t.name}" class="w-11 h-11 rounded-2xl object-cover border border-slate-200/80 shadow-xs flex-shrink-0 bg-slate-100">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-1">
+                                        <h4 class="text-xs font-black text-slate-800 truncate" title="${t.name}">${t.name}</h4>
+                                    </div>
+                                    <p class="text-[10px] text-blue-600 font-bold truncate mt-0.5">${t.role_label || 'Guru'}</p>
+                                    
+                                    <!-- Badges NIGS & Username (Click-to-copy) -->
+                                    <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                        <button type="button" onclick="copyDirectoryText('${escapedNigs}', 'NIG')" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-mono font-bold active:scale-95 transition" title="Klik untuk salin NIG">
+                                            <span class="text-slate-400">NIG:</span><span>${t.nigs}</span>
+                                            <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                                        </button>
+                                        <button type="button" onclick="copyDirectoryText('${escapedUsername}', 'Username')" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-mono font-bold active:scale-95 transition" title="Klik untuk salin Username">
+                                            <span class="text-indigo-400">@</span><span>${t.username}</span>
+                                            <svg class="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-1.5 text-[11px] text-slate-600 font-mono">
+                                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                    <span>${t.phone || '<em class="text-slate-400 font-sans text-[10px]">Belum ada no HP</em>'}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    ${t.has_phone ? `
+                                        <a href="tel:${t.phone}" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition" title="Telepon Biasa (${t.phone})" aria-label="Telepon Biasa">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                        </a>
+                                        <a href="${t.wa_url}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[11px] font-bold shadow-xs active:scale-95 transition flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                                            <span>WhatsApp</span>
+                                        </a>
+                                    ` : `
+                                        <button type="button" disabled class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 text-[10px] font-semibold cursor-not-allowed">
+                                            Tanpa Kontak
+                                        </button>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (err) {
+            if (listContainer) {
+                listContainer.innerHTML = `
+                    <div class="card-elevated p-6 text-center text-xs text-rose-600">
+                        <div class="text-2xl mb-1.5">⚠️</div>
+                        <p class="font-bold">Terjadi kesalahan: ${err.message || 'Koneksi error'}</p>
+                    </div>
+                `;
+            }
+        }
+    };
+
+    window.copyDirectoryText = function(text, label) {
+        if (!text || text === '-') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showDirCopyToast(`${label} '${text}' berhasil disalin!`);
+            }).catch(() => {
+                fallbackCopyDirText(text, label);
+            });
+        } else {
+            fallbackCopyDirText(text, label);
+        }
+    };
+
+    function fallbackCopyDirText(text, label) {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.style.position = 'fixed';
+        temp.style.opacity = '0';
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+            document.execCommand('copy');
+            showDirCopyToast(`${label} '${text}' berhasil disalin!`);
+        } catch (e) {
+            showToast(`${label}: ${text}`);
+        }
+        document.body.removeChild(temp);
+    }
+
+    let dirCopyToastTimeout = null;
+    function showDirCopyToast(msg) {
+        const toast = document.getElementById('dir-copy-toast');
+        const textEl = document.getElementById('dir-copy-toast-text');
+        if (!toast) {
+            showToast(msg, 'success');
+            return;
+        }
+        if (textEl) textEl.textContent = msg;
+        toast.classList.remove('hidden');
+        clearTimeout(dirCopyToastTimeout);
+        dirCopyToastTimeout = setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 2000);
+    }
 
     // ==========================================
     // 7. INITIAL APP BOOTSTRAPPER

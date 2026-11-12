@@ -352,4 +352,145 @@ class MobileKbmEnhancedTest extends TestCase
 
         Carbon::setTestNow(); // Reset
     }
+
+    public function test_subsequent_kbm_period_inherits_attendance_status_from_earlier_session(): void
+    {
+        $ay = AcademicYear::where('name', '2026/2027')->first();
+
+        // Buat siswa kedua dan ketiga
+        $studentSakit = Student::create([
+            'name' => 'Budi Sakit Test',
+            'nis' => '12346',
+            'gender' => 'L',
+            'is_active' => true,
+        ]);
+        StudentClassroom::create([
+            'student_id' => $studentSakit->id,
+            'classroom_id' => $this->classroom->id,
+            'academic_year_id' => $ay->id,
+            'academic_year' => '2026/2027',
+            'is_active' => true,
+        ]);
+
+        $studentAlfa = Student::create([
+            'name' => 'Citra Alfa Test',
+            'nis' => '12347',
+            'gender' => 'P',
+            'is_active' => true,
+        ]);
+        StudentClassroom::create([
+            'student_id' => $studentAlfa->id,
+            'classroom_id' => $this->classroom->id,
+            'academic_year_id' => $ay->id,
+            'academic_year' => '2026/2027',
+            'is_active' => true,
+        ]);
+
+        // Buat jadwal untuk jam berikutnya (Jam ke-3 s/d 4)
+        $subject2 = Subject::firstOrCreate(
+            ['code' => 'TKJ-02'],
+            ['name' => 'Teknologi Layanan Jaringan', 'is_active' => true]
+        );
+
+        $scheduleJam3 = LessonSchedule::create([
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+            'classroom_id' => $this->classroom->id,
+            'subject_id' => $subject2->id,
+            'teacher_id' => $this->teacher->id,
+            'day' => 'Senin',
+            'start_period' => 3,
+            'end_period' => 4,
+            'start_time' => '08:45:00',
+            'end_time' => '10:15:00',
+        ]);
+
+        $dateStr = '2026-11-02';
+
+        // 1. Simpan sesi presensi jam ke-1 s/d 2 oleh guru sebelumnya
+        $sessionJam1 = SubjectAttendanceSession::create([
+            'lesson_schedule_id' => $this->schedule->id,
+            'classroom_id' => $this->classroom->id,
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->teacher->id,
+            'attendance_date' => $dateStr,
+            'start_period' => 1,
+            'end_period' => 2,
+            'academic_year' => '2026/2027',
+            'semester' => 'ganjil',
+            'topic' => 'Pengenalan Jaringan Komputer',
+        ]);
+
+        // Siswa 1: Hadir ('h')
+        SubjectAttendanceRecord::create([
+            'subject_attendance_session_id' => $sessionJam1->id,
+            'student_id' => $this->student->id,
+            'status' => 'h',
+        ]);
+        // Siswa 2: Sakit ('s')
+        SubjectAttendanceRecord::create([
+            'subject_attendance_session_id' => $sessionJam1->id,
+            'student_id' => $studentSakit->id,
+            'status' => 's',
+            'notes' => 'Demam tinggi',
+        ]);
+        // Siswa 3: Alpa ('a')
+        SubjectAttendanceRecord::create([
+            'subject_attendance_session_id' => $sessionJam1->id,
+            'student_id' => $studentAlfa->id,
+            'status' => 'a',
+        ]);
+
+        // 2. Akses halaman kbm/take untuk Jam ke-3 s/d 4 yang belum pernah diabsen
+        $response = $this->actingAs($this->teacher)
+            ->getJson("/api/v1/mobile/kbm/take?schedule_id={$scheduleJam3->id}&date={$dateStr}");
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'data' => [
+                    'session' => [
+                        'is_attended' => false,
+                    ],
+                    'earlier_session' => [
+                        'id' => $sessionJam1->id,
+                        'start_period' => 1,
+                        'end_period' => 2,
+                        'subject_name' => $this->subject->name,
+                    ],
+                    'summary' => [
+                        'total' => 3,
+                        'hadir' => 1,
+                        'sakit' => 1,
+                        'alfa' => 1,
+                    ],
+                ],
+            ]);
+
+        $students = collect($response->json('data.students'))->keyBy('id');
+
+        // Verifikasi Siswa 1 mewarisi Hadir
+        $this->assertEquals('h', $students[$this->student->id]['status']);
+        $this->assertTrue($students[$this->student->id]['is_inherited']);
+
+        // Verifikasi Siswa 2 mewarisi Sakit
+        $this->assertEquals('s', $students[$studentSakit->id]['status']);
+        $this->assertEquals('Demam tinggi', $students[$studentSakit->id]['notes']);
+        $this->assertTrue($students[$studentSakit->id]['is_inherited']);
+        $this->assertEquals('JP 1: Sakit', $students[$studentSakit->id]['inherited_notice']);
+
+        // Verifikasi Siswa 3 mewarisi Alpa
+        $this->assertEquals('a', $students[$studentAlfa->id]['status']);
+        $this->assertTrue($students[$studentAlfa->id]['is_inherited']);
+        $this->assertEquals('JP 1: Alpa', $students[$studentAlfa->id]['inherited_notice']);
+
+        // 3. Verifikasi info pada index KBM untuk jam ke-3 menandai has_earlier_session
+        $kbmIndexRes = $this->actingAs($this->teacher)
+            ->getJson("/api/v1/mobile/kbm?date={$dateStr}");
+
+        $kbmIndexRes->assertStatus(200);
+        $myScheds = collect($kbmIndexRes->json('data.my_schedules'))->keyBy('id');
+        $this->assertTrue($myScheds[$scheduleJam3->id]['has_earlier_session']);
+        $this->assertEquals('Jam ke-1', $myScheds[$scheduleJam3->id]['earlier_period_text']);
+    }
 }

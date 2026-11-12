@@ -164,6 +164,30 @@ class PiketPermitController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // Support multiple reasons from array or string
+        if ($request->has('reasons')) {
+            $rawReasons = $request->input('reasons');
+            if (is_string($rawReasons)) {
+                if (str_starts_with($rawReasons, '[') && str_ends_with($rawReasons, ']')) {
+                    $rawReasons = json_decode($rawReasons, true) ?: [];
+                } else {
+                    $rawReasons = explode(',', $rawReasons);
+                }
+            }
+            if (is_array($rawReasons)) {
+                $reasonItems = array_filter(array_map('trim', $rawReasons));
+                if (! empty($reasonItems)) {
+                    $mergedReasons = implode(', ', $reasonItems);
+                    $existingReason = trim((string) $request->input('reason', ''));
+                    if (empty($existingReason)) {
+                        $request->merge(['reason' => $mergedReasons]);
+                    } elseif (! str_contains($existingReason, $mergedReasons)) {
+                        $request->merge(['reason' => $existingReason.', '.$mergedReasons]);
+                    }
+                }
+            }
+        }
+
         $validated = $request->validate([
             'permit_type' => 'required|in:terlambat,izin_keluar_sementara,izin_pulang_cepat,izin_tidak_masuk',
             'permit_date' => 'required|date',
@@ -175,6 +199,8 @@ class PiketPermitController extends Controller
             'student_name' => 'nullable|string|max:255',
             'classroom_id' => 'nullable|exists:classrooms,id',
             'reason' => 'required|string|max:500',
+            'reasons' => 'nullable|array',
+            'reasons.*' => 'string|max:255',
             'entry_time' => 'nullable|string',
             'departure_time' => 'nullable|string',
             'home_departure_time' => 'nullable|string',
@@ -248,6 +274,16 @@ class PiketPermitController extends Controller
                         ->first();
 
                     if ($existing) {
+                        // Siswa sudah memiliki izin jenis ini hari ini; kaitkan ke batch rombongan & perbarui detail agar tetap tercetak di slip
+                        $existing->update([
+                            'batch_id' => $batchId ?: $existing->batch_id,
+                            'reason' => $validated['reason'],
+                            'action_taken' => $validated['action_taken'] ?? $existing->action_taken,
+                            'entry_time' => $finalEntryTime ?? $existing->entry_time,
+                            'departure_time' => $finalDepartureTime ?? $existing->departure_time,
+                        ]);
+                        $createdPermits->push($existing);
+
                         continue;
                     }
 
@@ -406,7 +442,8 @@ class PiketPermitController extends Controller
 
     public function printSlip(PiketStudentPermit $permit, Request $request): View
     {
-        if ($permit->batch_id && $request->boolean('batch')) {
+        // Jika izin merupakan bagian dari rombongan (batch), default mencetak slip batch rombongan kecuali jika meminta cetak perorangan (?single=1)
+        if ($permit->batch_id && ! $request->boolean('single')) {
             return $this->printBatchSlip($permit->batch_id, $request);
         }
 

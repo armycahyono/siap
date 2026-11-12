@@ -22,12 +22,10 @@ class CbtIntegrationTest extends TestCase
     {
         parent::setUp();
 
-        $role = Role::create([
-            'name' => 'Super Admin',
-            'slug' => 'super_admin',
-            'level' => 1,
-            'is_active' => true,
-        ]);
+        $role = Role::firstOrCreate(
+            ['slug' => 'super_admin'],
+            ['name' => 'Super Admin', 'level' => 1, 'is_active' => true]
+        );
 
         $this->superAdmin = User::create([
             'name' => 'Admin Test',

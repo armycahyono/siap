@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Storage;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, LogsActivity, Notifiable;
+    use HasFactory, LogsActivity, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -53,6 +54,7 @@ class User extends Authenticatable
         'telegram_username',
         'avatar',
         'is_active',
+        'password_changed_at',
     ];
 
     protected $hidden = [
@@ -66,6 +68,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'password_changed_at' => 'datetime',
         ];
     }
 
@@ -1240,6 +1243,15 @@ class User extends Authenticatable
     public function canManageAttendanceDevices(): bool
     {
         return $this->isSuperAdmin();
+    }
+
+    public function canAccessTeachersDirectory(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->isSystemAdmin()
+            || $this->isPrincipal()
+            || $this->isVicePrincipal()
+            || $this->hasRole(['admin', 'adm2', 'superadmin', 'administrator', 'super_admin']);
     }
 
     public function canAccessTeacherAttendanceReport(): bool

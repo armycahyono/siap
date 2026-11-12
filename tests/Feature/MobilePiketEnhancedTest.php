@@ -15,6 +15,8 @@ use App\Models\User;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MobilePiketEnhancedTest extends TestCase
@@ -507,5 +509,237 @@ class MobilePiketEnhancedTest extends TestCase
             ->assertSee('SLIP')
             ->assertSee($this->student->name)
             ->assertSee('Rantai motor putus');
+    }
+
+    public function test_piket_officer_can_input_izin_tidak_masuk_with_category_source_date_range_and_attachment(): void
+    {
+        Storage::fake('local');
+
+        $this->student->update(['classroom_id' => $this->classroom->id]);
+
+        $dayNames = [
+            1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis',
+            5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today()->dayOfWeekIso];
+
+        PiketSchedule::create([
+            'teacher_id' => $this->piketOfficer->id,
+            'day' => $todayDay,
+            'academic_year' => '2026/2027',
+            'is_active' => true,
+        ]);
+
+        $fakeFile = UploadedFile::fake()->image('surat_dokter.jpg');
+        $today = Carbon::today()->toDateString();
+        $endDate = Carbon::today()->addDays(2)->toDateString();
+
+        $payload = [
+            'permit_type' => 'izin_tidak_masuk',
+            'permit_category' => 'sakit',
+            'delivery_source' => 'titip_teman',
+            'classroom_id' => $this->classroom->id,
+            'permit_date' => $today,
+            'end_date' => $endDate,
+            'student_ids' => [$this->student->id],
+            'reason' => 'Demam tinggi dan istirahat dokter',
+            'action_taken' => 'Surat dititipkan teman sekelas ke meja piket',
+            'attachment' => $fakeFile,
+        ];
+
+        $response = $this->actingAs($this->piketOfficer)
+            ->post('/api/v1/mobile/tasks/piket/permits/store', $payload);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'total_students' => 1,
+            ]);
+
+        $permit = PiketStudentPermit::where('student_id', $this->student->id)
+            ->where('permit_type', 'izin_tidak_masuk')
+            ->first();
+
+        $this->assertNotNull($permit);
+        $this->assertEquals('sakit', $permit->permit_category);
+        $this->assertEquals($endDate, $permit->end_date->toDateString());
+        $this->assertEquals('piket', $permit->reporter_type);
+        $this->assertStringContainsString('Surat fisik dititipkan ke teman sekelas', $permit->action_taken);
+        $this->assertNotEmpty($permit->attachment_path);
+        Storage::disk('local')->assertExists($permit->attachment_path);
+
+        // Verify getPiketData returns attachment_url and end_date
+        $piketDataResponse = $this->actingAs($this->piketOfficer)
+            ->getJson('/api/v1/mobile/tasks/piket');
+
+        $piketDataResponse->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $permitsList = $piketDataResponse->json('data.permits');
+        $found = collect($permitsList)->firstWhere('id', $permit->id);
+        $this->assertNotNull($found);
+        $this->assertEquals('sakit', $found['permit_category']);
+        $this->assertEquals(Carbon::parse($endDate)->format('d/m/Y'), $found['end_date']);
+        $this->assertEquals('piket', $found['reporter_type']);
+        $this->assertNotEmpty($found['attachment_url']);
+        $this->assertNotEmpty($found['attachment_url']);
+    }
+
+    public function test_can_issue_batch_permit_for_multiple_students_without_dropping_students(): void
+    {
+        $dayNames = [
+            1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis',
+            5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu',
+        ];
+        $todayDay = $dayNames[Carbon::today()->dayOfWeekIso];
+
+        PiketSchedule::firstOrCreate([
+            'teacher_id' => $this->piketOfficer->id,
+            'day' => $todayDay,
+            'academic_year' => '2026/2027',
+        ], [
+            'is_active' => true,
+        ]);
+
+        $st1 = $this->student;
+        $st1->update(['classroom_id' => $this->classroom->id]);
+        $st2 = Student::create([
+            'name' => 'Siswa Dua Test',
+            'nis' => '11224',
+            'nisn' => '0011223345',
+            'gender' => 'L',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+        $st3 = Student::create([
+            'name' => 'Siswa Tiga Test',
+            'nis' => '11225',
+            'nisn' => '0011223346',
+            'gender' => 'L',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+        $st4 = Student::create([
+            'name' => 'Siswa Empat Test',
+            'nis' => '11226',
+            'nisn' => '0011223347',
+            'gender' => 'P',
+            'classroom_id' => $this->classroom->id,
+            'is_active' => true,
+        ]);
+
+        $today = Carbon::today()->toDateString();
+
+        // Simulate st1 already having a permit earlier today
+        $journal = PiketJournal::firstOrCreate(
+            ['date' => $today],
+            [
+                'academic_year' => '2026/2027',
+                'semester' => 'Ganjil',
+                'status' => 'berlangsung',
+                'coordinator_id' => $this->piketOfficer->id,
+            ]
+        );
+
+        $existingPermit = PiketStudentPermit::create([
+            'piket_journal_id' => $journal->id,
+            'permit_number' => 'IZN-OLD-001',
+            'permit_date' => $today,
+            'student_id' => $st1->id,
+            'student_name' => $st1->name,
+            'classroom_id' => $st1->classroom_id,
+            'permit_type' => 'terlambat',
+            'permit_category' => 'terlambat',
+            'reason' => 'Alasan lama',
+            'entry_time' => '07:15',
+            'given_by' => $this->piketOfficer->id,
+            'status' => 'diberikan',
+        ]);
+
+        // Now issue a batch permit for all 4 students (including st1)
+        $payload = [
+            'permit_type' => 'terlambat',
+            'permit_date' => $today,
+            'student_ids' => [$st1->id, $st2->id, $st3->id, $st4->id],
+            'reason' => 'Terlambat rombongan ban bocor',
+            'entry_time' => '07:45',
+        ];
+
+        $response = $this->actingAs($this->piketOfficer)
+            ->post('/api/v1/mobile/tasks/piket/permits/store', $payload);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'is_batch' => true,
+                'total_students' => 4,
+            ]);
+
+        $batchId = $response->json('batch_id');
+        $this->assertNotEmpty($batchId);
+
+        // Verify all 4 students are linked to this batch_id
+        $permitsInBatch = PiketStudentPermit::where('batch_id', $batchId)->get();
+        $this->assertCount(4, $permitsInBatch);
+        $this->assertTrue($permitsInBatch->contains('student_id', $st1->id));
+        $this->assertTrue($permitsInBatch->contains('student_id', $st2->id));
+        $this->assertTrue($permitsInBatch->contains('student_id', $st3->id));
+        $this->assertTrue($permitsInBatch->contains('student_id', $st4->id));
+
+        // Verify getPiketData returns batch_id in permitsList
+        $piketDataResponse = $this->actingAs($this->piketOfficer)
+            ->getJson('/api/v1/mobile/tasks/piket');
+
+        $piketDataResponse->assertStatus(200);
+        $permitsList = $piketDataResponse->json('data.permits');
+        $found = collect($permitsList)->firstWhere('batch_id', $batchId);
+        $this->assertNotNull($found);
+        $this->assertEquals($batchId, $found['batch_id']);
+
+        // Verify printSlip with batch_id automatically renders batch slip (without needing ?batch=1)
+        $slipResponse = $this->actingAs($this->piketOfficer)
+            ->get(route('piket.permits.slip', ['permit' => $permitsInBatch->first()->id]));
+
+        $slipResponse->assertStatus(200);
+        $slipResponse->assertSee($st1->name);
+        $slipResponse->assertSee($st2->name);
+        $slipResponse->assertSee($st3->name);
+        $slipResponse->assertSee($st4->name);
+    }
+
+    public function test_can_issue_permit_with_multiple_reasons(): void
+    {
+        $this->student->update(['classroom_id' => $this->classroom->id]);
+        $today = Carbon::today()->toDateString();
+        $payload = [
+            'permit_type' => 'terlambat',
+            'permit_date' => $today,
+            'student_id' => $this->student->id,
+            'reasons' => [
+                'Bangun kesiangan',
+                'Kendaraan mogok / ban bocor',
+                'Hujan lebat di jalan',
+            ],
+            'entry_time' => '07:35',
+        ];
+
+        $response = $this->actingAs($this->piketOfficer)
+            ->post('/api/v1/mobile/tasks/piket/permits/store', $payload);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        $permit = PiketStudentPermit::where('student_id', $this->student->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($permit);
+        $this->assertStringContainsString('Bangun kesiangan', $permit->reason);
+        $this->assertStringContainsString('Kendaraan mogok / ban bocor', $permit->reason);
+        $this->assertStringContainsString('Hujan lebat di jalan', $permit->reason);
     }
 }

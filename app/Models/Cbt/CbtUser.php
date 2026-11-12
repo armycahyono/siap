@@ -34,4 +34,11 @@ class CbtUser extends Model
         'company',
         'phone',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'active' => 'boolean',
+        ];
+    }
 }

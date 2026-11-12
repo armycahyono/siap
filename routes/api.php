@@ -57,6 +57,7 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('tasks/permits', [MobileTasksController::class, 'getPermitsData']);
     Route::post('tasks/permits/store', [MobileTasksController::class, 'storeGtkPermit']);
     Route::post('tasks/permits/{id}/action', [MobileTasksController::class, 'actionGtkPermit']);
+    Route::get('tasks/teachers-directory', [MobileTasksController::class, 'getTeachersDirectory']);
 
     Route::get('tasks/visitations', [MobileTasksController::class, 'getVisitationsData']);
     Route::post('tasks/visitations/store', [MobileTasksController::class, 'storeVisitation']);

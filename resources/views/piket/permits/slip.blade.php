@@ -73,8 +73,19 @@
         .sig-space {
             height: 35px;
         }
+        .no-print-screen {
+            margin: 20px 0;
+            border-top: 2px dashed #999;
+        }
         @media print {
-            .no-print { display: none; }
+            .no-print, .no-print-screen { display: none !important; }
+            .slip-group-item {
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+            .slip-group-item:last-child {
+                page-break-after: auto;
+            }
         }
     </style>
 </head>
@@ -207,7 +218,7 @@
             </div>
 
             @if(! $loop->last)
-                <div style="page-break-after: always; margin: 20px 0; border-top: 1px dashed #666;" class="no-print-screen"></div>
+                <div class="no-print-screen"></div>
             @endif
         @endforeach
     @else

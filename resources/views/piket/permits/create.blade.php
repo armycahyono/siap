@@ -192,13 +192,24 @@
 
                         <!-- 4. Alasan & Tindakan / Sanksi Edukatif -->
                         <div class="mb-3">
-                            <label class="form-label required">Alasan Keterlambatan / Izin</label>
-                            <textarea name="reason" class="form-control" rows="2" placeholder="Contoh: Terlambat karena ban motor bocor di perjalanan..." required></textarea>
-                            <div class="d-flex gap-1 mt-1 flex-wrap">
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Bangun kesiangan">Kesiangan</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Kendaraan bermasalah / ban bocor">Kendaraan Macet/Bocor</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Sakit / Kondisi tubuh kurang fit">Sakit</button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Keperluan mendesak keluarga">Keperluan Keluarga</button>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label required mb-0">Alasan Keterlambatan / Izin</label>
+                                <span class="badge bg-purple-lt text-purple small" id="web_reasons_badge" style="display: none;">0 alasan dipilih</span>
+                            </div>
+                            <textarea name="reason" id="web_permit_reason" class="form-control mb-1" rows="2" placeholder="Contoh: Terlambat karena ban motor bocor di perjalanan..." required></textarea>
+                            <div class="d-flex align-items-center justify-content-between mt-1 mb-1">
+                                <span class="text-muted small" style="font-size: 0.75rem;">Pilih satu atau beberapa alasan (klik untuk menambah/melepas):</span>
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-purple small" id="btn_clear_web_reasons" style="font-size: 0.75rem;">Reset Pilihan</button>
+                            </div>
+                            <div class="d-flex gap-1 flex-wrap" id="web_quick_reasons_box">
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Bangun kesiangan">+ Kesiangan</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Kendaraan bermasalah / ban bocor">+ Kendaraan Macet/Bocor</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Macet di perjalanan">+ Terjebak Macet</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Hujan lebat / cuaca buruk">+ Hujan Lebat</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Mengantar orang tua / adik">+ Mengantar Keluarga</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Keperluan mendesak keluarga">+ Keperluan Keluarga</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Sakit / Kondisi tubuh kurang fit">+ Sakit / Kurang Fit</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-reason" data-reason="Buku / perlengkapan tertinggal">+ Barang Tertinggal</button>
                             </div>
                         </div>
 
@@ -477,12 +488,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Quick Reason buttons
+    // Multi-Select Quick Reason buttons
+    let webSelectedReasons = [];
+    const webReasonTextarea = document.getElementById('web_permit_reason') || document.querySelector('textarea[name="reason"]');
+    const webReasonsBadge = document.getElementById('web_reasons_badge');
+    const btnClearWebReasons = document.getElementById('btn_clear_web_reasons');
+
+    function updateWebReasonsUI() {
+        if (webReasonsBadge) {
+            if (webSelectedReasons.length > 0) {
+                webReasonsBadge.textContent = `${webSelectedReasons.length} alasan dipilih`;
+                webReasonsBadge.style.display = 'inline-block';
+            } else {
+                webReasonsBadge.style.display = 'none';
+            }
+        }
+        if (webReasonTextarea && webSelectedReasons.length > 0) {
+            webReasonTextarea.value = webSelectedReasons.join(', ');
+        }
+        document.querySelectorAll('.quick-reason').forEach(btn => {
+            const r = btn.getAttribute('data-reason');
+            if (webSelectedReasons.includes(r)) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-primary', 'text-white');
+                btn.innerHTML = `<i class="ti ti-check me-1"></i> ${btn.textContent.replace(/^[+✓]\s*/, '')}`;
+            } else {
+                btn.classList.remove('btn-primary', 'text-white');
+                btn.classList.add('btn-outline-secondary');
+                btn.innerHTML = `+ ${btn.textContent.replace(/^[+✓]\s*/, '')}`;
+            }
+        });
+    }
+
     document.querySelectorAll('.quick-reason').forEach(btn => {
         btn.addEventListener('click', function () {
-            document.querySelector('textarea[name="reason"]').value = this.getAttribute('data-reason');
+            const r = this.getAttribute('data-reason');
+            const idx = webSelectedReasons.indexOf(r);
+            if (idx >= 0) {
+                webSelectedReasons.splice(idx, 1);
+            } else {
+                webSelectedReasons.push(r);
+            }
+            updateWebReasonsUI();
         });
     });
+
+    if (btnClearWebReasons) {
+        btnClearWebReasons.addEventListener('click', function () {
+            webSelectedReasons = [];
+            if (webReasonTextarea) webReasonTextarea.value = '';
+            updateWebReasonsUI();
+        });
+    }
 
     // Quick Action buttons
     document.querySelectorAll('.quick-action').forEach(btn => {

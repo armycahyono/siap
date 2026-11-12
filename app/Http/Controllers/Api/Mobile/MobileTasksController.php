@@ -32,6 +32,7 @@ use App\Services\AcademicYearContext;
 use App\Services\ActivityLogger;
 use App\Services\LiveMonitoringService;
 use App\Services\TelegramService;
+use App\Support\PhoneNumberHelper;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -712,6 +713,7 @@ class MobileTasksController extends Controller
                     'is_waka_humas' => $user->isWakaHumas(),
                     'can_operate_bk' => $user->canOperateBk(),
                     'can_access_teacher_report' => $user->canAccessTeacherAttendanceReport(),
+                    'can_access_teachers_directory' => $user->canAccessTeachersDirectory(),
                 ],
                 'live_monitoring' => $this->buildLiveMonitoringData($user, $date, $operationalAcademicYear, $myHomeroomClassroom),
             ],
@@ -1630,12 +1632,13 @@ class MobileTasksController extends Controller
 
         // 2. Recent lists
         $permitsList = PiketStudentPermit::whereDate('permit_date', $today)
-            ->with(['student:id,name,nisn', 'classroom:id,name'])
+            ->with(['student:id,name,nisn', 'classroom:id,name', 'givenBy:id,name'])
             ->latest()
             ->take(30)
             ->get()
             ->map(fn ($p) => [
                 'id' => $p->id,
+                'batch_id' => $p->batch_id,
                 'permit_number' => $p->permit_number,
                 'permit_type' => $p->permit_type,
                 'permit_category' => $p->permit_category,
@@ -1648,6 +1651,10 @@ class MobileTasksController extends Controller
                 'period_assigned' => $p->period_assigned,
                 'status' => $p->status,
                 'action_taken' => $p->action_taken,
+                'end_date' => $p->end_date ? Carbon::parse($p->end_date)->format('d/m/Y') : null,
+                'reporter_type' => $p->reporter_type ?? 'piket',
+                'attachment_url' => $p->attachment_url,
+                'given_by_name' => $p->givenBy?->name ?? 'Petugas Piket',
                 'created_at_human' => $p->created_at?->diffForHumans(),
             ]);
 
@@ -1813,25 +1820,94 @@ class MobileTasksController extends Controller
             return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
         }
 
+        // Support string / JSON student_ids from FormData
+        if ($request->has('student_ids') && is_string($request->input('student_ids'))) {
+            $raw = trim($request->input('student_ids'));
+            if (str_starts_with($raw, '[') && str_ends_with($raw, ']')) {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) {
+                    $request->merge(['student_ids' => $decoded]);
+                }
+            } else {
+                $parts = array_filter(array_map('trim', explode(',', $raw)));
+                if (! empty($parts)) {
+                    $request->merge(['student_ids' => array_values($parts)]);
+                }
+            }
+        }
+
+        // Support multiple reasons from array or string
+        if ($request->has('reasons')) {
+            $rawReasons = $request->input('reasons');
+            if (is_string($rawReasons)) {
+                if (str_starts_with($rawReasons, '[') && str_ends_with($rawReasons, ']')) {
+                    $rawReasons = json_decode($rawReasons, true) ?: [];
+                } else {
+                    $rawReasons = explode(',', $rawReasons);
+                }
+            }
+            if (is_array($rawReasons)) {
+                $reasonItems = array_filter(array_map('trim', $rawReasons));
+                if (! empty($reasonItems)) {
+                    $mergedReasons = implode(', ', $reasonItems);
+                    $existingReason = trim((string) $request->input('reason', ''));
+                    if (empty($existingReason)) {
+                        $request->merge(['reason' => $mergedReasons]);
+                    } elseif (! str_contains($existingReason, $mergedReasons)) {
+                        $request->merge(['reason' => $existingReason.', '.$mergedReasons]);
+                    }
+                }
+            }
+        }
+
         $validated = $request->validate([
             'permit_type' => 'required|in:terlambat,izin_keluar_sementara,izin_pulang_cepat,izin_tidak_masuk',
             'permit_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
             'student_id' => 'nullable|exists:students,id',
             'student_name' => 'nullable|string|max:255',
             'classroom_id' => 'nullable|exists:classrooms,id',
             'student_ids' => 'nullable|array',
             'student_ids.*' => 'exists:students,id',
             'reason' => 'required|string|max:500',
+            'reasons' => 'nullable|array',
+            'reasons.*' => 'string|max:255',
             'permit_category' => 'nullable|in:sakit,izin,dispen,terlambat',
+            'delivery_source' => 'nullable|string|max:50',
             'entry_time' => 'nullable|string',
             'departure_time' => 'nullable|string',
             'return_time' => 'nullable|string',
             'period_assigned' => 'nullable|string|max:50',
             'action_taken' => 'nullable|string|max:255',
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
         ]);
 
         $permitDate = (! empty($validated['permit_date'])) ? $validated['permit_date'] : Carbon::today()->toDateString();
         $todayStr = Carbon::parse($permitDate)->toDateString();
+        $endDate = ! empty($validated['end_date']) ? Carbon::parse($validated['end_date'])->toDateString() : null;
+
+        // Simpan file bukti fisik surat izin / surat dokter jika diupload
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('permits/evidence', 'local');
+        }
+
+        // Saluran / penyampaian surat izin
+        $deliverySource = $validated['delivery_source'] ?? null;
+        $sourceLabel = match ($deliverySource) {
+            'surat_fisik_piket' => 'Surat fisik diantar ke piket',
+            'titip_teman' => 'Surat fisik dititipkan ke teman sekelas',
+            'dari_wali_kelas' => 'Disampaikan via wali kelas',
+            'wa_ortu' => 'Konfirmasi WA orang tua',
+            default => null,
+        };
+
+        $finalActionTaken = $validated['action_taken'] ?? null;
+        if ($sourceLabel) {
+            $finalActionTaken = $finalActionTaken ? "{$finalActionTaken} ({$sourceLabel})" : "Penyampaian: {$sourceLabel}";
+        }
+
+        $permitCategory = $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin');
 
         $departureTime = null;
         if (in_array($validated['permit_type'], ['izin_pulang_cepat', 'izin_keluar_sementara'])) {
@@ -1888,8 +1964,9 @@ class MobileTasksController extends Controller
             $countToday = PiketStudentPermit::whereDate('permit_date', $todayStr)->count();
 
             DB::transaction(function () use (
-                $students, $journal, $todayStr, $permitDate, $validated, $entryTime,
-                $departureTime, $periodAssigned, $user, $batchId, &$countToday, &$createdPermits
+                $students, $journal, $todayStr, $permitDate, $endDate, $validated, $entryTime,
+                $departureTime, $periodAssigned, $user, $batchId, $finalActionTaken, $permitCategory,
+                $attachmentPath, &$countToday, &$createdPermits
             ) {
                 foreach ($students as $st) {
                     $existing = PiketStudentPermit::where('student_id', $st->id)
@@ -1898,6 +1975,18 @@ class MobileTasksController extends Controller
                         ->first();
 
                     if ($existing) {
+                        // Siswa sudah memiliki izin jenis ini hari ini; kaitkan ke batch rombongan & perbarui detail agar tetap tercetak di slip
+                        $existing->update([
+                            'batch_id' => $batchId ?: $existing->batch_id,
+                            'reason' => $validated['reason'],
+                            'action_taken' => $finalActionTaken ?? $existing->action_taken,
+                            'entry_time' => $entryTime ?? $existing->entry_time,
+                            'departure_time' => $departureTime ?? $existing->departure_time,
+                            'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? $existing->return_time) : $existing->return_time,
+                            'period_assigned' => $periodAssigned ?? $existing->period_assigned,
+                        ]);
+                        $createdPermits->push($existing);
+
                         continue;
                     }
 
@@ -1909,17 +1998,20 @@ class MobileTasksController extends Controller
                         'permit_number' => $permitNumber,
                         'batch_id' => $batchId,
                         'permit_date' => $permitDate,
+                        'end_date' => $endDate,
                         'student_id' => $st->id,
                         'student_name' => $st->name,
                         'classroom_id' => $st->classroom_id,
                         'permit_type' => $validated['permit_type'],
-                        'permit_category' => $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin'),
+                        'permit_category' => $permitCategory,
                         'reason' => $validated['reason'],
                         'entry_time' => $entryTime,
                         'departure_time' => $departureTime,
                         'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? null) : null,
                         'period_assigned' => $periodAssigned,
-                        'action_taken' => $validated['action_taken'] ?? null,
+                        'action_taken' => $finalActionTaken,
+                        'reporter_type' => 'piket',
+                        'attachment_path' => $attachmentPath,
                         'given_by' => $user->id,
                         'status' => 'diberikan',
                     ]);
@@ -2024,17 +2116,20 @@ class MobileTasksController extends Controller
             'piket_journal_id' => $journal->id,
             'permit_number' => $permitNumber,
             'permit_date' => $permitDate,
+            'end_date' => $endDate,
             'student_id' => null,
             'student_name' => $validated['student_name'],
             'classroom_id' => $validated['classroom_id'],
             'permit_type' => $validated['permit_type'],
-            'permit_category' => $validated['permit_category'] ?? ($validated['permit_type'] === 'terlambat' ? 'terlambat' : 'izin'),
+            'permit_category' => $permitCategory,
             'reason' => $validated['reason'],
             'entry_time' => $entryTime,
             'departure_time' => $departureTime,
             'return_time' => ($validated['permit_type'] === 'izin_keluar_sementara') ? ($validated['return_time'] ?? null) : null,
             'period_assigned' => $periodAssigned,
-            'action_taken' => $validated['action_taken'] ?? null,
+            'action_taken' => $finalActionTaken,
+            'reporter_type' => 'piket',
+            'attachment_path' => $attachmentPath,
             'given_by' => $user->id,
             'status' => 'diberikan',
         ]);
@@ -3926,6 +4021,121 @@ class MobileTasksController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Data izin siswa berhasil dihapus.',
+        ]);
+    }
+
+    /**
+     * Get directory of teachers and staff for management (Admin, Principal, Vice Principals).
+     */
+    public function getTeachersDirectory(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        if (! $user->canAccessTeachersDirectory()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses direktori guru & GTK hanya diperuntukkan bagi Administrator, Kepala Sekolah, dan jajaran Waka.',
+            ], 403);
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $subType = (string) $request->query('sub_type', 'all');
+
+        $query = User::operationalPersonnel()
+            ->where('is_active', true)
+            ->with(['role', 'activeRoleAssignments.role']);
+
+        if ($subType === 'guru') {
+            $query->where(function ($q) {
+                $q->whereNull('position')
+                    ->orWhere(function ($sq) {
+                        $sq->where('position', 'not like', '%administrasi%')
+                            ->where('position', 'not like', '%satpam%')
+                            ->where('position', 'not like', '%penjaga%')
+                            ->where('position', 'not like', '%toolman%')
+                            ->where('position', 'not like', '%pesuruh%')
+                            ->where('position', 'not like', '%kebun%')
+                            ->where('position', 'not like', '%tata usaha%')
+                            ->where('position', 'not like', '%staf%');
+                    });
+            });
+        } elseif ($subType === 'staf') {
+            $query->where(function ($q) {
+                $q->where('position', 'like', '%administrasi%')
+                    ->orWhere('position', 'like', '%satpam%')
+                    ->orWhere('position', 'like', '%penjaga%')
+                    ->orWhere('position', 'like', '%toolman%')
+                    ->orWhere('position', 'like', '%pesuruh%')
+                    ->orWhere('position', 'like', '%kebun%')
+                    ->orWhere('position', 'like', '%tata usaha%')
+                    ->orWhere('position', 'like', '%staf%');
+            });
+        } elseif ($subType === 'wa') {
+            $query->whereNotNull('phone')->where('phone', '!=', '');
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('nigs', 'like', "%{$search}%")
+                    ->orWhere('nip', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('position', 'like', "%{$search}%");
+            });
+        }
+
+        $teachers = $query->orderBy('name')->get();
+
+        $formatted = $teachers->map(function (User $t) {
+            $roleLabels = [];
+            if ($t->position) {
+                $roleLabels[] = $t->position;
+            } elseif ($t->role?->name) {
+                $roleLabels[] = $t->role->name;
+            }
+
+            if ($t->relationLoaded('activeRoleAssignments')) {
+                foreach ($t->activeRoleAssignments as $ra) {
+                    if ($ra->role?->name && ! in_array($ra->role->name, $roleLabels, true)) {
+                        $roleLabels[] = $ra->role->name;
+                    }
+                }
+            }
+
+            $displayRole = ! empty($roleLabels) ? implode(' • ', array_slice($roleLabels, 0, 2)) : 'Tenaga Pendidik';
+            $cleanPhone = $t->phone ? preg_replace('/[^0-9]/', '', $t->phone) : null;
+            $waUrl = $cleanPhone ? PhoneNumberHelper::toWhatsappUrl($cleanPhone, "Halo Bapak/Ibu {$t->name}, ") : null;
+
+            return [
+                'id' => $t->id,
+                'name' => $t->name,
+                'username' => $t->username,
+                'nigs' => $t->nigs ?: ($t->nip ?: '-'),
+                'nip' => $t->nip,
+                'position' => $t->position,
+                'role_label' => $displayRole,
+                'phone' => $t->phone,
+                'clean_phone' => $cleanPhone,
+                'has_phone' => ! empty($cleanPhone),
+                'wa_url' => $waUrl,
+                'avatar_url' => $t->avatar_url,
+            ];
+        });
+
+        $totalCount = $formatted->count();
+        $withWaCount = $formatted->where('has_phone', true)->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $totalCount,
+                'with_wa_count' => $withWaCount,
+                'teachers' => $formatted->values(),
+            ],
         ]);
     }
 }

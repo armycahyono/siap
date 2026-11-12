@@ -318,8 +318,67 @@
                         <option value="terlambat">Masuk Terlambat (Izin Masuk Kelas)</option>
                         <option value="izin_keluar_sementara">Izin Keluar Sementara (Fotokopi/Tugas Luar)</option>
                         <option value="izin_pulang_cepat">Izin Pulang Lebih Cepat (Sakit/Keperluan)</option>
-                        <option value="izin_tidak_masuk">Dispensasi / Izin Tidak Masuk</option>
+                        <option value="izin_tidak_masuk">Surat Izin / Sakit (Tidak Masuk Sekolah)</option>
                     </select>
+                </div>
+
+                <!-- Group Khusus: Surat Izin / Sakit (Tidak Masuk Sekolah) -->
+                <div id="field-group-tidak-masuk" class="hidden space-y-3 p-3 rounded-2xl bg-purple-50/70 border border-purple-200">
+                    <!-- Kategori Izin -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-purple-950 uppercase tracking-wider mb-1.5">Kategori Izin Tidak Masuk *</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="permit_category" value="sakit" checked class="peer hidden">
+                                <div class="p-2 text-center rounded-xl border border-purple-200 bg-white font-bold text-xs peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition shadow-2xs">
+                                    💊 Sakit
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="permit_category" value="izin" class="peer hidden">
+                                <div class="p-2 text-center rounded-xl border border-purple-200 bg-white font-bold text-xs peer-checked:bg-amber-600 peer-checked:text-white peer-checked:border-amber-600 transition shadow-2xs">
+                                    ✉️ Izin
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="permit_category" value="dispen" class="peer hidden">
+                                <div class="p-2 text-center rounded-xl border border-purple-200 bg-white font-bold text-xs peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 transition shadow-2xs">
+                                    🎖️ Dispen
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Jalur / Saluran Penerimaan Surat -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-purple-950 uppercase tracking-wider mb-1">Penyampaian / Saluran Surat *</label>
+                        <select id="permit-delivery-source" name="delivery_source" class="w-full text-xs rounded-xl border border-purple-200 px-3 py-2 bg-white text-slate-800 font-medium focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+                            <option value="surat_fisik_piket" selected>📄 Surat Fisik Diantar ke Meja Piket</option>
+                            <option value="titip_teman">🎒 Surat Fisik Dititipkan ke Teman / Kelas</option>
+                            <option value="dari_wali_kelas">📱 Disampaikan dari Wali Kelas / Guru</option>
+                            <option value="wa_ortu">💬 Konfirmasi Langsung Orang Tua (WA/Telp)</option>
+                        </select>
+                        <p class="text-[9px] text-purple-800/80 mt-1 italic">Mencatat asal surat untuk arsip dan sinkronisasi ke wali kelas.</p>
+                    </div>
+
+                    <!-- Rentang Tanggal Izin -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-purple-950 uppercase tracking-wider mb-1">Mulai Tanggal *</label>
+                            <input type="date" id="permit-start-date" name="permit_date" class="w-full text-xs rounded-xl border border-purple-200 px-2.5 py-1.5 bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-purple-950 uppercase tracking-wider mb-1">Sampai (Opsional)</label>
+                            <input type="date" id="permit-end-date" name="end_date" class="w-full text-xs rounded-xl border border-purple-200 px-2.5 py-1.5 bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+                        </div>
+                    </div>
+
+                    <!-- Foto Surat Fisik / Surat Dokter -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-purple-950 uppercase tracking-wider mb-1">Foto Bukti / Surat Izin (Opsional)</label>
+                        <input type="file" id="permit-attachment" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf" class="w-full text-xs p-1.5 rounded-xl border border-dashed border-purple-300 bg-white file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-purple-600 file:text-white">
+                        <p class="text-[9px] text-purple-800/80 mt-1">Bisa langsung jepret kamera HP untuk mengarsipkan surat izin fisik dari ortu / dokter.</p>
+                    </div>
                 </div>
 
                 <!-- Input Pencarian Pintar Siswa (Mendukung 1 Siswa atau Banyak Siswa / Rombongan) -->
@@ -334,7 +393,7 @@
                         <input type="hidden" id="permit-classroom-id" name="classroom_id">
 
                         <!-- Daftar Siswa Terpilih (Chips Multi-Siswa) -->
-                        <div id="permit-selected-students-list" class="selected-students-list flex flex-wrap gap-1.5 mb-2 hidden"></div>
+                        <div id="permit-selected-students-list" class="selected-students-list flex flex-wrap gap-1.5 mb-2 max-h-36 overflow-y-auto overscroll-contain hidden"></div>
 
                         <!-- Input Pencarian Pintar (Tetap Tampil untuk Menambah Siswa Lain) -->
                         <div class="search-input-wrapper relative">
@@ -372,8 +431,35 @@
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Alasan / Keterangan *</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[10px] font-bold text-slate-600 uppercase tracking-wider">Alasan / Keterangan *</label>
+                        <span id="permit-reasons-count-badge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 hidden">0 alasan dipilih</span>
+                    </div>
+
+                    <!-- Pilihan Cepat Alasan (Mendukung Multi-Select / Tambah Lebih Dari Satu Alasan) -->
+                    <div class="mb-2">
+                        <div class="text-[9px] text-slate-400 mb-1 flex items-center justify-between">
+                            <span>Pilih satu atau beberapa alasan (klik untuk menambah/melepas):</span>
+                            <button type="button" onclick="clearPiketPermitReasons()" class="text-[9px] text-purple-600 font-bold hover:underline cursor-pointer">Reset Pilihan</button>
+                        </div>
+                        <div id="permit-quick-reasons-container" class="flex flex-wrap gap-1">
+                            <!-- Tombol preset alasan dimuat dinamis sesuai jenis izin -->
+                        </div>
+                    </div>
+
+                    <!-- Input Tambahan Alasan Kustom / Bebas -->
+                    <div class="flex items-center gap-1.5 mb-2">
+                        <div class="relative flex-1">
+                            <input type="text" id="permit-custom-reason-input" placeholder="+ Ketik alasan lain jika ada..." class="w-full text-xs rounded-xl border border-slate-300 px-3 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-purple-500 placeholder:text-slate-400">
+                        </div>
+                        <button type="button" onclick="addCustomPiketReason()" class="px-2.5 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-bold active:scale-95 transition shrink-0 cursor-pointer">
+                            + Tambah
+                        </button>
+                    </div>
+
+                    <!-- Textarea Alasan (Terhubung Otomatis dengan Pilihan Alasan di Atas) -->
                     <textarea id="permit-reason" name="reason" rows="2" placeholder="Contoh: Ban bocor di jalan, atau sakit demam..." required class="w-full text-xs rounded-xl border border-slate-300 p-2.5 focus:outline-hidden focus:ring-2 focus:ring-purple-500"></textarea>
+                    <p class="text-[9px] text-slate-400 mt-1">Bisa memilih lebih dari 1 alasan di atas atau menambahkan catatan kustom sendiri.</p>
                 </div>
 
                 <div>

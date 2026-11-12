@@ -288,7 +288,7 @@
         </div>
     </div>
 
-    <!-- 6. Kartu Manajemen Presensi GTK (Khusus Kepala Sekolah, Waka Kurikulum & Super Admin) -->
+    <!-- 6. Kartu Manajemen Presensi & GTK (Khusus Admin, KS & Semua Waka) -->
     <div id="card-admin-gtk-permits" class="hidden card-elevated p-3.5 border-blue-200 bg-blue-50/30">
         <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-blue-100">
             <div class="flex items-center gap-2">
@@ -296,8 +296,8 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div>
-                    <h4 class="text-xs font-black text-slate-800">Manajemen Presensi GTK</h4>
-                    <p class="text-[10px] text-blue-800 font-medium">Monitoring Kehadiran &amp; Approval Izin GTK</p>
+                    <h4 class="text-xs font-black text-slate-800">Manajemen Presensi &amp; GTK</h4>
+                    <p class="text-[10px] text-blue-800 font-medium">Direktori Kontak, Presensi &amp; Izin GTK</p>
                 </div>
             </div>
             <span id="badge-pending-permits-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500 text-white">0 Pengajuan</span>
@@ -312,13 +312,16 @@
             <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="font-bold text-blue-600 hover:underline">Semua Izin GTK &raquo;</button>
         </div>
 
-        <!-- Tombol Aksi Presensi GTK & Kelola Izin -->
-        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-blue-100/80">
-            <button type="button" id="btn-open-gtk-report" onclick="SIAP_ROUTER.navigate('/attendance/report-teachers')" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
-                <span>📊</span><span>Presensi GTK</span>
+        <!-- Tombol Aksi Kontak Guru, Presensi GTK & Kelola Izin -->
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-blue-100/80">
+            <button type="button" id="btn-open-teachers-directory" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="py-2.5 px-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition text-center" title="Buka Direktori Kontak Guru & GTK">
+                <span>📇</span><span>Kontak Guru</span>
             </button>
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="py-2.5 px-3 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-blue-50 active:scale-95 transition">
-                <span>📝</span><span>Persetujuan Izin</span>
+            <button type="button" id="btn-open-gtk-report" onclick="SIAP_ROUTER.navigate('/attendance/report-teachers')" class="py-2.5 px-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition text-center" title="Buka Laporan Presensi GTK">
+                <span>📊</span><span>Presensi</span>
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="py-2.5 px-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs hover:bg-blue-50 active:scale-95 transition text-center" title="Kelola Persetujuan Izin GTK">
+                <span>📝</span><span>Izin GTK</span>
             </button>
         </div>
     </div>
