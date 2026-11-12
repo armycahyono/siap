@@ -2223,11 +2223,6 @@
         const todayApproved = data.gtk_permits?.today_approved || [];
 
         const currentUser = SIAP_ROUTER.getCurrentUser() || {};
-        const canAccessTeachersDirectory = data.roles_operational?.can_access_teachers_directory 
-            || currentUser?.can_access_teachers_directory 
-            || currentUser?.is_admin 
-            || currentUser?.is_principal 
-            || currentUser?.is_vice_principal;
 
         const canAccessTeacherReport = data.roles_operational?.can_access_teacher_report 
             || currentUser?.is_waka_kurikulum 
@@ -2235,7 +2230,7 @@
             || currentUser?.is_admin 
             || currentUser?.can_access_teacher_report;
 
-        if (canAccessTeachersDirectory || canAccessTeacherReport || pendingPermits.length > 0 || todayApproved.length > 0) {
+        if (canAccessTeacherReport || pendingPermits.length > 0 || todayApproved.length > 0) {
             if (cardAdminPermits) cardAdminPermits.classList.remove('hidden');
             if (badgePendingPermits) badgePendingPermits.textContent = `${pendingPermits.length} Pengajuan`;
             if (countApprovedToday) countApprovedToday.textContent = `${todayApproved.length} Orang`;

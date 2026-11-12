@@ -1247,11 +1247,7 @@ class User extends Authenticatable
 
     public function canAccessTeachersDirectory(): bool
     {
-        return $this->isSuperAdmin()
-            || $this->isSystemAdmin()
-            || $this->isPrincipal()
-            || $this->isVicePrincipal()
-            || $this->hasRole(['admin', 'adm2', 'superadmin', 'administrator', 'super_admin']);
+        return (bool) ($this->is_active ?? true);
     }
 
     public function canAccessTeacherAttendanceReport(): bool

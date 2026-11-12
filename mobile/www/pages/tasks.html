@@ -1,4 +1,16 @@
 <div class="space-y-4 pb-8">
+    <!-- 0. Tombol Navigasi Pintas: Kontak Guru & Izin & Cuti Saya -->
+    <div class="flex items-center gap-1.5">
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-emerald-100 transition active:scale-95">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span>Kontak Guru</span>
+        </button>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="flex-1 py-1.5 px-2 rounded-xl bg-orange-50/80 hover:bg-orange-100 text-orange-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-orange-100 transition active:scale-95">
+            <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span>Izin &amp; Cuti Saya</span>
+        </button>
+    </div>
+
     <!-- 1. Navigasi Tanggal Pemantauan -->
     <div class="card-elevated p-3 flex items-center justify-between">
         <button type="button" id="tasks-btn-prev" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition active:scale-95" title="Hari Sebelumnya">
@@ -14,38 +26,6 @@
         <button type="button" id="tasks-btn-next" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition active:scale-95" title="Hari Berikutnya">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
         </button>
-    </div>
-
-    <!-- 2. Kartu Izin & Cuti Saya (Untuk Semua GTK) -->
-    <div id="card-my-permits" class="card-elevated p-3.5 border-orange-200/80 bg-orange-50/40">
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-orange-100">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl bg-orange-600 text-white flex items-center justify-center shadow-xs">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </div>
-                <div>
-                    <h4 class="text-xs font-black text-slate-800">Izin &amp; Cuti Saya</h4>
-                    <p class="text-[10px] text-orange-800 font-medium">Pengajuan Mandiri &amp; Riwayat Izin GTK</p>
-                </div>
-            </div>
-            <span id="badge-my-permit-status" class="hidden px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800">Aktif</span>
-        </div>
-
-        <div id="info-my-permit-today" class="hidden mb-2.5 p-2 rounded-xl bg-orange-100/70 border border-orange-200 text-[11px] text-orange-950 font-semibold flex items-center justify-between">
-            <span id="text-my-permit-today">-</span>
-            <span class="text-[9px] px-1.5 py-0.2 rounded bg-orange-200 text-orange-800 font-bold uppercase">Disetujui</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits?tab=form')" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                <span>Ajukan Izin</span>
-            </button>
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits?tab=history')" class="py-2.5 px-3 rounded-xl bg-white border border-orange-200 text-orange-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-orange-50 active:scale-95 transition">
-                <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>Riwayat Saya</span>
-            </button>
-        </div>
     </div>
 
     <!-- 3. Kartu Piket Sekolah (Bila Bertugas Hari Ini / Jadwal Piket) -->
@@ -312,16 +292,13 @@
             <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="font-bold text-blue-600 hover:underline">Semua Izin GTK &raquo;</button>
         </div>
 
-        <!-- Tombol Aksi Kontak Guru, Presensi GTK & Kelola Izin -->
-        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-blue-100/80">
-            <button type="button" id="btn-open-teachers-directory" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="py-2.5 px-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition text-center" title="Buka Direktori Kontak Guru & GTK">
-                <span>📇</span><span>Kontak Guru</span>
+        <!-- Tombol Aksi Presensi GTK & Kelola Izin -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-blue-100/80">
+            <button type="button" id="btn-open-gtk-report" onclick="SIAP_ROUTER.navigate('/attendance/report-teachers')" class="py-2.5 px-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition text-center" title="Buka Laporan Presensi GTK">
+                <span>📊</span><span>Laporan Presensi</span>
             </button>
-            <button type="button" id="btn-open-gtk-report" onclick="SIAP_ROUTER.navigate('/attendance/report-teachers')" class="py-2.5 px-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition text-center" title="Buka Laporan Presensi GTK">
-                <span>📊</span><span>Presensi</span>
-            </button>
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="py-2.5 px-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-[11px] font-bold flex items-center justify-center gap-1 shadow-xs hover:bg-blue-50 active:scale-95 transition text-center" title="Kelola Persetujuan Izin GTK">
-                <span>📝</span><span>Izin GTK</span>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="py-2.5 px-2 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold flex items-center justify-center gap-1 shadow-xs hover:bg-blue-50 active:scale-95 transition text-center" title="Kelola Persetujuan Izin GTK">
+                <span>📝</span><span>Kelola Izin GTK</span>
             </button>
         </div>
     </div>

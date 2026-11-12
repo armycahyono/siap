@@ -81,10 +81,11 @@ class MobileTeachersDirectoryTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_regular_teacher_cannot_access_teachers_directory(): void
+    public function test_regular_teacher_can_access_teachers_directory(): void
     {
         $response = $this->actingAs($this->regularTeacher)->getJson('/api/v1/mobile/tasks/teachers-directory');
-        $response->assertStatus(403);
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
     }
 
     public function test_principal_can_access_teachers_directory(): void
