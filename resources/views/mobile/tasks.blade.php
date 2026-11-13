@@ -609,6 +609,272 @@
 </div>
 @endif
 
+<!-- 3. KARTU MONITORING SISWA JURUSAN (KHUSUS KEPALA PROGRAM KEAHLIAN / KAJUR) -->
+@if(!empty($departmentLiveMonitoring))
+<div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #0d9488 !important;">
+    <div class="card-body p-3">
+        <!-- Header Kartu -->
+        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="avatar avatar-sm bg-teal-lt text-teal rounded-circle flex-shrink-0" style="width: 32px; height: 32px;">
+                    <i class="ti ti-briefcase fs-2"></i>
+                </span>
+                <div>
+                    <div class="fw-bold text-dark fs-3 lh-1">Monitoring Siswa Jurusan {{ $departmentLiveMonitoring['department_code'] ?? '' }}</div>
+                    <div class="text-muted small mt-0.5" style="font-size: 0.7rem;">Kaprogli {{ $departmentLiveMonitoring['department_name'] ?? 'Jurusan' }}</div>
+                </div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-teal text-white fw-bold d-block mb-0.5" style="font-size: 0.65rem; padding: 2px 7px;">
+                    Kajur {{ $departmentLiveMonitoring['department_code'] ?? 'Jurusan' }}
+                </span>
+                <span class="text-muted small" style="font-size: 0.62rem;">
+                    {{ $departmentLiveMonitoring['total_students'] ?? 0 }} Siswa • {{ count($departmentLiveMonitoring['classrooms'] ?? []) }} Rombel
+                </span>
+            </div>
+        </div>
+
+        <!-- Pemilih Tanggal (< Hari Ini / Tanggal >) - Frameless Arrows (jika belum ditampilkan di kartu wali kelas) -->
+        @if(empty($myHomeroomClassroom))
+        <div class="p-1.5 px-2 rounded-2 mb-2 bg-light border d-flex align-items-center justify-content-between gap-1">
+            <a href="{{ route('tasks', ['date' => $prevDate]) }}" class="text-secondary text-decoration-none d-inline-flex align-items-center justify-content-center p-1 rounded-circle" style="width: 28px; height: 28px; transition: background 0.15s ease;" title="Hari Sebelumnya">
+                <i class="ti ti-chevron-left fs-2"></i>
+            </a>
+
+            <div class="d-flex align-items-center justify-content-center gap-1.5 flex-fill text-center overflow-hidden">
+                <i class="ti ti-calendar text-teal fs-3 flex-shrink-0"></i>
+                <span class="fw-bold text-dark small text-truncate" style="font-size: 0.78rem;">
+                    {{ $dayName }}, {{ $date->translatedFormat('d M Y') }}
+                </span>
+                @if($date->isToday())
+                    <span class="badge bg-success-lt text-success fw-bold flex-shrink-0" style="font-size: 0.58rem; padding: 1px 5px;">Hari Ini</span>
+                @else
+                    <a href="{{ route('tasks') }}" class="badge bg-teal-lt text-teal text-decoration-none fw-bold flex-shrink-0" style="font-size: 0.58rem; padding: 1px 5px;" title="Kembali ke Hari Ini">
+                        Ke Hari Ini
+                    </a>
+                @endif
+            </div>
+
+            <a href="{{ route('tasks', ['date' => $nextDate]) }}" class="text-secondary text-decoration-none d-inline-flex align-items-center justify-content-center p-1 rounded-circle" style="width: 28px; height: 28px; transition: background 0.15s ease;" title="Hari Berikutnya">
+                <i class="ti ti-chevron-right fs-2"></i>
+            </a>
+        </div>
+        @endif
+
+        <!-- Pill Statistik Siswa Jurusan (2 Baris x 4 Chip Lengkap) -->
+        <div class="mb-2">
+            <div class="d-flex flex-column gap-1">
+                <!-- Baris 1: Hadir, Telat, Sakit, Izin -->
+                <div class="monitoring-chip-strip">
+                    <div class="monitoring-pill-item bg-success-lt border border-success" 
+                         onclick="toggleDepartmentMonitoringDetail('present')" id="chip-dept-present">
+                        <span class="monitoring-pill-num text-success">{{ $departmentLiveMonitoring['siswa']['hadir'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Hadir</span>
+                    </div>
+                    <div class="monitoring-pill-item bg-warning-lt border border-warning" 
+                         onclick="toggleDepartmentMonitoringDetail('late')" id="chip-dept-late">
+                        <span class="monitoring-pill-num text-warning">{{ $departmentLiveMonitoring['siswa']['telat'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Telat</span>
+                    </div>
+                    <div class="monitoring-pill-item bg-azure-lt border border-azure" 
+                         onclick="toggleDepartmentMonitoringDetail('sakit')" id="chip-dept-sakit">
+                        <span class="monitoring-pill-num text-azure">{{ $departmentLiveMonitoring['siswa']['sakit'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Sakit</span>
+                    </div>
+                    <div class="monitoring-pill-item bg-info-lt border border-info" 
+                         onclick="toggleDepartmentMonitoringDetail('izin')" id="chip-dept-izin">
+                        <span class="monitoring-pill-num text-info">{{ $departmentLiveMonitoring['siswa']['izin'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Izin</span>
+                    </div>
+                </div>
+
+                <!-- Baris 2: Dispen, Pulang, Alfa, Bolos -->
+                <div class="monitoring-chip-strip">
+                    <div class="monitoring-pill-item bg-indigo-lt border border-indigo" 
+                         onclick="toggleDepartmentMonitoringDetail('dispen')" id="chip-dept-dispen">
+                        <span class="monitoring-pill-num text-indigo">{{ $departmentLiveMonitoring['siswa']['dispen'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Dispen</span>
+                    </div>
+                    <div class="monitoring-pill-item bg-purple-lt border border-purple" 
+                         onclick="toggleDepartmentMonitoringDetail('pulang')" id="chip-dept-pulang">
+                        <span class="monitoring-pill-num text-purple">{{ $departmentLiveMonitoring['siswa']['pulang'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Pulang</span>
+                    </div>
+                    <div class="monitoring-pill-item bg-danger-lt border border-danger" 
+                         onclick="toggleDepartmentMonitoringDetail('alfa')" id="chip-dept-alfa">
+                        <span class="monitoring-pill-num text-danger">{{ $departmentLiveMonitoring['siswa']['alfa'] ?? 0 }}</span>
+                        <span class="monitoring-pill-lbl text-muted">Alfa</span>
+                    </div>
+                    @php
+                        $deptTruancyCount = (int) ($departmentLiveMonitoring['siswa']['bolos'] ?? 0);
+                    @endphp
+                    <div class="monitoring-pill-item {{ $deptTruancyCount > 0 ? 'bg-white border border-danger shadow-xs' : 'bg-dark-lt border border-dark' }}" 
+                         onclick="toggleDepartmentMonitoringDetail('truancy')" id="chip-dept-truancy">
+                        <span class="monitoring-pill-num {{ $deptTruancyCount > 0 ? 'text-danger fw-bold' : 'text-dark' }}">{{ $deptTruancyCount }}</span>
+                        <span class="monitoring-pill-lbl {{ $deptTruancyCount > 0 ? 'text-danger fw-bold' : 'text-muted' }}">Bolos</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail Data Siswa Jurusan (Muncul saat Pill diklik) -->
+            <div class="text-start monitoring-detail-wrapper" id="departmentDetailContainer" style="display: none;">
+                <div class="card monitoring-detail-card mb-0 overflow-hidden">
+                    <div class="card-header p-1.5 px-2 bg-light d-flex align-items-center justify-content-between border-bottom">
+                        <span class="fw-bold small text-dark d-flex align-items-center gap-1" id="departmentDetailTitle" style="font-size: 0.72rem;">
+                            <i class="ti ti-list-details text-teal"></i> Detail Siswa {{ $departmentLiveMonitoring['department_code'] ?? 'Jurusan' }}
+                        </span>
+                        <span class="cursor-pointer text-muted px-1" role="button" aria-label="Tutup" onclick="closeDepartmentMonitoringDetail()" style="font-size: 0.85rem; line-height: 1; cursor: pointer;">
+                            <i class="ti ti-x"></i>
+                        </span>
+                    </div>
+                    <div class="card-body p-2" style="max-height: 220px; overflow-y: auto;">
+                        @foreach(['present' => 'hadir', 'late' => 'telat', 'sakit' => 'sakit', 'izin' => 'izin', 'dispen' => 'dispen', 'pulang' => 'pulang', 'alfa' => 'alfa', 'truancy' => 'bolos'] as $paneKey => $dataKey)
+                            @php
+                                $detailItems = $departmentLiveMonitoring['siswa']['detail'][$dataKey] ?? collect();
+                            @endphp
+                            <div id="departmentPane-{{ $paneKey }}" class="department-detail-pane" style="display: none;">
+                                @if(count($detailItems) > 0)
+                                    <div class="d-flex flex-column gap-1">
+                                        @foreach($detailItems as $item)
+                                            <div class="d-flex align-items-center justify-content-between p-1 px-1.5 bg-light rounded border border-light-subtle" style="font-size: 0.7rem;">
+                                                <div class="d-flex flex-column text-truncate pe-1">
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <span class="fw-semibold text-dark text-truncate">{{ $item['name'] ?? 'Siswa' }}</span>
+                                                        <span class="badge bg-teal-lt text-teal flex-shrink-0" style="font-size: 0.55rem; padding: 1px 4px;">{{ $item['classroom'] ?? '-' }}</span>
+                                                    </div>
+                                                    <span class="text-muted text-truncate" style="font-size: 0.62rem;">{{ $item['reason'] ?? '-' }}</span>
+                                                </div>
+                                                <span class="badge bg-secondary-lt text-secondary flex-shrink-0" style="font-size: 0.6rem;">{{ $item['time'] ?? '-' }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="text-center text-muted small py-2 fw-semibold" style="font-size: 0.7rem;">Tidak ada data {{ $dataKey }} pada tanggal ini.</div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div><!-- /#departmentDetailContainer -->
+        </div>
+
+        <!-- BREAKDOWN PER KELAS / ROMBEL JURUSAN -->
+        @if(!empty($departmentLiveMonitoring['classrooms']) && count($departmentLiveMonitoring['classrooms']) > 0)
+        <div class="mt-2 mb-2">
+            <div class="d-flex align-items-center justify-content-between mb-1.5 px-0.5">
+                <span class="text-uppercase tracking-wider fw-bold text-muted small d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;">
+                    <i class="ti ti-layout-grid text-teal"></i> Kehadiran Per Kelas ({{ count($departmentLiveMonitoring['classrooms']) }})
+                </span>
+                @if(($departmentLiveMonitoring['attendance_rate'] ?? 0) > 0)
+                    <span class="badge bg-teal-lt text-teal fw-bold" style="font-size: 0.62rem;">
+                        Total {{ $departmentLiveMonitoring['attendance_rate'] }}% Hadir
+                    </span>
+                @endif
+            </div>
+
+            <div class="d-flex flex-column gap-1">
+                @foreach($departmentLiveMonitoring['classrooms'] as $cls)
+                    <div class="d-flex align-items-center justify-content-between p-1.5 px-2 bg-light rounded-2 border" style="font-size: 0.72rem;">
+                        <div class="d-flex align-items-center gap-1.5">
+                            <span class="badge bg-teal text-white fw-bold" style="font-size: 0.65rem;">{{ $cls['name'] }}</span>
+                            <span class="text-muted small" style="font-size: 0.65rem;">
+                                {{ $cls['hadir'] }}/{{ $cls['total_students'] }} Siswa
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            @if($cls['telat'] > 0)
+                                <span class="badge bg-warning-lt text-warning" style="font-size: 0.58rem;" title="Terlambat">{{ $cls['telat'] }} T</span>
+                            @endif
+                            @if($cls['sakit'] > 0)
+                                <span class="badge bg-azure-lt text-azure" style="font-size: 0.58rem;" title="Sakit">{{ $cls['sakit'] }} S</span>
+                            @endif
+                            @if($cls['izin'] > 0)
+                                <span class="badge bg-info-lt text-info" style="font-size: 0.58rem;" title="Izin">{{ $cls['izin'] }} I</span>
+                            @endif
+                            @if($cls['alfa'] > 0 || $cls['bolos'] > 0)
+                                <span class="badge bg-danger-lt text-danger" style="font-size: 0.58rem;" title="Alfa / Bolos">{{ $cls['alfa'] + $cls['bolos'] }} A</span>
+                            @endif
+                            <span class="badge {{ $cls['attendance_rate'] >= 90 ? 'bg-success-lt text-success' : ($cls['attendance_rate'] >= 75 ? 'bg-warning-lt text-warning' : 'bg-danger-lt text-danger') }} fw-bold" style="font-size: 0.62rem;">
+                                {{ $cls['attendance_rate'] }}%
+                            </span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        <!-- FEED / CATATAN & KEJADIAN SISWA JURUSAN HARI INI -->
+        @php
+            $deptEvents = $departmentLiveMonitoring['timeline'] ?? collect();
+            $deptEventCount = $deptEvents->count();
+        @endphp
+        <div class="mt-2 mb-2">
+            <div class="d-flex align-items-center justify-content-between mb-1.5 px-0.5">
+                <span class="text-uppercase tracking-wider fw-bold text-muted small d-inline-flex align-items-center gap-1" style="font-size: 0.68rem;">
+                    <i class="ti ti-activity text-teal"></i> Catatan &amp; Kejadian Siswa ({{ $deptEventCount }})
+                </span>
+                @if($deptEventCount > 0)
+                    <span class="badge bg-warning-lt text-warning fw-bold" style="font-size: 0.62rem;">Perlu Perhatian</span>
+                @else
+                    <span class="badge bg-success-lt text-success fw-bold" style="font-size: 0.62rem;">Kondusif</span>
+                @endif
+            </div>
+
+            @if($deptEventCount > 0)
+                <div class="d-flex flex-column gap-1.5">
+                    @foreach($deptEvents as $ev)
+                        <div class="p-2 rounded-2 bg-light border border-light-subtle position-relative overflow-hidden" style="font-size: 0.72rem;">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <div class="d-flex align-items-center gap-1 text-truncate pe-1">
+                                    <span class="badge bg-{{ $ev['badge_color'] ?? 'secondary' }}-lt text-{{ $ev['badge_color'] ?? 'secondary' }} flex-shrink-0" style="font-size: 0.6rem; padding: 2px 5px;">
+                                        {{ $ev['badge'] ?? 'Info' }}
+                                    </span>
+                                    <span class="fw-bold text-dark text-truncate">{{ $ev['person_name'] ?? 'Siswa' }}</span>
+                                    <span class="badge bg-teal-lt text-teal flex-shrink-0" style="font-size: 0.55rem; padding: 1px 4px;">{{ $ev['classroom_name'] ?? '-' }}</span>
+                                </div>
+                                <span class="text-muted flex-shrink-0" style="font-size: 0.65rem;">{{ $ev['time'] ?? '-' }}</span>
+                            </div>
+                            <div class="text-secondary mb-1 lh-sm" style="font-size: 0.68rem;">
+                                {{ $ev['description'] ?? '-' }}
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between text-muted" style="font-size: 0.62rem;">
+                                <span><i class="ti ti-shield-check text-success me-0.5"></i> {{ $ev['action_taken'] ?? 'Tercatat' }}</span>
+                                <span>Petugas: {{ $ev['officer'] ?? '-' }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="p-2.5 rounded-2 text-center text-muted bg-light border border-dashed" style="font-size: 0.72rem;">
+                    <i class="ti ti-circle-check text-success fs-2 d-block mb-1"></i>
+                    Tidak ada insiden, panggilan BK, maupun perizinan khusus untuk siswa jurusan ini pada tanggal terpilih.
+                </div>
+            @endif
+        </div>
+
+        <!-- Garis Pembatas Antara Monitoring Presensi & Tombol Aksi -->
+        <hr class="my-2.5" style="border-top: 1px solid #e2e8f0; opacity: 1;">
+
+        <!-- Tombol Aksi Kepala Jurusan (Rekap Absen Jurusan & Monitoring KBM) -->
+        <div style="display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px !important; width: 100% !important;">
+            <a href="{{ route('attendance.homeroom-recap.index', ['date' => $date->toDateString()]) }}" 
+               class="btn btn-teal rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1 shadow-sm text-truncate py-2" 
+               style="font-size: 0.72rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%) !important; border: 1.5px solid #0d9488 !important;">
+                <i class="ti ti-clipboard-list fs-3 flex-shrink-0 text-white"></i> 
+                <span class="text-truncate text-white">Rekap Absen Jurusan</span>
+            </a>
+            <a href="{{ route('attendance.subject.index') }}" 
+               class="btn btn-success rounded-pill fw-bold text-white text-decoration-none d-flex align-items-center justify-content-center gap-1 shadow-sm text-truncate py-2" 
+               style="font-size: 0.72rem; min-height: 38px; color: #ffffff !important; background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important; border: 1.5px solid #10b981 !important;">
+                <i class="ti ti-dashboard fs-3 flex-shrink-0 text-white"></i> 
+                <span class="text-truncate text-white">Live Monitoring KBM</span>
+            </a>
+        </div>
+    </div>
+</div>
+@endif
+
 @if(!empty($canAccessVisitations))
 <!-- KARTU VISITASI SISWA & PEMANTAUAN BK -->
 <div class="card border-0 shadow-sm rounded-3 mb-2" style="border: 1.5px solid #06b6d4 !important;">
@@ -1212,6 +1478,72 @@ function closeHomeroomMonitoringDetail() {
     activeHomeroomMonitoringKey = null;
 
     document.querySelectorAll('[id^="chip-homeroom-"]').forEach(chip => {
+        chip.style.boxShadow = 'none';
+        chip.style.transform = 'none';
+    });
+}
+
+let activeDepartmentMonitoringKey = null;
+const departmentMonitoringTitles = {
+    present: 'Siswa Hadir Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    late: 'Siswa Terlambat Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    sakit: 'Siswa Sakit Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    izin: 'Siswa Izin Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    dispen: 'Siswa Dispensasi Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    pulang: 'Siswa Izin Pulang Cepat Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    alfa: 'Siswa Alfa Mapel Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}',
+    truancy: 'Siswa Indikasi Bolos KBM Jurusan {{ $departmentLiveMonitoring["department_code"] ?? "" }}'
+};
+
+function toggleDepartmentMonitoringDetail(key) {
+    const container = document.getElementById('departmentDetailContainer');
+    const titleEl = document.getElementById('departmentDetailTitle');
+    if (!container) return;
+
+    if (activeDepartmentMonitoringKey === key) {
+        closeDepartmentMonitoringDetail();
+        return;
+    }
+
+    container.style.display = 'block';
+    activeDepartmentMonitoringKey = key;
+
+    if (titleEl && departmentMonitoringTitles[key]) {
+        titleEl.innerHTML = '<i class="ti ti-list-details text-teal"></i> ' + departmentMonitoringTitles[key];
+    }
+
+    const panes = container.querySelectorAll('.department-detail-pane');
+    panes.forEach(pane => {
+        pane.style.display = 'none';
+    });
+
+    const targetPane = document.getElementById('departmentPane-' + key);
+    if (targetPane) {
+        targetPane.style.display = 'block';
+    }
+
+    document.querySelectorAll('[id^="chip-dept-"]').forEach(chip => {
+        chip.style.boxShadow = 'none';
+        chip.style.transform = 'none';
+    });
+
+    const activeChip = document.getElementById('chip-dept-' + key);
+    if (activeChip) {
+        activeChip.style.boxShadow = '0 0 0 2px #0d9488, 0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+        activeChip.style.transform = 'translateY(-1px)';
+    }
+
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDepartmentMonitoringDetail() {
+    const container = document.getElementById('departmentDetailContainer');
+    if (container) {
+        container.style.display = 'none';
+    }
+    activeDepartmentMonitoringKey = null;
+
+    document.querySelectorAll('[id^="chip-dept-"]').forEach(chip => {
         chip.style.boxShadow = 'none';
         chip.style.transform = 'none';
     });

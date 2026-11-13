@@ -474,6 +474,17 @@ class MobileTasksController extends Controller
             ];
         }
 
+        // Live Monitoring Jurusan (Khusus Kepala Program Keahlian / Jurusan)
+        $departmentLiveMonitoring = null;
+        if ($user->isHeadOfDepartment($operationalAcademicYear)) {
+            $departmentLiveMonitoring = $this->liveMonitoringService->buildLiveMonitoringData(
+                $user,
+                $date,
+                $operationalAcademicYear,
+                $myHomeroomClassroom
+            );
+        }
+
         // 3. Izin Mandiri GTK
         $myRecentPermits = GtkPermit::where('user_id', $user->id)
             ->latest('start_date')
@@ -679,6 +690,7 @@ class MobileTasksController extends Controller
                     'weekly_days' => $myWeeklyPiketSchedules->pluck('day')->unique()->values(),
                 ],
                 'homeroom' => $homeroomLiveMonitoring,
+                'department' => $departmentLiveMonitoring,
                 'gtk_permits' => [
                     'my_permit_today' => $myGtkPermitToday ? [
                         'type' => $myGtkPermitToday->permit_type,

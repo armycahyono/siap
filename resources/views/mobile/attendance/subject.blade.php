@@ -216,21 +216,31 @@
     </div>
 @endif
 
-<!-- MONITORING KBM HARI INI (KS, Kurikulum, Tim Kedisiplinan) -->
+<!-- MONITORING KBM HARI INI (KS, Kurikulum, Tim Kedisiplinan, Kajur / Kaprogli) -->
 @if(!empty($kbmMonitoring))
-    <div class="card shadow-sm rounded-3 mb-2.5" style="border: 1.5px solid #16a34a !important;">
+    <div class="card shadow-sm rounded-3 mb-2.5" style="border: 1.5px solid {{ !empty($kbmMonitoring['is_head_of_department']) ? '#0d9488' : '#16a34a' }} !important;">
         <div class="card-body p-2 px-3">
             <div class="d-flex align-items-center justify-content-between mb-2 pb-1.5 border-bottom">
                 <div class="d-flex align-items-center gap-2">
-                    <span class="avatar avatar-sm bg-blue-lt text-primary rounded-circle flex-shrink-0" style="width: 30px; height: 30px;">
+                    <span class="avatar avatar-sm {{ !empty($kbmMonitoring['is_head_of_department']) ? 'bg-teal-lt text-teal' : 'bg-blue-lt text-primary' }} rounded-circle flex-shrink-0" style="width: 30px; height: 30px;">
                         <i class="ti ti-dashboard fs-3"></i>
                     </span>
                     <div>
-                        <div class="fw-bold text-dark fs-3 lh-1">Monitoring KBM Hari Ini</div>
-                        <div class="text-muted small mt-0.5" style="font-size: 0.68rem;">{{ $dayName }}, {{ $date->translatedFormat('d F Y') }}</div>
+                        <div class="fw-bold text-dark fs-3 lh-1">
+                            {{ !empty($kbmMonitoring['department_code']) ? 'Monitoring Siswa Jurusan ' . $kbmMonitoring['department_code'] : 'Monitoring KBM Hari Ini' }}
+                        </div>
+                        <div class="text-muted small mt-0.5" style="font-size: 0.68rem;">
+                            {{ !empty($kbmMonitoring['department_name']) ? 'Program Keahlian ' . $kbmMonitoring['department_name'] . ' • ' : '' }}{{ $dayName }}, {{ $date->translatedFormat('d F Y') }}
+                        </div>
                     </div>
                 </div>
-                <span class="badge bg-primary text-white" style="font-size: 0.62rem; padding: 2px 6px;">Live Monitoring</span>
+                @if(!empty($kbmMonitoring['is_head_of_department']))
+                    <span class="badge bg-teal text-white fw-bold" style="font-size: 0.62rem; padding: 2px 6px;">
+                        Kajur {{ $kbmMonitoring['department_code'] ?? 'Jurusan' }}
+                    </span>
+                @else
+                    <span class="badge bg-primary text-white" style="font-size: 0.62rem; padding: 2px 6px;">Live Monitoring</span>
+                @endif
             </div>
 
             @if($kbmMonitoring['can_view_gtk'])
@@ -423,12 +433,12 @@
                         <div>
                             <div class="d-flex align-items-center gap-1">
                                 <a href="{{ route('attendance.homeroom-recap.index', ['date' => $date->toDateString()]) }}" class="fw-bold text-dark text-decoration-none d-inline-flex align-items-center gap-1 external" style="font-size: 0.84rem;">
-                                    <i class="ti ti-school text-indigo"></i>
-                                    <span>Kehadiran Siswa Hari Ini</span>
+                                    <i class="ti ti-school {{ !empty($kbmMonitoring['is_head_of_department']) ? 'text-teal' : 'text-indigo' }}"></i>
+                                    <span>{{ !empty($kbmMonitoring['department_name']) ? 'Kehadiran Siswa ' . $kbmMonitoring['department_name'] : 'Kehadiran Siswa Hari Ini' }}</span>
                                     <i class="ti ti-chevron-right text-muted" style="font-size: 0.75rem;"></i>
                                 </a>
                                 @if(!empty($kbmMonitoring['siswa']['total_expected_students']) && $kbmMonitoring['siswa']['total_expected_students'] > 0 && ($kbmMonitoring['siswa']['total_completed_sessions'] ?? 0) > 0)
-                                    <span class="badge bg-indigo-lt text-indigo ms-1 fw-bold" style="font-size: 0.65rem;">
+                                    <span class="badge {{ !empty($kbmMonitoring['is_head_of_department']) ? 'bg-teal-lt text-teal' : 'bg-indigo-lt text-indigo' }} ms-1 fw-bold" style="font-size: 0.65rem;">
                                         {{ $kbmMonitoring['siswa']['overall_attendance_rate'] }}% Hadir
                                     </span>
                                 @endif
@@ -439,7 +449,11 @@
                                 </div>
                             @endif
                         </div>
-                        @if(!$kbmMonitoring['can_view_gtk'])
+                        @if(!empty($kbmMonitoring['is_head_of_department']))
+                            <span class="badge bg-teal-lt text-teal fw-bold" style="font-size: 0.62rem;">
+                                {{ $kbmMonitoring['siswa']['total_expected_students'] ?? 0 }} Siswa {{ $kbmMonitoring['department_code'] ?? '' }}
+                            </span>
+                        @elseif(!$kbmMonitoring['can_view_gtk'])
                             <span class="badge bg-indigo-lt text-indigo" style="font-size: 0.6rem;">Khusus Kedisiplinan</span>
                         @elseif(!empty($kbmMonitoring['siswa']['total_expected_students']))
                             <span class="text-muted small" style="font-size: 0.62rem;">

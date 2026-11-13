@@ -274,11 +274,17 @@ class SubjectAttendanceController extends Controller
         $isPrincipal = $user->isPrincipal();
         $isKurikulum = $user->isWakaKurikulum();
         $isDiscipline = $user->isDisciplineTeam();
+        $isHeadOfDepartment = $user->isHeadOfDepartment($academicYear);
         $hasTeachingDuty = $user->hasTeachingDuty();
 
-        // Data Monitoring KBM Hari Ini (KS, Kurikulum, Tim Kedisiplinan)
+        // Data Monitoring KBM Hari Ini (KS, Kurikulum, Tim Kedisiplinan, Kajur / Kaprogli)
         $kbmMonitoring = null;
-        if ($isPrincipal || $isKurikulum || $isDiscipline) {
+        if ($isPrincipal || $isKurikulum || $isDiscipline || $isHeadOfDepartment) {
+            $isDepartmentScoped = $isHeadOfDepartment && ! $isPrincipal && ! $isKurikulum && ! $isDiscipline;
+            $deptClassroomIds = $isDepartmentScoped ? $user->getDepartmentClassroomIds($academicYear) : [];
+            $managedDepts = $isDepartmentScoped ? $user->getManagedDepartments($academicYear) : collect();
+            $deptName = $managedDepts->pluck('name')->implode(', ') ?: 'Jurusan';
+            $deptCode = $managedDepts->pluck('code')->implode(', ') ?: 'Jurusan';
             // Ambil Roster GTK, Target Jadwal, dan Snapshot Rombel dari DailyKbmSnapshotService
             $snapshotService = app(DailyKbmSnapshotService::class);
             $snapshot = $snapshotService->getOrGenerateSnapshot($date);
@@ -391,11 +397,19 @@ class SubjectAttendanceController extends Controller
                 ];
             }
 
-            // Monitoring Siswa Hari Ini (KS, Kurikulum, dan Tim Kedisiplinan)
-            $studentPermitsToday = PiketStudentPermit::with(['student', 'classroom'])
+            // Monitoring Siswa Hari Ini (KS, Kurikulum, Tim Kedisiplinan, dan Kajur/Kaprogli)
+            $permitsQuery = PiketStudentPermit::with(['student', 'classroom'])
                 ->whereDate('permit_date', $dateStr)
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->orderBy('created_at', 'desc');
+
+            if ($isDepartmentScoped && ! empty($deptClassroomIds)) {
+                $permitsQuery->where(function ($q) use ($deptClassroomIds) {
+                    $q->whereIn('classroom_id', $deptClassroomIds)
+                        ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+                });
+            }
+
+            $studentPermitsToday = $permitsQuery->get();
 
             // Deduplikasi izin piket berdasarkan student_id (agar siswa yang terinput ganda tidak dihitung berkali-kali)
             $studentLatePermits = $studentPermitsToday->where('permit_type', 'terlambat')->unique('student_id')->values();
@@ -407,7 +421,12 @@ class SubjectAttendanceController extends Controller
             $studentIzinPermits = $studentPermitsToday->where('permit_type', 'izin_tidak_masuk')->unique('student_id')->values();
             $studentPermitCount = $studentIzinPermits->count();
 
-            $todaySessions = SubjectAttendanceSession::whereDate('attendance_date', $dateStr)->pluck('id');
+            $sessionsQuery = SubjectAttendanceSession::whereDate('attendance_date', $dateStr);
+            if ($isDepartmentScoped && ! empty($deptClassroomIds)) {
+                $sessionsQuery->whereIn('classroom_id', $deptClassroomIds);
+            }
+            $todaySessions = $sessionsQuery->pluck('id');
+
             $studentRecordsToday = SubjectAttendanceRecord::with(['student', 'session.classroom', 'session.subject'])
                 ->whereIn('subject_attendance_session_id', $todaySessions)
                 ->get();
@@ -444,17 +463,31 @@ class SubjectAttendanceController extends Controller
                 ->unique();
             $totalStudentMurniIzinCount = $allMurniIzinStudentIds->count();
 
-            $todayIncidents = PiketIncident::with(['student', 'classroom'])
+            $incidentsQuery = PiketIncident::with(['student', 'classroom'])
                 ->whereDate('incident_date', $dateStr)
-                ->orderBy('incident_time', 'desc')
-                ->get();
+                ->orderBy('incident_time', 'desc');
+
+            if ($isDepartmentScoped && ! empty($deptClassroomIds)) {
+                $incidentsQuery->where(function ($q) use ($deptClassroomIds) {
+                    $q->whereIn('classroom_id', $deptClassroomIds)
+                        ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+                });
+            }
+
+            $todayIncidents = $incidentsQuery->get();
 
             // -------------------------------------------------------------
             // DETEKSI KHUSUS: Siswa Bolos KBM (Hadir di pagi/sesi awal tapi Alfa di sesi berikutnya)
             // Serta Deteksi Siswa Scan Masuk Fingerprint tapi Alfa di Mapel
             // -------------------------------------------------------------
-            $studentFingerprintLogs = AttendanceLog::where('user_type', 'student')
-                ->whereDate('scanned_at', $dateStr)
+            $fingerprintLogsQuery = AttendanceLog::where('user_type', 'student')
+                ->whereDate('scanned_at', $dateStr);
+
+            if ($isDepartmentScoped && ! empty($deptClassroomIds)) {
+                $fingerprintLogsQuery->whereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+            }
+
+            $studentFingerprintLogs = $fingerprintLogsQuery
                 ->pluck('student_id')
                 ->filter()
                 ->unique();
@@ -515,6 +548,10 @@ class SubjectAttendanceController extends Controller
             $pureAlfaCount = $pureAlfaRecords->pluck('student_id')->unique()->count();
 
             $classroomSnapshots = $snapshot['classrooms'] ?? collect();
+            if ($isDepartmentScoped && ! empty($deptClassroomIds)) {
+                $classroomSnapshots = $classroomSnapshots->whereIn('classroom_id', $deptClassroomIds)->values();
+            }
+
             $totalActiveStudents = $classroomSnapshots->where('is_kbm_active', true)->sum('total_students');
             $totalPresentStudents = $classroomSnapshots->where('is_kbm_active', true)->sum('present_students_count');
             $totalCompletedSessions = $classroomSnapshots->where('is_kbm_active', true)->sum('completed_sessions_count');
@@ -554,7 +591,10 @@ class SubjectAttendanceController extends Controller
                 'gtk' => $gtkMonitoring,
                 'siswa' => $studentMonitoring,
                 'can_view_gtk' => ($isPrincipal || $isKurikulum),
-                'can_view_student' => ($isPrincipal || $isKurikulum || $isDiscipline),
+                'can_view_student' => ($isPrincipal || $isKurikulum || $isDiscipline || $isHeadOfDepartment),
+                'is_head_of_department' => $isDepartmentScoped,
+                'department_name' => $isDepartmentScoped ? $deptName : null,
+                'department_code' => $isDepartmentScoped ? $deptCode : null,
             ];
         }
 

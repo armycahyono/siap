@@ -20,6 +20,7 @@ use App\Models\Supervision;
 use App\Models\User;
 use App\Services\AcademicYearContext;
 use App\Services\DeviceDetector;
+use App\Services\LiveMonitoringService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -741,6 +742,17 @@ class DashboardController extends Controller
             ];
         }
 
+        // Live Monitoring Jurusan (Khusus Kepala Program Keahlian / Jurusan)
+        $departmentLiveMonitoring = null;
+        if ($user->isHeadOfDepartment($operationalAcademicYear)) {
+            $departmentLiveMonitoring = app(LiveMonitoringService::class)->buildLiveMonitoringData(
+                $user,
+                $date,
+                $operationalAcademicYear,
+                $myHomeroomClassroom
+            );
+        }
+
         // 3. Data Administrasi Izin / Cuti GTK Mandiri (Untuk guru/staf biasa)
         $myRecentPermits = GtkPermit::where('user_id', $user->id)
             ->latest('start_date')
@@ -818,6 +830,7 @@ class DashboardController extends Controller
                 'myHomeroomClassroom',
                 'homeroomStudentPermitsTodayCount',
                 'homeroomLiveMonitoring',
+                'departmentLiveMonitoring',
                 'myRecentPermits',
                 'myGtkPermitToday',
                 'pendingGtkPermits',

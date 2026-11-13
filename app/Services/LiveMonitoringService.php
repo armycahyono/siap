@@ -10,6 +10,7 @@ use App\Models\LessonSchedule;
 use App\Models\PiketIncident;
 use App\Models\PiketInvalClass;
 use App\Models\PiketStudentPermit;
+use App\Models\Student;
 use App\Models\SubjectAttendanceRecord;
 use App\Models\SubjectAttendanceSession;
 use App\Models\User;
@@ -40,10 +41,16 @@ class LiveMonitoringService
         $isVicePrincipal = $user->isVicePrincipal() || $isKurikulum || $isKesiswaan || $isSarpras || $isHumas;
         $isHomeroom = (bool) $myHomeroomClassroom;
         $isBk = $user->canOperateBk($operationalAcademicYear);
+        $isHeadOfDepartment = $user->isHeadOfDepartment($operationalAcademicYear);
 
-        if (! $isPrincipal && ! $isVicePrincipal && ! $isHomeroom && ! $isBk) {
+        if (! $isPrincipal && ! $isVicePrincipal && ! $isHomeroom && ! $isBk && ! $isHeadOfDepartment) {
             return null;
         }
+
+        $managedDepts = $isHeadOfDepartment ? $user->getManagedDepartments($operationalAcademicYear) : collect();
+        $deptName = $managedDepts->pluck('name')->implode(', ') ?: 'Jurusan';
+        $deptCode = $managedDepts->pluck('code')->implode(', ') ?: 'Jurusan';
+        $deptClassroomIds = $isHeadOfDepartment ? $user->getDepartmentClassroomIds($operationalAcademicYear) : [];
 
         $roleKey = match (true) {
             $isPrincipal => 'principal',
@@ -53,6 +60,8 @@ class LiveMonitoringService
             $isHumas => 'humas',
             $isVicePrincipal => 'vice_principal',
             $isBk => 'bk',
+            $isHomeroom => 'homeroom',
+            $isHeadOfDepartment => 'kaprogli',
             default => 'homeroom',
         };
 
@@ -64,6 +73,7 @@ class LiveMonitoringService
             'humas' => 'Waka Humas / Hubin',
             'vice_principal' => 'Wakil Kepala Sekolah',
             'bk' => 'Guru BK',
+            'kaprogli' => 'Kepala Program Keahlian '.$deptName,
             default => 'Wali Kelas ('.($myHomeroomClassroom?->name ?? 'Perwalian').')',
         };
 
@@ -87,13 +97,22 @@ class LiveMonitoringService
             ->whereDate('scanned_at', $targetDateStr)
             ->orderBy('scanned_at', 'asc');
 
-        if (! $canViewStudentAll && $myHomeroomClassroom) {
-            $permitsQuery->where(function ($pq) use ($myHomeroomClassroom) {
-                $pq->where('classroom_id', $myHomeroomClassroom->id)
-                    ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
-            });
-            $sessionsQuery->where('classroom_id', $myHomeroomClassroom->id);
-            $gateLogsQuery->whereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+        if (! $canViewStudentAll) {
+            if ($myHomeroomClassroom) {
+                $permitsQuery->where(function ($pq) use ($myHomeroomClassroom) {
+                    $pq->where('classroom_id', $myHomeroomClassroom->id)
+                        ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+                });
+                $sessionsQuery->where('classroom_id', $myHomeroomClassroom->id);
+                $gateLogsQuery->whereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+            } elseif ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
+                $permitsQuery->where(function ($pq) use ($deptClassroomIds) {
+                    $pq->whereIn('classroom_id', $deptClassroomIds)
+                        ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+                });
+                $sessionsQuery->whereIn('classroom_id', $deptClassroomIds);
+                $gateLogsQuery->whereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+            }
         }
 
         $studentPermits = $permitsQuery->get();
@@ -426,8 +445,18 @@ class LiveMonitoringService
         $incidentsQuery = PiketIncident::with(['student.classroom', 'classroom', 'recordedBy'])
             ->whereDate('incident_date', $targetDateStr);
 
-        if (! $canViewStudentAll && $myHomeroomClassroom) {
-            $incidentsQuery->where('classroom_id', $myHomeroomClassroom->id);
+        if (! $canViewStudentAll) {
+            if ($myHomeroomClassroom) {
+                $incidentsQuery->where(function ($iq) use ($myHomeroomClassroom) {
+                    $iq->where('classroom_id', $myHomeroomClassroom->id)
+                        ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+                });
+            } elseif ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
+                $incidentsQuery->where(function ($iq) use ($deptClassroomIds) {
+                    $iq->whereIn('classroom_id', $deptClassroomIds)
+                        ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+                });
+            }
         }
 
         foreach ($incidentsQuery->get() as $inc) {
@@ -531,8 +560,18 @@ class LiveMonitoringService
                 ->whereDate('incident_date', $targetDateStr)
                 ->with(['student.classroom', 'bkReferral']);
 
-            if (! $canViewStudentAll && $myHomeroomClassroom) {
-                $bkReferralsQuery->where('classroom_id', $myHomeroomClassroom->id);
+            if (! $canViewStudentAll) {
+                if ($myHomeroomClassroom) {
+                    $bkReferralsQuery->where(function ($bq) use ($myHomeroomClassroom) {
+                        $bq->where('classroom_id', $myHomeroomClassroom->id)
+                            ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+                    });
+                } elseif ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
+                    $bkReferralsQuery->where(function ($bq) use ($deptClassroomIds) {
+                        $bq->whereIn('classroom_id', $deptClassroomIds)
+                            ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+                    });
+                }
             }
 
             foreach ($bkReferralsQuery->get() as $bkr) {
@@ -586,13 +625,66 @@ class LiveMonitoringService
 
         $timelineEvents = $timelineEvents->sortByDesc('time')->values();
 
+        $totalDeptStudents = null;
+        $classroomBreakdown = collect();
+        if ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
+            $departmentClassrooms = $user->getDepartmentClassrooms($operationalAcademicYear);
+            $totalDeptStudents = Student::whereIn('classroom_id', $deptClassroomIds)->count();
+            $classroomBreakdown = $departmentClassrooms->map(function ($cls) use ($allHadirStudentIds, $allLateStudentIds, $allSakitStudentIds, $allMurniIzinStudentIds, $allDispenStudentIds, $allAlfaStudentIds, $truancyStudents, $earlyLeavePermits) {
+                $cStudentIds = $cls->students()->pluck('id');
+                $cTotal = $cStudentIds->count();
+                $cHadir = $allHadirStudentIds->intersect($cStudentIds)->count();
+                $cLate = $allLateStudentIds->intersect($cStudentIds)->count();
+                $cSakit = $allSakitStudentIds->intersect($cStudentIds)->count();
+                $cIzin = $allMurniIzinStudentIds->intersect($cStudentIds)->count();
+                $cDispen = $allDispenStudentIds->intersect($cStudentIds)->count();
+                $cAlfa = $allAlfaStudentIds->intersect($cStudentIds)->count();
+                $cBolos = $truancyStudents->whereIn('student_id', $cStudentIds)->count();
+                $cPulang = $earlyLeavePermits->whereIn('student_id', $cStudentIds)->count();
+                $cRate = $cTotal > 0 ? round(($cHadir / $cTotal) * 100, 1) : 0;
+
+                return [
+                    'id' => $cls->id,
+                    'name' => $cls->name,
+                    'total_students' => $cTotal,
+                    'hadir' => $cHadir,
+                    'telat' => $cLate,
+                    'sakit' => $cSakit,
+                    'izin' => $cIzin,
+                    'dispen' => $cDispen,
+                    'pulang' => $cPulang,
+                    'alfa' => $cAlfa,
+                    'bolos' => $cBolos,
+                    'attendance_rate' => $cRate,
+                ];
+            })->values();
+        }
+
+        $attendanceRate = match (true) {
+            $isHeadOfDepartment && ($totalDeptStudents ?? 0) > 0 => round(($allHadirStudentIds->count() / $totalDeptStudents) * 100, 1),
+            $myHomeroomClassroom && $myHomeroomClassroom->students()->count() > 0 => round(($allHadirStudentIds->count() / $myHomeroomClassroom->students()->count()) * 100, 1),
+            default => null,
+        };
+
+        $scopeLabel = match (true) {
+            $canViewStudentAll => 'Seluruh Siswa (Tingkat Sekolah)',
+            $isHeadOfDepartment => 'Jurusan '.$deptName,
+            default => 'Kelas '.($myHomeroomClassroom?->name ?? '-'),
+        };
+
         return [
             'role_key' => $roleKey,
             'role_label' => $roleLabel,
-            'scope_label' => $canViewStudentAll ? 'Seluruh Siswa (Tingkat Sekolah)' : 'Kelas '.($myHomeroomClassroom?->name ?? '-'),
+            'scope_label' => $scopeLabel,
             'can_view_student_all' => $canViewStudentAll,
             'can_view_gtk' => $canViewGtk,
             'can_view_bk' => $canViewBk,
+            'is_head_of_department' => $isHeadOfDepartment,
+            'department_name' => $deptName,
+            'department_code' => $deptCode,
+            'total_students' => $isHeadOfDepartment ? $totalDeptStudents : ($myHomeroomClassroom?->students()->count() ?? null),
+            'attendance_rate' => $attendanceRate,
+            'classrooms' => $classroomBreakdown,
             'siswa' => [
                 'hadir' => $allHadirStudentIds->count(),
                 'telat' => $allLateStudentIds->count(),

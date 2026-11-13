@@ -638,7 +638,7 @@ class User extends Authenticatable
     /**
      * Cek apakah pengguna merupakan Kepala Program Keahlian / Ketua Jurusan (Kajur / Kaprogli).
      */
-    public function isHeadOfDepartment(): bool
+    public function isHeadOfDepartment(?string $academicYear = null): bool
     {
         // 1. Relasi kepala program di tabel departments
         if (Schema::hasTable('departments') && Department::where('head_of_department_id', $this->id)->exists()) {
@@ -653,7 +653,10 @@ class User extends Authenticatable
 
         // 3. Jabatan struktural di tabel structural_positions
         if ($this->relationLoaded('structuralPositions')) {
-            return $this->structuralPositions->contains(function ($p) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if ($academicYear && ! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
+                    return false;
+                }
                 $name = strtolower($p->name ?? '');
                 $code = strtoupper($p->code ?? '');
                 $category = strtolower($p->category ?? '');
@@ -662,13 +665,136 @@ class User extends Authenticatable
             });
         }
 
-        return $this->structuralPositions()
-            ->where(function ($q) {
-                $q->where('name', 'like', '%kaprogli%')
-                    ->orWhere('name', 'like', '%kajur%')
-                    ->orWhere('code', 'like', 'KAPRO_%')
-                    ->orWhere('category', 'like', '%kepala program keahlian%');
-            })->exists();
+        $query = $this->structuralPositions();
+        $this->applyStructuralYearScope($query, $academicYear);
+
+        return $query->where(function ($q) {
+            $q->where('name', 'like', '%kaprogli%')
+                ->orWhere('name', 'like', '%kajur%')
+                ->orWhere('code', 'like', 'KAPRO_%')
+                ->orWhere('category', 'like', '%kepala program keahlian%');
+        })->exists();
+    }
+
+    /**
+     * Dapatkan daftar jurusan / program keahlian yang dikepalai oleh GTK ini.
+     *
+     * @return Collection<int, Department>
+     */
+    public function getManagedDepartments(?string $academicYear = null): Collection
+    {
+        $departments = collect();
+
+        // 1. Relasi kepala program di tabel departments
+        if (Schema::hasTable('departments')) {
+            $directDepartments = Department::where('head_of_department_id', $this->id)->get();
+            $departments = $departments->concat($directDepartments);
+        }
+
+        // 2. Dari jabatan struktural (structural_positions)
+        $structuralQuery = $this->structuralPositions();
+        $this->applyStructuralYearScope($structuralQuery, $academicYear);
+        $structuralPositions = $structuralQuery->get();
+
+        if ($structuralPositions->isNotEmpty() && Schema::hasTable('departments')) {
+            $allDepts = Department::all();
+            foreach ($structuralPositions as $sp) {
+                $spCode = strtoupper($sp->code ?? '');
+                $spName = strtolower($sp->name ?? '');
+                $spCat = strtolower($sp->category ?? '');
+
+                if (str_contains($spCode, 'KAPRO_') || str_contains($spName, 'kaprogli') || str_contains($spName, 'kajur') || str_contains($spName, 'ketua jurusan') || str_contains($spCat, 'kepala program keahlian')) {
+                    foreach ($allDepts as $dept) {
+                        $dCode = strtoupper($dept->code);
+                        $dName = strtolower($dept->name);
+
+                        if (str_contains($spCode, $dCode) || str_contains($spName, strtolower($dCode)) || str_contains($spName, $dName)) {
+                            $departments->push($dept);
+                        } elseif ($dCode === 'AKL' && (str_contains($spName, 'akuntansi') || str_contains($spCode, 'AK') || str_contains($spName, 'keuangan'))) {
+                            $departments->push($dept);
+                        } elseif ($dCode === 'TKR' && (str_contains($spName, 'otomotif') || str_contains($spName, 'kendaraan'))) {
+                            $departments->push($dept);
+                        } elseif ($dCode === 'TKJ' && (str_contains($spName, 'komputer') || str_contains($spName, 'jaringan'))) {
+                            $departments->push($dept);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Dari kolom jabatan (position)
+        $pos = strtolower($this->position ?? '');
+        if ((str_contains($pos, 'kaprogli') || str_contains($pos, 'kajur') || str_contains($pos, 'ketua jurusan') || str_contains($pos, 'kepala program')) && Schema::hasTable('departments')) {
+            $allDepts = Department::all();
+            foreach ($allDepts as $dept) {
+                $dCode = strtoupper($dept->code);
+                $dName = strtolower($dept->name);
+
+                if (str_contains($pos, strtolower($dCode)) || str_contains($pos, $dName)) {
+                    $departments->push($dept);
+                } elseif ($dCode === 'AKL' && (str_contains($pos, 'akuntansi') || str_contains($pos, 'akl') || str_contains($pos, 'keuangan'))) {
+                    $departments->push($dept);
+                } elseif ($dCode === 'TKR' && (str_contains($pos, 'otomotif') || str_contains($pos, 'kendaraan') || str_contains($pos, 'tkr'))) {
+                    $departments->push($dept);
+                } elseif ($dCode === 'TKJ' && (str_contains($pos, 'komputer') || str_contains($pos, 'jaringan') || str_contains($pos, 'tkj'))) {
+                    $departments->push($dept);
+                }
+            }
+        }
+
+        return $departments->unique('id')->values();
+    }
+
+    /**
+     * Dapatkan array ID jurusan yang dikepalai.
+     *
+     * @return array<int>
+     */
+    public function getManagedDepartmentIds(?string $academicYear = null): array
+    {
+        return $this->getManagedDepartments($academicYear)->pluck('id')->toArray();
+    }
+
+    /**
+     * Dapatkan daftar rombel kelas yang berada di bawah naungan jurusan yang dikepalai.
+     *
+     * @return Collection<int, Classroom>
+     */
+    public function getDepartmentClassrooms(?string $academicYear = null): Collection
+    {
+        $managedDepts = $this->getManagedDepartments($academicYear);
+        if ($managedDepts->isEmpty()) {
+            return collect();
+        }
+
+        $deptIds = $managedDepts->pluck('id')->toArray();
+        $deptCodes = $managedDepts->pluck('code')->filter()->toArray();
+
+        return Classroom::where(function ($q) use ($deptIds, $deptCodes) {
+            $q->whereIn('department_id', $deptIds);
+            foreach ($deptCodes as $code) {
+                $q->orWhere('name', 'like', "%{$code}%");
+            }
+        })
+            ->when($academicYear, function ($q) use ($academicYear) {
+                $q->where(function ($sub) use ($academicYear) {
+                    $sub->where('academic_year', $academicYear)
+                        ->orWhereHas('academicYear', fn ($ay) => $ay->where('name', $academicYear));
+                });
+            })
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * Dapatkan array ID rombel kelas di bawah naungan jurusan yang dikepalai.
+     *
+     * @return array<int>
+     */
+    public function getDepartmentClassroomIds(?string $academicYear = null): array
+    {
+        return $this->getDepartmentClassrooms($academicYear)->pluck('id')->toArray();
     }
 
     /**
