@@ -55,10 +55,20 @@
                         <option value="">-- Pilih Supervisor --</option>
                         @foreach($supervisors as $s)
                             <option value="{{ $s->id }}" {{ old('supervisor_id') == $s->id ? 'selected' : '' }}>
-                                {{ $s->name }} ({{ $s->role->name }})
+                                {{ $s->name }} ({{ $s->role?->name ?? 'Supervisor' }})
                             </option>
                         @endforeach
                     </select>
+                    @if($supervisors->isEmpty())
+                        <div class="form-text small text-danger">
+                            <i class="ti ti-alert-circle me-1"></i> Belum ada supervisor untuk TP {{ $academicYear }}. 
+                            <a href="{{ route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => $academicYear]) }}" target="_blank" class="fw-bold text-decoration-underline">Tugaskan di Penugasan GTK &raquo; Tim Supervisor</a>
+                        </div>
+                    @else
+                        <div class="form-text small text-muted">
+                            Dikelola melalui <a href="{{ route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => $academicYear]) }}" target="_blank" class="text-primary text-decoration-underline"><i class="ti ti-shield-check me-1"></i>Penugasan GTK &raquo; Tim Supervisor Sekolah</a>
+                        </div>
+                    @endif
                 </div>
             </div>
 

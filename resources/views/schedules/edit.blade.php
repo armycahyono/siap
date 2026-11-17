@@ -46,10 +46,13 @@
                     <select name="supervisor_id" class="form-select fw-semibold" required>
                         @foreach($supervisors as $s)
                             <option value="{{ $s->id }}" {{ $schedule->supervisor_id == $s->id ? 'selected' : '' }}>
-                                {{ $s->name }} ({{ $s->role->name }})
+                                {{ $s->name }} ({{ $s->role?->name ?? 'Supervisor' }})
                             </option>
                         @endforeach
                     </select>
+                    <div class="form-text small text-muted">
+                        Dikelola melalui <a href="{{ route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => $schedule->academic_year ?? $academicYear]) }}" target="_blank" class="text-primary text-decoration-underline"><i class="ti ti-shield-check me-1"></i>Penugasan GTK &raquo; Tim Supervisor Sekolah</a>
+                    </div>
                 </div>
             </div>
 

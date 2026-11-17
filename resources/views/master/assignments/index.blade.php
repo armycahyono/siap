@@ -6,7 +6,7 @@
 <!-- Page Header (Model 2: Hero Context Banner) -->
 @include('layouts._hero_header', [
     'title' => 'Penugasan GTK (Guru & Tenaga Kependidikan)',
-    'subtitle' => 'Kelola penugasan GTK terpadu: Pengampu Mata Pelajaran, Wali Kelas & BK, Jabatan Struktural, serta Tugas Operasional Sekolah.',
+    'subtitle' => 'Kelola penugasan GTK terpadu: Pengampu Mata Pelajaran, Wali Kelas & BK, Jabatan Struktural, Tugas Operasional, serta Tim Supervisor Sekolah.',
     'icon' => 'ti ti-briefcase',
     'category' => 'DATA POKOK & SDM',
     'academicYear' => $academicYear,
@@ -52,16 +52,14 @@
                             <span class="badge bg-azure-lt ms-2">{{ $operationalAssignments->total() }}</span>
                         </a>
                     </li>
-                    @if($tab === 'supervisor')
                     <li class="nav-item">
                         <a href="{{ route('teacher-assignments.index', ['tab' => 'supervisor', 'academic_year' => $academicYear]) }}" 
-                           class="nav-link active fw-bold border-bottom-primary">
+                           class="nav-link {{ $tab === 'supervisor' ? 'active fw-bold border-bottom-primary' : 'text-muted' }}">
                             <i class="ti ti-shield-check me-2 text-warning"></i>
-                            Tim Supervisor Sekolah
+                            5. Tim Supervisor Sekolah
                             <span class="badge bg-warning-lt ms-2">{{ $supervisors->count() }}</span>
                         </a>
                     </li>
-                    @endif
                 </ul>
             </div>
         </div>

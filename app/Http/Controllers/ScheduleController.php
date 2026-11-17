@@ -143,6 +143,7 @@ class ScheduleController extends Controller
         $supervisors = User::whereHas('supervisorAssignments', fn ($q) => $q->where('academic_year', $academicYear)->where('is_active', true))
             ->operationalPersonnel()
             ->where('is_active', true)
+            ->with(['role', 'supervisorAssignments' => fn ($q) => $q->where('academic_year', $academicYear)])
             ->orderBy('name')
             ->get();
 
@@ -150,6 +151,7 @@ class ScheduleController extends Controller
             $supervisors = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['supervisor', 'waka_kurikulum']))
                 ->operationalPersonnel()
                 ->where('is_active', true)
+                ->with('role')
                 ->orderBy('name')
                 ->get();
         }
@@ -253,6 +255,7 @@ class ScheduleController extends Controller
         $supervisors = User::whereHas('supervisorAssignments', fn ($q) => $q->where('academic_year', $academicYear)->where('is_active', true))
             ->operationalPersonnel()
             ->where('is_active', true)
+            ->with(['role', 'supervisorAssignments' => fn ($q) => $q->where('academic_year', $academicYear)])
             ->orderBy('name')
             ->get();
 
@@ -260,6 +263,7 @@ class ScheduleController extends Controller
             $supervisors = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['supervisor', 'waka_kurikulum']))
                 ->operationalPersonnel()
                 ->where('is_active', true)
+                ->with('role')
                 ->orderBy('name')
                 ->get();
         }
