@@ -133,7 +133,7 @@ class RoleAndPermissionSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Operator Kurikulum',
+                'name' => 'Tim Kurikulum',
                 'slug' => 'operator_kurikulum',
                 'description' => 'Membantu operasional kurikulum, jadwal pelajaran, kalender kegiatan, dan integrasi CBT',
                 'permissions' => [
@@ -172,7 +172,7 @@ class RoleAndPermissionSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Operator Kesiswaan',
+                'name' => 'Tim Kesiswaan',
                 'slug' => 'operator_kesiswaan',
                 'description' => 'Membantu operasional kesiswaan, catatan kasus & kejadian siswa, dan kedisiplinan',
                 'permissions' => [
@@ -185,7 +185,7 @@ class RoleAndPermissionSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Operator Sarpras',
+                'name' => 'Tim Sarpras',
                 'slug' => 'operator_sarpras',
                 'description' => 'Membantu operasional sarana prasarana, inventaris alat & ruang kelas/lab',
                 'permissions' => [
@@ -194,7 +194,7 @@ class RoleAndPermissionSeeder extends Seeder
                 ],
             ],
             [
-                'name' => 'Operator Humas',
+                'name' => 'Tim Humas',
                 'slug' => 'operator_humas',
                 'description' => 'Membantu operasional kemitraan industri (DUDI), penempatan PKL/Prakerin, dan tracer study',
                 'permissions' => [
@@ -317,7 +317,7 @@ class RoleAndPermissionSeeder extends Seeder
         ];
 
         foreach ($rolesData as $r) {
-            $role = Role::firstOrCreate(
+            $role = Role::updateOrCreate(
                 ['slug' => $r['slug']],
                 ['name' => $r['name'], 'description' => $r['description']]
             );

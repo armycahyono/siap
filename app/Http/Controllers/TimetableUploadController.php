@@ -24,7 +24,7 @@ class TimetableUploadController extends Controller
         abort_unless(
             auth()->check() && auth()->user()->hasRole(['super_admin', 'waka_kurikulum', 'kepala_sekolah', 'operator_kurikulum']),
             403,
-            'Hanya Waka Kurikulum, Kepala Sekolah, dan Operator Kurikulum yang berhak mengakses arsip jadwal.'
+            'Hanya Waka Kurikulum, Kepala Sekolah, dan Tim Kurikulum yang berhak mengakses arsip jadwal.'
         );
     }
 
