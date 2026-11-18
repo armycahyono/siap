@@ -328,7 +328,7 @@ class User extends Authenticatable
         }
 
         $pos = strtolower($this->position ?? '');
-        if (str_contains($pos, 'kurikulum')) {
+        if (str_contains($pos, 'waka') && str_contains($pos, 'kurikulum')) {
             return true;
         }
 
@@ -340,15 +340,18 @@ class User extends Authenticatable
                 $name = strtolower($p->name ?? '');
                 $code = strtoupper($p->code ?? '');
 
-                return str_contains($name, 'kurikulum') || str_contains($code, 'KURIKULUM');
+                return in_array($code, ['WAKA_KUR', 'WAKA_KURIKULUM'], true) || (str_contains($name, 'waka') && str_contains($name, 'kurikulum'));
             });
         }
 
         $query = $this->structuralPositions()
             ->wherePivot('is_active', true)
             ->where(function ($q) {
-                $q->where('name', 'like', '%kurikulum%')
-                    ->orWhere('code', 'like', '%KURIKULUM%');
+                $q->whereIn('code', ['WAKA_KUR', 'WAKA_KURIKULUM'])
+                    ->orWhere(function ($sub) {
+                        $sub->where('name', 'like', '%waka%')
+                            ->where('name', 'like', '%kurikulum%');
+                    });
             });
 
         return $this->applyStructuralYearScope($query, $academicYear)->exists();
