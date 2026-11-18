@@ -550,8 +550,31 @@ class User extends Authenticatable
         }
 
         $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'perpustakaan') || str_contains($pos, 'pustakawan')) {
+            return true;
+        }
 
-        return str_contains($pos, 'perpustakaan') || str_contains($pos, 'pustakawan');
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return in_array($code, ['KA_PERPUS', 'PETUGAS_PERPUS', 'PUSTAKAWAN'], true) || str_contains($name, 'perpus') || str_contains($name, 'pustakawan');
+            });
+        }
+
+        $query = $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->whereIn('code', ['KA_PERPUS', 'PETUGAS_PERPUS', 'PUSTAKAWAN'])
+                    ->orWhere('name', 'like', '%perpus%')
+                    ->orWhere('name', 'like', '%pustakawan%');
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isLaboranOrToolman(?string $academicYear = null): bool
@@ -561,8 +584,31 @@ class User extends Authenticatable
         }
 
         $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'toolman') || str_contains($pos, 'laboran') || str_contains($pos, 'teknisi bengkel')) {
+            return true;
+        }
 
-        return str_contains($pos, 'toolman') || str_contains($pos, 'laboran') || str_contains($pos, 'teknisi bengkel');
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return in_array($code, ['LABORAN', 'TOOLMAN', 'TOOLMAN_TKJ', 'TOOLMAN_TKR', 'LABORAN_TOOLMAN', 'KA_LAB_KOMP', 'KA_BENGKEL'], true) || str_contains($name, 'toolman') || str_contains($name, 'laboran') || str_contains($name, 'ka. bengkel') || str_contains($name, 'ka. lab');
+            });
+        }
+
+        $query = $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->whereIn('code', ['LABORAN', 'TOOLMAN', 'TOOLMAN_TKJ', 'TOOLMAN_TKR', 'LABORAN_TOOLMAN', 'KA_LAB_KOMP', 'KA_BENGKEL'])
+                    ->orWhere('name', 'like', '%toolman%')
+                    ->orWhere('name', 'like', '%laboran%');
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isTreasurer(?string $academicYear = null): bool
@@ -572,8 +618,30 @@ class User extends Authenticatable
         }
 
         $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'bendahara')) {
+            return true;
+        }
 
-        return str_contains($pos, 'bendahara');
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return $code === 'BENDAHARA' || str_contains($name, 'bendahara');
+            });
+        }
+
+        $query = $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->where('code', 'BENDAHARA')
+                    ->orWhere('name', 'like', '%bendahara%');
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function isHeadOfTu(?string $academicYear = null): bool
@@ -583,8 +651,31 @@ class User extends Authenticatable
         }
 
         $pos = strtolower($this->position ?? '');
+        if (str_contains($pos, 'kepala tata usaha') || str_contains($pos, 'kepala tu') || str_contains($pos, 'ka tu') || str_contains($pos, 'ka. tu')) {
+            return true;
+        }
 
-        return str_contains($pos, 'kepala tata usaha') || str_contains($pos, 'kepala tu') || str_contains($pos, 'ka tu') || str_contains($pos, 'ka. tu');
+        if ($this->relationLoaded('structuralPositions')) {
+            return $this->structuralPositions->contains(function ($p) use ($academicYear) {
+                if (! $this->isStructuralPivotActiveForYear($p->pivot ?? $p, $academicYear)) {
+                    return false;
+                }
+                $name = strtolower($p->name ?? '');
+                $code = strtoupper($p->code ?? '');
+
+                return in_array($code, ['KA_TU', 'KEPALA_TU'], true) || str_contains($name, 'kepala tu') || str_contains($name, 'ka. tu') || str_contains($name, 'ka tu');
+            });
+        }
+
+        $query = $this->structuralPositions()
+            ->wherePivot('is_active', true)
+            ->where(function ($q) {
+                $q->whereIn('code', ['KA_TU', 'KEPALA_TU'])
+                    ->orWhere('name', 'like', '%kepala tu%')
+                    ->orWhere('name', 'like', '%ka. tu%');
+            });
+
+        return $this->applyStructuralYearScope($query, $academicYear)->exists();
     }
 
     public function hasMultipleAssignments(?string $academicYear = null): bool
