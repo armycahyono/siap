@@ -109,6 +109,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/{announcement}', [AnnouncementController::class, 'update'])->name('update');
         Route::delete('/{announcement}', [AnnouncementController::class, 'destroy'])->name('destroy');
         Route::post('/{announcement}/baca', [AnnouncementController::class, 'markAsRead'])->name('read');
+        Route::get('/{announcement}/status-pembaca', [AnnouncementController::class, 'readers'])->name('readers');
+        Route::post('/{announcement}/ingatkan-belum-baca', [AnnouncementController::class, 'remindUnread'])->name('remind-unread');
         Route::post('/{announcement}/siar-ulang-telegram', [AnnouncementController::class, 'resendTelegram'])->name('resend-telegram');
     });
 

@@ -150,6 +150,37 @@ class Announcement extends Model
     }
 
     /**
+     * Dapatkan query daftar user sasaran dari pengumuman ini.
+     */
+    public function getTargetUsersQuery(): Builder
+    {
+        $query = User::where('is_active', true);
+
+        if ($this->target_type === 'role') {
+            $roles = $this->target_roles ?? [];
+            if (! empty($roles)) {
+                $query->where(function (Builder $q) use ($roles) {
+                    $q->whereHas('role', fn ($sub) => $sub->whereIn('slug', $roles))
+                        ->orWhereHas('activeRoleAssignments.role', fn ($sub) => $sub->whereIn('slug', $roles))
+                        ->orWhere('id', $this->author_id);
+                });
+            }
+        } elseif ($this->target_type === 'department') {
+            $deptIds = $this->target_departments ?? [];
+            if (! empty($deptIds)) {
+                $headIds = Department::whereIn('id', $deptIds)
+                    ->whereNotNull('head_of_department_id')
+                    ->pluck('head_of_department_id')
+                    ->toArray();
+                $targetUserIds = array_unique(array_merge($headIds, [$this->author_id]));
+                $query->whereIn('id', $targetUserIds);
+            }
+        }
+
+        return $query;
+    }
+
+    /**
      * Teks deskriptif sasaran / target pengumuman.
      */
     public function getTargetLabelAttribute(): string

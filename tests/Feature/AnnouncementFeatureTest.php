@@ -385,4 +385,74 @@ class AnnouncementFeatureTest extends TestCase
                 && str_contains($request['text'], 'Rapat koordinasi jurusan');
         });
     }
+
+    public function test_author_and_principal_can_view_readers_status(): void
+    {
+        $announcement = Announcement::create([
+            'title' => 'Pengumuman Penting Rapim',
+            'content' => 'Isi pengumuman rapat pimpinan.',
+            'author_id' => $this->principal->id,
+            'target_type' => 'all',
+            'is_active' => true,
+            'published_at' => now(),
+        ]);
+
+        // Principal marks as read
+        $announcement->markAsRead($this->principal);
+
+        // Teacher marks as read
+        $announcement->markAsRead($this->teacher);
+
+        // 1. Author (Principal) can view readers status
+        $response = $this->actingAs($this->principal)->getJson(route('announcements.readers', $announcement->id));
+        $response->assertOk()
+            ->assertJsonStructure([
+                'success',
+                'announcement' => ['id', 'title', 'published_at', 'target_label'],
+                'summary' => ['total_target', 'total_read', 'target_read_count', 'unread_count', 'read_percentage'],
+                'read_users',
+                'unread_users',
+            ]);
+
+        $this->assertEquals(2, $response->json('summary.total_read'));
+
+        // 2. Superadmin can also view readers status
+        $responseAdmin = $this->actingAs($this->admin)->getJson(route('announcements.readers', $announcement->id));
+        $responseAdmin->assertOk();
+
+        // 3. Regular teacher CANNOT view readers status (403)
+        $responseTeacher = $this->actingAs($this->teacher)->getJson(route('announcements.readers', $announcement->id));
+        $responseTeacher->assertStatus(403);
+    }
+
+    public function test_remind_unread_users_via_telegram(): void
+    {
+        $announcement = Announcement::create([
+            'title' => 'Instruksi Segera Baca',
+            'content' => 'Penting mohon dibaca.',
+            'author_id' => $this->principal->id,
+            'target_type' => 'all',
+            'is_active' => true,
+            'published_at' => now(),
+        ]);
+
+        $this->teacher->update(['telegram_chat_id' => '555444333']);
+
+        Http::swap(new Factory);
+        Http::fake([
+            'https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 777]], 200),
+        ]);
+
+        $response = $this->actingAs($this->principal)->postJson(route('announcements.remind-unread', $announcement->id));
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+            ]);
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'sendMessage')
+                && (string) $request['chat_id'] === '555444333'
+                && str_contains($request['text'], 'PENGINGAT PENGUMUMAN SEKOLAH');
+        });
+    }
 }

@@ -153,6 +153,12 @@
                                     <span class="badge bg-secondary-lt text-secondary"><i class="ti ti-check me-1"></i> Dibaca</span>
                                 @endif
 
+                                @if($canPublish && ($isMine || auth()->user()->isSuperAdmin() || auth()->user()->isPrincipal() || auth()->user()->isVicePrincipal()))
+                                    <a href="javascript:void(0)" class="badge bg-blue-lt text-blue text-decoration-none btn-view-readers" data-id="{{ $ann->id }}" title="Klik untuk melihat siapa saja yang sudah membaca">
+                                        <i class="ti ti-users-group me-1"></i> {{ $ann->reads_count }} Dibaca
+                                    </a>
+                                @endif
+
                                 @if($ann->target_type === 'all')
                                     <span class="badge bg-success-lt text-success" title="Ditujukan untuk semua guru & staf"><i class="ti ti-users me-1"></i> Semua GTK</span>
                                 @elseif($ann->target_type === 'role')
@@ -198,9 +204,17 @@
 
                                 <!-- Action Buttons: Baca, WhatsApp, Salin, Edit -->
                                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-1">
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-view-announcement" data-id="{{ $ann->id }}">
-                                        <i class="ti ti-eye me-1"></i> Baca
-                                    </button>
+                                    <div class="d-inline-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-view-announcement" data-id="{{ $ann->id }}">
+                                            <i class="ti ti-eye me-1"></i> Baca
+                                        </button>
+
+                                        @if($canPublish && ($isMine || auth()->user()->isSuperAdmin() || auth()->user()->isPrincipal() || auth()->user()->isVicePrincipal()))
+                                            <button type="button" class="btn btn-sm btn-outline-info btn-view-readers" data-id="{{ $ann->id }}" title="Lihat status pembaca">
+                                                <i class="ti ti-users-group me-1"></i> <span class="d-none d-sm-inline">Pembaca (</span>{{ $ann->reads_count }}<span class="d-none d-sm-inline">)</span>
+                                            </button>
+                                        @endif
+                                    </div>
 
                                     <div class="d-inline-flex gap-1">
                                         <!-- Tombol Bagikan ke WhatsApp -->
@@ -215,13 +229,19 @@
                                             <i class="ti ti-copy"></i>
                                         </button>
 
-                                        @if($canPublish && ($isMine || auth()->user()->isSuperAdmin() || auth()->user()->isPrincipal()))
+                                        @if($canPublish && ($isMine || auth()->user()->isSuperAdmin() || auth()->user()->isPrincipal() || auth()->user()->isVicePrincipal()))
                                             <!-- Tombol Menu Aksi Khusus Pimpinan -->
                                             <div class="dropdown d-inline">
                                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <i class="ti ti-dots-vertical"></i>
                                                 </button>
                                                 <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                    <li>
+                                                        <a class="dropdown-item btn-view-readers" href="javascript:void(0)" data-id="{{ $ann->id }}">
+                                                            <i class="ti ti-users-group me-2 text-info"></i> Status Pembaca ({{ $ann->reads_count }})
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
                                                     <li>
                                                         <a class="dropdown-item btn-edit-announcement" href="javascript:void(0)" data-id="{{ $ann->id }}">
                                                             <i class="ti ti-edit me-2 text-warning"></i> Edit Pengumuman
@@ -321,8 +341,15 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            <div class="modal-footer bg-light py-2 justify-content-between">
+                @if($canPublish)
+                    <button type="button" class="btn btn-outline-info btn-sm btn-view-readers" id="btn_modal_view_readers" data-id="">
+                        <i class="ti ti-users-group me-1"></i> Status Pembaca
+                    </button>
+                @else
+                    <div></div>
+                @endif
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
@@ -605,6 +632,141 @@
         </form>
     </div>
 </div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: RINCIAN STATUS PEMBACA PENGUMUMAN -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modal-readers-announcement" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-dark text-white py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-users-group fs-2 text-info"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Status Pembaca Pengumuman</h5>
+                        <div class="text-white-50 small text-truncate" style="max-width: 480px;" id="readers_ann_title_preview">Memuat judul...</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <!-- Loading State -->
+                <div id="readers-loading-spinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="text-muted small mt-2">Memuat rincian pembaca...</div>
+                </div>
+
+                <!-- Content Area -->
+                <div id="readers-content-area" class="d-none">
+                    <!-- Ringkasan Statistik -->
+                    <div class="card border-0 bg-light shadow-none mb-4">
+                        <div class="card-body p-3">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-12 col-md-5">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fs-1 fw-bold text-primary" id="readers_stat_percent">0%</span>
+                                        <div class="lh-sm">
+                                            <div class="fw-bold text-dark small">Tingkat Keterbacaan</div>
+                                            <div class="text-muted" style="font-size: 11px;">Sasaran: <span id="readers_stat_target_label" class="fw-semibold">-</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="progress progress-sm" style="height: 6px;">
+                                        <div class="progress-bar bg-primary" id="readers_stat_progress_bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-7">
+                                    <div class="row g-2 text-center">
+                                        <div class="col-4">
+                                            <div class="p-2 bg-white rounded border">
+                                                <div class="text-muted" style="font-size: 11px;">Target</div>
+                                                <div class="fs-3 fw-bold text-dark" id="readers_stat_target">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-2 bg-white rounded border border-success-subtle">
+                                                <div class="text-success" style="font-size: 11px;">Sudah Baca</div>
+                                                <div class="fs-3 fw-bold text-success" id="readers_stat_read">0</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-2 bg-white rounded border border-danger-subtle">
+                                                <div class="text-danger" style="font-size: 11px;">Belum Baca</div>
+                                                <div class="fs-3 fw-bold text-danger" id="readers_stat_unread">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Pencarian Live & Tombol Nudge Telegram -->
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div class="input-icon flex-grow-1" style="max-width: 320px;">
+                            <span class="input-icon-addon">
+                                <i class="ti ti-search text-muted"></i>
+                            </span>
+                            <input type="text" id="readers-search-input" class="form-control form-control-sm" placeholder="Cari nama atau jabatan GTK...">
+                        </div>
+
+                        <div id="readers-telegram-action-wrap" class="d-none">
+                            <button type="button" class="btn btn-sm btn-outline-teal" id="btn_remind_unread_telegram" title="Kirim notifikasi pengingat Telegram khusus GTK yang belum membaca">
+                                <i class="ti ti-brand-telegram me-1"></i> Ingatkan Belum Baca (<span id="readers_telegram_count">0</span>)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Nav Tabs: Sudah Baca vs Belum Baca -->
+                    <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold d-flex align-items-center justify-content-center gap-1" id="tab-read-users" data-bs-toggle="tab" data-bs-target="#pane-read-users" type="button" role="tab">
+                                <i class="ti ti-check text-success"></i> Sudah Membaca
+                                <span class="badge bg-success-lt text-success ms-1" id="badge_count_read">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold d-flex align-items-center justify-content-center gap-1" id="tab-unread-users" data-bs-toggle="tab" data-bs-target="#pane-unread-users" type="button" role="tab">
+                                <i class="ti ti-alert-circle text-danger"></i> Belum Membaca
+                                <span class="badge bg-danger-lt text-danger ms-1" id="badge_count_unread">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Pane: Sudah Membaca -->
+                        <div class="tab-pane fade show active" id="pane-read-users" role="tabpanel">
+                            <div class="list-group list-group-flush border rounded overflow-hidden" id="list_read_users" style="max-height: 380px; overflow-y: auto;">
+                                <!-- Item list will be injected here -->
+                            </div>
+                            <div id="empty_read_users" class="text-center py-4 text-muted d-none">
+                                <i class="ti ti-users fs-1 mb-2 d-block opacity-50"></i>
+                                Belum ada GTK yang membaca pengumuman ini.
+                            </div>
+                        </div>
+
+                        <!-- Pane: Belum Membaca -->
+                        <div class="tab-pane fade" id="pane-unread-users" role="tabpanel">
+                            <div class="list-group list-group-flush border rounded overflow-hidden" id="list_unread_users" style="max-height: 380px; overflow-y: auto;">
+                                <!-- Item list will be injected here -->
+                            </div>
+                            <div id="empty_unread_users" class="text-center py-4 text-success d-none">
+                                <i class="ti ti-circle-check fs-1 mb-2 d-block"></i>
+                                Luar biasa! Seluruh sasaran GTK telah membaca pengumuman ini.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-2 justify-content-between">
+                <span class="text-muted small" id="readers_footer_info"></span>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endif
 
 @push('scripts')
@@ -694,6 +856,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     };
                 }
 
+                const readersBtn = document.getElementById('btn_modal_view_readers');
+                if (readersBtn) {
+                    readersBtn.dataset.id = data.id;
+                }
+
                 const modal = new bootstrap.Modal(document.getElementById('modal-view-announcement'));
                 modal.show();
             });
@@ -750,6 +917,258 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    // -------------------------------------------------------------
+    // Status Pembaca Pengumuman (Modal Readers)
+    // -------------------------------------------------------------
+    function escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    let currentReadersData = null;
+    let activeAnnouncementIdForReaders = null;
+
+    function renderReadersList(readUsers, unreadUsers, query = '') {
+        const q = query.toLowerCase().trim();
+
+        // 1. Render Read Users
+        const readListEl = document.getElementById('list_read_users');
+        const emptyReadEl = document.getElementById('empty_read_users');
+        if (readListEl && emptyReadEl) {
+            readListEl.innerHTML = '';
+
+            const filteredRead = readUsers.filter(u => {
+                if (!q) return true;
+                return (u.name && u.name.toLowerCase().includes(q)) ||
+                       (u.position_or_role && u.position_or_role.toLowerCase().includes(q));
+            });
+
+            if (filteredRead.length === 0) {
+                emptyReadEl.classList.remove('d-none');
+            } else {
+                emptyReadEl.classList.add('d-none');
+                filteredRead.forEach(u => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item d-flex align-items-center justify-content-between p-3';
+
+                    const avatarHtml = u.avatar_url 
+                        ? `<span class="avatar avatar-sm rounded-circle me-3" style="background-image: url('${escapeHtml(u.avatar_url)}')"></span>`
+                        : `<span class="avatar avatar-sm rounded-circle bg-success-lt text-success fw-bold me-3">${escapeHtml(u.avatar_initial)}</span>`;
+
+                    const badgeExtra = !u.is_target ? `<span class="badge bg-secondary-lt text-secondary ms-1" style="font-size: 10px;">Di Luar Sasaran</span>` : '';
+
+                    item.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            ${avatarHtml}
+                            <div>
+                                <div class="fw-bold text-dark d-flex align-items-center gap-1">
+                                    ${escapeHtml(u.name)}
+                                    ${badgeExtra}
+                                </div>
+                                <div class="text-muted small" style="font-size: 11px;">${escapeHtml(u.position_or_role)}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-success-lt text-success" title="${escapeHtml(u.read_at)}">
+                                <i class="ti ti-check me-1"></i> Dibaca
+                            </span>
+                            <div class="text-muted small mt-1" style="font-size: 10px;">${escapeHtml(u.read_at_human)}</div>
+                        </div>
+                    `;
+                    readListEl.appendChild(item);
+                });
+            }
+        }
+
+        // 2. Render Unread Users
+        const unreadListEl = document.getElementById('list_unread_users');
+        const emptyUnreadEl = document.getElementById('empty_unread_users');
+        if (unreadListEl && emptyUnreadEl) {
+            unreadListEl.innerHTML = '';
+
+            const filteredUnread = unreadUsers.filter(u => {
+                if (!q) return true;
+                return (u.name && u.name.toLowerCase().includes(q)) ||
+                       (u.position_or_role && u.position_or_role.toLowerCase().includes(q));
+            });
+
+            if (filteredUnread.length === 0) {
+                emptyUnreadEl.classList.remove('d-none');
+            } else {
+                emptyUnreadEl.classList.add('d-none');
+                filteredUnread.forEach(u => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item d-flex align-items-center justify-content-between p-3';
+
+                    const avatarHtml = u.avatar_url 
+                        ? `<span class="avatar avatar-sm rounded-circle me-3" style="background-image: url('${escapeHtml(u.avatar_url)}')"></span>`
+                        : `<span class="avatar avatar-sm rounded-circle bg-danger-lt text-danger fw-bold me-3">${escapeHtml(u.avatar_initial)}</span>`;
+
+                    const tgBadge = u.has_telegram 
+                        ? `<span class="badge bg-teal-lt text-teal" style="font-size: 10px;" title="Terhubung ke Bot Telegram"><i class="ti ti-brand-telegram me-1"></i> Telegram Terhubung</span>`
+                        : `<span class="badge bg-secondary-lt text-secondary" style="font-size: 10px;">Belum Sambung Telegram</span>`;
+
+                    item.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            ${avatarHtml}
+                            <div>
+                                <div class="fw-bold text-dark">${escapeHtml(u.name)}</div>
+                                <div class="text-muted small" style="font-size: 11px;">${escapeHtml(u.position_or_role)}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-danger-lt text-danger mb-1">
+                                <i class="ti ti-clock me-1"></i> Belum Baca
+                            </span>
+                            <div>${tgBadge}</div>
+                        </div>
+                    `;
+                    unreadListEl.appendChild(item);
+                });
+            }
+        }
+    }
+
+    document.querySelectorAll('.btn-view-readers').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            if (!id) return;
+            activeAnnouncementIdForReaders = id;
+
+            // Close view modal if opened
+            const viewModalEl = document.getElementById('modal-view-announcement');
+            if (viewModalEl) {
+                const viewModalInstance = bootstrap.Modal.getInstance(viewModalEl);
+                if (viewModalInstance) {
+                    viewModalInstance.hide();
+                }
+            }
+
+            const readersModalEl = document.getElementById('modal-readers-announcement');
+            if (!readersModalEl) return;
+            const readersModal = new bootstrap.Modal(readersModalEl);
+            readersModal.show();
+
+            // Set loading state
+            document.getElementById('readers-loading-spinner').classList.remove('d-none');
+            document.getElementById('readers-content-area').classList.add('d-none');
+            const searchInput = document.getElementById('readers-search-input');
+            if (searchInput) searchInput.value = '';
+
+            const url = '{{ url("pengumuman") }}/' + id + '/status-pembaca';
+
+            fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Gagal memuat status pembaca');
+                return res.json();
+            })
+            .then(data => {
+                currentReadersData = data;
+
+                document.getElementById('readers_ann_title_preview').textContent = data.announcement.title;
+                document.getElementById('readers_stat_percent').textContent = data.summary.read_percentage + '%';
+                document.getElementById('readers_stat_target_label').textContent = data.announcement.target_label;
+                document.getElementById('readers_stat_progress_bar').style.width = data.summary.read_percentage + '%';
+                document.getElementById('readers_stat_target').textContent = data.summary.total_target;
+                document.getElementById('readers_stat_read').textContent = data.summary.total_read;
+                document.getElementById('readers_stat_unread').textContent = data.summary.unread_count;
+
+                document.getElementById('badge_count_read').textContent = data.read_users.length;
+                document.getElementById('badge_count_unread').textContent = data.unread_users.length;
+
+                // Telegram Action Wrap
+                const tgWrap = document.getElementById('readers-telegram-action-wrap');
+                const unreadWithTg = data.unread_users.filter(u => u.has_telegram).length;
+                const tgCountEl = document.getElementById('readers_telegram_count');
+                if (tgCountEl) tgCountEl.textContent = unreadWithTg;
+
+                if (tgWrap) {
+                    if (unreadWithTg > 0) {
+                        tgWrap.classList.remove('d-none');
+                    } else {
+                        tgWrap.classList.add('d-none');
+                    }
+                }
+
+                document.getElementById('readers_footer_info').textContent = 'Diterbitkan: ' + data.announcement.published_at;
+
+                renderReadersList(data.read_users, data.unread_users, '');
+
+                document.getElementById('readers-loading-spinner').classList.add('d-none');
+                document.getElementById('readers-content-area').classList.remove('d-none');
+            })
+            .catch(err => {
+                document.getElementById('readers-loading-spinner').innerHTML = `
+                    <div class="text-danger py-4">
+                        <i class="ti ti-alert-triangle fs-1 d-block mb-2"></i>
+                        ${escapeHtml(err.message || 'Terjadi kesalahan saat memuat status pembaca.')}
+                    </div>
+                `;
+            });
+        });
+    });
+
+    // Live search in readers modal
+    const searchInput = document.getElementById('readers-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            if (currentReadersData) {
+                renderReadersList(currentReadersData.read_users, currentReadersData.unread_users, this.value);
+            }
+        });
+    }
+
+    // Remind unread button via Telegram
+    const btnRemind = document.getElementById('btn_remind_unread_telegram');
+    if (btnRemind) {
+        btnRemind.addEventListener('click', function () {
+            if (!activeAnnouncementIdForReaders) return;
+
+            const count = document.getElementById('readers_telegram_count').textContent;
+            if (!confirm(`Kirim notifikasi pengingat via Telegram ke ${count} GTK yang belum membaca pengumuman ini?`)) {
+                return;
+            }
+
+            const originalHtml = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Mengirim...';
+
+            const csrfToken = '{{ csrf_token() }}';
+            const url = '{{ url("pengumuman") }}/' + activeAnnouncementIdForReaders + '/ingatkan-belum-baca';
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(result => {
+                alert(result.message);
+            })
+            .catch(err => {
+                alert('Gagal mengirim pengingat: ' + err.message);
+            })
+            .finally(() => {
+                this.disabled = false;
+                this.innerHTML = originalHtml;
+            });
+        });
+    }
 });
 </script>
 @endpush

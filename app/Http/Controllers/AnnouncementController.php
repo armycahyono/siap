@@ -1,12 +1,11 @@
 <?php
 
-namespace App\Models;
-
 namespace App\Http\Controllers;
 
 use App\Models\Announcement;
 use App\Models\Department;
 use App\Models\Role;
+use App\Models\SchoolSetting;
 use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +31,7 @@ class AnnouncementController extends Controller
 
         $query = Announcement::with(['author', 'reads' => function ($q) use ($user) {
             $q->where('user_id', $user->id);
-        }]);
+        }])->withCount('reads');
 
         if ($canPublish && $tab === 'my') {
             $query->where('author_id', $user->id);
@@ -274,5 +273,146 @@ class AnnouncementController extends Controller
         }
 
         return back()->with('error', $res['message']);
+    }
+
+    /**
+     * Dapatkan rincian status pembaca pengumuman (JSON untuk modal).
+     */
+    public function readers(Announcement $announcement, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // Otorisasi: Hanya pembuat pengumuman, Superadmin, KS, atau Waka yang diizinkan melihat rekap pembaca
+        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->isVicePrincipal() && $announcement->author_id !== $user->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk melihat rincian pembaca pengumuman ini.');
+        }
+
+        $targetUsers = $announcement->getTargetUsersQuery()->with('role')->orderBy('name')->get();
+        $targetUserIds = $targetUsers->pluck('id')->toArray();
+
+        $reads = $announcement->reads()->with('user.role')->orderByDesc('read_at')->get();
+        $readMap = $reads->keyBy('user_id');
+
+        $readUsers = $reads->map(function ($read) use ($targetUserIds) {
+            $u = $read->user;
+
+            return [
+                'id' => $u?->id,
+                'name' => $u?->name ?? 'User Tidak Diketahui',
+                'position_or_role' => $u?->position ?: ($u?->role?->name ?? 'GTK'),
+                'avatar_url' => $u?->avatar_url ?? null,
+                'avatar_initial' => strtoupper(substr($u?->name ?? 'U', 0, 1)),
+                'read_at' => $read->read_at ? $read->read_at->translatedFormat('d M Y, H:i') : '-',
+                'read_at_human' => $read->read_at ? $read->read_at->diffForHumans() : '-',
+                'is_target' => in_array($u?->id, $targetUserIds, true),
+            ];
+        });
+
+        $unreadUsers = $targetUsers->filter(function ($u) use ($readMap) {
+            return ! $readMap->has($u->id);
+        })->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'position_or_role' => $u->position ?: ($u->role?->name ?? 'GTK'),
+                'avatar_url' => $u->avatar_url ?? null,
+                'avatar_initial' => strtoupper(substr($u->name, 0, 1)),
+                'has_telegram' => ! empty($u->telegram_chat_id),
+            ];
+        })->values();
+
+        $totalTarget = $targetUsers->count();
+        $totalRead = $reads->count();
+        $targetReadCount = $targetUsers->filter(fn ($u) => $readMap->has($u->id))->count();
+        $unreadCount = $unreadUsers->count();
+        $percentage = $totalTarget > 0 ? (int) round(($targetReadCount / $totalTarget) * 100) : 100;
+
+        return response()->json([
+            'success' => true,
+            'announcement' => [
+                'id' => $announcement->id,
+                'title' => $announcement->title,
+                'author_name' => $announcement->author ? $announcement->author->name : 'Pimpinan Sekolah',
+                'published_at' => $announcement->published_at ? $announcement->published_at->translatedFormat('l, d F Y H:i') : '-',
+                'target_label' => $announcement->target_label,
+                'send_telegram' => (bool) $announcement->send_telegram,
+            ],
+            'summary' => [
+                'total_target' => $totalTarget,
+                'total_read' => $totalRead,
+                'target_read_count' => $targetReadCount,
+                'unread_count' => $unreadCount,
+                'read_percentage' => $percentage,
+            ],
+            'read_users' => $readUsers,
+            'unread_users' => $unreadUsers,
+        ]);
+    }
+
+    /**
+     * Kirim pesan pengingat ke GTK yang belum membaca pengumuman melalui Telegram.
+     */
+    public function remindUnread(Announcement $announcement, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->isSuperAdmin() && ! $user->isPrincipal() && ! $user->isVicePrincipal() && $announcement->author_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki hak akses untuk mengirim pengingat.',
+            ], 403);
+        }
+
+        $targetUsers = $announcement->getTargetUsersQuery()->get();
+        $readUserIds = $announcement->reads()->pluck('user_id')->toArray();
+
+        $unreadUsers = $targetUsers->filter(function ($u) use ($readUserIds) {
+            return ! in_array($u->id, $readUserIds, true) && ! empty($u->telegram_chat_id);
+        });
+
+        if ($unreadUsers->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada penerima belum baca yang memiliki akun Telegram aktif.',
+            ]);
+        }
+
+        $schoolSetting = SchoolSetting::getSetting();
+        $schoolName = strtoupper($schoolSetting->school_name ?? 'SMK PGRI KRAS');
+        $authorName = $announcement->author ? $announcement->author->name : 'Pimpinan Sekolah';
+        $authorRole = $announcement->author ? ($announcement->author->role?->name ?? 'Pimpinan') : 'Pimpinan';
+
+        $sentCount = 0;
+        foreach ($unreadUsers as $recipient) {
+            $message = "🔔 <b>PENGINGAT PENGUMUMAN SEKOLAH</b>\n"
+                ."<b>{$schoolName}</b>\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                ."Yth. Bpk/Ibu <b>{$recipient->name}</b>,\n\n"
+                ."Anda memiliki pengumuman penting yang belum dibuka/dibaca:\n"
+                ."📌 <b>Judul:</b> {$announcement->title}\n"
+                ."👤 <b>Pengirim:</b> {$authorName} ({$authorRole})\n"
+                ."🎯 <b>Sasaran:</b> {$announcement->target_label}\n\n"
+                ."Mohon untuk membuka dan membaca detail pengumuman melalui <b>SIAP Web</b> atau <b>SIAP Mobile</b>.\n"
+                ."━━━━━━━━━━━━━━━━━━━━\n"
+                .'<i>Sistem Informasi Administrasi dan Pendidikan (SIAP)</i>';
+
+            $isSent = $this->telegramService->sendMessage(
+                $recipient->telegram_chat_id,
+                $message,
+                'announcement_reminder',
+                $recipient->name,
+                'HTML'
+            );
+
+            if ($isSent) {
+                $sentCount++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Pengingat berhasil dikirim ke {$sentCount} GTK melalui Telegram.",
+            'sent_count' => $sentCount,
+        ]);
     }
 }
