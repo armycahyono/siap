@@ -145,6 +145,8 @@ Route::middleware('auth')->group(function () {
     Route::get('siswa/search-api', [StudentController::class, 'searchApi'])->name('students.search-api');
     Route::get('siswa/template-import', [StudentController::class, 'downloadTemplate'])->name('students.template');
     Route::get('siswa/{student}', [StudentController::class, 'show'])->name('students.show')->whereNumber('student');
+    Route::get('siswa/{student}/edit-data', [StudentController::class, 'editData'])->name('students.edit-data')->whereNumber('student');
+    Route::put('siswa/{student}', [StudentController::class, 'update'])->name('students.update');
 
     // Akses Berkas Tanda Tangan Digital Terotorisasi (FND-04)
     Route::get('structural-positions/{structuralPosition}/signature', [StructuralPositionController::class, 'viewSignature'])->name('structural-positions.signature');
@@ -231,15 +233,13 @@ Route::middleware('auth')->group(function () {
         Route::post('penugasan-pegawai/{assignment}/toggle', [EmployeeAssignmentController::class, 'toggle'])->name('employee-assignments.toggle');
         Route::delete('penugasan-pegawai/{assignment}', [EmployeeAssignmentController::class, 'destroy'])->name('employee-assignments.destroy');
 
-        // Pengelolaan Data Siswa (Create, Import, Dapodik, Update, Delete)
+        // Pengelolaan Data Siswa (Create, Import, Dapodik, Delete)
         Route::post('siswa', [StudentController::class, 'store'])->name('students.store');
         Route::post('siswa/import', [StudentController::class, 'import'])->name('students.import');
         Route::post('siswa/import-dapodik', [StudentController::class, 'importDapodik'])->name('students.import-dapodik');
         Route::post('siswa/mutasi', [StudentController::class, 'recordMutation'])->name('students.mutations.store');
         Route::delete('siswa/mutasi/{mutation}', [StudentController::class, 'destroyMutation'])->name('students.mutations.destroy');
         Route::get('siswa/mutasi/download/{mutation}', [StudentController::class, 'downloadMutationAttachment'])->name('students.mutations.download');
-        Route::get('siswa/{student}/edit-data', [StudentController::class, 'editData'])->name('students.edit-data')->whereNumber('student');
-        Route::put('siswa/{student}', [StudentController::class, 'update'])->name('students.update');
         Route::delete('siswa/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
     });
 

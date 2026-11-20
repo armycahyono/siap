@@ -10950,6 +10950,513 @@
     }
 
     // ==========================================
+    // 6.3 SUB-MODUL DIREKTORI DATA SISWA MOBILE
+    // ==========================================
+    let studentDirContainer = null;
+    const studentDirState = {
+        search: '',
+        scope: '', // 'binaan', 'all', 'wa'
+        classroom_id: 'all',
+        students: [],
+        total: 0,
+        is_homeroom: false,
+        selectedStudent: null,
+    };
+
+    window.initTasksStudentsDirectory = function(container) {
+        studentDirContainer = container;
+        studentDirState.search = '';
+        studentDirState.scope = '';
+        studentDirState.classroom_id = 'all';
+
+        const searchInput = container.querySelector('#student-dir-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+
+        loadStudentsDirectory();
+    };
+
+    let studentDirSearchDebounce = null;
+    window.debounceStudentDirSearch = function() {
+        const input = document.getElementById('student-dir-search');
+        const clearBtn = document.getElementById('btn-clear-student-dir-search');
+        if (input && clearBtn) {
+            clearBtn.classList.toggle('hidden', !input.value);
+        }
+        clearTimeout(studentDirSearchDebounce);
+        studentDirSearchDebounce = setTimeout(() => {
+            studentDirState.search = input ? input.value.trim() : '';
+            loadStudentsDirectory();
+        }, 300);
+    };
+
+    window.clearStudentDirSearch = function() {
+        const input = document.getElementById('student-dir-search');
+        const clearBtn = document.getElementById('btn-clear-student-dir-search');
+        if (input) input.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        studentDirState.search = '';
+        loadStudentsDirectory();
+    };
+
+    window.setStudentDirScope = function(scope) {
+        studentDirState.scope = scope;
+        if (scope === 'binaan') {
+            studentDirState.classroom_id = 'all';
+            const selectEl = document.getElementById('student-dir-classroom-select');
+            if (selectEl) selectEl.value = 'all';
+        }
+        updateStudentDirPillsUI(scope);
+        loadStudentsDirectory();
+    };
+
+    window.onStudentDirClassroomChange = function(val) {
+        studentDirState.classroom_id = val;
+        if (val !== 'all') {
+            studentDirState.scope = 'all';
+            updateStudentDirPillsUI('all');
+        }
+        loadStudentsDirectory();
+    };
+
+    function updateStudentDirPillsUI(activeScope) {
+        if (!studentDirContainer) return;
+        const pills = studentDirContainer.querySelectorAll('.student-tab-pill');
+        pills.forEach(pill => {
+            const tabKey = pill.getAttribute('data-student-tab');
+            if (tabKey === activeScope) {
+                if (tabKey === 'binaan') {
+                    pill.className = 'student-tab-pill px-3 py-1 rounded-xl bg-amber-500 text-white shadow-2xs whitespace-nowrap active:scale-95 transition flex items-center gap-1';
+                } else {
+                    pill.className = 'student-tab-pill px-3 py-1 rounded-xl bg-blue-600 text-white shadow-2xs whitespace-nowrap active:scale-95 transition flex items-center gap-1';
+                }
+            } else {
+                pill.className = 'student-tab-pill px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap active:scale-95 transition flex items-center gap-1';
+            }
+        });
+    }
+
+    window.loadStudentsDirectory = async function() {
+        if (!studentDirContainer) return;
+        const listContainer = studentDirContainer.querySelector('#student-dir-list-container');
+        const summaryText = studentDirContainer.querySelector('#student-dir-summary-text');
+        const binaanBadge = studentDirContainer.querySelector('#student-dir-binaan-badge');
+        const tabBinaan = studentDirContainer.querySelector('#student-tab-binaan');
+        const classroomSelect = studentDirContainer.querySelector('#student-dir-classroom-select');
+        const roleSubtitle = studentDirContainer.querySelector('#student-dir-role-subtitle');
+
+        if (listContainer) {
+            listContainer.innerHTML = `
+                <div class="card-elevated p-3.5 space-y-2.5 animate-pulse">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-slate-200"></div>
+                        <div class="flex-1 space-y-1.5">
+                            <div class="h-3 bg-slate-200 rounded w-2/3"></div>
+                            <div class="h-2.5 bg-slate-100 rounded w-1/3"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        try {
+            const queryParams = new URLSearchParams();
+            if (studentDirState.search) queryParams.set('search', studentDirState.search);
+            if (studentDirState.scope) queryParams.set('scope', studentDirState.scope);
+            if (studentDirState.classroom_id && studentDirState.classroom_id !== 'all') {
+                queryParams.set('classroom_id', studentDirState.classroom_id);
+            }
+
+            const res = await SIAP_API.request('tasks/students-directory?' + queryParams.toString());
+            if (!res.success) {
+                if (listContainer) {
+                    listContainer.innerHTML = `
+                        <div class="card-elevated p-6 text-center text-xs text-rose-600">
+                            <div class="text-2xl mb-1.5">⚠️</div>
+                            <div class="font-bold mb-1">Gagal Memuat Data Siswa</div>
+                            <div class="text-[11px] text-slate-500">${res.message || 'Terjadi gangguan koneksi.'}</div>
+                            <button type="button" onclick="loadStudentsDirectory()" class="mt-3 px-3 py-1.5 bg-blue-600 text-white font-bold rounded-xl text-xs active:scale-95 transition">Coba Lagi</button>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            const data = res.data || {};
+            const students = data.students || [];
+            const meta = data.meta || {};
+
+            studentDirState.students = students;
+            studentDirState.total = data.total || students.length;
+            studentDirState.is_homeroom = Boolean(meta.is_homeroom);
+
+            if (!studentDirState.scope) {
+                studentDirState.scope = meta.current_scope || (meta.is_homeroom ? 'binaan' : 'all');
+                updateStudentDirPillsUI(studentDirState.scope);
+            }
+
+            // Tampilkan tombol tab binaan jika user adalah wali kelas
+            if (tabBinaan) {
+                tabBinaan.classList.toggle('hidden', !meta.is_homeroom);
+            }
+
+            // Subtitle status
+            if (roleSubtitle) {
+                if (meta.is_homeroom) {
+                    const roomNames = (meta.homeroom_classrooms || []).map(r => r.name).join(', ');
+                    roleSubtitle.innerHTML = `
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span class="text-amber-800">Wali Kelas: <strong>${roomNames || 'Kelas Perwalian'}</strong></span>
+                    `;
+                } else {
+                    roleSubtitle.innerHTML = `
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                        <span>Direktori Siswa (Semua GTK)</span>
+                    `;
+                }
+            }
+
+            // Isi dropdown kelas jika belum ada opsi lengkap
+            if (classroomSelect && classroomSelect.options.length <= 1 && Array.isArray(meta.classrooms)) {
+                classroomSelect.innerHTML = '<option value="all">-- Semua Rombel Aktif --</option>';
+                meta.classrooms.forEach(cls => {
+                    const opt = document.createElement('option');
+                    opt.value = cls.id;
+                    opt.textContent = cls.name;
+                    if (String(cls.id) === String(studentDirState.classroom_id)) {
+                        opt.selected = true;
+                    }
+                    classroomSelect.appendChild(opt);
+                });
+            }
+
+            // Filter lokal tambahan jika ada tab khusus
+            let displayedStudents = students;
+            if (studentDirState.scope === 'wa') {
+                displayedStudents = displayedStudents.filter(s => s.has_student_phone || s.has_parent_phone);
+            }
+
+            const binaanCount = students.filter(s => s.is_binaan).length;
+            if (summaryText) {
+                summaryText.textContent = `Menampilkan ${displayedStudents.length} siswa`;
+            }
+            if (binaanBadge) {
+                if (meta.is_homeroom && binaanCount > 0) {
+                    binaanBadge.classList.remove('hidden');
+                    binaanBadge.textContent = `⭐ ${binaanCount} Binaan`;
+                } else {
+                    binaanBadge.classList.add('hidden');
+                }
+            }
+
+            if (!listContainer) return;
+
+            if (displayedStudents.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="card-elevated p-8 text-center text-xs text-slate-400">
+                        <div class="text-3xl mb-2">👥</div>
+                        <div class="font-bold text-slate-600 mb-1">Tidak ada data siswa ditemukan</div>
+                        <p class="text-[11px] text-slate-400">Silakan sesuaikan kata kunci pencarian atau ubah filter kelas.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = displayedStudents.map(s => {
+                const isMale = s.gender === 'L';
+                const avatarBg = isMale ? 'bg-blue-600' : 'bg-pink-600';
+                const initial = (s.name || 'S').charAt(0).toUpperCase();
+
+                const binaanBadgeHtml = s.is_binaan 
+                    ? `<span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[9px] border border-amber-300 shrink-0">⭐ Binaan</span>`
+                    : '';
+
+                const studentWaBtn = s.wa_student_url
+                    ? `<a href="${s.wa_student_url}" target="_blank" onclick="event.stopPropagation()" class="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold border border-emerald-200 flex items-center gap-1 active:scale-95 transition">
+                        <span>💬</span><span>WA Siswa</span>
+                       </a>`
+                    : '';
+
+                const parentWaBtn = s.wa_parent_url
+                    ? `<a href="${s.wa_parent_url}" target="_blank" onclick="event.stopPropagation()" class="px-2 py-1 rounded-lg bg-teal-50 text-teal-800 hover:bg-teal-100 text-[10px] font-bold border border-teal-200 flex items-center gap-1 active:scale-95 transition">
+                        <span>👨‍👩‍👧</span><span>WA Ortu</span>
+                       </a>`
+                    : '';
+
+                const editBtnHtml = s.can_edit
+                    ? `<button type="button" onclick="event.stopPropagation(); openStudentEditModal(${s.id})" class="px-2 py-1 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 text-[10px] font-bold border border-amber-200 flex items-center gap-1 active:scale-95 transition" title="Edit Nomor Telepon & Alamat">
+                        <span>✏️</span><span>Edit</span>
+                       </button>`
+                    : '';
+
+                return `
+                    <div class="card-elevated p-3 space-y-2 hover:border-blue-300 transition cursor-pointer" onclick="openStudentDetailModal(${s.id})">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-10 h-10 rounded-2xl ${avatarBg} text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+                                    ${initial}
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <h4 class="text-xs font-black text-slate-800 truncate">${escapeHtml(s.name)}</h4>
+                                        ${binaanBadgeHtml}
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                                        <span class="font-bold text-blue-700">${escapeHtml(s.classroom_name)}</span> • NISN: <span class="font-mono">${escapeHtml(s.nisn || '-')}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${isMale ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'} shrink-0">
+                                ${s.gender}
+                            </span>
+                        </div>
+
+                        <div class="text-[10.5px] text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">Kontak Siswa:</span>
+                                <span class="font-bold text-slate-700 font-mono">${escapeHtml(s.phone_student || '-')}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">Ortu (${escapeHtml(s.primary_parent_name)}):</span>
+                                <span class="font-bold text-slate-700 font-mono">${escapeHtml(s.primary_parent_phone || '-')}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 truncate pt-0.5 border-t border-slate-200/50">
+                                📍 ${escapeHtml(s.address)}
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1 gap-1">
+                            <div class="flex items-center gap-1">
+                                ${studentWaBtn}
+                                ${parentWaBtn}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                ${editBtnHtml}
+                                <button type="button" onclick="event.stopPropagation(); openStudentDetailModal(${s.id})" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition active:scale-95">
+                                    Biodata &raquo;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (err) {
+            if (listContainer) {
+                listContainer.innerHTML = `
+                    <div class="card-elevated p-6 text-center text-xs text-rose-600">
+                        <div class="text-2xl mb-1.5">⚠️</div>
+                        <div class="font-bold mb-1">Terjadi Kesalahan Jaringan</div>
+                        <div class="text-[11px] text-slate-500">${err.message || 'Silakan coba beberapa saat lagi.'}</div>
+                    </div>
+                `;
+            }
+        }
+    };
+
+    window.openStudentDetailModal = async function(id) {
+        let student = (studentDirState.students || []).find(s => s.id === id);
+        const modal = document.getElementById('modal-student-dir-detail');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (bottomNav) bottomNav.classList.add('hidden');
+        if (!modal) return;
+
+        // Buka modal segera dengan data yang ada
+        populateStudentDetailModal(student || { id });
+        modal.classList.remove('hidden');
+
+        // Tarik data detail lengkap dari endpoint
+        try {
+            const res = await SIAP_API.request(`tasks/students/${id}`);
+            if (res && res.success && res.student) {
+                student = res.student;
+                studentDirState.selectedStudent = student;
+                populateStudentDetailModal(student);
+            }
+        } catch (e) {
+            console.error('Gagal memuat detail siswa:', e);
+        }
+    };
+
+    function populateStudentDetailModal(s) {
+        studentDirState.selectedStudent = s;
+
+        const isMale = s.gender === 'L';
+        const avatarEl = document.getElementById('m-detail-avatar');
+        if (avatarEl) {
+            avatarEl.textContent = (s.name || 'S').charAt(0).toUpperCase();
+            avatarEl.className = `w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white ${isMale ? 'bg-blue-600' : 'bg-pink-600'}`;
+        }
+
+        const setTxt = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val || '-';
+        };
+
+        setTxt('m-detail-name', s.name);
+        setTxt('m-detail-class-homeroom', `${s.classroom_name || '-'} • Wali: ${s.homeroom_name || '-'}`);
+        setTxt('m-detail-nisn-nis', `${s.nisn || '-'} / ${s.nis || '-'}`);
+        setTxt('m-detail-gender', s.gender_label || (isMale ? 'Laki-laki' : 'Perempuan'));
+        setTxt('m-detail-ttl', s.birth_place ? `${s.birth_place}, ${s.birth_date || '-'}` : (s.birth_date || '-'));
+        setTxt('m-detail-religion', s.religion);
+        setTxt('m-detail-phone-student', s.phone_student);
+        setTxt('m-detail-address', s.address);
+
+        setTxt('m-detail-father-name', s.father_name);
+        setTxt('m-detail-father-job', s.father_job ? `(${s.father_job})` : '');
+        setTxt('m-detail-father-phone', s.father_phone);
+
+        setTxt('m-detail-mother-name', s.mother_name);
+        setTxt('m-detail-mother-job', s.mother_job ? `(${s.mother_job})` : '');
+        setTxt('m-detail-mother-phone', s.mother_phone);
+
+        setTxt('m-detail-guardian-name', s.guardian_name);
+        setTxt('m-detail-guardian-job', s.guardian_job ? `(${s.guardian_job})` : '');
+        setTxt('m-detail-guardian-phone', s.guardian_phone);
+
+        // Banner binaan & section sensitif
+        const bannerBinaan = document.getElementById('m-detail-binaan-banner');
+        if (bannerBinaan) bannerBinaan.classList.toggle('hidden', !s.is_binaan);
+
+        const sensitiveSec = document.getElementById('m-detail-sensitive-section');
+        if (sensitiveSec) {
+            const hasSensitive = Boolean(s.nik || s.family_card_no);
+            sensitiveSec.classList.toggle('hidden', !hasSensitive);
+            if (hasSensitive) {
+                setTxt('m-detail-nik', s.nik);
+                setTxt('m-detail-kk', s.family_card_no);
+                setTxt('m-detail-akta', s.birth_certificate_no);
+                setTxt('m-detail-pip', s.is_pip_eligible ? `Penerima PIP (KIP: ${s.kip_number || '-'})` : 'Bukan Penerima PIP');
+                setTxt('m-detail-bank', s.bank_name ? `${s.bank_name} - ${s.bank_account_no || '-'}` : '-');
+            }
+        }
+
+        // Tombol edit di modal detail
+        const editBtn = document.getElementById('btn-open-edit-from-detail');
+        if (editBtn) {
+            editBtn.classList.toggle('hidden', !s.can_edit);
+        }
+    }
+
+    window.closeStudentDetailModal = function() {
+        const modal = document.getElementById('modal-student-dir-detail');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
+    };
+
+    window.openEditModalFromDetail = function() {
+        if (!studentDirState.selectedStudent) return;
+        const modal = document.getElementById('modal-student-dir-detail');
+        if (modal) modal.classList.add('hidden');
+        openStudentEditModal(studentDirState.selectedStudent.id);
+    };
+
+    window.openStudentEditModal = function(id) {
+        let student = (studentDirState.students || []).find(s => s.id === id);
+        if (!student && studentDirState.selectedStudent?.id === id) {
+            student = studentDirState.selectedStudent;
+        }
+        if (!student) return;
+
+        studentDirState.selectedStudent = student;
+
+        const setVal = (elemId, val) => {
+            const el = document.getElementById(elemId);
+            if (el) el.value = val || '';
+        };
+
+        const subtitleEl = document.getElementById('m-edit-subtitle-name');
+        if (subtitleEl) subtitleEl.textContent = `${student.name} (${student.classroom_name || '-'})`;
+
+        setVal('m-edit-student-id', student.id);
+        setVal('m-edit-phone-student', student.phone_student);
+        setVal('m-edit-address', student.address === 'Alamat belum diisi' ? '' : student.address);
+        setVal('m-edit-father-name', student.father_name);
+        setVal('m-edit-father-job', student.father_job);
+        setVal('m-edit-father-phone', student.father_phone);
+        setVal('m-edit-mother-name', student.mother_name);
+        setVal('m-edit-mother-job', student.mother_job);
+        setVal('m-edit-mother-phone', student.mother_phone);
+        setVal('m-edit-guardian-name', student.guardian_name);
+        setVal('m-edit-guardian-job', student.guardian_job);
+        setVal('m-edit-guardian-phone', student.guardian_phone);
+
+        const modal = document.getElementById('modal-student-dir-edit');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (bottomNav) bottomNav.classList.add('hidden');
+        if (modal) modal.classList.remove('hidden');
+    };
+
+    window.closeStudentEditModal = function() {
+        const modal = document.getElementById('modal-student-dir-edit');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
+        if (modal) modal.classList.add('hidden');
+        if (bottomNav) bottomNav.classList.remove('hidden');
+    };
+
+    window.submitStudentContactEdit = async function(e) {
+        if (e) e.preventDefault();
+        const idInput = document.getElementById('m-edit-student-id');
+        const id = idInput ? idInput.value : null;
+        if (!id) return;
+
+        const saveBtn = document.getElementById('btn-save-mobile-student-contact');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span>⏳</span><span>Menyimpan...</span>';
+        }
+
+        const payload = {
+            phone_student: document.getElementById('m-edit-phone-student')?.value || '',
+            address: document.getElementById('m-edit-address')?.value || '',
+            father_name: document.getElementById('m-edit-father-name')?.value || '',
+            father_job: document.getElementById('m-edit-father-job')?.value || '',
+            father_phone: document.getElementById('m-edit-father-phone')?.value || '',
+            mother_name: document.getElementById('m-edit-mother-name')?.value || '',
+            mother_job: document.getElementById('m-edit-mother-job')?.value || '',
+            mother_phone: document.getElementById('m-edit-mother-phone')?.value || '',
+            guardian_name: document.getElementById('m-edit-guardian-name')?.value || '',
+            guardian_job: document.getElementById('m-edit-guardian-job')?.value || '',
+            guardian_phone: document.getElementById('m-edit-guardian-phone')?.value || '',
+        };
+
+        try {
+            const res = await SIAP_API.request(`tasks/students/${id}/update-contact`, 'POST', payload);
+            if (res && res.success) {
+                showStudentDirToast(res.message || 'Kontak & alamat siswa berhasil diperbarui!');
+                closeStudentEditModal();
+                loadStudentsDirectory();
+            } else {
+                alert(res.message || 'Gagal menyimpan perubahan.');
+            }
+        } catch (err) {
+            alert('Terjadi kesalahan: ' + (err.message || 'Gagal menyimpan.'));
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<span>💾</span><span>Simpan Perubahan</span>';
+            }
+        }
+    };
+
+    let studentCopyToastTimeout = null;
+    function showStudentDirToast(msg) {
+        const toast = document.getElementById('student-copy-toast');
+        const textEl = document.getElementById('student-copy-toast-text');
+        if (!toast) {
+            showToast(msg, 'success');
+            return;
+        }
+        if (textEl) textEl.textContent = msg;
+        toast.classList.remove('hidden');
+        clearTimeout(studentCopyToastTimeout);
+        studentCopyToastTimeout = setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 2500);
+    }
+
+    // ==========================================
     // 7. INITIAL APP BOOTSTRAPPER
     // ==========================================
     async function initApp() {

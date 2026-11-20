@@ -1,13 +1,17 @@
 <div class="space-y-4 pb-8">
-    <!-- 0. Tombol Navigasi Pintas: Kontak Guru & Izin & Cuti Saya -->
-    <div class="flex items-center gap-1.5">
-        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="flex-1 py-1.5 px-2 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-emerald-100 transition active:scale-95">
-            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-            <span>Kontak Guru</span>
+    <!-- 0. Tombol Navigasi Pintas: Kontak Guru, Data Siswa & Izin/Cuti -->
+    <div class="grid grid-cols-3 gap-1.5">
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="py-1.5 px-1.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-700 font-bold text-[10.5px] flex items-center justify-center gap-1 shadow-xs border border-emerald-100 transition active:scale-95 text-center">
+            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span class="truncate">Kontak Guru</span>
         </button>
-        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="flex-1 py-1.5 px-2 rounded-xl bg-orange-50/80 hover:bg-orange-100 text-orange-700 font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs border border-orange-100 transition active:scale-95">
-            <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            <span>Izin &amp; Cuti Saya</span>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/students')" class="py-1.5 px-1.5 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold text-[10.5px] flex items-center justify-center gap-1 shadow-xs border border-blue-100 transition active:scale-95 text-center">
+            <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            <span class="truncate">Data Siswa</span>
+        </button>
+        <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/permits')" class="py-1.5 px-1.5 rounded-xl bg-orange-50/80 hover:bg-orange-100 text-orange-700 font-bold text-[10.5px] flex items-center justify-center gap-1 shadow-xs border border-orange-100 transition active:scale-95 text-center">
+            <svg class="w-3.5 h-3.5 text-orange-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span class="truncate">Izin &amp; Cuti</span>
         </button>
     </div>
 

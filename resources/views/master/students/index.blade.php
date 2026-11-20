@@ -119,10 +119,13 @@
             @if($tab === 'aktif')
                 <div class="col-md-3">
                     <select name="classroom_id" class="form-select">
-                        <option value="">-- Semua Kelas Aktif --</option>
+                        <option value="all" {{ $classroomId === 'all' || empty($classroomId) ? 'selected' : '' }}>-- Semua Siswa (Seluruh Kelas) --</option>
                         @foreach($classrooms as $c)
+                            @php
+                                $isBinaanClass = $myHomeroomClassroom && (int)$myHomeroomClassroom->id === (int)$c->id;
+                            @endphp
                             <option value="{{ $c->id }}" {{ (string)$classroomId === (string)$c->id ? 'selected' : '' }}>
-                                {{ $c->name }} ({{ $c->academic_year }})
+                                {{ $c->name }} ({{ $c->academic_year }}) {{ $isBinaanClass ? '⭐ [Kelas Binaan]' : '' }}
                             </option>
                         @endforeach
                     </select>
@@ -168,6 +171,28 @@
         </form>
     </div>
 </div>
+
+@if($isHomeroom && $myHomeroomClassroom && (string)$classroomId === (string)$myHomeroomClassroom->id)
+    <div class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3 border-0 shadow-xs rounded-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary text-white">⭐ Kelas Perwalian</span>
+            <span class="small text-dark">Menampilkan siswa binaan kelas <strong>{{ $myHomeroomClassroom->name }}</strong>. Khusus siswa binaan, Anda berwenang memperbarui nomor telepon dan alamat.</span>
+        </div>
+        <a href="{{ route('students.index', array_merge(request()->except('classroom_id'), ['classroom_id' => 'all'])) }}" class="btn btn-sm btn-outline-primary bg-white text-nowrap ms-2">
+            <i class="ti ti-users me-1"></i> Tampilkan Seluruh Siswa Sekolah
+        </a>
+    </div>
+@elseif($isHomeroom && $myHomeroomClassroom && ($classroomId === null || $classroomId === 'all'))
+    <div class="alert alert-light border d-flex align-items-center justify-content-between py-2 px-3 mb-3 rounded-3 shadow-2xs">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary text-white">Semua Siswa</span>
+            <span class="small text-muted">Menampilkan daftar seluruh siswa sekolah.</span>
+        </div>
+        <a href="{{ route('students.index', array_merge(request()->except('classroom_id'), ['classroom_id' => $myHomeroomClassroom->id])) }}" class="btn btn-sm btn-primary text-nowrap ms-2">
+            <i class="ti ti-star me-1"></i> Kembali ke Siswa Binaan ({{ $myHomeroomClassroom->name }})
+        </a>
+    </div>
+@endif
 
 <!-- Card Tabel Siswa -->
 <div class="card border-0 shadow-sm">
@@ -461,19 +486,28 @@
                                             <i class="ti ti-user-x"></i>
                                         </button>
                                     @endif
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit-siswa"
-                                        data-student="{{ $safeStudentJson }}"
-                                        data-student-id="{{ $s->id }}"
-                                        title="Edit Siswa">
-                                        <i class="ti ti-edit"></i>
-                                    </button>
-                                    <form action="{{ route('students.destroy', $s->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data siswa {{ $s->name }}?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
-                                            <i class="ti ti-trash"></i>
+                                    @php
+                                        $isMyBinaan = $myHomeroomClassroom && ($s->classroom_id === $myHomeroomClassroom->id || $s->studentClassrooms->contains('classroom_id', $myHomeroomClassroom->id));
+                                        $canEditThisStudent = $canManageMasterData || $isMyBinaan;
+                                    @endphp
+                                    @if($canEditThisStudent)
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-edit-siswa"
+                                            data-student="{{ $safeStudentJson }}"
+                                            data-student-id="{{ $s->id }}"
+                                            data-is-binaan="{{ $isMyBinaan ? '1' : '0' }}"
+                                            title="{{ $canManageMasterData ? 'Edit Data Siswa' : 'Edit Nomor Telepon & Alamat Siswa Binaan' }}">
+                                            <i class="ti ti-edit"></i>
                                         </button>
-                                    </form>
+                                    @endif
+                                    @if($canManageMasterData)
+                                        <form action="{{ route('students.destroy', $s->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data siswa {{ $s->name }}?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         @endif
@@ -1012,6 +1046,12 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
+                    <!-- Alert Khusus Wali Kelas -->
+                    <div id="homeroom-edit-notice" class="alert alert-info py-2 px-3 small d-none mb-3 border-0 shadow-2xs">
+                        <i class="ti ti-info-circle me-1 fs-3"></i>
+                        <span>Sebagai <strong>Wali Kelas</strong>, Anda memiliki wewenang untuk memperbarui <strong>nomor telepon siswa</strong>, <strong>kontak orang tua/wali</strong>, dan <strong>alamat tinggal</strong> siswa binaan Anda. Identitas pokok (nama, NISN, NIK, rombel, dll.) hanya dapat diubah oleh administrator data pokok.</span>
+                    </div>
+
                     <!-- Nav Tabs Edit -->
                     <ul class="nav nav-tabs mb-3" role="tablist">
                         <li class="nav-item">
@@ -1957,12 +1997,47 @@ document.addEventListener('DOMContentLoaded', function () {
                         return res.json();
                     })
                     .then(data => {
+                        const isHomeroomOnly = data && data.is_homeroom_only;
+                        const noticeEl = document.getElementById('homeroom-edit-notice');
+                        if (noticeEl) {
+                            noticeEl.classList.toggle('d-none', !isHomeroomOnly);
+                        }
+
+                        const coreFieldIds = [
+                            'edit_name', 'edit_classroom_id', 'edit_nisn', 'edit_nis', 
+                            'edit_nik', 'edit_gender', 'edit_birth_place', 'edit_birth_date', 
+                            'edit_religion', 'edit_status', 'edit_graduation_year', 
+                            'edit_last_classroom_name', 'edit_entry_year'
+                        ];
+
+                        coreFieldIds.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                if (isHomeroomOnly) {
+                                    el.setAttribute('readonly', 'readonly');
+                                    el.classList.add('bg-light');
+                                    if (el.tagName === 'SELECT') {
+                                        el.style.pointerEvents = 'none';
+                                        el.tabIndex = -1;
+                                    }
+                                } else {
+                                    el.removeAttribute('readonly');
+                                    el.classList.remove('bg-light');
+                                    if (el.tagName === 'SELECT') {
+                                        el.style.pointerEvents = 'auto';
+                                        el.removeAttribute('tabIndex');
+                                    }
+                                }
+                            }
+                        });
+
                         if (data && data.success && data.student) {
                             const s = data.student;
                             if (s.nik) document.getElementById('edit_nik').value = s.nik;
                             if (s.name) document.getElementById('edit_name').value = s.name;
                             if (s.classroom_id) document.getElementById('edit_classroom_id').value = s.classroom_id;
                         }
+
                         const modal = new bootstrap.Modal(document.getElementById('modal-edit-siswa'));
                         modal.show();
                     })

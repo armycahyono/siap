@@ -1,0 +1,289 @@
+<div class="space-y-3 pb-24">
+    <!-- Header Sub-Halaman dengan Navigasi Kembali -->
+    <div class="card-elevated p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="history.back()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95" title="Kembali ke Tugas" aria-label="Kembali ke halaman tugas">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div>
+                <h3 class="text-xs font-black text-slate-800">Direktori Data Siswa</h3>
+                <p id="student-dir-role-subtitle" class="text-[10px] text-blue-700 font-semibold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                    <span>Akses Seluruh GTK &amp; Wali Kelas</span>
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <button type="button" onclick="loadStudentsDirectory()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 flex items-center justify-center transition active:scale-95" title="Muat Ulang" aria-label="Muat Ulang Data Siswa">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter & Pencarian Cepat Card -->
+    <div class="card-elevated p-3 space-y-2.5">
+        <!-- Live Search Input -->
+        <div class="relative">
+            <input type="text" id="student-dir-search" placeholder="Cari nama siswa, NISN, atau NIS..." oninput="debounceStudentDirSearch()" class="w-full text-xs font-medium p-2.5 pl-9 pr-8 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-2xs">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <button type="button" id="btn-clear-student-dir-search" onclick="clearStudentDirSearch()" class="hidden absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold w-5 h-5 rounded-full hover:bg-slate-100 flex items-center justify-center" aria-label="Hapus Pencarian">&times;</button>
+        </div>
+
+        <!-- Filter Sub-Kategori Pills & Dropdown Kelas -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-[11px] font-bold">
+            <button type="button" id="student-tab-binaan" data-student-tab="binaan" onclick="setStudentDirScope('binaan')" class="student-tab-pill hidden px-3 py-1 rounded-xl bg-amber-500 text-white shadow-2xs whitespace-nowrap active:scale-95 transition flex items-center gap-1">
+                <span>⭐</span><span>Siswa Binaan Saya</span>
+            </button>
+            <button type="button" id="student-tab-all" data-student-tab="all" onclick="setStudentDirScope('all')" class="student-tab-pill px-3 py-1 rounded-xl bg-blue-600 text-white shadow-2xs whitespace-nowrap active:scale-95 transition">
+                Semua Siswa
+            </button>
+            <button type="button" id="student-tab-wa" data-student-tab="wa" onclick="setStudentDirScope('wa')" class="student-tab-pill px-3 py-1 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap active:scale-95 transition flex items-center gap-1">
+                <span>📱</span><span>Ada WhatsApp</span>
+            </button>
+        </div>
+
+        <!-- Dropdown Pilih Rombel -->
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
+            <span class="text-[10px] font-bold text-slate-500 shrink-0">Filter Kelas:</span>
+            <select id="student-dir-classroom-select" onchange="onStudentDirClassroomChange(this.value)" class="flex-1 text-[11px] font-medium p-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:border-blue-500">
+                <option value="all">-- Semua Rombel Aktif --</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Ringkasan Statistik Singkat -->
+    <div class="flex items-center justify-between px-1 text-[11px] text-slate-500 font-medium">
+        <span id="student-dir-summary-text">Memuat data siswa...</span>
+        <span id="student-dir-binaan-badge" class="hidden font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg font-mono">-- Binaan</span>
+    </div>
+
+    <!-- Container Daftar Siswa (Card List) -->
+    <div id="student-dir-list-container" class="space-y-2.5">
+        <!-- Shimmer Skeleton Loading -->
+        <div class="card-elevated p-3.5 space-y-2.5 animate-pulse">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-slate-200"></div>
+                <div class="flex-1 space-y-1.5">
+                    <div class="h-3 bg-slate-200 rounded w-2/3"></div>
+                    <div class="h-2.5 bg-slate-100 rounded w-1/3"></div>
+                    <div class="h-2 bg-slate-100 rounded w-1/2"></div>
+                </div>
+            </div>
+            <div class="pt-2 border-t border-slate-100 flex justify-between">
+                <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                <div class="h-6 bg-slate-200 rounded w-20"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: DETAIL LENGKAP BIODATA SISWA -->
+<!-- ========================================================================= -->
+<div id="modal-student-dir-detail" onclick="if(event.target === this) closeStudentDetailModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+    <div class="bg-white w-full sm:max-w-md max-h-[88vh] rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-slide-up sm:animate-none">
+        <!-- Modal Header -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+            <div class="flex items-center gap-2">
+                <div id="m-detail-avatar" class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white bg-blue-600">
+                    S
+                </div>
+                <div>
+                    <h4 id="m-detail-name" class="text-xs font-black text-slate-800 leading-tight">Nama Siswa</h4>
+                    <p id="m-detail-class-homeroom" class="text-[10px] text-slate-500 font-medium">Kelas • Wali Kelas</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeStudentDetailModal()" class="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold hover:bg-slate-300 transition" aria-label="Tutup">&times;</button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="p-4 overflow-y-auto space-y-3.5 text-xs">
+            <!-- Badge Binaan Notice jika siswa binaan -->
+            <div id="m-detail-binaan-banner" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-semibold flex items-center gap-2">
+                <span>⭐</span>
+                <span>Siswa Binaan Perwalian Anda. Seluruh data kependudukan dapat Anda pantau secara lengkap.</span>
+            </div>
+
+            <!-- Identitas Pokok Siswa -->
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Identitas Siswa</div>
+                <div class="flex justify-between"><span class="text-slate-500">NISN / NIS:</span><span id="m-detail-nisn-nis" class="font-bold text-slate-800 font-mono">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Jenis Kelamin:</span><span id="m-detail-gender" class="font-bold text-slate-800">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">TTL:</span><span id="m-detail-ttl" class="font-bold text-slate-800">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Agama:</span><span id="m-detail-religion" class="font-bold text-slate-800">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">No HP Siswa:</span><span id="m-detail-phone-student" class="font-bold text-blue-600 font-mono">-</span></div>
+            </div>
+
+            <!-- Alamat Tinggal -->
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Alamat Tinggal</div>
+                <p id="m-detail-address" class="text-slate-700 font-medium leading-relaxed">-</p>
+            </div>
+
+            <!-- Orang Tua & Wali -->
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Orang Tua / Wali</div>
+                <div>
+                    <div class="font-bold text-slate-800 flex items-center justify-between">
+                        <span>Ayah: <span id="m-detail-father-name">-</span></span>
+                        <span id="m-detail-father-job" class="text-[10px] font-normal text-slate-500"></span>
+                    </div>
+                    <div id="m-detail-father-phone" class="text-[11px] text-emerald-700 font-mono">-</div>
+                </div>
+                <div class="pt-1.5 border-t border-slate-200/60">
+                    <div class="font-bold text-slate-800 flex items-center justify-between">
+                        <span>Ibu: <span id="m-detail-mother-name">-</span></span>
+                        <span id="m-detail-mother-job" class="text-[10px] font-normal text-slate-500"></span>
+                    </div>
+                    <div id="m-detail-mother-phone" class="text-[11px] text-emerald-700 font-mono">-</div>
+                </div>
+                <div class="pt-1.5 border-t border-slate-200/60">
+                    <div class="font-bold text-slate-800 flex items-center justify-between">
+                        <span>Wali: <span id="m-detail-guardian-name">-</span></span>
+                        <span id="m-detail-guardian-job" class="text-[10px] font-normal text-slate-500"></span>
+                    </div>
+                    <div id="m-detail-guardian-phone" class="text-[11px] text-emerald-700 font-mono">-</div>
+                </div>
+            </div>
+
+            <!-- Data Kependudukan & Finansial (Khusus Binaan / Admin) -->
+            <div id="m-detail-sensitive-section" class="hidden p-3 rounded-xl bg-blue-50/60 border border-blue-200/80 space-y-1.5">
+                <div class="text-[10px] font-black text-blue-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <span>🔒</span><span>Data Kependudukan &amp; Khusus (Perwalian)</span>
+                </div>
+                <div class="flex justify-between"><span class="text-slate-600">NIK Siswa:</span><span id="m-detail-nik" class="font-bold font-mono text-slate-900">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-600">No. Kartu Keluarga:</span><span id="m-detail-kk" class="font-bold font-mono text-slate-900">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-600">No. Akta Lahir:</span><span id="m-detail-akta" class="font-bold font-mono text-slate-900">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-600">Bantuan PIP / KIP:</span><span id="m-detail-pip" class="font-bold text-slate-900">-</span></div>
+                <div class="flex justify-between"><span class="text-slate-600">Rekening Bank:</span><span id="m-detail-bank" class="font-bold text-slate-900">-</span></div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-3 pb-8 sm:pb-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2 shrink-0">
+            <button type="button" onclick="closeStudentDetailModal()" class="flex-1 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs text-center transition active:scale-95">
+                Tutup
+            </button>
+            <button type="button" id="btn-open-edit-from-detail" onclick="openEditModalFromDetail()" class="hidden flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center transition shadow-xs flex items-center justify-center gap-1 active:scale-95">
+                <span>✏️</span><span>Edit Kontak</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: EDIT KONTAK & ALAMAT SISWA BINAAN -->
+<!-- ========================================================================= -->
+<div id="modal-student-dir-edit" onclick="if(event.target === this) closeStudentEditModal()" class="hidden fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 transition-opacity">
+    <div class="bg-white w-full sm:max-w-md max-h-[90vh] rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-slide-up sm:animate-none">
+        <!-- Header Edit Modal -->
+        <div class="p-4 border-b border-amber-200 bg-amber-500 text-white flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-sm">
+                    ✏️
+                </div>
+                <div>
+                    <h4 class="text-xs font-black">Edit Kontak &amp; Alamat</h4>
+                    <p id="m-edit-subtitle-name" class="text-[10px] text-amber-100 font-medium">Siswa Binaan</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeStudentEditModal()" class="w-7 h-7 rounded-full bg-white/20 text-white flex items-center justify-center text-xs font-bold hover:bg-white/30 transition" aria-label="Tutup">&times;</button>
+        </div>
+
+        <!-- Form Edit Kontak & Alamat -->
+        <form id="form-mobile-student-contact" onsubmit="submitStudentContactEdit(event)" class="flex flex-col flex-1 overflow-hidden">
+            <input type="hidden" id="m-edit-student-id">
+
+            <div class="p-4 overflow-y-auto space-y-3 text-xs flex-1">
+                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[10.5px] leading-relaxed">
+                    💡 Khusus Wali Kelas, Anda berwenang memperbarui <strong>nomor HP siswa</strong>, <strong>kontak orang tua/wali</strong>, dan <strong>alamat tinggal</strong> siswa binaan Anda.
+                </div>
+
+                <!-- No HP Siswa -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Nomor WhatsApp / HP Siswa</label>
+                    <input type="tel" id="m-edit-phone-student" placeholder="Contoh: 081234567890" class="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-500 shadow-2xs font-mono">
+                </div>
+
+                <!-- Alamat Lengkap Siswa -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Alamat Lengkap Siswa</label>
+                    <textarea id="m-edit-address" rows="2" placeholder="Dusun, RT/RW, Desa/Kelurahan, Kecamatan..." class="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-amber-500 shadow-2xs"></textarea>
+                </div>
+
+                <!-- Data Kontak Ayah -->
+                <div class="pt-2 border-t border-slate-100 space-y-2">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Data Ayah Kandung</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Nama Ayah</label>
+                            <input type="text" id="m-edit-father-name" placeholder="Nama ayah" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Pekerjaan Ayah</label>
+                            <input type="text" id="m-edit-father-job" placeholder="Pekerjaan ayah" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">No HP / WA Ayah</label>
+                        <input type="tel" id="m-edit-father-phone" placeholder="08xxxxxxxxxx" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500 font-mono">
+                    </div>
+                </div>
+
+                <!-- Data Kontak Ibu -->
+                <div class="pt-2 border-t border-slate-100 space-y-2">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Data Ibu Kandung</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Nama Ibu</label>
+                            <input type="text" id="m-edit-mother-name" placeholder="Nama ibu" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Pekerjaan Ibu</label>
+                            <input type="text" id="m-edit-mother-job" placeholder="Pekerjaan ibu" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">No HP / WA Ibu</label>
+                        <input type="tel" id="m-edit-mother-phone" placeholder="08xxxxxxxxxx" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500 font-mono">
+                    </div>
+                </div>
+
+                <!-- Data Kontak Wali -->
+                <div class="pt-2 border-t border-slate-100 space-y-2">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Data Wali (Jika Ada)</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Nama Wali</label>
+                            <input type="text" id="m-edit-guardian-name" placeholder="Nama wali" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Pekerjaan Wali</label>
+                            <input type="text" id="m-edit-guardian-job" placeholder="Pekerjaan wali" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">No HP / WA Wali</label>
+                        <input type="tel" id="m-edit-guardian-phone" placeholder="08xxxxxxxxxx" class="w-full text-xs p-2 rounded-lg border border-slate-200 focus:outline-none focus:border-amber-500 font-mono">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3 pb-8 sm:pb-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-2 shrink-0">
+                <button type="button" onclick="closeStudentEditModal()" class="flex-1 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs text-center transition active:scale-95">
+                    Batal
+                </button>
+                <button type="submit" id="btn-save-mobile-student-contact" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs text-center transition shadow-xs flex items-center justify-center gap-1 active:scale-95">
+                    <span>💾</span><span>Simpan Perubahan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Floating Copy Toast Notification -->
+<div id="student-copy-toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 z-[160] px-3.5 py-1.5 bg-slate-900/90 backdrop-blur text-white text-[11px] font-bold rounded-full shadow-lg border border-slate-700 flex items-center gap-1.5 transition-all">
+    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+    <span id="student-copy-toast-text">Berhasil disalin!</span>
+</div>

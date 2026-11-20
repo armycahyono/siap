@@ -206,9 +206,9 @@ class StudentDataSecurityTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_homeroom_teacher_can_access_student_in_their_assigned_classroom_with_general_biodata_only(): void
+    public function test_homeroom_teacher_can_access_student_in_their_assigned_classroom_with_full_personal_data(): void
     {
-        // Wali kelas dari rombel siswa yang bersangkutan
+        // Wali kelas dari rombel siswa yang bersangkutan berhak melihat seluruh data pribadi siswa
         $response = $this->actingAs($this->homeroomUser)->get(route('students.show', $this->testStudent));
 
         $response->assertStatus(200);
@@ -220,14 +220,12 @@ class StudentDataSecurityTest extends TestCase
             'phone_parent' => '081234567801',
         ]);
 
-        // NIK, No KK, Rekening Bank, Koordinat GPS, dan Penghasilan TIDAK dibocorkan ke wali kelas
+        // NIK, No KK, Rekening Bank, dan Penghasilan dapat diakses oleh wali kelas binaan
         $studentData = $response->json('student');
-        $this->assertArrayNotHasKey('nik', $studentData);
-        $this->assertArrayNotHasKey('family_card_no', $studentData);
-        $this->assertArrayNotHasKey('bank_account_no', $studentData);
-        $this->assertArrayNotHasKey('latitude', $studentData);
-        $this->assertArrayNotHasKey('longitude', $studentData);
-        $this->assertArrayNotHasKey('father_income', $studentData);
+        $this->assertEquals('3506123456789999', $studentData['nik']);
+        $this->assertEquals('3506123456788888', $studentData['family_card_no']);
+        $this->assertEquals('REK-BANK-55443322', $studentData['bank_account_no']);
+        $this->assertEquals('Rp 15.000.000', $studentData['father_income']);
         $this->assertArrayNotHasKey('dapodik_payload', $studentData);
     }
 
@@ -256,15 +254,80 @@ class StudentDataSecurityTest extends TestCase
         ]);
     }
 
-    public function test_edit_data_endpoint_is_forbidden_for_users_without_manage_master_data(): void
+    public function test_edit_data_endpoint_access_control(): void
     {
-        // Guru biasa
+        // Guru biasa (bukan wali kelas dan bukan admin) -> 403
         $teacherResp = $this->actingAs($this->teacherUser)->get(route('students.edit-data', $this->testStudent));
         $teacherResp->assertStatus(403);
 
-        // Wali kelas (hanya berhak melihat, tidak berhak mengedit data master siswa)
+        // Siswa di kelas lain (bukan binaan homeroomUser) -> 403
+        $otherStudent = Student::create([
+            'name' => 'Siswa Kelas Lain Edit',
+            'classroom_id' => $this->otherClassroom->id,
+            'gender' => 'L',
+            'status' => 'aktif',
+        ]);
+        $otherResp = $this->actingAs($this->homeroomUser)->get(route('students.edit-data', $otherStudent));
+        $otherResp->assertStatus(403);
+
+        // Wali kelas pada siswa binaannya sendiri -> 200, dengan flag is_homeroom_only = true
         $homeroomResp = $this->actingAs($this->homeroomUser)->get(route('students.edit-data', $this->testStudent));
-        $homeroomResp->assertStatus(403);
+        $homeroomResp->assertStatus(200);
+        $homeroomResp->assertJsonFragment(['is_homeroom_only' => true]);
+
+        // Pengelola master data -> 200, dengan is_homeroom_only = false
+        $adminResp = $this->actingAs($this->adminUser)->get(route('students.edit-data', $this->testStudent));
+        $adminResp->assertStatus(200);
+        $adminResp->assertJsonFragment(['is_homeroom_only' => false]);
+    }
+
+    public function test_homeroom_teacher_can_update_student_contact_and_address_only(): void
+    {
+        $oldNisn = $this->testStudent->nisn;
+        $oldClassroomId = $this->testStudent->classroom_id;
+
+        $response = $this->actingAs($this->homeroomUser)->put(route('students.update', $this->testStudent), [
+            'phone_student' => '089998887771',
+            'address' => 'Jl. Pahlawan Baru No. 99 Kras',
+            'father_name' => 'Bambang Synthetic Baru',
+            'father_phone' => '081234569999',
+            // Mencoba mengubah field pokok yang dilarang bagi wali kelas:
+            'nisn' => '9999999999',
+            'classroom_id' => $this->otherClassroom->id,
+        ]);
+
+        $response->assertSessionHas('success');
+
+        $this->testStudent->refresh();
+
+        // Kontak dan alamat berhasil diperbarui
+        $this->assertEquals('089998887771', $this->testStudent->phone_student);
+        $this->assertEquals('Jl. Pahlawan Baru No. 99 Kras', $this->testStudent->address);
+        $this->assertEquals('Bambang Synthetic Baru', $this->testStudent->father_name);
+        $this->assertEquals('081234569999', $this->testStudent->father_phone);
+
+        // Field pokok TIDAK berubah
+        $this->assertEquals($oldNisn, $this->testStudent->nisn);
+        $this->assertEquals($oldClassroomId, $this->testStudent->classroom_id);
+    }
+
+    public function test_homeroom_teacher_cannot_update_student_outside_their_assigned_classroom(): void
+    {
+        $otherStudent = Student::create([
+            'name' => 'Siswa Kelas Lain Luar',
+            'classroom_id' => $this->otherClassroom->id,
+            'gender' => 'P',
+            'status' => 'aktif',
+            'address' => 'Alamat Asli',
+        ]);
+
+        $response = $this->actingAs($this->homeroomUser)->put(route('students.update', $otherStudent), [
+            'address' => 'Alamat Bajakan',
+            'phone_student' => '081111111111',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertEquals('Alamat Asli', $otherStudent->fresh()->address);
     }
 
     public function test_edit_data_endpoint_returns_only_form_fields_for_authorized_manager(): void

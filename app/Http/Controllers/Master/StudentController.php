@@ -191,6 +191,29 @@ class StudentController extends Controller
         $sort = $request->query('sort', 'name');
         $direction = strtolower($request->query('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
 
+        $user = auth()->user();
+        $canManageMasterData = $user && ($user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']));
+
+        $myHomeroomClassroom = $user?->homeroomClassrooms()
+            ->where('is_active', true)
+            ->when($academicYear, fn ($q) => $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $academicYear)))
+            ->first();
+        if (! $myHomeroomClassroom && $user) {
+            $myHomeroomClassroom = $user->homeroomClassrooms()->where('is_active', true)->first();
+        }
+
+        $isHomeroom = (bool) $myHomeroomClassroom;
+
+        // Wali kelas secara default menampilkan siswa binaannya, kecuali memilih 'all' atau rombel tertentu
+        $selectedAllClasses = ($classroomId === 'all' || $request->boolean('all_classes') || $request->boolean('show_all'));
+        if ($isHomeroom && ! $request->has('classroom_id') && ! $selectedAllClasses && ! $search && $tab === 'aktif') {
+            $classroomId = (string) $myHomeroomClassroom->id;
+        } elseif ($classroomId === 'all') {
+            $classroomId = null;
+        }
+
         $activeAy = AcademicYear::where('name', $academicYear)->first();
         [$startYear, $endYear] = $this->parseAcademicYear($academicYear);
         $masterYear = SchoolSetting::getMasterYear();
@@ -317,7 +340,9 @@ class StudentController extends Controller
             'sort',
             'direction',
             'canManageMasterData',
-            'canExport'
+            'canExport',
+            'isHomeroom',
+            'myHomeroomClassroom'
         ));
     }
 
@@ -387,8 +412,8 @@ class StudentController extends Controller
             'notes' => $student->notes,
         ];
 
-        // Hanya pengelola data pokok / pimpinan yang memperoleh data kependudukan dan finansial sensitif
-        if ($canManageMasterData) {
+        // Pengelola data pokok atau wali kelas binaannya berhak memperoleh data kependudukan dan finansial lengkap
+        if ($canManageMasterData || $isAssignedHomeroom) {
             $studentPayload['nik'] = $student->nik;
             $studentPayload['family_card_no'] = $student->family_card_no;
             $studentPayload['birth_certificate_no'] = $student->birth_certificate_no;
@@ -453,12 +478,27 @@ class StudentController extends Controller
     public function editData(Student $student): JsonResponse
     {
         $user = auth()->user();
-        if (! $user || (! $user->isSuperAdmin() && ! $user->hasPermission('manage_master_data') && ! $user->hasRole(['waka_kurikulum', 'kepala_sekolah']))) {
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        $isAssignedHomeroom = $student->classroom !== null
+            && (bool) $student->classroom->is_active
+            && $user->isHomeroomTeacher($student->classroom);
+
+        if (! $canManageMasterData && ! $isAssignedHomeroom) {
             abort(403, 'Anda tidak memiliki wewenang untuk mengubah data master siswa.');
         }
 
+        $isHomeroomOnly = ! $canManageMasterData && $isAssignedHomeroom;
+
         return response()->json([
             'success' => true,
+            'is_homeroom_only' => $isHomeroomOnly,
             'student' => [
                 'id' => $student->id,
                 'name' => $student->name,
@@ -563,8 +603,61 @@ class StudentController extends Controller
         return back()->with('success', 'Data siswa berhasil ditambahkan.');
     }
 
-    public function update(Request $request, Student $student): RedirectResponse
+    public function update(Request $request, Student $student): RedirectResponse|JsonResponse
     {
+        $user = auth()->user();
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        $isAssignedHomeroom = $student->classroom !== null
+            && (bool) $student->classroom->is_active
+            && $user->isHomeroomTeacher($student->classroom);
+
+        if (! $canManageMasterData && ! $isAssignedHomeroom) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengubah data siswa ini.');
+        }
+
+        // Khusus Wali Kelas: hanya berwenang mengubah nomor telepon dan alamat siswa binaan
+        if (! $canManageMasterData && $isAssignedHomeroom) {
+            $validated = $request->validate([
+                'phone_student' => 'nullable|string|max:50',
+                'address' => 'nullable|string',
+                'father_name' => 'nullable|string|max:255',
+                'father_job' => 'nullable|string|max:100',
+                'father_phone' => 'nullable|string|max:50',
+                'mother_name' => 'nullable|string|max:255',
+                'mother_job' => 'nullable|string|max:100',
+                'mother_phone' => 'nullable|string|max:50',
+                'guardian_name' => 'nullable|string|max:255',
+                'guardian_job' => 'nullable|string|max:100',
+                'guardian_phone' => 'nullable|string|max:50',
+                'phone_parent' => 'nullable|string|max:50',
+            ]);
+
+            if (empty($validated['phone_parent'])) {
+                $validated['phone_parent'] = $validated['father_phone'] ?? $validated['mother_phone'] ?? $validated['guardian_phone'] ?? null;
+            }
+
+            $student->update($validated);
+
+            ActivityLogger::log('update', "Wali kelas memperbarui nomor telepon & alamat siswa binaan {$student->name}", $student);
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Data nomor telepon dan alamat siswa binaan berhasil diperbarui.',
+                    'student' => $student->fresh(),
+                ]);
+            }
+
+            return back()->with('success', 'Data nomor telepon dan alamat siswa binaan berhasil diperbarui.');
+        }
+
         $validated = $request->validate([
             'nisn' => 'nullable|string|max:30|unique:students,nisn,'.$student->id,
             'nis' => 'nullable|string|max:30',
@@ -638,6 +731,14 @@ class StudentController extends Controller
                     ->where('academic_year_id', $activeAy->id)
                     ->update(['status' => $student->status]);
             }
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Data siswa berhasil diperbarui.',
+                'student' => $student->fresh(),
+            ]);
         }
 
         return back()->with('success', 'Data siswa berhasil diperbarui.');

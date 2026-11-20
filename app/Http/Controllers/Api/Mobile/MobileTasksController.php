@@ -4150,4 +4150,288 @@ class MobileTasksController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Direktori Data Siswa Mobile untuk semua GTK.
+     * Wali kelas secara default diarahkan ke siswa binaannya, namun tetap dapat melihat seluruh siswa.
+     */
+    public function getStudentsDirectory(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $academicYearContext = app(AcademicYearContext::class);
+        $operationalAcademicYear = $academicYearContext->getOperationalYear()->name;
+
+        // Dapatkan rombel perwalian aktif milik user
+        $homeroomClassrooms = $user->homeroomClassrooms()
+            ->where('is_active', true)
+            ->when($operationalAcademicYear, function ($q) use ($operationalAcademicYear) {
+                $q->where(fn ($sub) => $sub->whereNull('academic_year')->orWhere('academic_year', $operationalAcademicYear));
+            })
+            ->get();
+
+        if ($homeroomClassrooms->isEmpty()) {
+            $homeroomClassrooms = $user->homeroomClassrooms()->where('is_active', true)->get();
+        }
+
+        $isHomeroom = $homeroomClassrooms->isNotEmpty();
+        $homeroomClassroomIds = $homeroomClassrooms->pluck('id')->all();
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        // Scope filter: 'binaan' vs 'all' vs specific classroom_id
+        $scope = $request->query('scope');
+        $classroomId = $request->query('classroom_id');
+        $search = trim((string) $request->query('search', ''));
+
+        // Default untuk wali kelas: jika tidak ada filter classroom_id atau scope, tampilkan binaan
+        if ($isHomeroom && ! $request->has('classroom_id') && ! $request->has('scope') && ! $search) {
+            $scope = 'binaan';
+        } elseif (! $scope) {
+            $scope = ($classroomId && in_array((int) $classroomId, $homeroomClassroomIds, true)) ? 'binaan' : 'all';
+        }
+
+        $query = Student::where('status', 'aktif')
+            ->with([
+                'classroom.homeroomTeacher',
+                'studentClassrooms' => function ($sq) use ($operationalAcademicYear) {
+                    $sq->whereHas('academicYear', fn ($ay) => $ay->where('name', $operationalAcademicYear));
+                },
+            ]);
+
+        if ($scope === 'binaan' && $isHomeroom && empty($classroomId)) {
+            $query->whereIn('classroom_id', $homeroomClassroomIds);
+        } elseif (! empty($classroomId) && $classroomId !== 'all') {
+            $query->where('classroom_id', $classroomId);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($sq) use ($search) {
+                $sq->where('name', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->orderBy('name')->get();
+
+        $transformed = $students->map(function (Student $s) use ($homeroomClassroomIds, $canManageMasterData) {
+            $isBinaan = in_array((int) $s->classroom_id, $homeroomClassroomIds, true);
+            $canEdit = $canManageMasterData || $isBinaan;
+
+            $cleanStudentPhone = $s->phone_student ? preg_replace('/[^0-9]/', '', $s->phone_student) : null;
+            $cleanParentPhone = $s->primary_parent_phone ? preg_replace('/[^0-9]/', '', $s->primary_parent_phone) : null;
+
+            $item = [
+                'id' => $s->id,
+                'name' => $s->name,
+                'nisn' => $s->nisn,
+                'nis' => $s->nis,
+                'gender' => $s->gender,
+                'gender_label' => $s->gender === 'L' ? 'Laki-laki' : 'Perempuan',
+                'classroom_id' => $s->classroom_id,
+                'classroom_name' => $s->classroom?->name ?? ($s->last_classroom_name ?? 'Belum ada kelas'),
+                'homeroom_name' => $s->classroom?->homeroomTeacher?->name ?? 'Belum ada wali kelas',
+                'phone_student' => $s->phone_student,
+                'has_student_phone' => ! empty($cleanStudentPhone),
+                'wa_student_url' => $cleanStudentPhone ? PhoneNumberHelper::toWhatsappUrl($cleanStudentPhone, "Halo {$s->name}, ") : null,
+                'primary_parent_name' => $s->primary_parent_name ?: ($s->father_name ?: ($s->mother_name ?: '-')),
+                'primary_parent_phone' => $s->primary_parent_phone,
+                'has_parent_phone' => ! empty($cleanParentPhone),
+                'wa_parent_url' => $cleanParentPhone ? PhoneNumberHelper::toWhatsappUrl($cleanParentPhone, "Halo Bapak/Ibu wali dari {$s->name}, ") : null,
+                'father_name' => $s->father_name,
+                'father_job' => $s->father_job,
+                'father_phone' => $s->father_phone,
+                'mother_name' => $s->mother_name,
+                'mother_job' => $s->mother_job,
+                'mother_phone' => $s->mother_phone,
+                'guardian_name' => $s->guardian_name,
+                'guardian_job' => $s->guardian_job,
+                'guardian_phone' => $s->guardian_phone,
+                'address' => $s->address ?: 'Alamat belum diisi',
+                'is_binaan' => $isBinaan,
+                'can_edit' => $canEdit,
+            ];
+
+            // Siswa binaan atau admin master memperoleh data kependudukan dan finansial lengkap
+            if ($canManageMasterData || $isBinaan) {
+                $item['nik'] = $s->nik;
+                $item['family_card_no'] = $s->family_card_no;
+                $item['birth_place'] = $s->birth_place;
+                $item['birth_date'] = $s->birth_date?->format('d/m/Y');
+                $item['religion'] = $s->religion;
+                $item['notes'] = $s->notes;
+                $item['is_pip_eligible'] = (bool) $s->is_pip_eligible;
+                $item['kip_number'] = $s->kip_number;
+            }
+
+            return $item;
+        });
+
+        $activeClassrooms = Classroom::where('academic_year', $operationalAcademicYear)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $transformed->count(),
+                'students' => $transformed->values(),
+                'meta' => [
+                    'is_homeroom' => $isHomeroom,
+                    'homeroom_classrooms' => $homeroomClassrooms->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values(),
+                    'classrooms' => $activeClassrooms->values(),
+                    'current_scope' => $scope,
+                    'current_classroom_id' => $classroomId ?: ($scope === 'binaan' && $isHomeroom ? ($homeroomClassroomIds[0] ?? 'all') : 'all'),
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Dapatkan detail lengkap satu siswa untuk modal biodata di SIAP Mobile.
+     */
+    public function getStudentDetail(Request $request, int $id): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $student = Student::with(['classroom.homeroomTeacher'])->findOrFail($id);
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        $isBinaan = $student->classroom !== null
+            && (bool) $student->classroom->is_active
+            && $user->isHomeroomTeacher($student->classroom);
+
+        $cleanStudentPhone = $student->phone_student ? preg_replace('/[^0-9]/', '', $student->phone_student) : null;
+        $cleanParentPhone = $student->primary_parent_phone ? preg_replace('/[^0-9]/', '', $student->primary_parent_phone) : null;
+
+        $payload = [
+            'id' => $student->id,
+            'name' => $student->name,
+            'nisn' => $student->nisn,
+            'nis' => $student->nis,
+            'gender' => $student->gender,
+            'gender_label' => $student->gender === 'L' ? 'Laki-laki' : 'Perempuan',
+            'classroom_name' => $student->classroom?->name ?? ($student->last_classroom_name ?? 'Belum ada kelas'),
+            'homeroom_name' => $student->classroom?->homeroomTeacher?->name ?? 'Belum ada wali kelas',
+            'phone_student' => $student->phone_student,
+            'wa_student_url' => $cleanStudentPhone ? PhoneNumberHelper::toWhatsappUrl($cleanStudentPhone, "Halo {$student->name}, ") : null,
+            'address' => $student->address ?: 'Belum diisi',
+            'father_name' => $student->father_name,
+            'father_job' => $student->father_job,
+            'father_phone' => $student->father_phone,
+            'mother_name' => $student->mother_name,
+            'mother_job' => $student->mother_job,
+            'mother_phone' => $student->mother_phone,
+            'guardian_name' => $student->guardian_name,
+            'guardian_job' => $student->guardian_job,
+            'guardian_phone' => $student->guardian_phone,
+            'primary_parent_name' => $student->primary_parent_name,
+            'primary_parent_phone' => $student->primary_parent_phone,
+            'wa_parent_url' => $cleanParentPhone ? PhoneNumberHelper::toWhatsappUrl($cleanParentPhone, "Halo Bapak/Ibu wali dari {$student->name}, ") : null,
+            'is_binaan' => $isBinaan,
+            'can_edit' => $canManageMasterData || $isBinaan,
+            'status' => $student->status,
+            'status_label' => $student->status_label,
+            'entry_year' => $student->entry_year,
+            'birth_place' => $student->birth_place,
+            'birth_date' => $student->birth_date?->format('d/m/Y'),
+            'religion' => $student->religion,
+            'notes' => $student->notes,
+        ];
+
+        if ($canManageMasterData || $isBinaan) {
+            $payload['nik'] = $student->nik;
+            $payload['family_card_no'] = $student->family_card_no;
+            $payload['birth_certificate_no'] = $student->birth_certificate_no;
+            $payload['father_nik'] = $student->father_nik;
+            $payload['mother_nik'] = $student->mother_nik;
+            $payload['guardian_nik'] = $student->guardian_nik;
+            $payload['father_income'] = $student->father_income;
+            $payload['mother_income'] = $student->mother_income;
+            $payload['guardian_income'] = $student->guardian_income;
+            $payload['bank_name'] = $student->bank_name;
+            $payload['bank_account_no'] = $student->bank_account_no;
+            $payload['bank_account_name'] = $student->bank_account_name;
+            $payload['special_needs'] = $student->special_needs;
+            $payload['is_pip_eligible'] = (bool) $student->is_pip_eligible;
+            $payload['pip_reason'] = $student->pip_reason;
+            $payload['kip_recipient'] = $student->kip_recipient;
+            $payload['kip_number'] = $student->kip_number;
+        }
+
+        return response()->json([
+            'success' => true,
+            'student' => $payload,
+        ]);
+    }
+
+    /**
+     * Memperbarui kontak dan alamat siswa binaan melalui SIAP Mobile.
+     */
+    public function updateStudentContact(Request $request, int $id): JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return response()->json(['success' => false, 'message' => 'Belum terautentikasi.'], 401);
+        }
+
+        $student = Student::with('classroom')->findOrFail($id);
+
+        $canManageMasterData = $user->isSuperAdmin()
+            || $user->hasPermission('manage_master_data')
+            || $user->hasRole(['waka_kurikulum', 'kepala_sekolah']);
+
+        $isAssignedHomeroom = $student->classroom !== null
+            && (bool) $student->classroom->is_active
+            && $user->isHomeroomTeacher($student->classroom);
+
+        if (! $canManageMasterData && ! $isAssignedHomeroom) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki wewenang untuk mengubah data kontak siswa ini.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'phone_student' => 'nullable|string|max:50',
+            'address' => 'nullable|string',
+            'father_name' => 'nullable|string|max:255',
+            'father_job' => 'nullable|string|max:100',
+            'father_phone' => 'nullable|string|max:50',
+            'mother_name' => 'nullable|string|max:255',
+            'mother_job' => 'nullable|string|max:100',
+            'mother_phone' => 'nullable|string|max:50',
+            'guardian_name' => 'nullable|string|max:255',
+            'guardian_job' => 'nullable|string|max:100',
+            'guardian_phone' => 'nullable|string|max:50',
+            'phone_parent' => 'nullable|string|max:50',
+        ]);
+
+        if (empty($validated['phone_parent'])) {
+            $validated['phone_parent'] = $validated['father_phone'] ?? $validated['mother_phone'] ?? $validated['guardian_phone'] ?? null;
+        }
+
+        $student->update($validated);
+
+        ActivityLogger::log('update', "Memperbarui kontak dan alamat siswa {$student->name} via Mobile App", $student);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Data kontak & alamat {$student->name} berhasil disimpan.",
+            'data' => $student->fresh(),
+        ]);
+    }
 }

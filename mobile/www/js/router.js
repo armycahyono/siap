@@ -137,6 +137,14 @@ const SIAP_ROUTER = (function() {
             tabKey: 'tasks',
             hasBack: true,
         },
+        '/tasks/students': {
+            page: 'pages/tasks/students_directory.html',
+            requiresAuth: true,
+            title: 'Direktori Data Siswa',
+            init: 'initTasksStudentsDirectory',
+            tabKey: 'tasks',
+            hasBack: true,
+        },
         '/tasks/permits': {
             page: 'pages/tasks/permits.html',
             requiresAuth: true,
