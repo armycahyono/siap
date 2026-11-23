@@ -410,4 +410,116 @@ class SupervisionSystemTest extends TestCase
         $response->assertSee('Catatan Revisi / Arahan dari Kepala Sekolah');
         $response->assertSee('Harap lengkapi catatan tindak lanjut dan lampiran foto observasi.');
     }
+
+    public function test_waka_and_curriculum_team_can_view_all_teacher_schedules_while_teacher_only_views_own(): void
+    {
+        $waka = User::where('username', 'waka')->first();
+        $operatorRole = Role::firstOrCreate(['slug' => 'operator_kurikulum'], ['name' => 'Tim Kurikulum']);
+        $permission = Permission::firstOrCreate(['slug' => 'manage_schedules'], ['name' => 'Kelola Jadwal', 'group' => 'Supervisi']);
+        $operatorRole->permissions()->syncWithoutDetaching([$permission->id]);
+
+        $timKurikulum = User::firstOrCreate(
+            ['username' => 'tim_kurikulum_test'],
+            [
+                'name' => 'Tim Kurikulum Test',
+                'email' => 'tim_kurikulum_test@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $operatorRole->id,
+            ]
+        );
+
+        $guruRole = Role::where('slug', 'guru')->first();
+        $guru1 = User::firstOrCreate(
+            ['username' => 'guru_supervisi_1'],
+            [
+                'name' => 'Guru Alfa Khusus Test',
+                'email' => 'guru_supervisi_1@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $guruRole->id,
+            ]
+        );
+        $guru2 = User::firstOrCreate(
+            ['username' => 'guru_supervisi_2'],
+            [
+                'name' => 'Guru Beta Khusus Test',
+                'email' => 'guru_supervisi_2@example.com',
+                'password' => bcrypt('password'),
+                'role_id' => $guruRole->id,
+            ]
+        );
+
+        $supervision1 = Supervision::create([
+            'teacher_id' => $guru1->id,
+            'supervisor_id' => $waka->id,
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+            'schedule_date' => '2026-11-25',
+            'subject' => 'Matematika Khusus Test',
+            'class_name' => 'X TKR 1',
+            'status' => 'terjadwal',
+        ]);
+
+        $supervision2 = Supervision::create([
+            'teacher_id' => $guru2->id,
+            'supervisor_id' => $waka->id,
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+            'schedule_date' => '2026-11-26',
+            'subject' => 'Fisika Khusus Test',
+            'class_name' => 'XI TKR 2',
+            'status' => 'terjadwal',
+        ]);
+
+        // Waka Kurikulum should see BOTH teachers
+        $resWaka = $this->actingAs($waka)->get(route('schedules.index', [
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]));
+        $resWaka->assertStatus(200);
+        $resWaka->assertSee('Guru Alfa Khusus Test');
+        $resWaka->assertSee('Guru Beta Khusus Test');
+
+        // Tim Kurikulum should also see BOTH teachers
+        $resTim = $this->actingAs($timKurikulum)->get(route('schedules.index', [
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]));
+        $resTim->assertStatus(200);
+        $resTim->assertSee('Guru Alfa Khusus Test');
+        $resTim->assertSee('Guru Beta Khusus Test');
+
+        // Guru 1 should see only themselves, NOT Guru 2
+        $resGuru = $this->actingAs($guru1)->get(route('schedules.index', [
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]));
+        $resGuru->assertStatus(200);
+        $resGuru->assertSee('Guru Alfa Khusus Test');
+        $resGuru->assertDontSee('Guru Beta Khusus Test');
+
+        // Check stages (e.g. preobs)
+        $stageWaka = $this->actingAs($waka)->get(route('supervisions.preobs', [
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]));
+        $stageWaka->assertStatus(200);
+        $stageWaka->assertSee('Guru Alfa Khusus Test');
+        $stageWaka->assertSee('Guru Beta Khusus Test');
+
+        $stageTim = $this->actingAs($timKurikulum)->get(route('supervisions.preobs', [
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]));
+        $stageTim->assertStatus(200);
+        $stageTim->assertSee('Guru Alfa Khusus Test');
+        $stageTim->assertSee('Guru Beta Khusus Test');
+
+        $stageGuru = $this->actingAs($guru1)->get(route('supervisions.preobs', [
+            'academic_year' => '2026/2027',
+            'semester' => 'Ganjil',
+        ]));
+        $stageGuru->assertStatus(200);
+        $stageGuru->assertSee('Guru Alfa Khusus Test');
+        $stageGuru->assertDontSee('Guru Beta Khusus Test');
+    }
 }

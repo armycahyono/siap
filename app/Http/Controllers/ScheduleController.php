@@ -56,14 +56,21 @@ class ScheduleController extends Controller
             $query->where('semester', $semester);
         }
 
-        // If user is supervisor only, constrain to assigned
-        if ($user->hasRole('supervisor') && ! $user->isWakaKurikulum()) {
-            $query->where('supervisor_id', $user->id);
-        }
+        $canViewAll = $user->hasPermission('manage_schedules')
+            || $user->hasPermission('view_all_supervision')
+            || $user->isSuperAdmin()
+            || $user->isWakaKurikulum()
+            || $user->isOperatorKurikulum();
 
-        // If user is teacher only, constrain to own
-        if ($user->isTeacher()) {
-            $query->where('teacher_id', $user->id);
+        if (! $canViewAll) {
+            if ($user->hasRole('supervisor')) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('supervisor_id', $user->id)
+                        ->orWhere('teacher_id', $user->id);
+                });
+            } elseif ($user->isTeacher()) {
+                $query->where('teacher_id', $user->id);
+            }
         }
 
         if ($status) {

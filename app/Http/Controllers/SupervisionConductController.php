@@ -31,7 +31,7 @@ class SupervisionConductController extends Controller
             return;
         }
 
-        if ($user->hasRole('super_admin') || $user->isWakaKurikulum() || $user->isPrincipal()) {
+        if ($user->hasRole('super_admin') || $user->isWakaKurikulum() || $user->isPrincipal() || $user->isOperatorKurikulum() || $user->hasPermission('view_all_supervision') || $user->hasPermission('manage_schedules')) {
             return;
         }
 
@@ -63,7 +63,7 @@ class SupervisionConductController extends Controller
         }
 
         $user = Auth::user();
-        if ($supervision->teacher_id !== $user->id && $supervision->supervisor_id !== $user->id && ! $user->hasRole('super_admin') && ! $user->isWakaKurikulum()) {
+        if ($supervision->teacher_id !== $user->id && $supervision->supervisor_id !== $user->id && ! $user->hasRole('super_admin') && ! $user->isWakaKurikulum() && ! $user->isOperatorKurikulum() && ! $user->hasPermission('manage_schedules')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengunggah modul ajar pada supervisi ini.');
         }
 
@@ -391,12 +391,21 @@ class SupervisionConductController extends Controller
             $query->where('semester', $semester);
         }
 
-        if ($user->hasRole('supervisor') && ! $user->isWakaKurikulum()) {
-            $query->where('supervisor_id', $user->id);
-        }
+        $canViewAll = $user->hasPermission('manage_schedules')
+            || $user->hasPermission('view_all_supervision')
+            || $user->isSuperAdmin()
+            || $user->isWakaKurikulum()
+            || $user->isOperatorKurikulum();
 
-        if ($user->isTeacher()) {
-            $query->where('teacher_id', $user->id);
+        if (! $canViewAll) {
+            if ($user->hasRole('supervisor')) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('supervisor_id', $user->id)
+                        ->orWhere('teacher_id', $user->id);
+                });
+            } elseif ($user->isTeacher()) {
+                $query->where('teacher_id', $user->id);
+            }
         }
 
         if ($search) {
