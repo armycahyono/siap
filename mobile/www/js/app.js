@@ -2041,6 +2041,36 @@
             if (cardPiket) cardPiket.classList.add('hidden');
         }
 
+        // 3.5. Kartu Monitoring Siswa Jurusan (Khusus Kepala Program Keahlian / Kajur)
+        const cardDepartment = container.querySelector('#card-department-section');
+        if (data.department && data.department.is_head_of_department) {
+            if (cardDepartment) cardDepartment.classList.remove('hidden');
+            const deptTitle = container.querySelector('#dept-card-title');
+            const deptSub = container.querySelector('#dept-card-sub');
+            if (deptTitle) deptTitle.textContent = `Monitoring Siswa Jurusan ${data.department.department_code || ''}`;
+            if (deptSub) deptSub.textContent = `Kaprogli ${data.department.department_name || 'Jurusan'} • ${data.department.total_students || 0} Siswa`;
+
+            const sDept = data.department.siswa || {};
+            const setDeptVal = (id, val) => {
+                const el = container.querySelector(id);
+                if (el) el.textContent = val ?? 0;
+            };
+
+            setDeptVal('#dept-stat-hadir', sDept.hadir);
+            setDeptVal('#dept-stat-sakit', sDept.sakit);
+            setDeptVal('#dept-stat-izin', sDept.izin);
+            setDeptVal('#dept-stat-dispen', sDept.dispen);
+            setDeptVal('#dept-stat-terlambat', sDept.telat);
+            setDeptVal('#dept-stat-pulang', sDept.pulang);
+            setDeptVal('#dept-stat-alfa', sDept.alfa);
+            setDeptVal('#dept-stat-bolos', sDept.bolos);
+
+            const rateDeptEl = container.querySelector('#dept-stat-rate');
+            if (rateDeptEl) rateDeptEl.textContent = (data.department.attendance_rate !== null && data.department.attendance_rate !== undefined) ? `${data.department.attendance_rate}%` : '-';
+        } else {
+            if (cardDepartment) cardDepartment.classList.add('hidden');
+        }
+
         // 4. Kartu Tugas Wali Kelas & Live Monitoring 8 Status
         const cardHomeroom = container.querySelector('#card-homeroom-section');
         const homeroomClsName = container.querySelector('#homeroom-classroom-name');

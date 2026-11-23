@@ -739,10 +739,23 @@ class HomeroomAttendanceRecapController extends Controller
                 ->filter()
                 ->all() : [];
 
-            $classroomQuery = Classroom::where(function ($q) use ($user, $assignedClassroomIds) {
+            $isKajur = $user && method_exists($user, 'isHeadOfDepartment') && $user->isHeadOfDepartment($academicYear);
+            $departmentClassroomIds = [];
+            if ($isKajur) {
+                $deptClassrooms = $user->getDepartmentClassrooms($academicYear);
+                if ($deptClassrooms->isEmpty()) {
+                    $deptClassrooms = $user->getDepartmentClassrooms(null);
+                }
+                $departmentClassroomIds = $deptClassrooms->pluck('id')->filter()->all();
+            }
+
+            $classroomQuery = Classroom::where(function ($q) use ($user, $assignedClassroomIds, $departmentClassroomIds) {
                 $q->where('homeroom_teacher_id', $user?->id ?? 0);
                 if (! empty($assignedClassroomIds)) {
                     $q->orWhereIn('id', $assignedClassroomIds);
+                }
+                if (! empty($departmentClassroomIds)) {
+                    $q->orWhereIn('id', $departmentClassroomIds);
                 }
             })->where('is_active', true);
 
@@ -760,10 +773,13 @@ class HomeroomAttendanceRecapController extends Controller
 
             $myClassrooms = $classroomQuery->orderBy('name')->get();
             if ($myClassrooms->isEmpty()) {
-                $myClassrooms = Classroom::where(function ($q) use ($user, $assignedClassroomIds) {
+                $myClassrooms = Classroom::where(function ($q) use ($user, $assignedClassroomIds, $departmentClassroomIds) {
                     $q->where('homeroom_teacher_id', $user?->id ?? 0);
                     if (! empty($assignedClassroomIds)) {
                         $q->orWhereIn('id', $assignedClassroomIds);
+                    }
+                    if (! empty($departmentClassroomIds)) {
+                        $q->orWhereIn('id', $departmentClassroomIds);
                     }
                 })->where('is_active', true)->orderBy('name')->get();
             }

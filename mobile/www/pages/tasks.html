@@ -94,6 +94,77 @@
         </div>
     </div>
 
+    <!-- 3.5. Kartu Monitoring Siswa Jurusan (Khusus Kepala Program Keahlian / Kajur) -->
+    <div id="card-department-section" class="hidden card-elevated p-3.5 border-teal-200 bg-teal-50/30">
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-teal-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                </div>
+                <div>
+                    <h4 id="dept-card-title" class="text-xs font-black text-slate-800">Monitoring Siswa Jurusan</h4>
+                    <p id="dept-card-sub" class="text-[10px] text-teal-800 font-bold">Kaprogli Jurusan</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-[9px] text-slate-400 font-semibold block">Tingkat Hadir</span>
+                <span id="dept-stat-rate" class="text-xs font-black text-teal-700 font-mono">0%</span>
+            </div>
+        </div>
+
+        <!-- Bilah 8 Chip Status Siswa Jurusan -->
+        <div class="space-y-1.5 mb-3">
+            <div class="grid grid-cols-4 gap-1.5 text-center">
+                <div class="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <span class="text-[9px] font-bold text-emerald-700 block">Hadir</span>
+                    <p id="dept-stat-hadir" class="text-xs font-black text-emerald-950 font-mono">0</p>
+                </div>
+                <div class="p-1.5 rounded-xl bg-amber-50 border border-amber-200">
+                    <span class="text-[9px] font-bold text-amber-700 block">Telat</span>
+                    <p id="dept-stat-terlambat" class="text-xs font-black text-amber-950 font-mono">0</p>
+                </div>
+                <div class="p-1.5 rounded-xl bg-blue-50 border border-blue-200">
+                    <span class="text-[9px] font-bold text-blue-700 block">Sakit</span>
+                    <p id="dept-stat-sakit" class="text-xs font-black text-blue-950 font-mono">0</p>
+                </div>
+                <div class="p-1.5 rounded-xl bg-cyan-50 border border-cyan-200">
+                    <span class="text-[9px] font-bold text-cyan-700 block">Izin</span>
+                    <p id="dept-stat-izin" class="text-xs font-black text-cyan-950 font-mono">0</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 text-center">
+                <div class="p-1.5 rounded-xl bg-indigo-50 border border-indigo-200">
+                    <span class="text-[9px] font-bold text-indigo-700 block">Dispen</span>
+                    <p id="dept-stat-dispen" class="text-xs font-black text-indigo-950 font-mono">0</p>
+                </div>
+                <div class="p-1.5 rounded-xl bg-purple-50 border border-purple-200">
+                    <span class="text-[9px] font-bold text-purple-700 block">Pulang</span>
+                    <p id="dept-stat-pulang" class="text-xs font-black text-purple-950 font-mono">0</p>
+                </div>
+                <div class="p-1.5 rounded-xl bg-rose-50 border border-rose-200">
+                    <span class="text-[9px] font-bold text-rose-700 block">Alfa</span>
+                    <p id="dept-stat-alfa" class="text-xs font-black text-rose-950 font-mono">0</p>
+                </div>
+                <div class="p-1.5 rounded-xl bg-slate-900 text-white shadow-xs">
+                    <span class="text-[9px] font-bold text-rose-400 block">Bolos</span>
+                    <p id="dept-stat-bolos" class="text-xs font-black text-white font-mono">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi Cepat Kajur: Rekap Absen Jurusan -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-teal-200/80">
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/recap')" class="py-2 px-1 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-[10.5px] font-bold text-center shadow-xs hover:opacity-95 transition active:scale-95 flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span>Rekap Absen Jurusan</span>
+            </button>
+            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="py-2 px-1 rounded-xl bg-white border border-teal-300 text-teal-900 text-[10.5px] font-bold text-center shadow-xs hover:bg-teal-50 transition active:scale-95 flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <span>Kontak Guru</span>
+            </button>
+        </div>
+    </div>
+
     <!-- 4. Kartu Tugas Wali Kelas (Live Monitoring 8 Status Siswa) -->
     <div id="card-homeroom-section" class="hidden card-elevated p-3.5 border-amber-200 bg-amber-50/30">
         <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-amber-100">

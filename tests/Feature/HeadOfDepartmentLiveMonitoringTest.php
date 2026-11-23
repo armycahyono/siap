@@ -172,4 +172,76 @@ class HeadOfDepartmentLiveMonitoringTest extends TestCase
         $response->assertJsonPath('data.live_monitoring.department_code', 'AKL');
         $response->assertJsonPath('data.live_monitoring.total_students', 1);
     }
+
+    public function test_kajur_can_access_recap_and_see_all_department_classrooms(): void
+    {
+        $this->actingAs($this->kajurUser);
+
+        // Web / Mobile Blade endpoint
+        $response = $this->get(route('attendance.homeroom-recap.index', [
+            'academic_year' => $this->academicYear,
+        ]));
+
+        $response->assertOk();
+        $response->assertViewHas('myClassrooms', function ($classrooms) {
+            return $classrooms->contains('id', $this->aklClassroom->id)
+                && ! $classrooms->contains('id', $this->tkrClassroom->id);
+        });
+
+        // Mobile API endpoint
+        $apiResponse = $this->getJson('/api/v1/mobile/tasks/homeroom/recap?academic_year='.$this->academicYear);
+        $apiResponse->assertOk();
+        $apiResponse->assertJsonPath('data.my_classrooms.0.id', $this->aklClassroom->id);
+        $this->assertCount(1, $apiResponse->json('data.my_classrooms'));
+    }
+
+    public function test_kajur_can_download_pdf_and_export_excel_for_department_classroom(): void
+    {
+        $this->actingAs($this->kajurUser);
+
+        // Download PDF for AKL classroom
+        $pdfResponse = $this->get(route('attendance.homeroom-recap.download-pdf', [
+            'classroom_id' => $this->aklClassroom->id,
+            'academic_year' => $this->academicYear,
+            'mode' => 'daily',
+        ]));
+        $pdfResponse->assertOk();
+
+        // Print PDF (action=print)
+        $printResponse = $this->get(route('attendance.homeroom-recap.download-pdf', [
+            'classroom_id' => $this->aklClassroom->id,
+            'academic_year' => $this->academicYear,
+            'mode' => 'daily',
+            'action' => 'print',
+        ]));
+        $printResponse->assertOk();
+
+        // Export Excel for AKL classroom
+        $excelResponse = $this->get(route('attendance.homeroom-recap.export-excel', [
+            'classroom_id' => $this->aklClassroom->id,
+            'academic_year' => $this->academicYear,
+            'mode' => 'daily',
+        ]));
+        $excelResponse->assertOk();
+    }
+
+    public function test_kajur_cannot_access_or_download_pdf_for_other_department_classroom(): void
+    {
+        $this->actingAs($this->kajurUser);
+
+        // Attempt to view recap for TKR classroom should return 403
+        $response = $this->get(route('attendance.homeroom-recap.index', [
+            'classroom_id' => $this->tkrClassroom->id,
+            'academic_year' => $this->academicYear,
+        ]));
+        $response->assertStatus(403);
+
+        // Attempt to download PDF for TKR classroom should return 403
+        $pdfResponse = $this->get(route('attendance.homeroom-recap.download-pdf', [
+            'classroom_id' => $this->tkrClassroom->id,
+            'academic_year' => $this->academicYear,
+            'mode' => 'daily',
+        ]));
+        $pdfResponse->assertStatus(403);
+    }
 }
