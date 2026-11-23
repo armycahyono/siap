@@ -59,9 +59,9 @@ class LiveMonitoringService
             $isSarpras => 'sarpras',
             $isHumas => 'humas',
             $isVicePrincipal => 'vice_principal',
+            $isHeadOfDepartment => 'kaprogli',
             $isBk => 'bk',
             $isHomeroom => 'homeroom',
-            $isHeadOfDepartment => 'kaprogli',
             default => 'homeroom',
         };
 
@@ -98,20 +98,20 @@ class LiveMonitoringService
             ->orderBy('scanned_at', 'asc');
 
         if (! $canViewStudentAll) {
-            if ($myHomeroomClassroom) {
-                $permitsQuery->where(function ($pq) use ($myHomeroomClassroom) {
-                    $pq->where('classroom_id', $myHomeroomClassroom->id)
-                        ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
-                });
-                $sessionsQuery->where('classroom_id', $myHomeroomClassroom->id);
-                $gateLogsQuery->whereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
-            } elseif ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
+            if ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
                 $permitsQuery->where(function ($pq) use ($deptClassroomIds) {
                     $pq->whereIn('classroom_id', $deptClassroomIds)
                         ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
                 });
                 $sessionsQuery->whereIn('classroom_id', $deptClassroomIds);
                 $gateLogsQuery->whereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+            } elseif ($myHomeroomClassroom) {
+                $permitsQuery->where(function ($pq) use ($myHomeroomClassroom) {
+                    $pq->where('classroom_id', $myHomeroomClassroom->id)
+                        ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
+                });
+                $sessionsQuery->where('classroom_id', $myHomeroomClassroom->id);
+                $gateLogsQuery->whereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
             }
         }
 
@@ -446,15 +446,15 @@ class LiveMonitoringService
             ->whereDate('incident_date', $targetDateStr);
 
         if (! $canViewStudentAll) {
-            if ($myHomeroomClassroom) {
-                $incidentsQuery->where(function ($iq) use ($myHomeroomClassroom) {
-                    $iq->where('classroom_id', $myHomeroomClassroom->id)
-                        ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
-                });
-            } elseif ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
+            if ($isHeadOfDepartment && ! empty($deptClassroomIds)) {
                 $incidentsQuery->where(function ($iq) use ($deptClassroomIds) {
                     $iq->whereIn('classroom_id', $deptClassroomIds)
                         ->orWhereHas('student', fn ($sq) => $sq->whereIn('classroom_id', $deptClassroomIds));
+                });
+            } elseif ($myHomeroomClassroom) {
+                $incidentsQuery->where(function ($iq) use ($myHomeroomClassroom) {
+                    $iq->where('classroom_id', $myHomeroomClassroom->id)
+                        ->orWhereHas('student', fn ($sq) => $sq->where('classroom_id', $myHomeroomClassroom->id));
                 });
             }
         }
@@ -679,6 +679,9 @@ class LiveMonitoringService
             'can_view_student_all' => $canViewStudentAll,
             'can_view_gtk' => $canViewGtk,
             'can_view_bk' => $canViewBk,
+            'can_manage_permits' => ! $isBk && ($isPrincipal || $isVicePrincipal || $isHomeroom || $isHeadOfDepartment),
+            'can_manage_visitations' => $isPrincipal || $isVicePrincipal || $isHomeroom || $isHeadOfDepartment || $isBk,
+            'can_view_recap' => $isPrincipal || $isVicePrincipal || $isHomeroom || $isHeadOfDepartment || $isBk,
             'is_head_of_department' => $isHeadOfDepartment,
             'department_name' => $deptName,
             'department_code' => $deptCode,

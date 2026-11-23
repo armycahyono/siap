@@ -94,195 +94,149 @@
         </div>
     </div>
 
-    <!-- 3.5. Kartu Monitoring Siswa Jurusan (Khusus Kepala Program Keahlian / Kajur) -->
-    <div id="card-department-section" class="hidden card-elevated p-3.5 border-teal-200 bg-teal-50/30">
-        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-teal-100">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+    <!-- 4. KARTU UTAMA: UNIFIED LIVE MONITORING (ADAPTIVE SESUAI PERAN) -->
+    <div id="card-unified-live-monitoring" class="hidden card-elevated p-3.5 border-emerald-300 bg-gradient-to-b from-emerald-50/50 via-white to-white shadow-sm">
+        <!-- Header Kartu -->
+        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-emerald-100">
+            <div>
+                <div class="flex items-center gap-1.5">
+                    <h4 class="text-xs font-black text-slate-900">Live Monitoring Hari Ini</h4>
+                    <span id="lm-role-badge" class="px-1.5 py-0.2 rounded text-[8px] font-bold bg-emerald-100 text-emerald-800 uppercase font-mono">Wali Kelas</span>
                 </div>
-                <div>
-                    <h4 id="dept-card-title" class="text-xs font-black text-slate-800">Monitoring Siswa Jurusan</h4>
-                    <p id="dept-card-sub" class="text-[10px] text-teal-800 font-bold">Kaprogli Jurusan</p>
-                </div>
+                <p id="lm-scope-subtitle" class="text-[10px] text-emerald-800 font-medium">Seluruh Siswa (Tingkat Sekolah)</p>
             </div>
+            <!-- Live Pulse Badge -->
             <div class="text-right">
-                <span class="text-[9px] text-slate-400 font-semibold block">Tingkat Hadir</span>
-                <span id="dept-stat-rate" class="text-xs font-black text-teal-700 font-mono">0%</span>
-            </div>
-        </div>
-
-        <!-- Bilah 8 Chip Status Siswa Jurusan -->
-        <div class="space-y-1.5 mb-3">
-            <div class="grid grid-cols-4 gap-1.5 text-center">
-                <div class="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                    <span class="text-[9px] font-bold text-emerald-700 block">Hadir</span>
-                    <p id="dept-stat-hadir" class="text-xs font-black text-emerald-950 font-mono">0</p>
-                </div>
-                <div class="p-1.5 rounded-xl bg-amber-50 border border-amber-200">
-                    <span class="text-[9px] font-bold text-amber-700 block">Telat</span>
-                    <p id="dept-stat-terlambat" class="text-xs font-black text-amber-950 font-mono">0</p>
-                </div>
-                <div class="p-1.5 rounded-xl bg-blue-50 border border-blue-200">
-                    <span class="text-[9px] font-bold text-blue-700 block">Sakit</span>
-                    <p id="dept-stat-sakit" class="text-xs font-black text-blue-950 font-mono">0</p>
-                </div>
-                <div class="p-1.5 rounded-xl bg-cyan-50 border border-cyan-200">
-                    <span class="text-[9px] font-bold text-cyan-700 block">Izin</span>
-                    <p id="dept-stat-izin" class="text-xs font-black text-cyan-950 font-mono">0</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-4 gap-1.5 text-center">
-                <div class="p-1.5 rounded-xl bg-indigo-50 border border-indigo-200">
-                    <span class="text-[9px] font-bold text-indigo-700 block">Dispen</span>
-                    <p id="dept-stat-dispen" class="text-xs font-black text-indigo-950 font-mono">0</p>
-                </div>
-                <div class="p-1.5 rounded-xl bg-purple-50 border border-purple-200">
-                    <span class="text-[9px] font-bold text-purple-700 block">Pulang</span>
-                    <p id="dept-stat-pulang" class="text-xs font-black text-purple-950 font-mono">0</p>
-                </div>
-                <div class="p-1.5 rounded-xl bg-rose-50 border border-rose-200">
-                    <span class="text-[9px] font-bold text-rose-700 block">Alfa</span>
-                    <p id="dept-stat-alfa" class="text-xs font-black text-rose-950 font-mono">0</p>
-                </div>
-                <div class="p-1.5 rounded-xl bg-slate-900 text-white shadow-xs">
-                    <span class="text-[9px] font-bold text-rose-400 block">Bolos</span>
-                    <p id="dept-stat-bolos" class="text-xs font-black text-white font-mono">0</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tombol Aksi Cepat Kajur: Rekap Absen Jurusan -->
-        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-teal-200/80">
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/recap')" class="py-2 px-1 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-[10.5px] font-bold text-center shadow-xs hover:opacity-95 transition active:scale-95 flex items-center justify-center gap-1.5">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                <span>Rekap Absen Jurusan</span>
-            </button>
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/teachers')" class="py-2 px-1 rounded-xl bg-white border border-teal-300 text-teal-900 text-[10.5px] font-bold text-center shadow-xs hover:bg-teal-50 transition active:scale-95 flex items-center justify-center gap-1.5">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                <span>Kontak Guru</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- 4. Kartu Tugas Wali Kelas (Live Monitoring 8 Status Siswa) -->
-    <div id="card-homeroom-section" class="hidden card-elevated p-3.5 border-amber-200 bg-amber-50/30">
-        <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-amber-100">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                </div>
-                <div>
-                    <h4 class="text-xs font-black text-slate-800">Tugas Wali Kelas</h4>
-                    <p id="homeroom-classroom-name" class="text-[10px] text-amber-800 font-bold">Kelas Perwalian</p>
-                </div>
-            </div>
-            <div class="text-right">
-                <span class="text-[9px] text-slate-400 font-semibold block">Tingkat Hadir</span>
-                <span id="stat-rate" class="text-xs font-black text-emerald-600 font-mono">0%</span>
-            </div>
-        </div>
-
-        <!-- Bilah 8 Chip Status Siswa Rombel (Bisa Diklik untuk Filter & Rincian) -->
-        <div class="space-y-1.5 mb-3">
-            <div class="grid grid-cols-4 gap-1.5 text-center">
-                <div data-homeroom-chip="hadir" onclick="selectHomeroomCategory('hadir')" class="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-emerald-700 block">Hadir</span>
-                    <p id="stat-hadir" class="text-xs font-black text-emerald-950 font-mono">0</p>
-                </div>
-                <div data-homeroom-chip="late" onclick="selectHomeroomCategory('late')" class="p-1.5 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer hover:bg-amber-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-amber-700 block">Telat</span>
-                    <p id="stat-terlambat" class="text-xs font-black text-amber-950 font-mono">0</p>
-                </div>
-                <div data-homeroom-chip="sakit" onclick="selectHomeroomCategory('sakit')" class="p-1.5 rounded-xl bg-blue-50 border border-blue-200 cursor-pointer hover:bg-blue-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-blue-700 block">Sakit</span>
-                    <p id="stat-sakit" class="text-xs font-black text-blue-950 font-mono">0</p>
-                </div>
-                <div data-homeroom-chip="izin" onclick="selectHomeroomCategory('izin')" class="p-1.5 rounded-xl bg-cyan-50 border border-cyan-200 cursor-pointer hover:bg-cyan-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-cyan-700 block">Izin</span>
-                    <p id="stat-izin" class="text-xs font-black text-cyan-950 font-mono">0</p>
-                </div>
-            </div>
-            <div class="grid grid-cols-4 gap-1.5 text-center">
-                <div data-homeroom-chip="dispen" onclick="selectHomeroomCategory('dispen')" class="p-1.5 rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer hover:bg-indigo-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-indigo-700 block">Dispen</span>
-                    <p id="stat-dispen" class="text-xs font-black text-indigo-950 font-mono">0</p>
-                </div>
-                <div data-homeroom-chip="pulang" onclick="selectHomeroomCategory('pulang')" class="p-1.5 rounded-xl bg-purple-50 border border-purple-200 cursor-pointer hover:bg-purple-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-purple-700 block">Pulang</span>
-                    <p id="stat-pulang" class="text-xs font-black text-purple-950 font-mono">0</p>
-                </div>
-                <div data-homeroom-chip="alfa" onclick="selectHomeroomCategory('alfa')" class="p-1.5 rounded-xl bg-rose-50 border border-rose-200 cursor-pointer hover:bg-rose-100 transition active:scale-95">
-                    <span class="text-[9px] font-bold text-rose-700 block">Alfa</span>
-                    <p id="stat-alfa" class="text-xs font-black text-rose-950 font-mono">0</p>
-                </div>
-                <div data-homeroom-chip="truancy" onclick="selectHomeroomCategory('truancy')" class="p-1.5 rounded-xl bg-slate-900 text-white cursor-pointer hover:bg-slate-800 transition active:scale-95 shadow-xs">
-                    <span class="text-[9px] font-bold text-rose-400 block">Bolos</span>
-                    <p id="stat-bolos" class="text-xs font-black text-white font-mono">0</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Drawer Rincian Siswa Saat Chip Diklik (In-Place) -->
-        <div id="homeroom-drawer-detail" class="hidden mb-3 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 shadow-2xs transition-all">
-            <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-amber-200/80">
-                <span id="homeroom-drawer-title" class="text-[11px] font-black text-amber-950 flex items-center gap-1.5">
-                    <span>👥 Rincian Siswa</span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-600 text-white shadow-xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                    <span>LIVE</span>
                 </span>
-                <button type="button" onclick="closeHomeroomDrawer()" class="text-amber-800 hover:text-amber-950 text-xs font-bold px-1.5 py-0.5 rounded-lg hover:bg-amber-200/60 transition" aria-label="Tutup Rincian">&times; Tutup</button>
-            </div>
-            <div id="homeroom-drawer-list" class="max-h-56 overflow-y-auto space-y-1.5 text-xs"></div>
-        </div>
-
-        <!-- 3 Tombol Aksi Cepat Wali Kelas -->
-        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-amber-200/80">
-            <button type="button" id="btn-homeroom-permits" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/permits')" class="py-2 px-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-[10px] font-bold text-center shadow-xs hover:bg-amber-50 transition active:scale-95 flex items-center justify-center gap-1">
-                <span>📝 Izin Siswa</span>
-            </button>
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/visitations')" class="py-2 px-1 rounded-xl bg-white border border-cyan-300 text-cyan-900 text-[10px] font-bold text-center shadow-xs hover:bg-cyan-50 transition active:scale-95 flex items-center justify-center gap-1">
-                <span>🏠 Visitasi</span>
-            </button>
-            <button type="button" id="btn-homeroom-recap" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/recap')" class="py-2 px-1 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-[10px] font-bold text-center shadow-xs hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center gap-1">
-                <span>📋 Rekap</span>
-            </button>
-        </div>
-
-        <!-- Log & Kejadian Siswa Rombel -->
-        <div class="mt-3 pt-3 border-t border-amber-200/80">
-            <h5 class="text-[11px] font-black text-slate-800 uppercase tracking-wider mb-2 flex items-center justify-between">
-                <span>Catatan &amp; Insiden Siswa</span>
-                <span id="homeroom-event-counter" class="text-[9px] font-bold text-slate-400">0 Catatan</span>
-            </h5>
-            <div id="tasks-student-events" class="space-y-2">
-                <div class="text-center py-4 text-xs text-slate-400">Tidak ada kejadian/pelanggaran siswa pada tanggal ini.</div>
             </div>
         </div>
-    </div>
 
-    <!-- 5. Kartu Visitasi & BK (Bila Punya Akses / Guru BK) -->
-    <div id="card-visitation-section" class="hidden card-elevated p-3.5 border-cyan-200 bg-cyan-50/30">
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-cyan-100">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-xl bg-cyan-600 text-white flex items-center justify-center shadow-xs">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <!-- 1. Bilah Metrik Presensi Siswa (8 Status) -->
+        <div class="mb-2.5">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span>👥 Presensi Siswa</span>
+                </span>
+                <span id="lm-siswa-summary-count" class="text-[10px] text-slate-600 font-medium">Ketuk chip untuk rincian</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 text-center mb-1.5">
+                <div data-lm-chip="siswa-hadir" onclick="toggleLmDrawer('siswa', 'hadir')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer active:scale-95 transition hover:bg-emerald-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-emerald-800 block leading-tight">Hadir</span>
+                    <span id="lm-stat-hadir" class="text-xs font-black text-emerald-950 font-mono">0</span>
                 </div>
-                <div>
-                    <h4 class="text-xs font-black text-slate-800">Visitasi Siswa &amp; BK</h4>
-                    <p class="text-[10px] text-cyan-800 font-medium">Home Visit &amp; Pemantauan Khusus Siswa</p>
+                <div data-lm-chip="siswa-telat" onclick="toggleLmDrawer('siswa', 'telat')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-amber-50 border border-amber-200 cursor-pointer active:scale-95 transition hover:bg-amber-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-amber-800 block leading-tight">Telat</span>
+                    <span id="lm-stat-telat" class="text-xs font-black text-amber-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="siswa-sakit" onclick="toggleLmDrawer('siswa', 'sakit')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-blue-50 border border-blue-200 cursor-pointer active:scale-95 transition hover:bg-blue-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-blue-800 block leading-tight">Sakit</span>
+                    <span id="lm-stat-sakit" class="text-xs font-black text-blue-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="siswa-izin" onclick="toggleLmDrawer('siswa', 'izin')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-cyan-50 border border-cyan-200 cursor-pointer active:scale-95 transition hover:bg-cyan-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-cyan-800 block leading-tight">Izin</span>
+                    <span id="lm-stat-izin" class="text-xs font-black text-cyan-950 font-mono">0</span>
                 </div>
             </div>
-            <span id="badge-visitation-count" class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-cyan-600 text-white">0 Agenda</span>
+            <div class="grid grid-cols-4 gap-1.5 text-center">
+                <div data-lm-chip="siswa-dispen" onclick="toggleLmDrawer('siswa', 'dispen')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer active:scale-95 transition hover:bg-indigo-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-indigo-800 block leading-tight">Dispen</span>
+                    <span id="lm-stat-dispen" class="text-xs font-black text-indigo-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="siswa-pulang" onclick="toggleLmDrawer('siswa', 'pulang')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-purple-50 border border-purple-200 cursor-pointer active:scale-95 transition hover:bg-purple-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-purple-800 block leading-tight">Pulang</span>
+                    <span id="lm-stat-pulang" class="text-xs font-black text-purple-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="siswa-alfa" onclick="toggleLmDrawer('siswa', 'alfa')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-rose-800 block leading-tight">Alfa</span>
+                    <span id="lm-stat-alfa" class="text-xs font-black text-rose-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="siswa-bolos" onclick="toggleLmDrawer('siswa', 'bolos')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-slate-900 text-white cursor-pointer active:scale-95 transition hover:bg-slate-800 shadow-xs flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-rose-400 block leading-tight">Bolos</span>
+                    <span id="lm-stat-bolos" class="text-xs font-black text-white font-mono">0</span>
+                </div>
+            </div>
         </div>
 
-        <div id="visitation-recent-list" class="space-y-2 mb-2.5"></div>
+        <!-- 2. Drawer Detail In-Place (Muncul Saat Chip Diklik) -->
+        <div id="lm-drawer-detail" class="hidden mb-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 shadow-xs transition-all">
+            <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200">
+                <span id="lm-drawer-title" class="text-[10px] font-black text-slate-800 flex items-center gap-1">Detail Rincian</span>
+                <button type="button" onclick="closeLmDrawer()" class="text-slate-500 hover:text-slate-700 text-xs font-bold px-1.5 py-0.5 rounded-lg hover:bg-slate-200 transition" aria-label="Tutup Rincian">&times; Tutup</button>
+            </div>
+            <div id="lm-drawer-list" class="max-h-56 overflow-y-auto space-y-1.5 text-xs"></div>
+        </div>
 
-        <div class="grid grid-cols-2 gap-2">
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/visitations?tab=form')" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
-                <span>+ Jadwal Visitasi</span>
-            </button>
-            <button type="button" onclick="SIAP_ROUTER.navigate('/tasks/visitations?tab=list')" class="py-2.5 px-3 rounded-xl bg-white border border-cyan-300 text-cyan-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs hover:bg-cyan-50 active:scale-95 transition">
-                <span>Semua Data</span>
-            </button>
+        <!-- 3. Bilah Monitoring GTK & KBM (Khusus Kurikulum & Kepala Sekolah) -->
+        <div id="lm-gtk-section" class="hidden mb-2.5 pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span>👨‍🏫 Kehadiran GTK &amp; KBM</span>
+                </span>
+                <span id="lm-gtk-total-label" class="text-[9px] text-slate-500 font-mono">Total: 0 GTK</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 text-center mb-1.5">
+                <div data-lm-chip="gtk-hadir" onclick="toggleLmDrawer('gtk', 'hadir')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer active:scale-95 transition hover:bg-emerald-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-emerald-800 block leading-tight">Hadir</span>
+                    <span id="lm-stat-gtk-hadir" class="text-xs font-black text-emerald-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-telat" onclick="toggleLmDrawer('gtk', 'telat')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-amber-50 border border-amber-200 cursor-pointer active:scale-95 transition hover:bg-amber-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-amber-800 block leading-tight">Telat</span>
+                    <span id="lm-stat-gtk-telat" class="text-xs font-black text-amber-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-belum_masuk" onclick="toggleLmDrawer('gtk', 'belum_masuk')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-rose-800 block leading-tight">Belum Masuk</span>
+                    <span id="lm-stat-gtk-belum" class="text-xs font-black text-rose-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-izin" onclick="toggleLmDrawer('gtk', 'izin')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-purple-50 border border-purple-200 cursor-pointer active:scale-95 transition hover:bg-purple-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-purple-800 block leading-tight">Izin/Cuti</span>
+                    <span id="lm-stat-gtk-izin" class="text-xs font-black text-purple-950 font-mono">0</span>
+                </div>
+            </div>
+            <!-- Sub Baris: Inval & Jam Kosong KBM -->
+            <div class="grid grid-cols-2 gap-1.5 text-center">
+                <div data-lm-chip="gtk-inval" onclick="toggleLmDrawer('gtk', 'inval')" class="p-2 min-h-[40px] rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer active:scale-95 transition hover:bg-indigo-100 flex items-center justify-between px-2.5">
+                    <span class="text-[10px] font-bold text-indigo-800">Inval Mengajar</span>
+                    <span id="lm-stat-inval" class="text-xs font-black text-indigo-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-unattended" onclick="toggleLmDrawer('gtk', 'unattended')" class="p-2 min-h-[40px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex items-center justify-between px-2.5">
+                    <span class="text-[10px] font-bold text-rose-800">Belum Mapel</span>
+                    <span id="lm-stat-unattended" class="text-xs font-black text-rose-950 font-mono">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Tombol Aksi Cepat Terpadu (Izin Siswa, Visitasi Siswa, Rekap Presensi) -->
+        <div id="lm-actions-container" class="pt-2.5 mb-2.5 border-t border-slate-100">
+            <div id="lm-actions-grid" class="grid grid-cols-3 gap-2">
+                <button type="button" id="btn-lm-permits" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/permits')" class="py-2 px-1 rounded-xl bg-white border border-amber-300 text-amber-900 text-[10px] font-bold text-center shadow-xs hover:bg-amber-50 transition active:scale-95 flex items-center justify-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Izin Siswa</span>
+                </button>
+                <button type="button" id="btn-lm-visitations" onclick="SIAP_ROUTER.navigate('/tasks/visitations')" class="py-2 px-1 rounded-xl bg-white border border-cyan-300 text-cyan-900 text-[10px] font-bold text-center shadow-xs hover:bg-cyan-50 transition active:scale-95 flex items-center justify-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span>Visitasi</span>
+                </button>
+                <button type="button" id="btn-lm-recap" onclick="SIAP_ROUTER.navigate('/tasks/homeroom/recap')" class="py-2 px-1 rounded-xl bg-white border border-emerald-300 text-emerald-900 text-[10px] font-bold text-center shadow-xs hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Rekap Absen</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. Realtime Event Stream (Linimasa Peristiwa Terpadu) -->
+        <div class="pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2">
+                <h5 class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span>⚡ Peristiwa Hari Ini (Realtime Feed)</span>
+                </h5>
+                <span id="lm-timeline-count" class="text-[9px] font-bold text-slate-400 font-mono">0 Peristiwa</span>
+            </div>
+            <div id="lm-timeline-list" class="space-y-1.5 max-h-56 overflow-y-auto">
+                <div class="text-center py-3 text-xs text-slate-400">Belum ada peristiwa pada tanggal ini.</div>
+            </div>
         </div>
     </div>
 

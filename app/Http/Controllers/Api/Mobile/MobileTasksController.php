@@ -3771,6 +3771,8 @@ class MobileTasksController extends Controller
         }
 
         $canViewAll = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->isPrincipal();
+        $isKajur = $user->isHeadOfDepartment($academicYear);
+        $kajurDeptId = $isKajur ? $user->getDepartmentHeadDepartmentId($academicYear) : null;
 
         $ayModel = AcademicYear::where('name', $academicYear)->first();
         $classroomQuery = Classroom::where(function ($query) use ($academicYear, $ayModel) {
@@ -3781,15 +3783,28 @@ class MobileTasksController extends Controller
         });
 
         if (! $canViewAll) {
-            $classroomQuery->where('homeroom_teacher_id', $user->id);
+            if ($isKajur && $kajurDeptId) {
+                $classroomQuery->where(function ($q) use ($user, $kajurDeptId) {
+                    $q->where('department_id', $kajurDeptId)
+                        ->orWhere('homeroom_teacher_id', $user->id);
+                });
+            } else {
+                $classroomQuery->where('homeroom_teacher_id', $user->id);
+            }
         }
 
         $myClassrooms = $classroomQuery->orderBy('name')->get();
         if (! $canViewAll && $myClassrooms->isEmpty()) {
-            $myClassrooms = Classroom::where('homeroom_teacher_id', $user->id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
+            $fallbackQuery = Classroom::where('is_active', true);
+            if ($isKajur && $kajurDeptId) {
+                $fallbackQuery->where(function ($q) use ($user, $kajurDeptId) {
+                    $q->where('department_id', $kajurDeptId)
+                        ->orWhere('homeroom_teacher_id', $user->id);
+                });
+            } else {
+                $fallbackQuery->where('homeroom_teacher_id', $user->id);
+            }
+            $myClassrooms = $fallbackQuery->orderBy('name')->get();
         }
 
         $selectedClassroomId = $request->query('classroom_id', $myClassrooms->first()?->id);
@@ -3908,9 +3923,15 @@ class MobileTasksController extends Controller
 
         $classroom = Classroom::findOrFail($validated['classroom_id']);
 
-        $canManage = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->isPrincipal() || $user->isHomeroomTeacher($classroom);
+        $isKajurForClass = false;
+        if ($user->isHeadOfDepartment() && $classroom->department_id) {
+            $userDeptId = $user->getDepartmentHeadDepartmentId();
+            $isKajurForClass = $userDeptId && ((int) $userDeptId === (int) $classroom->department_id);
+        }
+
+        $canManage = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->isPrincipal() || $user->isHomeroomTeacher($classroom) || $isKajurForClass;
         if (! $canManage) {
-            return response()->json(['success' => false, 'message' => 'Anda bukan wali kelas untuk rombel ini.'], 403);
+            return response()->json(['success' => false, 'message' => 'Anda tidak memiliki hak akses izin siswa untuk rombel ini.'], 403);
         }
 
         $todayStr = Carbon::parse($validated['permit_date'])->toDateString();
@@ -4013,7 +4034,17 @@ class MobileTasksController extends Controller
 
         $permit = PiketStudentPermit::findOrFail($id);
 
-        $canManage = $user->isSuperAdmin() || $user->isWakaKurikulum() || ($permit->classroom?->homeroom_teacher_id === $user->id) || ($permit->given_by === $user->id);
+        $isKajurForClass = false;
+        if ($user->isHeadOfDepartment() && $permit->classroom?->department_id) {
+            $userDeptId = $user->getDepartmentHeadDepartmentId();
+            $isKajurForClass = $userDeptId && ((int) $userDeptId === (int) $permit->classroom->department_id);
+        }
+
+        $canManage = $user->isSuperAdmin()
+            || $user->isWakaKurikulum()
+            || ($permit->classroom?->homeroom_teacher_id === $user->id)
+            || ($permit->given_by === $user->id)
+            || $isKajurForClass;
         if (! $canManage) {
             return response()->json(['success' => false, 'message' => 'Anda tidak berhak menghapus data izin ini.'], 403);
         }

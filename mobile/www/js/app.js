@@ -707,6 +707,54 @@
                 if (gtkSection) gtkSection.classList.add('hidden');
             }
 
+            // Quick Action Buttons (Izin Siswa, Visitasi, Rekap Absen)
+            const actionsContainer = container.querySelector('#lm-actions-container');
+            const actionsGrid = container.querySelector('#lm-actions-grid');
+            const btnPermits = container.querySelector('#btn-lm-permits');
+            const btnVisitations = container.querySelector('#btn-lm-visitations');
+            const btnRecap = container.querySelector('#btn-lm-recap');
+
+            let visibleActionCount = 0;
+            if (btnPermits) {
+                if (lmData.can_manage_permits) {
+                    btnPermits.classList.remove('hidden');
+                    visibleActionCount++;
+                } else {
+                    btnPermits.classList.add('hidden');
+                }
+            }
+            if (btnVisitations) {
+                if (lmData.can_manage_visitations) {
+                    btnVisitations.classList.remove('hidden');
+                    visibleActionCount++;
+                } else {
+                    btnVisitations.classList.add('hidden');
+                }
+            }
+            if (btnRecap) {
+                if (lmData.can_view_recap) {
+                    btnRecap.classList.remove('hidden');
+                    visibleActionCount++;
+                } else {
+                    btnRecap.classList.add('hidden');
+                }
+            }
+
+            if (actionsGrid) {
+                actionsGrid.className = 'grid gap-2 ' + (
+                    visibleActionCount === 3 ? 'grid-cols-3' :
+                    visibleActionCount === 2 ? 'grid-cols-2' :
+                    visibleActionCount === 1 ? 'grid-cols-1' : 'hidden'
+                );
+            }
+            if (actionsContainer) {
+                if (visibleActionCount > 0) {
+                    actionsContainer.classList.remove('hidden');
+                } else {
+                    actionsContainer.classList.add('hidden');
+                }
+            }
+
             // Timeline Feed
             const timelineList = container.querySelector('#lm-timeline-list');
             const timelineCount = container.querySelector('#lm-timeline-count');
@@ -886,8 +934,7 @@
             }
         }
 
-        // 3. Live Monitoring Hari Ini & Kartu Layanan BK
-        renderUnifiedLiveMonitoring(container, data.live_monitoring);
+        // 3. Kartu Layanan BK
         renderBkCard(container, data.bk);
 
         // 4. Render Schedules with Filter
@@ -2039,150 +2086,6 @@
             }
         } else {
             if (cardPiket) cardPiket.classList.add('hidden');
-        }
-
-        // 3.5. Kartu Monitoring Siswa Jurusan (Khusus Kepala Program Keahlian / Kajur)
-        const cardDepartment = container.querySelector('#card-department-section');
-        if (data.department && data.department.is_head_of_department) {
-            if (cardDepartment) cardDepartment.classList.remove('hidden');
-            const deptTitle = container.querySelector('#dept-card-title');
-            const deptSub = container.querySelector('#dept-card-sub');
-            if (deptTitle) deptTitle.textContent = `Monitoring Siswa Jurusan ${data.department.department_code || ''}`;
-            if (deptSub) deptSub.textContent = `Kaprogli ${data.department.department_name || 'Jurusan'} • ${data.department.total_students || 0} Siswa`;
-
-            const sDept = data.department.siswa || {};
-            const setDeptVal = (id, val) => {
-                const el = container.querySelector(id);
-                if (el) el.textContent = val ?? 0;
-            };
-
-            setDeptVal('#dept-stat-hadir', sDept.hadir);
-            setDeptVal('#dept-stat-sakit', sDept.sakit);
-            setDeptVal('#dept-stat-izin', sDept.izin);
-            setDeptVal('#dept-stat-dispen', sDept.dispen);
-            setDeptVal('#dept-stat-terlambat', sDept.telat);
-            setDeptVal('#dept-stat-pulang', sDept.pulang);
-            setDeptVal('#dept-stat-alfa', sDept.alfa);
-            setDeptVal('#dept-stat-bolos', sDept.bolos);
-
-            const rateDeptEl = container.querySelector('#dept-stat-rate');
-            if (rateDeptEl) rateDeptEl.textContent = (data.department.attendance_rate !== null && data.department.attendance_rate !== undefined) ? `${data.department.attendance_rate}%` : '-';
-        } else {
-            if (cardDepartment) cardDepartment.classList.add('hidden');
-        }
-
-        // 4. Kartu Tugas Wali Kelas & Live Monitoring 8 Status
-        const cardHomeroom = container.querySelector('#card-homeroom-section');
-        const homeroomClsName = container.querySelector('#homeroom-classroom-name');
-        const btnHomeroomPermits = container.querySelector('#btn-homeroom-permits');
-        const btnHomeroomRecap = container.querySelector('#btn-homeroom-recap');
-        const homeroomEventCounter = container.querySelector('#homeroom-event-counter');
-        const eventList = container.querySelector('#tasks-student-events');
-
-        if (data.homeroom) {
-            if (cardHomeroom) cardHomeroom.classList.remove('hidden');
-            if (homeroomClsName) homeroomClsName.textContent = data.homeroom.classroom?.name || 'Kelas Perwalian';
-
-            if (btnHomeroomPermits && data.homeroom.classroom?.id) {
-                btnHomeroomPermits.href = `/attendance/homeroom-permits?classroom_id=${data.homeroom.classroom.id}&date=${data.target_date?.current}`;
-            }
-            if (btnHomeroomRecap && data.homeroom.classroom?.id) {
-                btnHomeroomRecap.href = `/attendance/homeroom-recap?classroom_id=${data.homeroom.classroom.id}&date=${data.target_date?.current}`;
-            }
-
-            if (window.closeHomeroomDrawer) {
-                window.closeHomeroomDrawer();
-            }
-
-            const s = data.homeroom.summary || {};
-            const setVal = (id, val) => {
-                const el = container.querySelector(id);
-                if (el) el.textContent = val ?? 0;
-            };
-
-            setVal('#stat-hadir', s.hadir_count);
-            setVal('#stat-sakit', s.sakit_count);
-            setVal('#stat-izin', s.izin_count);
-            setVal('#stat-dispen', s.dispen_count);
-            setVal('#stat-terlambat', s.late_count);
-            setVal('#stat-pulang', s.pulang_count);
-            setVal('#stat-alfa', s.alfa_count);
-            setVal('#stat-bolos', s.truancy_count);
-
-            const rateEl = container.querySelector('#stat-rate');
-            if (rateEl) rateEl.textContent = s.attendance_rate !== null ? `${s.attendance_rate}%` : '-';
-
-            // Log Kejadian Siswa Rombel
-            const events = data.homeroom.student_events || [];
-            if (homeroomEventCounter) {
-                homeroomEventCounter.textContent = `${events.length} Catatan`;
-            }
-
-            if (eventList) {
-                if (events.length === 0) {
-                    eventList.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Tidak ada kejadian/pelanggaran siswa pada tanggal ini.</div>';
-                } else {
-                    eventList.innerHTML = events.map(ev => {
-                        const badgeColor = ev.badge_class === 'danger' ? 'bg-rose-100 text-rose-700' : (ev.badge_class === 'dark' ? 'bg-slate-900 text-white' : 'bg-amber-100 text-amber-800');
-                        return `
-                            <div class="p-3 card-subtle border-slate-200/80 bg-white">
-                                <div class="flex items-start justify-between gap-1.5 mb-1">
-                                    <div class="overflow-hidden">
-                                        <h5 class="text-xs font-bold text-slate-800 truncate">${ev.student_name}</h5>
-                                        <p class="text-[10px] text-slate-400 mt-0.5">${ev.time !== '-' ? ev.time + ' WIB • ' : ''}${ev.title}</p>
-                                    </div>
-                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${badgeColor} flex-shrink-0">${ev.badge}</span>
-                                </div>
-                                <div class="p-2 rounded-lg bg-slate-50 text-[11px] text-slate-700 mt-1.5 space-y-0.5">
-                                    <div><strong>Keterangan:</strong> ${ev.description}</div>
-                                    ${ev.action ? `<div class="text-slate-500"><strong>Tindakan:</strong> ${ev.action}</div>` : ''}
-                                    ${ev.note ? `<div class="text-rose-600"><strong>Catatan:</strong> ${ev.note}</div>` : ''}
-                                </div>
-                                <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 pt-1 border-t border-slate-100">
-                                    <span>Dicatat: ${ev.officer || 'Petugas'}</span>
-                                    ${ev.photo ? `<a href="${ev.photo}" target="_blank" class="text-blue-600 font-semibold hover:underline">Lihat Bukti Foto</a>` : ''}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
-        } else {
-            if (cardHomeroom) cardHomeroom.classList.add('hidden');
-        }
-
-        // 5. Kartu Visitasi Siswa & BK
-        const cardVisitation = container.querySelector('#card-visitation-section');
-        const badgeVisitationCount = container.querySelector('#badge-visitation-count');
-        const listRecentVisitation = container.querySelector('#visitation-recent-list');
-        const visitations = data.visitations || {};
-
-        if (visitations.can_access) {
-            if (cardVisitation) cardVisitation.classList.remove('hidden');
-            if (badgeVisitationCount) {
-                badgeVisitationCount.textContent = `${visitations.pending_count || 0} Agenda`;
-            }
-            if (listRecentVisitation) {
-                const recentV = visitations.recent || [];
-                if (recentV.length === 0) {
-                    listRecentVisitation.innerHTML = '<div class="text-center py-2 text-xs text-slate-400">Belum ada agenda visitasi siswa.</div>';
-                } else {
-                    listRecentVisitation.innerHTML = recentV.map(v => `
-                        <div class="p-2.5 rounded-xl bg-white border border-cyan-200/70 text-xs">
-                            <div class="flex items-center justify-between gap-1 mb-1">
-                                <span class="font-bold text-slate-800 truncate">${v.student_name} (${v.classroom_name})</span>
-                                <span class="px-2 py-0.2 rounded text-[9px] font-bold bg-cyan-100 text-cyan-800">${v.status}</span>
-                            </div>
-                            <div class="flex items-center justify-between text-[10px] text-slate-500">
-                                <span>${v.purpose || 'Home Visit'}</span>
-                                <span class="font-mono text-slate-400">${v.planned_date}</span>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-        } else {
-            if (cardVisitation) cardVisitation.classList.add('hidden');
         }
 
         // 6. Kartu Tugas Tim Kedisiplinan (Interactive Widget)

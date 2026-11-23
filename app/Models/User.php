@@ -850,6 +850,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Dapatkan ID jurusan utama yang dikepalai oleh user.
+     */
+    public function getDepartmentHeadDepartmentId(?string $academicYear = null): ?int
+    {
+        $ids = $this->getManagedDepartmentIds($academicYear);
+
+        return ! empty($ids) ? (int) reset($ids) : null;
+    }
+
+    /**
      * Dapatkan daftar rombel kelas yang berada di bawah naungan jurusan yang dikepalai.
      *
      * @return Collection<int, Classroom>
@@ -1320,6 +1330,7 @@ class User extends Authenticatable
         return $this->canOperateBk($academicYear)
             || $this->canManageDiscipline($academicYear)
             || $this->isHomeroomTeacher(academicYear: $academicYear)
+            || $this->isHeadOfDepartment($academicYear)
             || StudentVisitation::where(function ($q) {
                 $q->where('requested_by', $this->id)
                     ->orWhere('primary_officer_id', $this->id)

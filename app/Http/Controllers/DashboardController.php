@@ -742,16 +742,14 @@ class DashboardController extends Controller
             ];
         }
 
-        // Live Monitoring Jurusan (Khusus Kepala Program Keahlian / Jurusan)
-        $departmentLiveMonitoring = null;
-        if ($user->isHeadOfDepartment($operationalAcademicYear)) {
-            $departmentLiveMonitoring = app(LiveMonitoringService::class)->buildLiveMonitoringData(
-                $user,
-                $date,
-                $operationalAcademicYear,
-                $myHomeroomClassroom
-            );
-        }
+        // Unified Live Monitoring (KS, Waka, Kajur, BK, Wali Kelas)
+        $liveMonitoring = app(LiveMonitoringService::class)->buildLiveMonitoringData(
+            $user,
+            $date,
+            $operationalAcademicYear,
+            $myHomeroomClassroom
+        );
+        $departmentLiveMonitoring = $liveMonitoring;
 
         // 3. Data Administrasi Izin / Cuti GTK Mandiri (Untuk guru/staf biasa)
         $myRecentPermits = GtkPermit::where('user_id', $user->id)
@@ -828,6 +826,7 @@ class DashboardController extends Controller
                 'todayPiketSchedule',
                 'myWeeklyPiketSchedules',
                 'myHomeroomClassroom',
+                'liveMonitoring',
                 'homeroomStudentPermitsTodayCount',
                 'homeroomLiveMonitoring',
                 'departmentLiveMonitoring',

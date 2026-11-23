@@ -244,4 +244,75 @@ class HeadOfDepartmentLiveMonitoringTest extends TestCase
         ]));
         $pdfResponse->assertStatus(403);
     }
+
+    public function test_kajur_has_permits_access_for_department_classroom(): void
+    {
+        $this->actingAs($this->kajurUser);
+
+        $liveMonitoring = app(LiveMonitoringService::class)->buildLiveMonitoringData(
+            $this->kajurUser,
+            now(),
+            $this->academicYear,
+            null
+        );
+
+        $this->assertTrue($liveMonitoring['can_manage_permits']);
+        $this->assertTrue($liveMonitoring['can_manage_visitations']);
+        $this->assertTrue($liveMonitoring['can_view_recap']);
+
+        // Kajur can store permit for AKL student
+        $postData = [
+            'classroom_id' => $this->aklClassroom->id,
+            'student_id' => $this->aklStudent->id,
+            'permit_category' => 'izin',
+            'permit_date' => now()->toDateString(),
+            'reason' => 'Keperluan keluarga',
+        ];
+
+        $webStore = $this->post(route('attendance.homeroom-permits.store'), $postData);
+        $webStore->assertRedirect();
+
+        // Kajur cannot store permit for TKR student
+        $forbiddenPost = $this->post(route('attendance.homeroom-permits.store'), [
+            'classroom_id' => $this->tkrClassroom->id,
+            'student_id' => $this->tkrStudent->id,
+            'permit_category' => 'izin',
+            'permit_date' => now()->toDateString(),
+            'reason' => 'Bukan rombelnya',
+        ]);
+        $forbiddenPost->assertStatus(403);
+
+        // Mobile API permit store test for tomorrow
+        $mobileApiStore = $this->postJson('/api/v1/mobile/tasks/homeroom/permits/store', [
+            'classroom_id' => $this->aklClassroom->id,
+            'student_ids' => [$this->aklStudent->id],
+            'permit_category' => 'sakit',
+            'permit_date' => now()->addDay()->toDateString(),
+            'reason' => 'Demam flu',
+        ]);
+        $mobileApiStore->assertOk();
+    }
+
+    public function test_counselor_bk_cannot_manage_permits_in_live_monitoring(): void
+    {
+        $bkUser = User::factory()->create([
+            'name' => 'Guru BK Konselor',
+            'position' => 'Guru BK',
+        ]);
+
+        $this->actingAs($bkUser);
+
+        $liveMonitoring = app(LiveMonitoringService::class)->buildLiveMonitoringData(
+            $bkUser,
+            now(),
+            $this->academicYear,
+            null
+        );
+
+        $this->assertNotNull($liveMonitoring);
+        $this->assertEquals('bk', $liveMonitoring['role_key']);
+        $this->assertFalse($liveMonitoring['can_manage_permits']);
+        $this->assertTrue($liveMonitoring['can_manage_visitations']);
+        $this->assertTrue($liveMonitoring['can_view_recap']);
+    }
 }

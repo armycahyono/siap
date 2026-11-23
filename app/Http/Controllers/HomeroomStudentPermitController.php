@@ -56,7 +56,22 @@ class HomeroomStudentPermitController extends Controller
         });
 
         if (! $canViewAll) {
-            $classroomQuery->where('homeroom_teacher_id', $user->id);
+            $isKajur = $user->isHeadOfDepartment($academicYear);
+            if ($isKajur) {
+                $deptClassrooms = $user->getDepartmentClassrooms($academicYear);
+                if ($deptClassrooms->isEmpty()) {
+                    $deptClassrooms = $user->getDepartmentClassrooms(null);
+                }
+                $deptClassroomIds = $deptClassrooms->pluck('id')->filter()->all();
+                $classroomQuery->where(function ($q) use ($user, $deptClassroomIds) {
+                    $q->where('homeroom_teacher_id', $user->id);
+                    if (! empty($deptClassroomIds)) {
+                        $q->orWhereIn('id', $deptClassroomIds);
+                    }
+                });
+            } else {
+                $classroomQuery->where('homeroom_teacher_id', $user->id);
+            }
         }
 
         $myClassrooms = $classroomQuery->orderBy('name')->get();
@@ -136,7 +151,22 @@ class HomeroomStudentPermitController extends Controller
         });
 
         if (! $canViewAll) {
-            $classroomQuery->where('homeroom_teacher_id', $user->id);
+            $isKajur = $user->isHeadOfDepartment($academicYear);
+            if ($isKajur) {
+                $deptClassrooms = $user->getDepartmentClassrooms($academicYear);
+                if ($deptClassrooms->isEmpty()) {
+                    $deptClassrooms = $user->getDepartmentClassrooms(null);
+                }
+                $deptClassroomIds = $deptClassrooms->pluck('id')->filter()->all();
+                $classroomQuery->where(function ($q) use ($user, $deptClassroomIds) {
+                    $q->where('homeroom_teacher_id', $user->id);
+                    if (! empty($deptClassroomIds)) {
+                        $q->orWhereIn('id', $deptClassroomIds);
+                    }
+                });
+            } else {
+                $classroomQuery->where('homeroom_teacher_id', $user->id);
+            }
         }
 
         $myClassrooms = $classroomQuery->with('students')
@@ -197,9 +227,19 @@ class HomeroomStudentPermitController extends Controller
 
         $classroom = Classroom::findOrFail($validated['classroom_id']);
 
-        // Verifikasi kepemilikan wali kelas (kecuali admin/waka/kepala sekolah)
-        $canManage = $user->isSuperAdmin() || $user->isWakaKurikulum() || $user->hasRole('kepala_sekolah') || ($classroom->homeroom_teacher_id === $user->id);
-        abort_unless($canManage, 403, 'Anda bukan wali kelas untuk rombel ini.');
+        $isKajurForClass = false;
+        if ($user->isHeadOfDepartment() && $classroom->department_id) {
+            $userDeptId = $user->getDepartmentHeadDepartmentId();
+            $isKajurForClass = $userDeptId && ((int) $userDeptId === (int) $classroom->department_id);
+        }
+
+        // Verifikasi kepemilikan wali kelas atau kajur jurusan (kecuali admin/waka/kepala sekolah)
+        $canManage = $user->isSuperAdmin()
+            || $user->isWakaKurikulum()
+            || $user->hasRole('kepala_sekolah')
+            || ($classroom->homeroom_teacher_id === $user->id)
+            || $isKajurForClass;
+        abort_unless($canManage, 403, 'Anda bukan wali kelas atau kepala jurusan untuk rombel ini.');
 
         $student = Student::findOrFail($validated['student_id']);
 
