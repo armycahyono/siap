@@ -46,4 +46,9 @@ return [
         'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
     ],
 
+    'lms' => [
+        'url' => env('LMS_BASE_URL', 'http://lms.test'),
+        'token' => env('INTEGRATION_API_TOKEN'),
+    ],
+
 ];

@@ -697,6 +697,10 @@
                             @endif
                         </div>
                         <div class="right d-flex align-items-center gap-1.5" style="margin-right: -4px;">
+                            <a href="{{ route('lms.launch') }}" class="link external text-white px-2 py-1 rounded-2 fw-semibold d-inline-flex align-items-center gap-1" style="background: rgba(255,255,255,0.18); font-size: 0.72rem; height: 30px;" title="Buka LMS">
+                                <i class="ti ti-book-2 fs-4"></i>
+                                <span>LMS</span>
+                            </a>
                             @php
                                 $mobileNotifications = collect();
                                 try {

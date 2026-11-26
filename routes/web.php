@@ -99,6 +99,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/tugas', [DashboardController::class, 'tasks'])->name('tasks');
+    Route::get('/lms/launch', [\App\Http\Controllers\LmsSsoController::class, 'launch'])->name('lms.launch');
 
     // Modul Pengumuman Multi-Saluran (Web, Mobile, Telegram, WhatsApp)
     Route::prefix('pengumuman')->name('announcements.')->group(function () {

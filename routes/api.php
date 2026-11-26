@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Integration\LmsIntegrationController;
 use App\Http\Controllers\Api\Mobile\MobileAnnouncementController;
 use App\Http\Controllers\Api\Mobile\MobileAttendanceController;
 use App\Http\Controllers\Api\Mobile\MobileAuthController;
@@ -125,3 +126,15 @@ Route::prefix('v1/mobile')->middleware([
     Route::get('attendance/report-teachers/unduh-pdf', [AttendanceController::class, 'exportReportTeachersPdf']);
     Route::get('attendance/report-teachers/ekspor-excel', [AttendanceController::class, 'exportReportTeachersExcel']);
 });
+
+Route::prefix('integration/lms')
+    ->middleware(\App\Http\Middleware\VerifyLmsIntegrationToken::class)
+    ->group(function () {
+        Route::post('sso/verify', [LmsIntegrationController::class, 'verifySsoCode']);
+        Route::get('academic-years', [LmsIntegrationController::class, 'academicYears']);
+        Route::get('teachers', [LmsIntegrationController::class, 'teachers']);
+        Route::get('classrooms', [LmsIntegrationController::class, 'classrooms']);
+        Route::get('subjects', [LmsIntegrationController::class, 'subjects']);
+        Route::get('teaching-assignments', [LmsIntegrationController::class, 'teachingAssignments']);
+        Route::get('students', [LmsIntegrationController::class, 'students']);
+    });

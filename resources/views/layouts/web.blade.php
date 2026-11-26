@@ -1120,6 +1120,11 @@
                     </div>
 
                     <div class="navbar-nav flex-row order-md-last ms-auto align-items-center gap-2">
+                        <a href="{{ route('lms.launch') }}" class="btn btn-sm btn-primary fw-semibold shadow-xs d-inline-flex align-items-center gap-1">
+                            <i class="ti ti-book-2 fs-4"></i>
+                            <span class="d-none d-sm-inline">BUKA LMS</span>
+                        </a>
+
                         <!-- Tahun Pelajaran Switcher -->
                         @include('layouts._academic_year_switcher', ['prefix' => 'dt'])
 
