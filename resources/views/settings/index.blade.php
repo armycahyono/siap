@@ -3,23 +3,22 @@
 @section('title', 'Profil Sekolah — ' . ($setting->school_name ?? 'SMK PGRI KRAS'))
 
 @section('content')
-<!-- Page Header (Model 2: Hero Context Banner) -->
-@php
-    $settingActions = '';
-    if (auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole(['super_admin', 'waka_kurikulum'])) {
-        $settingActions = '<ul class="nav nav-pills gap-2" id="profileTab" role="tablist">' .
-            '<li class="nav-item" role="presentation"><button class="nav-link active fw-bold btn btn-sm btn-outline-light text-white shadow-xs" id="view-tab" data-bs-toggle="tab" data-bs-target="#tab-view" type="button" role="tab"><i class="ti ti-eye me-1"></i> Tinjau Profil</button></li>' .
-            '<li class="nav-item" role="presentation"><button class="nav-link fw-bold btn btn-sm btn-warning text-dark shadow-xs" id="edit-tab" data-bs-toggle="tab" data-bs-target="#tab-edit" type="button" role="tab"><i class="ti ti-pencil me-1"></i> Edit Data Profil</button></li>' .
-            '</ul>';
-    }
-@endphp
-@include('layouts._hero_header', [
-    'title' => 'Profil Sekolah',
-    'subtitle' => 'Identitas resmi, legalitas kelembagaan, status akreditasi, serta visi, misi, dan tujuan sekolah.',
-    'icon' => 'ti ti-building',
-    'category' => 'INFORMASI KELEMBAGAAN',
-    'actions' => $settingActions
-])
+@if(auth()->user()->hasPermission('manage_settings') || auth()->user()->hasRole(['super_admin', 'waka_kurikulum']))
+    <div class="d-flex justify-content-end mb-3">
+        <ul class="nav nav-pills gap-2" id="profileTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold btn btn-sm btn-primary shadow-xs" id="view-tab" data-bs-toggle="tab" data-bs-target="#tab-view" type="button" role="tab">
+                    <i class="ti ti-eye me-1"></i> Tinjau Profil
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold btn btn-sm btn-warning text-dark shadow-xs" id="edit-tab" data-bs-toggle="tab" data-bs-target="#tab-edit" type="button" role="tab">
+                    <i class="ti ti-pencil me-1"></i> Edit Data Profil
+                </button>
+            </li>
+        </ul>
+    </div>
+@endif
 
 <div class="tab-content" id="profileTabContent">
     <!-- TAB 1: TAMPILAN PROFIL SEKOLAH (DAPAT DIAKSES SEMUA USER) -->
