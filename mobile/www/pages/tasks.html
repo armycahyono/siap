@@ -114,7 +114,46 @@
             </div>
         </div>
 
-        <!-- 1. Bilah Metrik Presensi Siswa (8 Status) -->
+        <!-- 1. Bilah Monitoring GTK & KBM (Khusus Kurikulum & Kepala Sekolah) -->
+        <div id="lm-gtk-section" class="hidden mb-2.5 pb-2.5 border-b border-slate-100">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <span>👨‍🏫 Kehadiran GTK &amp; KBM</span>
+                </span>
+                <span id="lm-gtk-total-label" class="text-[9px] text-slate-500 font-mono">Total: 0 GTK</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1.5 text-center mb-1.5">
+                <div data-lm-chip="gtk-hadir" onclick="toggleLmDrawer('gtk', 'hadir')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer active:scale-95 transition hover:bg-emerald-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-emerald-800 block leading-tight">Hadir</span>
+                    <span id="lm-stat-gtk-hadir" class="text-xs font-black text-emerald-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-telat" onclick="toggleLmDrawer('gtk', 'telat')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-amber-50 border border-amber-200 cursor-pointer active:scale-95 transition hover:bg-amber-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-amber-800 block leading-tight">Telat</span>
+                    <span id="lm-stat-gtk-telat" class="text-xs font-black text-amber-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-belum_masuk" onclick="toggleLmDrawer('gtk', 'belum_masuk')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-rose-800 block leading-tight">Belum Masuk</span>
+                    <span id="lm-stat-gtk-belum" class="text-xs font-black text-rose-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-izin" onclick="toggleLmDrawer('gtk', 'izin')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-purple-50 border border-purple-200 cursor-pointer active:scale-95 transition hover:bg-purple-100 flex flex-col justify-center">
+                    <span class="text-[10px] font-bold text-purple-800 block leading-tight">Izin/Cuti</span>
+                    <span id="lm-stat-gtk-izin" class="text-xs font-black text-purple-950 font-mono">0</span>
+                </div>
+            </div>
+            <!-- Sub Baris: Inval & Jam Kosong KBM -->
+            <div class="grid grid-cols-2 gap-1.5 text-center">
+                <div data-lm-chip="gtk-inval" onclick="toggleLmDrawer('gtk', 'inval')" class="p-2 min-h-[40px] rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer active:scale-95 transition hover:bg-indigo-100 flex items-center justify-between px-2.5">
+                    <span class="text-[10px] font-bold text-indigo-800">Inval Mengajar</span>
+                    <span id="lm-stat-inval" class="text-xs font-black text-indigo-950 font-mono">0</span>
+                </div>
+                <div data-lm-chip="gtk-unattended" onclick="toggleLmDrawer('gtk', 'unattended')" class="p-2 min-h-[40px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex items-center justify-between px-2.5">
+                    <span class="text-[10px] font-bold text-rose-800">Belum Mapel</span>
+                    <span id="lm-stat-unattended" class="text-xs font-black text-rose-950 font-mono">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Bilah Metrik Presensi Siswa (8 Status) -->
         <div class="mb-2.5">
             <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
@@ -160,52 +199,13 @@
             </div>
         </div>
 
-        <!-- 2. Drawer Detail In-Place (Muncul Saat Chip Diklik) -->
+        <!-- 3. Drawer Detail In-Place (Muncul Saat Chip Diklik) -->
         <div id="lm-drawer-detail" class="hidden mb-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 shadow-xs transition-all">
             <div class="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200">
                 <span id="lm-drawer-title" class="text-[10px] font-black text-slate-800 flex items-center gap-1">Detail Rincian</span>
                 <button type="button" onclick="closeLmDrawer()" class="text-slate-500 hover:text-slate-700 text-xs font-bold px-1.5 py-0.5 rounded-lg hover:bg-slate-200 transition" aria-label="Tutup Rincian">&times; Tutup</button>
             </div>
             <div id="lm-drawer-list" class="max-h-56 overflow-y-auto space-y-1.5 text-xs"></div>
-        </div>
-
-        <!-- 3. Bilah Monitoring GTK & KBM (Khusus Kurikulum & Kepala Sekolah) -->
-        <div id="lm-gtk-section" class="hidden mb-2.5 pt-2 border-t border-slate-100">
-            <div class="flex items-center justify-between mb-1.5">
-                <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                    <span>👨‍🏫 Kehadiran GTK &amp; KBM</span>
-                </span>
-                <span id="lm-gtk-total-label" class="text-[9px] text-slate-500 font-mono">Total: 0 GTK</span>
-            </div>
-            <div class="grid grid-cols-4 gap-1.5 text-center mb-1.5">
-                <div data-lm-chip="gtk-hadir" onclick="toggleLmDrawer('gtk', 'hadir')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer active:scale-95 transition hover:bg-emerald-100 flex flex-col justify-center">
-                    <span class="text-[10px] font-bold text-emerald-800 block leading-tight">Hadir</span>
-                    <span id="lm-stat-gtk-hadir" class="text-xs font-black text-emerald-950 font-mono">0</span>
-                </div>
-                <div data-lm-chip="gtk-telat" onclick="toggleLmDrawer('gtk', 'telat')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-amber-50 border border-amber-200 cursor-pointer active:scale-95 transition hover:bg-amber-100 flex flex-col justify-center">
-                    <span class="text-[10px] font-bold text-amber-800 block leading-tight">Telat</span>
-                    <span id="lm-stat-gtk-telat" class="text-xs font-black text-amber-950 font-mono">0</span>
-                </div>
-                <div data-lm-chip="gtk-belum_masuk" onclick="toggleLmDrawer('gtk', 'belum_masuk')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex flex-col justify-center">
-                    <span class="text-[10px] font-bold text-rose-800 block leading-tight">Belum Masuk</span>
-                    <span id="lm-stat-gtk-belum" class="text-xs font-black text-rose-950 font-mono">0</span>
-                </div>
-                <div data-lm-chip="gtk-izin" onclick="toggleLmDrawer('gtk', 'izin')" class="py-1.5 px-1 min-h-[42px] rounded-xl bg-purple-50 border border-purple-200 cursor-pointer active:scale-95 transition hover:bg-purple-100 flex flex-col justify-center">
-                    <span class="text-[10px] font-bold text-purple-800 block leading-tight">Izin/Cuti</span>
-                    <span id="lm-stat-gtk-izin" class="text-xs font-black text-purple-950 font-mono">0</span>
-                </div>
-            </div>
-            <!-- Sub Baris: Inval & Jam Kosong KBM -->
-            <div class="grid grid-cols-2 gap-1.5 text-center">
-                <div data-lm-chip="gtk-inval" onclick="toggleLmDrawer('gtk', 'inval')" class="p-2 min-h-[40px] rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer active:scale-95 transition hover:bg-indigo-100 flex items-center justify-between px-2.5">
-                    <span class="text-[10px] font-bold text-indigo-800">Inval Mengajar</span>
-                    <span id="lm-stat-inval" class="text-xs font-black text-indigo-950 font-mono">0</span>
-                </div>
-                <div data-lm-chip="gtk-unattended" onclick="toggleLmDrawer('gtk', 'unattended')" class="p-2 min-h-[40px] rounded-xl bg-rose-50 border border-rose-200 cursor-pointer active:scale-95 transition hover:bg-rose-100 flex items-center justify-between px-2.5">
-                    <span class="text-[10px] font-bold text-rose-800">Belum Mapel</span>
-                    <span id="lm-stat-unattended" class="text-xs font-black text-rose-950 font-mono">0</span>
-                </div>
-            </div>
         </div>
 
         <!-- 4. Tombol Aksi Cepat Terpadu (Izin Siswa, Visitasi Siswa, Rekap Presensi) -->
