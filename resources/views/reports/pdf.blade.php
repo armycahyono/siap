@@ -194,10 +194,10 @@
             </tr>
             @foreach($phase['indicators'] as $ind)
             <tr>
-                <td style="text-align: center;">{{ $globalNo++ }}</td>
-                <td>{{ $ind['title'] }}</td>
-                <td style="text-align: center; font-weight: bold;">{{ $ind['score'] ?? '-' }}</td>
-                <td>{{ $ind['notes'] ?? '-' }}</td>
+                <td style="text-align: center; vertical-align: top;">{{ $globalNo++ }}</td>
+                <td style="vertical-align: top; line-height: 1.4; white-space: pre-line;">{!! nl2br(e($ind['title'])) !!}</td>
+                <td style="text-align: center; font-weight: bold; vertical-align: top;">{{ $ind['score'] ?? '-' }}</td>
+                <td style="vertical-align: top; line-height: 1.3; white-space: pre-line;">{!! nl2br(e($ind['notes'] ?? '-')) !!}</td>
             </tr>
             @endforeach
             @endforeach

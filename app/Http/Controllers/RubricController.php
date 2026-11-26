@@ -93,7 +93,7 @@ class RubricController extends Controller
         $data = $request->validate([
             'phase_id' => ['required', 'exists:supervision_phases,id'],
             'code' => ['nullable', 'string', 'max:50'],
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:2000'],
             'description' => ['nullable', 'string'],
             'max_score' => ['required', 'integer', 'min:1', 'max:10'],
             'order' => ['nullable', 'integer'],
@@ -112,7 +112,7 @@ class RubricController extends Controller
         $data = $request->validate([
             'phase_id' => ['required', 'exists:supervision_phases,id'],
             'code' => ['nullable', 'string', 'max:50'],
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:2000'],
             'description' => ['nullable', 'string'],
             'max_score' => ['required', 'integer', 'min:1', 'max:10'],
             'order' => ['required', 'integer'],

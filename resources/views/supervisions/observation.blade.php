@@ -83,10 +83,12 @@
                                 $note = $existingNotes[$indicator->id] ?? '';
                             @endphp
                             <div class="py-3 border-bottom indicator-item" data-max="{{ $indicator->max_score }}">
-                                <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-                                    <div class="fw-bold text-dark pe-2" style="font-size: 0.95rem;">
-                                        <span class="text-muted small me-1">{{ $indicator->code ?: ($indIndex + 1) . '.' }}</span>
-                                        {{ $indicator->title }}
+                                <!-- Baris Header: Nomor/Kode Indikator Sejajar dengan Pilihan Nilai 1 2 3 4 -->
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-primary-lt text-primary font-monospace fw-bold px-2 py-0.5 fs-5">
+                                            {{ $indicator->code ?: ($indIndex + 1) . '.' }}
+                                        </span>
                                     </div>
 
                                     <!-- Score Radios 1-4 -->
@@ -107,8 +109,11 @@
                                     </div>
                                 </div>
 
+                                <!-- Pernyataan Indikator (Rapat langsung di bawah nomor & nilai) -->
+                                <div class="fw-semibold text-dark mb-2" style="font-size: 0.95rem; white-space: pre-line; line-height: 1.45;">{{ trim($indicator->title) }}</div>
+
                                 @if($indicator->description)
-                                    <div class="text-muted small mb-2 fst-italic">{{ $indicator->description }}</div>
+                                    <div class="text-muted small mb-2 fst-italic" style="white-space: pre-line; line-height: 1.4;">{{ trim($indicator->description) }}</div>
                                 @endif
 
                                 <!-- Supervisor note per indicator -->

@@ -161,9 +161,9 @@
                 <tr>
                     <td class="font-monospace fw-bold text-muted">{{ $ind->code ?: '-' }}</td>
                     <td>
-                        <div class="fw-semibold text-dark">{{ $ind->title }}</div>
+                        <div class="fw-semibold text-dark" style="white-space: pre-line; line-height: 1.5;">{{ $ind->title }}</div>
                         @if($ind->description)
-                            <div class="text-muted small">{{ $ind->description }}</div>
+                            <div class="text-muted small mt-1" style="white-space: pre-line; line-height: 1.4;">{{ $ind->description }}</div>
                         @endif
                     </td>
                     <td class="text-center">
@@ -224,11 +224,12 @@
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label required">Pernyataan Indikator</label>
-                                        <textarea name="title" class="form-control" rows="2" required>{{ $ind->title }}</textarea>
+                                        <textarea name="title" class="form-control" rows="4" required>{{ $ind->title }}</textarea>
+                                        <small class="text-muted d-block mt-1">Dapat menekan Enter untuk membuat baris baru / butir a, b, c agar mudah dibaca.</small>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label">Deskripsi / Panduan Rubrik (Opsional)</label>
-                                        <textarea name="description" class="form-control" rows="2">{{ $ind->description }}</textarea>
+                                        <textarea name="description" class="form-control" rows="3">{{ $ind->description }}</textarea>
                                     </div>
                                     <div class="row g-2 mb-3">
                                         <div class="col-6">
@@ -376,11 +377,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label required">Pernyataan Indikator</label>
-                        <textarea name="title" class="form-control" rows="2" placeholder="Tuliskan indikator perilaku/proses KBM yang diamati..." required></textarea>
+                        <textarea name="title" class="form-control" rows="4" placeholder="Tuliskan indikator perilaku/proses KBM yang diamati..." required></textarea>
+                        <small class="text-muted d-block mt-1">Dapat menekan Enter untuk membuat baris baru / butir a, b, c agar mudah dibaca.</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Deskripsi Rubrik / Rubrik Tambahan (Opsional)</label>
-                        <textarea name="description" class="form-control" rows="2" placeholder="Panduan kriteria skor 1-4..."></textarea>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Panduan kriteria skor 1-4..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
