@@ -70,6 +70,7 @@ class NotificationService
                     'badge_class' => 'bg-primary text-white',
                     'icon' => 'ti ti-speakerphone text-primary',
                     'url' => route('announcements.index'),
+                    'mobile_route' => '/dashboard',
                 ]);
             }
         } catch (\Throwable $e) {
@@ -139,6 +140,7 @@ class NotificationService
                         'badge_class' => 'bg-danger-lt text-danger',
                         'icon' => 'ti ti-alert-triangle text-danger',
                         'url' => route('piket.incidents.index'),
+                        'mobile_route' => '/tasks/piket',
                     ]);
                 }
             } else {
@@ -156,6 +158,7 @@ class NotificationService
                             'badge_class' => 'bg-warning-lt text-warning',
                             'icon' => 'ti ti-heart-handshake text-warning',
                             'url' => route('piket.incidents.index'),
+                            'mobile_route' => '/tasks/bk',
                         ]);
                     }
                 }
@@ -174,6 +177,7 @@ class NotificationService
                             'badge_class' => 'bg-danger-lt text-danger',
                             'icon' => 'ti ti-alert-triangle text-danger',
                             'url' => route('piket.incidents.index'),
+                            'mobile_route' => '/tasks/homeroom/recap',
                         ]);
                     }
                 }
@@ -194,6 +198,7 @@ class NotificationService
                         'badge_class' => 'bg-warning-lt text-warning',
                         'icon' => 'ti ti-clock-exclamation text-warning',
                         'url' => route('piket.permits.index'),
+                        'mobile_route' => '/tasks/discipline',
                     ]);
                 }
             }
@@ -212,6 +217,7 @@ class NotificationService
                         'badge_class' => 'bg-warning-lt text-warning',
                         'icon' => 'ti ti-clock-exclamation text-warning',
                         'url' => route('piket.permits.index'),
+                        'mobile_route' => '/tasks/homeroom/permits',
                     ]);
                 }
             }
@@ -264,6 +270,7 @@ class NotificationService
                             'badge_class' => 'bg-purple-lt text-purple',
                             'icon' => 'ti ti-sparkles text-purple',
                             'url' => route('kurikulum.calendar.index'),
+                            'mobile_route' => '/calendar',
                         ]);
                     }
                 } else {
@@ -278,6 +285,7 @@ class NotificationService
                             'badge_class' => 'bg-blue-lt text-primary',
                             'icon' => 'ti ti-calendar-event text-primary',
                             'url' => route('kurikulum.calendar.index'),
+                            'mobile_route' => '/calendar',
                         ]);
                     }
                 }
@@ -356,6 +364,7 @@ class NotificationService
                         'badge_class' => 'bg-danger-lt text-danger',
                         'icon' => 'ti ti-urgent text-danger',
                         'url' => route('attendance.subject.index'),
+                        'mobile_route' => '/tasks/piket/kbm',
                     ]);
                 }
             }
@@ -373,6 +382,7 @@ class NotificationService
                         'badge_class' => 'bg-danger text-white',
                         'icon' => 'ti ti-alert-circle text-danger',
                         'url' => route('attendance.subject.index'),
+                        'mobile_route' => '/tasks/piket/kbm',
                     ]);
                 }
             }
@@ -399,6 +409,7 @@ class NotificationService
                         'badge_class' => 'bg-danger-lt text-danger',
                         'icon' => 'ti ti-clock-play text-danger',
                         'url' => route('attendance.subject.index'),
+                        'mobile_route' => '/kbm',
                     ]);
                 }
             }
@@ -419,7 +430,8 @@ class NotificationService
                     'badge' => 'Inval KBM',
                     'badge_class' => 'bg-warning-lt text-warning',
                     'icon' => 'ti ti-user-x text-warning',
-                    'url' => route('piket.inval'),
+                    'url' => route('piket.inval.index'),
+                    'mobile_route' => '/tasks/piket',
                 ]);
             }
 
@@ -440,6 +452,7 @@ class NotificationService
                     'badge_class' => 'bg-purple-lt text-purple',
                     'icon' => 'ti ti-arrows-exchange text-purple',
                     'url' => route('piket.swaps.index'),
+                    'mobile_route' => '/tasks/piket/swaps',
                 ]);
             }
 
@@ -456,6 +469,7 @@ class NotificationService
                         'badge_class' => 'bg-teal-lt text-teal',
                         'icon' => 'ti ti-arrows-exchange text-teal',
                         'url' => route('piket.swaps.index'),
+                        'mobile_route' => '/tasks/piket/swaps',
                     ]);
                 }
             }
@@ -474,6 +488,7 @@ class NotificationService
                         'badge_class' => 'bg-warning-lt text-warning',
                         'icon' => 'ti ti-file-certificate text-warning',
                         'url' => DeviceDetector::isMobile() ? route('tasks') : route('attendance.gtk-permits.index', ['status' => 'pending']),
+                        'mobile_route' => '/tasks/permits',
                     ]);
                 }
 
@@ -489,6 +504,7 @@ class NotificationService
                         'badge_class' => 'bg-teal-lt text-teal',
                         'icon' => 'ti ti-clipboard-check text-teal',
                         'url' => route('piket.dashboard'),
+                        'mobile_route' => '/tasks/piket',
                     ]);
                 }
             }
@@ -507,6 +523,7 @@ class NotificationService
                         'badge_class' => 'bg-purple-lt text-purple',
                         'icon' => 'ti ti-file-certificate text-purple',
                         'url' => DeviceDetector::isMobile() ? route('tasks') : route('attendance.gtk-permits.index'),
+                        'mobile_route' => '/tasks/permits',
                     ]);
                 }
 
@@ -520,6 +537,7 @@ class NotificationService
                         'badge_class' => 'bg-blue-lt text-primary',
                         'icon' => 'ti ti-certificate text-primary',
                         'url' => DeviceDetector::isMobile() ? route('tasks') : route('supervisions.results'),
+                        'mobile_route' => '/tasks/supervisions',
                     ]);
                 }
             }
@@ -577,6 +595,7 @@ class NotificationService
                         'badge_class' => 'bg-amber text-white',
                         'icon' => 'ti ti-notebook text-warning',
                         'url' => DeviceDetector::isMobile() ? url('/mobile#/tasks/piket') : route('piket.dashboard'),
+                        'mobile_route' => '/tasks/piket',
                     ]);
                 }
             }

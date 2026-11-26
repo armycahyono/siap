@@ -276,9 +276,11 @@
                     } else {
                         listContainer.innerHTML = list.map((item) => {
                             const badgeMarkup = item.badge ? `<span class="px-2 py-0.5 rounded text-[9px] font-bold ${item.badge_class || 'bg-blue-100 text-blue-700'}">${item.badge}</span>` : '';
-                            const targetUrl = item.url || '';
+                            const targetUrl = escapeHtml(item.url || '');
+                            const targetRoute = escapeHtml(item.mobile_route || '');
+                            const notifId = escapeHtml(item.id || '');
                             return `
-                                <div onclick="handleNotificationClick('${targetUrl}')" class="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50/60 border border-slate-200/70 transition-all cursor-pointer flex items-start gap-3">
+                                <div onclick="handleNotificationClick('${targetUrl}', '${targetRoute}', '${notifId}')" class="p-3.5 rounded-2xl bg-slate-50 hover:bg-blue-50/60 border border-slate-200/70 transition-all cursor-pointer flex items-start gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex-shrink-0 flex items-center justify-center shadow-xs">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                     </div>
@@ -320,27 +322,96 @@
     }
     window.closeNotificationModal = closeNotificationModal;
 
-    function handleNotificationClick(url) {
+    function handleNotificationClick(url, mobileRoute = '', notifId = '') {
         closeNotificationModal();
+
+        if (mobileRoute && mobileRoute.startsWith('/')) {
+            SIAP_ROUTER.navigate(mobileRoute);
+            return;
+        }
+
+        if (notifId) {
+            if (notifId === 'my_unattended_kbm') {
+                SIAP_ROUTER.navigate('/kbm');
+                return;
+            }
+            if (notifId === 'piket_late_kbm_check' || notifId === 'kur_late_kbm_recap') {
+                SIAP_ROUTER.navigate('/tasks/piket/kbm');
+                return;
+            }
+            if (notifId === 'incidents_today_bk') {
+                SIAP_ROUTER.navigate('/tasks/bk');
+                return;
+            }
+            if (notifId === 'incidents_today_homeroom') {
+                SIAP_ROUTER.navigate('/tasks/homeroom/recap');
+                return;
+            }
+            if (notifId === 'homeroom_student_permits') {
+                SIAP_ROUTER.navigate('/tasks/homeroom/permits');
+                return;
+            }
+            if (notifId === 'disiplin_permits') {
+                SIAP_ROUTER.navigate('/tasks/discipline');
+                return;
+            }
+            if (notifId === 'piket_swap_request' || notifId === 'kur_approved_piket_swaps') {
+                SIAP_ROUTER.navigate('/tasks/piket/swaps');
+                return;
+            }
+            if (notifId === 'ks_pending_gtk_permits' || notifId === 'gtk_permits_today') {
+                SIAP_ROUTER.navigate('/tasks/permits');
+                return;
+            }
+            if (notifId === 'supervision_approval') {
+                SIAP_ROUTER.navigate('/tasks/supervisions');
+                return;
+            }
+            if (notifId.startsWith('free_kbm_event_') || notifId.startsWith('general_event_')) {
+                SIAP_ROUTER.navigate('/calendar');
+                return;
+            }
+            if (notifId.startsWith('announcement_')) {
+                SIAP_ROUTER.navigate('/dashboard');
+                return;
+            }
+        }
+
         if (!url) return;
+
+        if (url.includes('#/')) {
+            const hashPart = url.substring(url.indexOf('#/') + 1);
+            SIAP_ROUTER.navigate(hashPart);
+            return;
+        }
 
         if (url.startsWith('#')) {
             SIAP_ROUTER.navigate(url.replace(/^#/, ''));
             return;
         }
 
-        if (url.includes('piket') || url.includes('/tasks/piket')) {
+        if (url.includes('tukar-jadwal') || url.includes('swaps')) {
+            SIAP_ROUTER.navigate('/tasks/piket/swaps');
+        } else if (url.includes('piket') || url.includes('/tasks/piket')) {
             SIAP_ROUTER.navigate('/tasks/piket');
-        } else if (url.includes('/kbm')) {
+        } else if (url.includes('kalender-kegiatan') || url.includes('/calendar')) {
+            SIAP_ROUTER.navigate('/calendar');
+        } else if (url.includes('izin-cuti-gtk') || url.includes('gtk-permits')) {
+            SIAP_ROUTER.navigate('/tasks/permits');
+        } else if (url.includes('hasil-supervisi') || url.includes('supervision')) {
+            SIAP_ROUTER.navigate('/tasks/supervisions');
+        } else if (url.includes('presensi/mapel') || url.includes('/kbm')) {
             SIAP_ROUTER.navigate('/kbm');
-        } else if (url.includes('/attendance')) {
+        } else if (url.includes('/attendance') || url.includes('/presensi')) {
             SIAP_ROUTER.navigate('/attendance');
         } else if (url.includes('/tasks')) {
             SIAP_ROUTER.navigate('/tasks');
         } else if (url.includes('/profile')) {
             SIAP_ROUTER.navigate('/profile');
+        } else if (url.includes('pengumuman') || url.includes('announcement')) {
+            SIAP_ROUTER.navigate('/dashboard');
         } else {
-            window.location.href = url;
+            SIAP_ROUTER.navigate('/tasks');
         }
     }
     window.handleNotificationClick = handleNotificationClick;
@@ -6356,10 +6427,10 @@
                 return `
                     <div class="p-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-2.5 transition" id="form-ind-card-${ind.id}">
                         <div class="flex items-start justify-between gap-2">
-                            <div class="space-y-0.5">
+                            <div class="space-y-1 flex-1">
                                 <span class="px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-100 text-slate-600 font-mono inline-block">${escapeHtml(ind.code || '')}</span>
-                                <h5 class="text-xs font-bold text-slate-800 leading-tight">${escapeHtml(ind.title)}</h5>
-                                ${ind.description ? `<p class="text-[10px] text-slate-500 leading-snug pt-0.5">${escapeHtml(ind.description)}</p>` : ''}
+                                <h5 class="text-xs font-bold text-slate-800 leading-relaxed whitespace-pre-line">${escapeHtml(ind.title)}</h5>
+                                ${ind.description ? `<p class="text-[10px] text-slate-500 leading-snug pt-0.5 whitespace-pre-line">${escapeHtml(ind.description)}</p>` : ''}
                             </div>
                             <span id="form-ind-score-badge-${ind.id}" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 ${score ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}">
                                 ${score ? 'Skor ' + score : 'Kosong'}
