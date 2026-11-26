@@ -1877,7 +1877,7 @@ class MobileTasksController extends Controller
             'permit_date' => 'nullable|date',
             'end_date' => 'nullable|date',
             'student_id' => 'nullable|exists:students,id',
-            'student_name' => 'nullable|string|max:255',
+            'student_name' => 'nullable|string|max:2000',
             'classroom_id' => 'nullable|exists:classrooms,id',
             'student_ids' => 'nullable|array',
             'student_ids.*' => 'exists:students,id',

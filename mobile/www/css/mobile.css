@@ -6,6 +6,7 @@
     --slate-bg: #f8fafc;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    color-scheme: light;
 }
 
 * {
@@ -15,6 +16,17 @@
 
 input, textarea, select {
     user-select: text;
+    color: #0f172a;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+    -webkit-text-fill-color: #0f172a !important;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
 
 body {
@@ -57,8 +69,8 @@ body::before {
 }
 
 @keyframes cupertinoFadeIn {
-    from { opacity: 0.5; transform: scale(0.99) translateY(4px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+    from { opacity: 0.65; }
+    to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -130,22 +142,18 @@ body::before {
     color: #ffffff !important;
 }
 
-/* Cupertino Inset Grouped Cards (Optimized for 60-120fps smooth scrolling) */
+/* Cupertino Inset Grouped Cards (Optimized for iOS WebKit & 60-120fps scrolling) */
 .card-elevated {
     background: #ffffff;
     border-radius: 1.25rem;
     border: 1px solid rgba(226, 232, 240, 0.9);
     box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05), 0 1px 3px -1px rgba(15, 23, 42, 0.02);
-    content-visibility: auto;
-    contain-intrinsic-size: 0 80px;
 }
 
 .card-subtle {
     background: #f8fafc;
     border-radius: 1rem;
     border: 1px solid rgba(226, 232, 240, 0.9);
-    content-visibility: auto;
-    contain-intrinsic-size: 0 60px;
 }
 
 /* Skeleton Loading Animation */

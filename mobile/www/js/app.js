@@ -3544,6 +3544,10 @@
      */
     function setupStudentSmartPicker(pickerElement, options = {}) {
         if (!pickerElement) return null;
+        if (pickerElement.dataset.pickerInit === '1' && pickerElement._pickerApi) {
+            return pickerElement._pickerApi;
+        }
+        pickerElement.dataset.pickerInit = '1';
 
         const isMultiple = Boolean(options.multiple);
         let selectedStudents = [];
@@ -3851,7 +3855,7 @@
             }
         });
 
-        return {
+        const pickerApi = {
             selectStudent,
             removeStudent,
             clearSelection,
@@ -3859,6 +3863,8 @@
             getValue: () => (isMultiple ? selectedStudents.map(s => s.id) : (hiddenInput ? hiddenInput.value : '')),
             getSelectedStudents: () => [...selectedStudents],
         };
+        pickerElement._pickerApi = pickerApi;
+        return pickerApi;
     }
 
     // --- B. VISITASI SISWA CONTROLLER ---
@@ -5270,10 +5276,12 @@
             formData.append('permit_type', permitType);
             if (studentIds.length === 1) {
                 formData.append('student_id', studentIds[0]);
+                if (studentName) formData.append('student_name', studentName);
             } else if (studentIds.length > 1) {
                 studentIds.forEach(id => formData.append('student_ids[]', id));
+            } else if (studentName) {
+                formData.append('student_name', studentName);
             }
-            if (studentName) formData.append('student_name', studentName);
             if (classroomId) formData.append('classroom_id', classroomId);
 
             const reasonVal = form.querySelector('#permit-reason')?.value || '';
