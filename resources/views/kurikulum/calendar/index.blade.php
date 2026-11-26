@@ -388,6 +388,7 @@
                 </div>
             </div>
 
+            @if(auth()->user()->canViewSchoolActivities())
             <!-- Acuan Agenda Kegiatan Card -->
             <div class="card border-0 shadow-sm mt-3">
                 <div class="card-body p-3">
@@ -409,6 +410,7 @@
                     </a>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 

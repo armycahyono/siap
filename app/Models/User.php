@@ -321,6 +321,27 @@ class User extends Authenticatable
         return $this->hasRole('super_admin');
     }
 
+    public function canViewSchoolActivities(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->isPrincipal()
+            || $this->isWakaKurikulum()
+            || $this->isWakaKesiswaan()
+            || $this->isWakaSarpras()
+            || $this->isWakaHumas()
+            || $this->hasRole([
+                'kepala_sekolah',
+                'waka_kurikulum',
+                'waka_kesiswaan',
+                'waka_sarpras',
+                'waka_humas',
+                'operator_kurikulum',
+                'operator_kesiswaan',
+                'operator_sarpras',
+                'operator_humas',
+            ]);
+    }
+
     public function isWakaKurikulum(?string $academicYear = null): bool
     {
         if ($this->hasRole(['super_admin', 'waka_kurikulum'], $academicYear)) {

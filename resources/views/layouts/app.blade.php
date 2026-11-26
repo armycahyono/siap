@@ -581,6 +581,7 @@
                             </a>
                         </li>
 
+                        @if(auth()->user()->canViewSchoolActivities())
                         <li class="nav-item {{ request()->routeIs('kurikulum.activities.*', 'school-activities.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.activities.index') }}">
                                 <span class="nav-link-icon d-inline-block">
@@ -589,6 +590,7 @@
                                 <span class="nav-link-title">Agenda Kegiatan</span>
                             </a>
                         </li>
+                        @endif
 
                         <li class="nav-item {{ request()->routeIs('kurikulum.calendar.*') ? 'active' : '' }}">
                             <a class="nav-link" href="{{ route('kurikulum.calendar.index') }}">

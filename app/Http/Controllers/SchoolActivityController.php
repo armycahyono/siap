@@ -21,6 +21,8 @@ class SchoolActivityController extends Controller
 {
     public function index(Request $request): View
     {
+        abort_unless(auth()->user()?->canViewSchoolActivities(), 403, 'Hanya Kepala Sekolah, Waka, dan Tim Waka yang dapat mengakses Agenda Kegiatan.');
+
         $setting = SchoolSetting::getSetting();
         try {
             $academicYear = app(AcademicYearContext::class)->getViewingYear($request->input('academic_year'));
