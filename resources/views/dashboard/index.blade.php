@@ -179,8 +179,8 @@
                                 <div><i class="ti ti-calendar-event me-1 text-muted"></i>{{ $spv->schedule_date->translatedFormat('d M Y') }}</div>
                                 <small class="text-muted">{{ $spv->schedule_time }}</small>
                             </td>
-                            <td>
-                                <span class="badge bg-blue-lt">
+                            <td style="max-width: 180px;">
+                                <span class="badge bg-blue-lt text-wrap text-start lh-sm py-1 px-2" title="{{ $spv->supervisor?->name ?? '-' }}">
                                     <i class="ti ti-user-check me-1"></i>{{ $spv->supervisor->name }}
                                 </span>
                             </td>
