@@ -14,6 +14,7 @@ use App\Http\Controllers\Attendance\GeotagAttendanceController;
 use App\Http\Controllers\Attendance\GtkPermitController;
 use App\Http\Controllers\Attendance\ManualGtkAttendanceController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\Bk\BkCareerAnalyticsController;
 use App\Http\Controllers\Bk\BkCareerProfileController;
 use App\Http\Controllers\Bk\BkDashboardController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\GtkDecreeController;
 use App\Http\Controllers\HomeroomAttendanceRecapController;
 use App\Http\Controllers\HomeroomStudentPermitController;
 use App\Http\Controllers\LessonScheduleController;
+use App\Http\Controllers\LmsSsoController;
 use App\Http\Controllers\Master\StudentController;
 use App\Http\Controllers\Master\StudentPromotionController;
 use App\Http\Controllers\MobileController;
@@ -99,7 +101,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/tugas', [DashboardController::class, 'tasks'])->name('tasks');
-    Route::get('/lms/launch', [\App\Http\Controllers\LmsSsoController::class, 'launch'])->name('lms.launch');
+    Route::get('/lms/launch', [LmsSsoController::class, 'launch'])->name('lms.launch');
 
     // Modul Pengumuman Multi-Saluran (Web, Mobile, Telegram, WhatsApp)
     Route::prefix('pengumuman')->name('announcements.')->group(function () {
@@ -661,6 +663,12 @@ Route::middleware('auth')->group(function () {
         Route::get('log-aktivitas', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::delete('log-aktivitas/hapus-lama', [ActivityLogController::class, 'clear'])->name('activity-logs.clear');
         Route::delete('log-aktivitas/{log}', [ActivityLogController::class, 'destroy'])->name('activity-logs.destroy');
+
+        // Backup Data Sistem
+        Route::get('backup', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('backup', [BackupController::class, 'store'])->name('backups.store');
+        Route::get('backup/{filename}/unduh', [BackupController::class, 'download'])->name('backups.download');
+        Route::delete('backup/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
     });
 
     // Presensi Mesin Absensi (Fingerspot / ADMS)

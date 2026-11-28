@@ -1118,6 +1118,15 @@
                                 <span class="nav-link-title">Log Aktivitas</span>
                             </a>
                         </li>
+
+                        <li class="nav-item {{ request()->routeIs('backups.*') ? 'active' : '' }}">
+                            <a class="nav-link" href="{{ route('backups.index') }}">
+                                <span class="nav-link-icon d-inline-block">
+                                    <i class="ti ti-database-export fs-2 text-warning"></i>
+                                </span>
+                                <span class="nav-link-title">Backup Data</span>
+                            </a>
+                        </li>
                         @endif
                     </ul>
                 </div>
@@ -1303,7 +1312,7 @@
     <!-- Tabler Core JS -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
     <!-- Smart Search (Pencarian Pintar) -->
-    <script src="{{ asset('js/smart-search.js') }}"></script>
+    <script src="/js/smart-search.js?v={{ filemtime(public_path('js/smart-search.js')) }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var toggleBtns = document.querySelectorAll('.btn-action-sidebar-toggle');

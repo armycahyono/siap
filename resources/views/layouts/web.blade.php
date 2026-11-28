@@ -1298,7 +1298,7 @@
     <!-- Tabler Core JS -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
     <!-- Smart Search (Pencarian Pintar) -->
-    <script src="{{ asset('js/smart-search.js') }}"></script>
+    <script src="/js/smart-search.js?v={{ filemtime(public_path('js/smart-search.js')) }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var toggleBtns = document.querySelectorAll('.btn-action-sidebar-toggle');

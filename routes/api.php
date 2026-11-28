@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Mobile\MobileProfileController;
 use App\Http\Controllers\Api\Mobile\MobileSupervisionController;
 use App\Http\Controllers\Api\Mobile\MobileTasksController;
 use App\Http\Controllers\Attendance\AttendanceController;
+use App\Http\Middleware\VerifyLmsIntegrationToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -128,7 +129,7 @@ Route::prefix('v1/mobile')->middleware([
 });
 
 Route::prefix('integration/lms')
-    ->middleware(\App\Http\Middleware\VerifyLmsIntegrationToken::class)
+    ->middleware(VerifyLmsIntegrationToken::class)
     ->group(function () {
         Route::post('sso/verify', [LmsIntegrationController::class, 'verifySsoCode']);
         Route::get('academic-years', [LmsIntegrationController::class, 'academicYears']);
@@ -137,4 +138,11 @@ Route::prefix('integration/lms')
         Route::get('subjects', [LmsIntegrationController::class, 'subjects']);
         Route::get('teaching-assignments', [LmsIntegrationController::class, 'teachingAssignments']);
         Route::get('students', [LmsIntegrationController::class, 'students']);
+        Route::get('attendances', [LmsIntegrationController::class, 'attendances']);
+        Route::get('subject-attendances', [LmsIntegrationController::class, 'subjectAttendances']);
+        Route::get('visitations', [LmsIntegrationController::class, 'visitations']);
+        Route::get('incidents', [LmsIntegrationController::class, 'incidents']);
+        Route::get('permits', [LmsIntegrationController::class, 'permits']);
+        Route::get('bk-records', [LmsIntegrationController::class, 'bkRecords']);
+        Route::get('calendar-events', [LmsIntegrationController::class, 'calendarEvents']);
     });

@@ -12,3 +12,8 @@ Artisan::command('inspire', function () {
 Schedule::command('telegram:teaching-reminder')
     ->everyMinute()
     ->withoutOverlapping();
+
+// Backup database harian otomatis dengan retensi 7h / 4m / 6b
+Schedule::command('app:backup --keep-days=7 --keep-weekly=4 --keep-monthly=6')
+    ->dailyAt('02:00')
+    ->withoutOverlapping();

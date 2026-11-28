@@ -12,6 +12,11 @@ class LmsSsoController extends Controller
     public function launch(Request $request): RedirectResponse
     {
         $user = $request->user();
+
+        if (! $user || ! $user->is_active || $user->isStaff()) {
+            abort(403, 'Akun staf tidak memiliki akses ke LMS.');
+        }
+
         $code = Str::random(64);
 
         Cache::put("lms_sso_code:{$code}", $user->id, now()->addSeconds(60));

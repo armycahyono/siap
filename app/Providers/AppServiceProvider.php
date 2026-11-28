@@ -2,10 +2,16 @@
 
 namespace App\Providers;
 
+use App\Models\AcademicYear;
+use App\Models\AttendanceLog;
 use App\Models\Cbt\CbtUser;
+use App\Models\Classroom;
 use App\Models\PiketIncident;
+use App\Models\Student;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\User;
 use App\Observers\CbtUserObserver;
+use App\Observers\LmsSyncObserver;
 use App\Observers\UserObserver;
 use App\Policies\PiketIncidentPolicy;
 use Illuminate\Pagination\Paginator;
@@ -35,6 +41,13 @@ class AppServiceProvider extends ServiceProvider
         // Register model observers for SIAP <-> CBT real-time sync
         User::observe(UserObserver::class);
         CbtUser::observe(CbtUserObserver::class);
+
+        // Register model observers for SIAP -> LMS real-time webhooks
+        Student::observe(LmsSyncObserver::class);
+        Classroom::observe(LmsSyncObserver::class);
+        TeacherSubjectAssignment::observe(LmsSyncObserver::class);
+        AcademicYear::observe(LmsSyncObserver::class);
+        AttendanceLog::observe(LmsSyncObserver::class);
 
         if (request()->header('x-forwarded-proto') === 'https' || request()->isSecure() || str_ends_with(request()->getHost(), 'sudahonline.my.id')) {
             URL::forceScheme('https');

@@ -153,7 +153,11 @@
             setSearching(true);
             container.classList.add('live-search-loading');
 
-            const url = new URL(form.action || window.location.href, window.location.origin);
+            const url = new URL(form.getAttribute('action') || window.location.href, window.location.origin);
+            if (url.origin !== window.location.origin) {
+                url.protocol = window.location.protocol;
+                url.host = window.location.host;
+            }
             const formData = new FormData(form);
 
             for (const [key, value] of formData.entries()) {
